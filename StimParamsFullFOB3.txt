@@ -1,0 +1,147 @@
+HumanheadoriA_07.bmp	humanFace	humanFaceL90	face	faceL90	human07
+HumanheadoriA_1.bmp	humanFace	humanFaceL90	face	faceL90	human01
+HumanheadoriA_11.bmp	humanFace	humanFaceL90	face	faceL90	human11
+HumanheadoriA_12.bmp	humanFace	humanFaceL90	face	faceL90	human12
+HumanheadoriA_14.bmp	humanFace	humanFaceL90	face	faceL90	human14
+HumanheadoriA_19.bmp	humanFace	humanFaceL90	face	faceL90	human19
+HumanheadoriA_25.bmp	humanFace	humanFaceL90	face	faceL90	human25
+HumanheadoriA_26.bmp	humanFace	humanFaceL90	face	faceL90	human26
+HumanheadoriB_07.bmp	humanFace	humanFaceL45	face	faceL45	human07
+HumanheadoriB_1.bmp	humanFace	humanFaceL45	face	faceL45	human01
+HumanheadoriB_11.bmp	humanFace	humanFaceL45	face	faceL45	human11
+HumanheadoriB_12.bmp	humanFace	humanFaceL45	face	faceL45	human12
+HumanheadoriB_14.bmp	humanFace	humanFaceL45	face	faceL45	human14
+HumanheadoriB_19.bmp	humanFace	humanFaceL45	face	faceL45	human19
+HumanheadoriB_25.bmp	humanFace	humanFaceL45	face	faceL45	human25
+HumanheadoriB_26.bmp	humanFace	humanFaceL45	face	faceL45	human26
+HumanheadoriC_07.bmp	humanFace	humanFaceFront	face	faceFront	human07
+HumanheadoriC_1.bmp	humanFace	humanFaceFront	face	faceFront	human01
+HumanheadoriC_11.bmp	humanFace	humanFaceFront	face	faceFront	human11
+HumanheadoriC_12.bmp	humanFace	humanFaceFront	face	faceFront	human12
+HumanheadoriC_14.bmp	humanFace	humanFaceFront	face	faceFront	human14
+HumanheadoriC_19.bmp	humanFace	humanFaceFront	face	faceFront	human19
+HumanheadoriC_25.bmp	humanFace	humanFaceFront	face	faceFront	human25
+HumanheadoriC_26.bmp	humanFace	humanFaceFront	face	faceFront	human26
+HumanheadoriD_07.bmp	humanFace	humanFaceR45	face	faceR45	human07
+HumanheadoriD_1.bmp	humanFace	humanFaceR45	face	faceR45	human01
+HumanheadoriD_11.bmp	humanFace	humanFaceR45	face	faceR45	human11
+HumanheadoriD_12.bmp	humanFace	humanFaceR45	face	faceR45	human12
+HumanheadoriD_14.bmp	humanFace	humanFaceR45	face	faceR45	human14
+HumanheadoriD_19.bmp	humanFace	humanFaceR45	face	faceR45	human19
+HumanheadoriD_25.bmp	humanFace	humanFaceR45	face	faceR45	human25
+HumanheadoriD_26.bmp	humanFace	humanFaceR45	face	faceR45	human26
+HumanheadoriE_07.bmp	humanFace	humanFaceR90	face	faceR90	human07
+HumanheadoriE_1.bmp	humanFace	humanFaceR90	face	faceR90	human01
+HumanheadoriE_11.bmp	humanFace	humanFaceR90	face	faceR90	human11
+HumanheadoriE_12.bmp	humanFace	humanFaceR90	face	faceR90	human12
+HumanheadoriE_14.bmp	humanFace	humanFaceR90	face	faceR90	human14
+HumanheadoriE_19.bmp	humanFace	humanFaceR90	face	faceR90	human19
+HumanheadoriE_25.bmp	humanFace	humanFaceR90	face	faceR90	human25
+HumanheadoriE_26.bmp	humanFace	humanFaceR90	face	faceR90	human26
+MonkeyheadoriA_1.bmp	monkeyFace	monkeyFaceL90	face	faceL90	monkey01
+MonkeyheadoriA_2.bmp	monkeyFace	monkeyFaceL90	face	faceL90	monkey02
+MonkeyheadoriA_3.bmp	monkeyFace	monkeyFaceL90	face	faceL90	monkey03
+MonkeyheadoriA_4..bmp	monkeyFace	monkeyFaceL90	face	faceL90	monkey04
+MonkeyheadoriA_5.bmp	monkeyFace	monkeyFaceL90	face	faceL90	monkey05
+MonkeyheadoriA_6.bmp	monkeyFace	monkeyFaceL90	face	faceL90	monkey06
+MonkeyheadoriA_7.bmp	monkeyFace	monkeyFaceL90	face	faceL90	monkey07
+MonkeyheadoriA_8.bmp	monkeyFace	monkeyFaceL90	face	faceL90	monkey08
+MonkeyheadoriB_1.bmp	monkeyFace	monkeyFaceL45	face	faceL45	monkey01
+MonkeyheadoriB_2.bmp	monkeyFace	monkeyFaceL45	face	faceL45	monkey02
+MonkeyheadoriB_3.bmp	monkeyFace	monkeyFaceL45	face	faceL45	monkey03
+MonkeyheadoriB_4.bmp	monkeyFace	monkeyFaceL45	face	faceL45	monkey04
+MonkeyheadoriB_5.bmp	monkeyFace	monkeyFaceL45	face	faceL45	monkey05
+MonkeyheadoriB_6.bmp	monkeyFace	monkeyFaceL45	face	faceL45	monkey06
+MonkeyheadoriB_7.bmp	monkeyFace	monkeyFaceL45	face	faceL45	monkey07
+MonkeyheadoriB_8.bmp	monkeyFace	monkeyFaceL45	face	faceL45	monkey08
+MonkeyheadoriC_1.bmp	monkeyFace	monkeyFaceFront	face	faceFront	monkey01
+MonkeyheadoriC_2.bmp	monkeyFace	monkeyFaceFront	face	faceFront	monkey02
+MonkeyheadoriC_3.bmp	monkeyFace	monkeyFaceFront	face	faceFront	monkey03
+MonkeyheadoriC_4.bmp	monkeyFace	monkeyFaceFront	face	faceFront	monkey04
+MonkeyheadoriC_5.bmp	monkeyFace	monkeyFaceFront	face	faceFront	monkey05
+MonkeyheadoriC_6.bmp	monkeyFace	monkeyFaceFront	face	faceFront	monkey06
+MonkeyheadoriC_7.bmp	monkeyFace	monkeyFaceFront	face	faceFront	monkey07
+MonkeyheadoriC_8.bmp	monkeyFace	monkeyFaceFront	face	faceFront	monkey08
+MonkeyheadoriD_1.bmp	monkeyFace	monkeyFaceR45	face	faceR45	monkey01
+MonkeyheadoriD_2.bmp	monkeyFace	monkeyFaceR45	face	faceR45	monkey02
+MonkeyheadoriD_3.bmp	monkeyFace	monkeyFaceR45	face	faceR45	monkey03
+MonkeyheadoriD_4.bmp	monkeyFace	monkeyFaceR45	face	faceR45	monkey04
+MonkeyheadoriD_5.bmp	monkeyFace	monkeyFaceR45	face	faceR45	monkey05
+MonkeyheadoriD_6.bmp	monkeyFace	monkeyFaceR45	face	faceR45	monkey06
+MonkeyheadoriD_7.bmp	monkeyFace	monkeyFaceR45	face	faceR45	monkey07
+MonkeyheadoriD_8.bmp	monkeyFace	monkeyFaceR45	face	faceR45	monkey08
+MonkeyheadoriE_1.bmp	monkeyFace	monkeyFaceR90	face	faceR90	monkey01
+MonkeyheadoriE_2.bmp	monkeyFace	monkeyFaceR90	face	faceR90	monkey02
+MonkeyheadoriE_3.bmp	monkeyFace	monkeyFaceR90	face	faceR90	monkey03
+MonkeyheadoriE_4.bmp	monkeyFace	monkeyFaceR90	face	faceR90	monkey04
+MonkeyheadoriE_5.bmp	monkeyFace	monkeyFaceR90	face	faceR90	monkey05
+MonkeyheadoriE_6.bmp	monkeyFace	monkeyFaceR90	face	faceR90	monkey06
+MonkeyheadoriE_7.bmp	monkeyFace	monkeyFaceR90	face	faceR90	monkey07
+MonkeyheadoriE_8.bmp	monkeyFace	monkeyFaceR90	face	faceR90	monkey08
+fruit10_grayBG.bmp	fruit	nonface	object
+fruit11_grayBG.bmp	fruit	nonface	object
+fruit12_grayBG.bmp	fruit	nonface	object
+fruit14_grayBG.bmp	fruit	nonface	object
+fruit15_grayBG.bmp	fruit	nonface	object
+fruit16_grayBG.bmp	fruit	nonface	object
+fruit3_grayBG.bmp	fruit	nonface	object
+fruit4_grayBG.bmp	fruit	nonface	object
+fruit5_grayBG.bmp	fruit	nonface	object
+fruit7_grayBG.bmp	fruit	nonface	object
+fruit8_grayBG.bmp	fruit	nonface	object
+grayback.bmp
+hand10_grayBG.bmp	hand	nonface	body
+hand12_grayBG.bmp	hand	nonface	body
+hand13_grayBG.bmp	hand	nonface	body
+hand1_grayBG.bmp	hand	nonface	body
+hand2_grayBG.bmp	hand	nonface	body
+hand3_grayBG.bmp	hand	nonface	body
+hand4_grayBG.bmp	hand	nonface	body
+hand5_grayBG.bmp	hand	nonface	body
+hand6_grayBG.bmp	hand	nonface	body
+hand7_grayBG.bmp	hand	nonface	body
+hand9_grayBG.bmp	hand	nonface	body
+humanbody10_grayBG.bmp	humanBody	nonface	body
+humanbody11_grayBG.bmp	humanBody	nonface	body
+humanbody15_grayBG.bmp	humanBody	nonface	body
+humanbody1_grayBG.bmp	humanBody	nonface	body
+humanbody2_grayBG.bmp	humanBody	nonface	body
+humanbody3_grayBG.bmp	humanBody	nonface	body
+humanbody4_grayBG.bmp	humanBody	nonface	body
+humanbody5_grayBG.bmp	humanBody	nonface	body
+humanbody6_grayBG.bmp	humanBody	nonface	body
+humanbody7_grayBG.bmp	humanBody	nonface	body
+humanbody9_grayBG.bmp	humanBody	nonface	body
+monkeybodypart_1.bmp	monkeyBody	monkeyBodyPart	nonface	body
+monkeybodypart_2.bmp	monkeyBody	monkeyBodyPart	nonface	body
+monkeybodypart_4.bmp	monkeyBody	monkeyBodyPart	nonface	body
+monkeybodypart_6.bmp	monkeyBody	monkeyBodyPart	nonface	body
+monkeybodypart_7.bmp	monkeyBody	monkeyBodyPart	nonface	body
+monkeybodypart_8.bmp	monkeyBody	monkeyBodyPart	nonface	body
+monkeybodywhole_10.bmp	monkeyBody	monkeyBodyWhole	nonface	body
+monkeybodywhole_11.bmp	monkeyBody	monkeyBodyWhole	nonface	body
+monkeybodywhole_3.bmp	monkeyBody	monkeyBodyWhole	nonface	body
+monkeybodywhole_5.bmp	monkeyBody	monkeyBodyWhole	nonface	body
+monkeybodywhole_9.bmp	monkeyBody	monkeyBodyWhole	nonface	body
+place_1.bmp	place	nonface
+place_14.bmp	place	nonface
+place_15.bmp	place	nonface
+place_16.bmp	place	nonface
+place_18.bmp	place	nonface
+place_2.bmp	place	nonface
+place_3.bmp	place	nonface
+place_4.bmp	place	nonface
+place_5.bmp	place	nonface
+place_6.bmp	place	nonface
+place_8.bmp	place	nonface
+techno10_grayBG.bmp	techno	nonface	object
+techno11_grayBG.bmp	techno	nonface	object
+techno12_grayBG.bmp	techno	nonface	object
+techno14_grayBG.bmp	techno	nonface	object
+techno15_grayBG.bmp	techno	nonface	object
+techno1_grayBG.bmp	techno	nonface	object
+techno2_grayBG.bmp	techno	nonface	object
+techno4_grayBG.bmp	techno	nonface	object
+techno6_grayBG.bmp	techno	nonface	object
+techno7_grayBG.bmp	techno	nonface	object
+techno8_grayBG.bmp	techno	nonface	object

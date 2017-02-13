@@ -1,0 +1,16 @@
+apple_05RISE00.bmp
+apple_05RISE01.bmp
+apple_05RISE02.bmp
+apple_05RISE03.bmp
+apple_05RISE04.bmp
+facem_04_left45_lipsmackRISE00.bmp
+facem_04_left45_lipsmackRISE01.bmp
+facem_04_left45_lipsmackRISE02.bmp
+facem_04_left45_lipsmackRISE03.bmp
+facem_04_left45_lipsmackRISE04.bmp
+facem_04_right90_lipsmackRISE00.bmp
+facem_04_right90_lipsmackRISE01.bmp
+facem_04_right90_lipsmackRISE02.bmp
+facem_04_right90_lipsmackRISE03.bmp
+facem_04_right90_lipsmackRISE04.bmp
+grey.bmp
