@@ -91,7 +91,7 @@ useDCSUB = 0;
 if useDCSUB
   lfpAlignParams.DCSUB_SAM = [lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10;lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10 ]; % for no DC sub, [0 ...], for both ends, [sam sam], for start only [sam 0] 
 else
-  DCSUB_SAM = 0;
+  lfpAlignParams.DCSUB_SAM = 0;
 end
 %
 frCalcOn = 80;
