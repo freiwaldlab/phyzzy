@@ -60,7 +60,7 @@ if stimTiming.shortest == stimTiming.longest
   psthImDur = psthParams.psthImDur;
   spikeAlignParams.postAlign = psthImDur+psthPost+3*smoothingWidth;
   lfpAlignParams.msPostAlign = psthImDur+psthPost+tfParams.movingWin(1)/2;
-  if any(lfpAlignParams.DCSUB_SAM(2,:))  % todo: handle case where lfp analysis window doesn't cover full ISI
+  if length(lfpAlignParams.DCSUB_SAM) > 1 && any(lfpAlignParams.DCSUB_SAM(2,:))  % todo: handle case where lfp analysis window doesn't cover full ISI
     lfpAlignParams.DCSUB_SAM(2,:) = (psthImDur+stimTiming.ISI)+lfpAlignParams.DCSUB_SAM(2,:);
   end
   preAlign = spikeAlignParams.preAlign;

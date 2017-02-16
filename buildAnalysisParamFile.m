@@ -89,7 +89,8 @@ spikeAlignParams.postAlign = psthParams.psthImDur+psthParams.psthPost+3*psthPara
 % for lfps, constrain first and (optional) last [n m] samples to 0 mean
 useDCSUB = 0;
 if useDCSUB
-  lfpAlignParams.DCSUB_SAM = [lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10;lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10 ]; % for no DC sub, [0 ...], for both ends, [sam sam], for start only [sam 0] 
+  %lfpAlignParams.DCSUB_SAM = [lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10; 0, 0 ]; % 0-th order 
+  lfpAlignParams.DCSUB_SAM = [lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10;lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10 ]; % 1st order 
 else
   lfpAlignParams.DCSUB_SAM = 0;
 end
