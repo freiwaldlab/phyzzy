@@ -610,7 +610,7 @@ for channel_i = 1:length(lfpChannels)
   clear figData
   figData.y = squeeze(mean(lfpByCategory{categorySlimInds(i)}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
   figData.x = times;
-  saveFigure(outDir,sprintf('Evoked_byCat_%s_Unit%d_Run%s',channelNames{channel_i},unit_i,runNum), channelCatEvoked, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+  saveFigure(outDir,sprintf('Evoked_byCat_%s_Run%s',channelNames{channel_i},runNum), channelCatEvoked, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   
   % make lfp - psth subplot
   categoryPSTH = squeeze(catMuaPsthByChannel(channel_i,categorySlimInds,:));
