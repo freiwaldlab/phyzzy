@@ -167,11 +167,11 @@ end
 if nargin == 0 || (nargin == 2 && strcmp(varargin{1},'paramBuilder')) 
   runAnalyses( analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign,...
     categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames);
+    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming);
 else
   feval(varargin{end},analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign,...
     categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames);
+    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming);
 end
 end
 
