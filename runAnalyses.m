@@ -18,7 +18,9 @@ function [  ] = runAnalyses( analysisParamFilename, spikesByChannel, lfpData, an
 %     picParamsFilename
 
 load(analysisParamFilename);
+pictureLabelsTmp = pictureLabels; %note: hack to avoid overwriting list of not presented stimuli
 load(picParamsFilename);
+pictureLabels = pictureLabelsTmp; % conclusion of hack
 channelNames = ephysParams.channelNames;
 spikeChannels = ephysParams.spikeChannels;
 lfpChannels = ephysParams.lfpChannels;
@@ -46,12 +48,6 @@ if makeImPSTH
       end
       imagePSTH = zeros(length(pictureLabels),psthPre+1+psthImDur+psthPost);
       for image_i = 1:length(pictureLabels)
-        %%%%% HACK
-        disp(image_i)
-        disp(channel_i)
-        disp(unit_i)
-        disp(length(pictureLabels))
-        disp(size(psthEmptyByImage));
         if ~psthEmptyByImage{image_i}{channel_i}{unit_i}            
           paddedPsth = 1000*psth(spikesByImage{image_i}{channel_i}{unit_i},smoothingWidth,'n',[-preAlign postAlign],0,-preAlign:postAlign);
           imagePSTH(image_i,:) = paddedPsth(3*smoothingWidth+1:end-3*smoothingWidth);
@@ -447,7 +443,7 @@ for param_i = 1:length(tuningCurveParamLabels)
   % todo: saveFigure
 end
 
-return
+
 % firing rate RF color plot
 rfGrid  = unique(taskData.pictureJumps,'rows');
 gridX = unique(rfGrid(:,1));

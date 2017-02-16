@@ -18,8 +18,11 @@ for item_i = 1:length(alignPointsByItem)
       for ch_i = 1:size(lfpArray,2)
         lfpArray(1,ch_i,trial_i,:) = lfpArray(1,ch_i,trial_i,:) - mean(lfpArray(1,ch_i,trial_i,DCSUB_SAM(1,1):DCSUB_SAM(1,2)),4); %set the first 20ms mean equal across trials and stimuli
       end
+    else
+      lfpByItem{item_i} = lfpArray;
+      continue
     end
-    if any(DCSUB_SAM(2,:))
+    if any(DCSUB_SAM(2,:)) 
       for ch_i = 1:size(lfpArray,2)
         endVal = mean(lfpArray(1,ch_i,trial_i,DCSUB_SAM(2,1):DCSUB_SAM(2,2)),4);
         lfpArray(1,ch_i,trial_i,:) = squeeze(lfpArray(1,ch_i,trial_i,:)) - linspace(0,endVal,size(lfpArray,4))'; %subtract the linear term to set final values to zero

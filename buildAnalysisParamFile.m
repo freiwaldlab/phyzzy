@@ -5,10 +5,16 @@ function [ analysisParamsFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '004';
-dateSubject = '170212ALAN'; %161011ALAN
-ephysVolume = '/Volumes/Users-1/User/Desktop'; %'/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; %'/Volumes/Users-1/User/Desktop%' %
-stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop'; %/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
+runNum = '005';
+dateSubject = '170215ALAN'; %161011ALAN
+inRig = 0;
+if inRig
+  ephysVolume = '/Volumes/Users-1/User/Desktop';
+  stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';
+else
+  ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
+  stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
+end
 outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
 analysisLabel = 'Basic';
 analysisParamsFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
@@ -49,11 +55,11 @@ analogInParams.eyeChannels = [];
 stimSyncParams.usePhotodiode = 0;
 
 % parameters for excludeStimuli, see function for details
-excludeStimParams.fixPre = 0; %ms
-excludeStimParams.fixPost = 0; %ms
-excludeStimParams.flashPre = 0;  %ms
-excludeStimParams.flashPost = 0; %ms
-excludeStimParams.juicePre = 0; % optional, ms
+excludeStimParams.fixPre = 100; %ms
+excludeStimParams.fixPost = 100; %ms
+excludeStimParams.flashPre = 100;  %ms
+excludeStimParams.flashPost = 100; %ms
+excludeStimParams.juicePre = 500; % optional, ms
 excludeStimParams.juicePost = 0; % optional, ms
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
@@ -81,7 +87,12 @@ lfpAlignParams.msPostAlign = psthParams.psthImDur+psthParams.psthPost+tfParams.m
 spikeAlignParams.preAlign = psthParams.psthPre+3*psthParams.smoothingWidth;
 spikeAlignParams.postAlign = psthParams.psthImDur+psthParams.psthPost+3*psthParams.smoothingWidth;
 % for lfps, constrain first and (optional) last [n m] samples to 0 mean
-lfpAlignParams.DCSUB_SAM = [lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10;lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10 ]; % for no DC sub, [0 ...], for both ends, [sam sam], for start only [sam 0] 
+useDCSUB = 0;
+if useDCSUB
+  lfpAlignParams.DCSUB_SAM = [lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10;lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10 ]; % for no DC sub, [0 ...], for both ends, [sam sam], for start only [sam 0] 
+else
+  DCSUB_SAM = 0;
+end
 %
 frCalcOn = 80;
 frCalcOff = 0; %note: if frCalcOff < frCalcOn, will update when psthImDur is set after reading log file 

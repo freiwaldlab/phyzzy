@@ -87,10 +87,19 @@ pictureLabels = tmp.pictureLabels;
 picFiles = unique(taskData.pictureFilenames);
 onsetsByImage = cell(length(picFiles),1);
 offsetsByImage = cell(length(picFiles),1);
+picsNotPresented = zeros(length(picFiles),1);
 for i = 1:length(picFiles)
   onsetsByImage{i} = taskData.pictureStartTimes(strcmp(taskData.pictureFilenames,picFiles{i}));
   offsetsByImage{i} = taskData.pictureEndTimes(strcmp(taskData.pictureFilenames,picFiles{i}));
+  picsNotPresented(i) = isempty(onsetsByImage{i});
 end
+% todo: add similar defense for categories
+disp('No presentations of the following images survived exclusion:');
+disp(picFiles(picsNotPresented == 1));
+onsetsByImage = onsetsByImage(picsNotPresented == 0);
+offsetsByImage = offsetsByImage(picsNotPresented == 0);
+picFiles = picFiles(picsNotPresented == 0);
+pictureLabels = pictureLabels(picsNotPresented == 0);
 % find which line of picCategories corresponds to each picture
 picFilePicCategoryIndex = zeros(size(picFiles));
 for image_i = 1:length(picFiles)
