@@ -1,6 +1,6 @@
 function [  ] = runAnalyses( analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign, ...
   categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-  spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, onsetsByImage, onsetsByCategory)
+  spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming)
 %runAnalyses should be the main site for customization
 %   - ideally, function signature should remain constant
 %  this version of runAnalyses does the following:
@@ -124,8 +124,14 @@ for channel_i = 1:length(spikeChannels)
     for i = 1:5
       fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{end-i},imageSortedRates(end-i), imFrErrSorted(end-i));
     end
+    % preferred images raster plot
+    figure();
+    raster(spikesByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
+    title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
   end
 end
+
+return
 
 % multi-channel MUA image preference
 if length(channelNames) > 1

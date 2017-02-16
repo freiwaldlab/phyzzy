@@ -1,6 +1,6 @@
 function [  ] = runAnalysesNoCat( analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign, ...
   categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-  spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, onsetsByImage, onsetsByCategory)
+  spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames)
 %runAnalyses should be the main site for customization
 %   - ideally, function signature should remain constant
 %  this version of runAnalyses does the following:
