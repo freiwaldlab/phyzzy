@@ -21,7 +21,7 @@ if ~firstOnTop
       for unit_i = 1:length(spikesByItem{1}{channel_i}) - 1
         trialSpikes = spikesByItem{item_i}{channel_i}{unit_i}(trial_i);
         for spike_i = 1:length(trialSpikes.times)
-          if ~(trialSpikes.times(spike_i) < preAlign || trialSpikes.times(spike_i) > imDur + postAlign)
+          if ~(trialSpikes.times(spike_i) < (-preAlign+1) || trialSpikes.times(spike_i) > imDur + postAlign)
             plot([trialSpikes.times(spike_i) trialSpikes.times(spike_i)],[trialLfp(round(trialSpikes.times(spike_i)+preAlign))-spikeHeight trialLfp(round(trialSpikes.times(spike_i)+preAlign))+spikeHeight],unitColors{unit_i});
           end
         end
@@ -41,7 +41,7 @@ else
       for unit_i = 1:length(spikesByItem{1}{channel_i}) - 1
         trialSpikes = spikesByItem{item_i}{channel_i}{unit_i}(trial_i);
         for spike_i = 1:length(trialSpikes.times)
-          if ~(trialSpikes.times(spike_i) < preAlign || trialSpikes.times(spike_i) > imDur + postAlign)
+          if ~(trialSpikes.times(spike_i) < (-preAlign+1) || trialSpikes.times(spike_i) > imDur + postAlign)
             plot([trialSpikes.times(spike_i) trialSpikes.times(spike_i)],[trialLfp(round(trialSpikes.times(spike_i)+preAlign))-spikeHeight trialLfp(round(trialSpikes.times(spike_i)+preAlign))+spikeHeight],unitColors{unit_i});
           end
         end

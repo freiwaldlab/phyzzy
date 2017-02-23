@@ -40,6 +40,9 @@ for i = 1:size(lfpData,1)
   end
 end
 lfpData = lfpDataDec;
+for i = 1:size(lfpData,1)
+  lfpData(i,:) = lfpData(i,:) - mean(lfpData(i,:));
+end
 Output.VERBOSE('done decimating, scaling, and filtering LFP');
 Output.DEBUG('size LFP data:'); Output.DEBUG(size(lfpData));
 Output.DEBUG('size LFP data after decimation:'); Output.DEBUG(size(lfpData));
