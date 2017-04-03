@@ -5,9 +5,9 @@ function [ analysisParamsFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '005';
-dateSubject = '170215ALAN'; %161011ALAN
-inRig = 0;
+runNum = '006';
+dateSubject = '170401ALAN'; %161011ALAN
+inRig = 1;
 if inRig
   ephysVolume = '/Volumes/Users-1/User/Desktop';
   stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';
@@ -29,9 +29,9 @@ verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
-ephysParams.spikeChannels = [34]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-ephysParams.lfpChannels = [34]; 
-ephysParams.channelNames = {'AM'};
+ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+ephysParams.lfpChannels = [1]; 
+ephysParams.channelNames = {'ML'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.common_ref = [0, 35, 35]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
@@ -59,7 +59,7 @@ excludeStimParams.fixPre = 100; %ms
 excludeStimParams.fixPost = 100; %ms
 excludeStimParams.flashPre = 100;  %ms
 excludeStimParams.flashPost = 100; %ms
-excludeStimParams.juicePre = 500; % optional, ms
+excludeStimParams.juicePre = 100; % optional, ms
 excludeStimParams.juicePost = 0; % optional, ms
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
@@ -67,18 +67,18 @@ excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 
 psthParams.psthPre = 100; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 0;  % only need to set this for variable length stim runs; else, comes from log file
-psthParams.psthPost = 200;
+psthParams.psthPost = 300;
 psthParams.smoothingWidth = 10; %psth smoothing width, in ms
 % TW=3 with T=.2, then W = 15 Hz (5 tapers)
 % TW=1.5 with T=.1, then W = 15 Hz (2 tapers)
 % TW = 1.5 with T=.2, then W = 7.5 Hz (2 tapers)
-chr_params.tapers = [1 1]; %[3 5] is chronux default; 
+chr_params.tapers = [3 5]; %[3 5] is chronux default; 
 chr_params.pad = 1;
 chr_params.fs = 1;
 chr_params.trialave = 1;
 chr_params.err = [1 .05];
 chr_params.fpass = [0 .1];
-tfParams.movingWin = [50 5];
+tfParams.movingWin = [200 5];
 tfParams.specgramRowAve = 0;
 
 lfpAlignParams.samPerMS = 1; % because this is after decimation
@@ -95,12 +95,12 @@ else
   lfpAlignParams.DCSUB_SAM = 0;
 end
 %
-frCalcOn = 80;
+frCalcOn = 60;
 frCalcOff = 0; %note: if frCalcOff < frCalcOn, will update when psthImDur is set after reading log file 
-frCalcOnEarly = 80;
-frCalcOffEarly = 250;
-frCalcOnLate = 250;
-frCalcOffLate = 425;
+frCalcOnEarly = 60;
+frCalcOffEarly = 235;
+frCalcOnLate = 235;
+frCalcOffLate = 535;
 %
 psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
 

@@ -59,8 +59,7 @@ if makeImPSTH
       clear figData
       figData.z = imagePSTH;
       figData.x = -psthPre:psthImDur+psthPost;
-      saveFigure(outDir, sprintf('imPSTH_%s_%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-      sprintf('Preferred Stimuli, %s\n',channelNames{channel_i}); 
+      saveFigure(outDir, sprintf('imPSTH_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
   end
 end
@@ -84,7 +83,7 @@ if makeCatPSTH
       clear figData
       figData.z = categoryPSTH;
       figData.x = -psthPre:psthImDur+psthPost;
-      saveFigure(outDir, sprintf('catPSTH_%s_%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      saveFigure(outDir, sprintf('catPSTH_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
     catMuaPsthByChannel(channel_i,:,:) = categoryPSTH;
   end
@@ -496,15 +495,15 @@ if taskData.RFmap
           evokedPowerRF(grid_i) = sum(evokedPotential.^2); %todo: move out of by-unit loop
         end
         meanRF = meanRF + imageRF;
-        display_map(rfGrid(:,1),rfGrid(:,2),imageRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('Channel %d, Unit %d, %s RF',channel_i,unit_i,pictureLabels{image_i}),...
-          [outDir sprintf('RF_%s_Unit%d_%s_Run%s.png',channelNames{channel_i},unit_i,pictureLabels{image_i},runNum)]);
+        display_map(rfGrid(:,1),rfGrid(:,2),imageRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('Channel %s, %s, %s RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
+          [outDir sprintf('RF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
         if calcLatencyRF
-          display_map(rfGrid(:,1),rfGrid(:,2),spikeLatencyRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('Channel %d, Unit %d, %s Latency RF',channel_i,unit_i,pictureLabels{image_i}),...
-            [outDir sprintf('LatencyRF_%s_Unit%d_%s_Run%s.png',channelNames{channel_i},unit_i,pictureLabels{image_i},runNum)]);
+          display_map(rfGrid(:,1),rfGrid(:,2),spikeLatencyRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('Channel %s, %s, %s Latency RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
+            [outDir sprintf('LatencyRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
         end
         if calcEvokedPowerRF
-          display_map(rfGrid(:,1),rfGrid(:,2),evokedPowerRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('Channel %d, Unit %d, %s Evoked Power RF',channel_i,unit_i,pictureLabels{image_i}),...
-            [outDir sprintf('EvokedPowerRF_%s_Unit%d_%s_Run%s.png',channelNames{channel_i},unit_i,pictureLabels{image_i},runNum)]);
+          display_map(rfGrid(:,1),rfGrid(:,2),evokedPowerRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('Channel %s, %s, %s Evoked Power RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
+            [outDir sprintf('EvokedPowerRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
         end
         % todo: add background subtracted version
         % todo: add subplots version
@@ -941,7 +940,7 @@ for channel_i = 1:length(lfpChannels)
       clear figData
       figData.x = vertcat(fface, fnface);
       figData.y = [Cface, Cnface];
-      saveFigure(outDir,sprintf('coh_MUA-LFP_%s_%s_FACEvsNON.png',channelNames{channel_i},channelNames{channel_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      saveFigure(outDir,sprintf('coh_MUA-LFP_%s_%s_FACEvsNON_Run%s',channelNames{channel_i},channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
       if channel2_i > channel_i 
         % channel2_i spike -- channel_i field
         useJacknife = 0;
@@ -968,7 +967,7 @@ for channel_i = 1:length(lfpChannels)
         clear figData
         figData.x = vertcat(fface, fnface);
         figData.y = [Cface, Cnface];
-        saveFigure(outDir,sprintf('coh_MUA-LFP_%s_%s_FACEvsNON.png',channelNames{channel2_i},channelNames{channel_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('coh_MUA-LFP_%s_%s_FACEvsNON_Run%s',channelNames{channel2_i},channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         % channel_i spike -- channel2_i field
         useJacknife = 0;
         if useJacknife
@@ -994,7 +993,7 @@ for channel_i = 1:length(lfpChannels)
         clear figData
         figData.x = vertcat(fface, fnface);
         figData.y = [Cface, Cnface];
-        saveFigure(outDir,sprintf('coh_MUA-LFP_%s_%s_FACEvsNON.png',channelNames{channel_i},channelNames{channel2_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('coh_MUA-LFP_%s_%s_FACEvsNON_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         
 
         % field-field
@@ -1012,7 +1011,7 @@ for channel_i = 1:length(lfpChannels)
         clear figData
         figData.x = vertcat(fface, fnface);
         figData.y = [Cface, Cnface];
-        saveFigure(outDir,sprintf('coh_LFP-LFP_%s_%s_FACEvsNON',channelNames{channel_i},channelNames{channel2_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('coh_LFP-LFP_%s_%s_FACEvsNON_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         
         
         % field-field time-frequency coherency, face
@@ -1035,7 +1034,7 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = f;
         figData.z = Cface';
-        saveFigure(outDir,sprintf('coh_TF_LFP-LFP_%s_%s_FACE',channelNames{channel_i},channelNames{channel2_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('coh_TF_LFP-LFP_%s_%s_FACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         
         figure(); 
         imagesc(t,f,phiface'); axis xy
@@ -1051,7 +1050,7 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = fface;
         figData.z = phiface';
-        saveFigure(outDir,sprintf('phase_TF_LFP-LFP_%s_%s_FACE',channelNames{channel_i},channelNames{channel2_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('phase_TF_LFP-LFP_%s_%s_FACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         
         % lfp-lfp time-frequency coherency, nonface
         [Cnface,phinface,S12,S1,S2,tnface,fnface,confCnface,phistdnface]=cohgramc(squeeze(lfpByCategory{nonfaceCatNum}(1,channel_i,:,:))',...
@@ -1072,7 +1071,7 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = f;
         figData.z = Cnface';
-        saveFigure(outDir,sprintf('coh_TF_LFP-LFP_%s_%s_NONFACE',channelNames{channel_i},channelNames{channel2_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('coh_TF_LFP-LFP_%s_%s_NONFACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         
         figure(); 
         imagesc(t,f,phinface'); axis xy
@@ -1088,7 +1087,7 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = f;
         figData.z = phinface';
-        saveFigure(outDir,sprintf('phase_TF_LFP-LFP_%s_%s_NONFACE',channelNames{channel_i},channelNames{channel2_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('phase_TF_LFP-LFP_%s_%s_NONFACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         
         % spike-spike coherency, face vs. non
         [Cface,phiface,S12,S1,S2,fface,zerosp,confCface,phistdface]=coherencypt(spikesByCategory{faceCatNum}{channel_i}{end},...
@@ -1105,7 +1104,7 @@ for channel_i = 1:length(lfpChannels)
         clear figData
         figData.x = vertcat(fface, fnface); %todo: fix; add freq cutoff array slice [ applies to all coherence figures ]
         figData.y = [Cface, Cnface];
-        saveFigure(outDir,sprintf('coh_MUA-MUA_%s_%s_FACEvsNON.png',channelNames{channel_i},channelNames{channel2_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('coh_MUA-MUA_%s_%s_FACEvsNON_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         
         % spike-spike time-frequency coherency, face vs. non
         
@@ -1129,7 +1128,7 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = f;
         figData.z = Cface';
-        saveFigure(outDir,sprintf('coh_TF_MUA-MUA_%s_%s_FACE',channelNames{channel_i},channelNames{channel2_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('coh_TF_MUA-MUA_%s_%s_FACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         
         figure(); 
         imagesc(t,f,phiface'); axis xy
@@ -1145,7 +1144,7 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = fface;
         figData.z = phiface';
-        saveFigure(outDir,sprintf('phase_TF_MUA-MUA_%s_%s_FACE',channelNames{channel_i},channelNames{channel2_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('phase_TF_MUA-MUA_%s_%s_FACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         
         % nonface
         [Cnface,phinface,S12,S1,S2,tnface,fnface,zerosp,confCnface,phistdnface]=cohgrampt(spikesByCategoryForTF{nonfaceCatNum}{channel_i}{end},...
@@ -1168,7 +1167,7 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = f;
         figData.z = Cnface';
-        saveFigure(outDir,sprintf('coh_TF_MUA-MUA_%s_%s_NONFACE',channelNames{channel_i},channelNames{channel2_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('coh_TF_MUA-MUA_%s_%s_NONFACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         
         figure(); 
         imagesc(t,f,phinface'); axis xy
@@ -1184,7 +1183,7 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = fNface;
         figData.z = phinface';
-        saveFigure(outDir,sprintf('phase_TF_MUA-MUA_%s_%s_NONFACE',channelNames{channel_i},channelNames{channel2_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('phase_TF_MUA-MUA_%s_%s_NONFACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         % todo: granger (full, passbands)
       end
     end

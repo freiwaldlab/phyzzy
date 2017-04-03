@@ -94,17 +94,18 @@ for i = 1:length(picFiles)
   picsNotPresented(i) = isempty(onsetsByImage{i});
 end
 % todo: add similar defense for categories
+% todo: need defense against image with onset but no offset?  
 disp('No presentations of the following images survived exclusion:');
-disp(picFiles(picsNotPresented == 1));
+disp(picFiles(picsNotPresented == 1)); %bug: can't be nonzero because we got picFiles from post-exclusion taskData --> need to get it from, at least, pre-exclusion, or pictureLabels
 onsetsByImage = onsetsByImage(picsNotPresented == 0);
 offsetsByImage = offsetsByImage(picsNotPresented == 0);
 picFiles = picFiles(picsNotPresented == 0);
-pictureLabels = pictureLabels(picsNotPresented == 0);
+pictureLabels = pictureLabels(picsNotPresented == 0); %bug: currently, pretty sure picFiles and pictureLabels don't have same indexing
 % find which line of picCategories corresponds to each picture
 picFilePicCategoryIndex = zeros(size(picFiles));
 for image_i = 1:length(picFiles)
   for picCat_i = 1:length(picCategories)
-    if ~isempty(regexp(picFiles{image_i},picCategories{picCat_i}{1},'ONCE'))
+    if ~isempty(regexp(picFiles{image_i},picCategories{picCat_i}{1},'ONCE')) %note: first entry in each line of picCategories is picture filename
       picFilePicCategoryIndex(image_i) = picCat_i;
     end
   end

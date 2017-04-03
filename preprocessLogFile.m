@@ -50,7 +50,7 @@ pictureParams = logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT;
 pictureFilenames = {};
 % note: 'Objects' in the log file are either 'Picture' fields, which we
 % want, or 'PictureCompleted' fields, which we don't care about. We
-% initialize arrays to lenght(Objects), then, since many are non-negative, 
+% initialize arrays to length(Objects), then, since many are non-negative, 
 % we initialize to -1 then use >= 0 logical indexing to remove interlopers  
 pictureFramesLost = -1*ones(length(logStruct.VISIKOLOG.Object),1);
 pictureJumps = zeros(length(logStruct.VISIKOLOG.Object),2); %note: jumps can be negative, so we will use startTime for logical indexing
