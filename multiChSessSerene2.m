@@ -84,7 +84,10 @@ tmp = load(picParamsFilename); %loads variables paramArray, categoryLabels,pictu
 picCategories = tmp.paramArray;
 categoryList = tmp.categoryLabels;
 pictureLabels = tmp.pictureLabels;
-picFiles = unique(taskData.pictureFilenames);
+picFiles = {};
+for pic_i = 1:length(picCategories)
+  picFiles = vertcat(picFiles,picCategories{pic_i}{1}); 
+end
 onsetsByImage = cell(length(picFiles),1);
 offsetsByImage = cell(length(picFiles),1);
 picsNotPresented = zeros(length(picFiles),1);
@@ -93,31 +96,27 @@ for i = 1:length(picFiles)
   offsetsByImage{i} = taskData.pictureEndTimes(strcmp(taskData.pictureFilenames,picFiles{i}));
   picsNotPresented(i) = isempty(onsetsByImage{i});
 end
+disp(taskData.pictureFilenames);
 % todo: add similar defense for categories
-% todo: need defense against image with onset but no offset?  
-disp('No presentations of the following images survived exclusion:');
-disp(picFiles(picsNotPresented == 1)); %bug: can't be nonzero because we got picFiles from post-exclusion taskData --> need to get it from, at least, pre-exclusion, or pictureLabels
+% todo: need defense against image with onset but no offset? 
+% todo: add similar defense for rf map locations here?
+if ~taskData.RFmap
+  disp('No presentations of the following images survived exclusion:');
+  disp(picFiles(picsNotPresented == 1)); %bug: can't be nonzero because we got picFiles from post-exclusion taskData --> need to get it from, at least, pre-exclusion, or pictureLabels
+end
 onsetsByImage = onsetsByImage(picsNotPresented == 0);
 offsetsByImage = offsetsByImage(picsNotPresented == 0);
 picFiles = picFiles(picsNotPresented == 0);
-pictureLabels = pictureLabels(picsNotPresented == 0); %bug: currently, pretty sure picFiles and pictureLabels don't have same indexing
-% find which line of picCategories corresponds to each picture
-picFilePicCategoryIndex = zeros(size(picFiles));
-for image_i = 1:length(picFiles)
-  for picCat_i = 1:length(picCategories)
-    if ~isempty(regexp(picFiles{image_i},picCategories{picCat_i}{1},'ONCE')) %note: first entry in each line of picCategories is picture filename
-      picFilePicCategoryIndex(image_i) = picCat_i;
-    end
-  end
-end
-assert(all(picFilePicCategoryIndex ~= 0),'error: images missing from picture category directory');
+pictureLabels = pictureLabels(picsNotPresented == 0);
+picCategories = picCategories(picsNotPresented == 0);
+
 onsetsByCategory = cell(length(categoryList));
 offsetsByCategory = cell(length(categoryList));
 for cat_i = 1:length(categoryList)
   catOnsets = [];
   catOffsets = [];
   for image_i = 1:length(picFiles)
-    if any(strcmp(picCategories{picFilePicCategoryIndex(image_i)},categoryList{cat_i}))
+    if any(strcmp(picCategories{image_i},categoryList{cat_i}))
       catOnsets = vertcat(catOnsets,onsetsByImage{image_i});
       catOffsets = vertcat(catOffsets, offsetsByImage{image_i});
     end

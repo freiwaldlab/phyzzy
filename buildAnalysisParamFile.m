@@ -5,9 +5,9 @@ function [ analysisParamsFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '006';
+runNum = '003';
 dateSubject = '170401ALAN'; %161011ALAN
-inRig = 1;
+inRig = 0;
 if inRig
   ephysVolume = '/Volumes/Users-1/User/Desktop';
   stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';

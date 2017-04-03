@@ -74,7 +74,8 @@ for i = 1:length(logStruct.VISIKOLOG.Object)
   if isfield(stimulusStruct,'PictureCompleted')
     continue
   end
-  pictureFilenames = vertcat(pictureFilenames, stimulusStruct.Pictures.Picture.Filename.Text);
+  tmp = regexp(stimulusStruct.Pictures.Picture.Filename.Text,'\','split');
+  pictureFilenames = vertcat(pictureFilenames, strtrim(tmp{end})); %note: for some reason, filenames have trailing whitespace; trim it off
   pictureFramesLost(i) = str2double(stimulusStruct.Frameslost.Text);
   pictureJumps(i,:) = [str2double(stimulusStruct.Pictures.Picture.Jump.x.Text), str2double(stimulusStruct.Pictures.Picture.Jump.y.Text)];
   pictureStartTimesLog(i) = str2double(stimulusStruct.Start.Text);
