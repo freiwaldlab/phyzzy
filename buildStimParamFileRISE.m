@@ -46,7 +46,8 @@ for i = 1:length(pictureLabels)
   tmp = regexp(pictureLabels{i},'RISE','split');
   pictureStems = vertcat(pictureStems,tmp(1));
   riseIndsStr = vertcat(riseIndsStr, tmp(end));
-  riseIndsNum = vertcat(riseIndsNum, str2double(tmp{end}));
+  tmp = regexp(tmp{end},'-','split');
+  riseIndsNum = vertcat(riseIndsNum, str2double(tmp{1}));
 end
 basePictures = unique(pictureStems);
 riseIndsStr = unique(riseIndsStr);

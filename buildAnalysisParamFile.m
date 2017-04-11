@@ -5,8 +5,8 @@ function [ analysisParamsFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '003';
-dateSubject = '170401ALAN'; %161011ALAN
+runNum = '001';
+dateSubject = '170405ALAN'; %161011ALAN
 inRig = 0;
 if inRig
   ephysVolume = '/Volumes/Users-1/User/Desktop';
@@ -29,10 +29,10 @@ verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
-ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-ephysParams.lfpChannels = [1]; 
-ephysParams.channelNames = {'ML'};
-ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
+ephysParams.spikeChannels = [1,35,33]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+ephysParams.lfpChannels = [1,35,33]; 
+ephysParams.channelNames = {'ML','AL','AM'};
+ephysParams.lfpChannelScaleBy = [8191/32764 8191/32764 8191/32764]; %converts raw values to microvolts
 ephysParams.common_ref = [0, 35, 35]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
 ephysParams.cPtCal = 1/30; % conversion from spike sample indices to timestep of decimated LFP
@@ -98,9 +98,9 @@ end
 frCalcOn = 60;
 frCalcOff = 0; %note: if frCalcOff < frCalcOn, will update when psthImDur is set after reading log file 
 frCalcOnEarly = 60;
-frCalcOffEarly = 235;
-frCalcOnLate = 235;
-frCalcOffLate = 535;
+frCalcOffEarly = 260;
+frCalcOnLate = 260;
+frCalcOffLate = 460;
 %
 psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
 
@@ -111,7 +111,7 @@ makeCatPSTH = 1;
 imageTF = 0;
 catTF = 0;
 calcLatencyRF = 0;
-crossTF = 1;
+crossTF = 0;
 calcEvokedPowerRF = 0;
 calcCoherenceRFcpt = 0;
 calcCoherenceRFcc = 0;

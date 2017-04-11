@@ -128,10 +128,17 @@ if ~taskData.RFmap
       figure();
       raster(spikesByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
       title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+      saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
       % preferred images raster-evoked overlay
       figure();
       rasterEvoked(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
       title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+      saveFigure(outDir, sprintf('prefImRaster-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      % preferred images raster-evoked overlay, with other channels
+      figure();
+      rasterEvoked(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
+      title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+      saveFigure(outDir, sprintf('prefImRaster-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
   end
 
@@ -234,6 +241,7 @@ if ~taskData.RFmap
       superbar(ax, catFr{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErr{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
       set(gca,'XTickLabel',{'face','object', 'body'},'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
       ylabel('Firing rate, Hz');
+      saveFigure(outDir, sprintf('catPrefBars_%s_MUA_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     else
       for unit_i = 1:length(channelUnitNames{channel_i})
         ax = subplot(1,length(channelUnitNames{channel_i})+1,unit_i);
@@ -249,6 +257,7 @@ if ~taskData.RFmap
       title('MUA');
     end
     suptitle(sprintf('%s spikes category tuning, %dms-%dms post-onset',channelNames{channel_i},frCalcOn,frCalcOff));
+    saveFigure(outDir, sprintf('catPrefBars_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 
   % early
@@ -263,6 +272,7 @@ if ~taskData.RFmap
       superbar(ax, catFrEarly{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErrEarly{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
       set(gca,'XTickLabel',{'face','object', 'body'},'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
       ylabel('Firing rate, Hz');
+      saveFigure(outDir, sprintf('catPrefBarsEarly_%s_MUA_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     else
       for unit_i = 1:length(channelUnitNames{channel_i})
         ax = subplot(1,length(channelUnitNames{channel_i})+1,unit_i);
@@ -278,6 +288,7 @@ if ~taskData.RFmap
       title('MUA');
     end
     suptitle(sprintf('%s spikes category tuning, %dms-%dms post-onset',channelNames{channel_i},frCalcOnEarly,frCalcOffEarly));
+    saveFigure(outDir, sprintf('catPrefBarsEarly_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 
   %late
@@ -292,6 +303,7 @@ if ~taskData.RFmap
       superbar(ax, catFrLate{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErrLate{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
       set(gca,'XTickLabel',{'face','object', 'body'},'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
       ylabel('Firing rate, Hz');
+      saveFigure(outDir, sprintf('catPrefBarsLate_%s_MUA_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     else
       for unit_i = 1:length(channelUnitNames{channel_i})
         ax = subplot(1,length(channelUnitNames{channel_i})+1,unit_i);
@@ -307,6 +319,7 @@ if ~taskData.RFmap
       title('MUA');
     end
     suptitle(sprintf('%s spikes category tuning, %dms-%dms post-onset',channelNames{channel_i},frCalcOnLate,frCalcOffLate));
+    saveFigure(outDir, sprintf('catPrefBarsLate_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 
   % tuning curves
@@ -346,11 +359,10 @@ if ~taskData.RFmap
         xlabel(tuningCurveParamLabels{param_i}); 
         ylabel('firing rate (Hz)');
         title(channelUnitNames{channel_i}{unit_i});
-        if unit_i == length(channelUnitNames{channel_i})
-          suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOn, frCalcOff));
-          % todo: saveFigure
-        end
       end
+      suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOn, frCalcOff));
+      saveFigure(outDir, sprintf('%s_%s_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+
       figure(muaTcFig);
       subplot(1,length(channelNames),channel_i);
       errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
@@ -359,7 +371,7 @@ if ~taskData.RFmap
       title(sprintf('%s MUA',channelNames{channel_i}));
     end
     suptitle(sprintf('%s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, frCalcOn, frCalcOff));
-    % todo: saveFigure
+    saveFigure(outDir, sprintf('%s_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 
   % early
@@ -391,11 +403,10 @@ if ~taskData.RFmap
         xlabel(tuningCurveParamLabels{param_i}); 
         ylabel('firing rate (Hz)');
         title(channelUnitNames{channel_i}{unit_i});
-        if unit_i == length(channelUnitNames{channel_i})
-          suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOnEarly, frCalcOffEarly));
-          % todo: saveFigure
-        end
       end
+      suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOnEarly, frCalcOffEarly));
+      saveFigure(outDir, sprintf('%s_%s_Early_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      
       figure(muaTcFig);
       subplot(1,length(channelNames),channel_i);
       errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
@@ -404,7 +415,7 @@ if ~taskData.RFmap
       title(sprintf('%s MUA',channelNames{channel_i}));
     end
     suptitle(sprintf('%s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, frCalcOnEarly, frCalcOffEarly));
-    % todo: saveFigure
+    saveFigure(outDir, sprintf('%s_Early_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 
   % late
@@ -436,11 +447,10 @@ if ~taskData.RFmap
         xlabel(tuningCurveParamLabels{param_i}); 
         ylabel('firing rate (Hz)');
         title(channelUnitNames{channel_i}{unit_i});
-        if unit_i == length(channelUnitNames{channel_i})
-          suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOnLate, frCalcOffLate));
-          % todo: saveFigure
-        end
       end
+      suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOnEarly, frCalcOffEarly));
+      saveFigure(outDir, sprintf('%s_%s_Late_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      
       figure(muaTcFig);
       subplot(1,length(channelNames),channel_i);
       errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
@@ -449,7 +459,7 @@ if ~taskData.RFmap
       title(sprintf('%s MUA',channelNames{channel_i}));
     end
     suptitle(sprintf('%s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, frCalcOnLate, frCalcOffLate));
-    % todo: saveFigure
+    saveFigure(outDir, sprintf('%s_Late_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 end
 
@@ -522,8 +532,6 @@ end
 
 %%%% make evoked potential plots by category
 
-
-
 for channel_i = 1:length(lfpChannels)
   % create evoked-psth lineplot, face vs. non, one pane
   if channel_i == 1
@@ -593,6 +601,7 @@ for channel_i = 1:length(lfpChannels)
     legend(handlesForLegend2,forLegend);
     h = get(gca,'ylim');
     plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3,'linestyle','-');
+    saveFigure(outDir, sprintf('faceVnonPsthEvokedOverlay_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
   
   
