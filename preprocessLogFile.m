@@ -43,10 +43,18 @@ if isa(logStruct.VISIKOLOG.DOCDATA,'cell')
   end
   logStruct.VISIKOLOG.DOCDATA = logStruct.VISIKOLOG.DOCDATA{str2double(s)};
 end
-stimTiming.shortest = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pictureTimeFrom.Text); 
-stimTiming.longest = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pictureTimeTo.Text);
-stimTiming.ISI = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pauseTime.Text);
-pictureParams = logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT;
+% depending on how exactly the branch in the struct is called, seems not to be uniform:
+if isfield(logStruct.VISIKOLOG.DOCDATA, 'OBJECTPARAMS_BCONT')
+  stimTiming.shortest = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pictureTimeFrom.Text); 
+  stimTiming.longest = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pictureTimeTo.Text);
+  stimTiming.ISI = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pauseTime.Text);
+  pictureParams = logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT;
+elseif isfield(logStruct.VISIKOLOG.DOCDATA, 'OBJECTPARAMSu_BCONT')
+  stimTiming.shortest = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMSu_BCONT.pictureTimeFrom.Text); 
+  stimTiming.longest = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMSu_BCONT.pictureTimeTo.Text);
+  stimTiming.ISI = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMSu_BCONT.pauseTime.Text);
+  pictureParams = logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMSu_BCONT;
+end
 pictureFilenames = {};
 % note: 'Objects' in the log file are either 'Picture' fields, which we
 % want, or 'PictureCompleted' fields, which we don't care about. We
@@ -157,7 +165,12 @@ taskData.juiceOffTimes = juiceOffTimesBlk;
 taskData.fixSpotFlashStartTimes = fixSpotFlashStartTimesBlk;
 taskData.fixSpotFlashEndTimes = fixSpotFlashEndTimesBlk;
 taskData.pictureParams = pictureParams;
-taskData.RFmap = str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.activateJumping.Text);
+% depending on how exactly the branch in the struct is called, seems not to be uniform:
+if isfield(logStruct.VISIKOLOG.DOCDATA. 'OBJECTPARAMS_BCONT')
+  taskData.RFmap = str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.activateJumping.Text);
+elseif isfield(logStruct.VISIKOLOG.DOCDATA. 'OBJECTPARAMSu_BCONT')
+  taskData.RFmap = str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMSu_BCONT.activateJumping.Text);
+end
 % if RF mapping task, convert the picture positions to x-y degrees from fovea
 if taskData.RFmap
   % in case these become useful sometime...
