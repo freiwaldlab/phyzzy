@@ -5,8 +5,8 @@ function [ analysisParamsFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '001';
-dateSubject = '170405ALAN'; %161011ALAN
+runNum = '002';
+dateSubject = '170405ALAN'; 
 inRig = 0;
 if inRig
   ephysVolume = '/Volumes/Users-1/User/Desktop';
@@ -108,15 +108,49 @@ psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap cal
 % from config file, eventually with conditional on log file info
 makeImPSTH = 1;
 makeCatPSTH = 1;
-imageTF = 0;
-catTF = 0;
-calcLatencyRF = 0;
-crossTF = 0;
-calcEvokedPowerRF = 0;
+
 calcCoherenceRFcpt = 0;
 calcCoherenceRFcc = 0;
 calcCoherenceRFptpt = 0;
 calcGrangerRF = 0;
+
+plotSwitch.prefImRaster = 0;
+plotSwitch.prefImRasterEvokedOverlay = 0;
+plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
+plotSwitch.imageTuningSorted = 0;
+plotSwitch.categoryPrefBarPlot = 0;
+plotSwitch.categoryPrefBarPlotEarly = 0;
+plotSwitch.categoryPrefBarPlotLate = 0;
+plotSwitch.tuningCurves = 0;
+plotSwitch.tuningCurvesEarly = 0;
+plotSwitch.tuningCurvesLate = 0;
+plotSwtich.calcLatencyRF = 0;
+plotSwtich.calcEvokedPowerRF = 0;
+plotSwitch.faceVnonEvokedPotential = 0;
+plotSwitch.faceVnonEvokedMuaMultiCh = 0;
+plotSwitch.evokedByCategory = 1;
+plotSwitch.psthEvokedByCategory = 1;
+plotSwitch.lfpPowerMuaScatterAll = 1; 
+plotSwitch.lfpPeakToPeakMuaScatterAll = 1;
+plotSwitch.lfpPowerMuaScatterAllEarly = 1;
+plotSwitch.lfpPeakToPeakMuaScatterAllEarly = 1;
+plotSwitch.lfpPowerMuaScatterAllLate = 1;
+plotSwitch.lfpPeakToPeakMuaScatterAllLate = 1;
+plotSwitch.lfpLatencyMuaLatency = 0;
+plotSwitch.lfpLatencyMuaLatencyEarly = 0;
+plotSwitch.lfpLatencyMuaLatencyLate = 0;
+plotSwitch.lfpPowerAcrossChannels = 1;
+plotSwitch.lfpPeakToPeakAcrossChannels = 1;
+plotSwitch.lfpLatencyShiftAcrossChannels = 1;
+plotSwitch.singleTrialLfpFaceVnon = 1;
+plotSwitch.lfpSpectraFaceVnon = 1;
+
+calcSwitch.faceSelectIndex =0;
+calcSwitch.faceSelectIndexEarly = 0;
+calcSwitch.faceSelectIndexLate = 0;
+calcSwitch.imageTF = 0;
+calcSwitch.catTF = 0;
+calcSwitch.crossTF = 0;
 
 %%% set paths and directories, EDIT RARELY %%%
 analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);

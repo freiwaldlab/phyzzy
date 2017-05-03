@@ -16,5 +16,8 @@ end
 if saveData
   save(strcat(outDir,filename,'_data.mat'),'figData');
 end
+if length(varargin) > 1 && varargin{2} == 'close'
+  close()
+end
 end
 

@@ -96,13 +96,12 @@ for i = 1:length(picFiles)
   offsetsByImage{i} = taskData.pictureEndTimes(strcmp(taskData.pictureFilenames,picFiles{i}));
   picsNotPresented(i) = isempty(onsetsByImage{i});
 end
-disp(taskData.pictureFilenames);
 % todo: add similar defense for categories
 % todo: need defense against image with onset but no offset? 
 % todo: add similar defense for rf map locations here?
 if ~taskData.RFmap
   disp('No presentations of the following images survived exclusion:');
-  disp(picFiles(picsNotPresented == 1)); %bug: can't be nonzero because we got picFiles from post-exclusion taskData --> need to get it from, at least, pre-exclusion, or pictureLabels
+  disp(picFiles(picsNotPresented == 1));
 end
 onsetsByImage = onsetsByImage(picsNotPresented == 0);
 offsetsByImage = offsetsByImage(picsNotPresented == 0);
@@ -167,11 +166,11 @@ end
 if nargin == 0 || (nargin == 2 && strcmp(varargin{1},'paramBuilder')) 
   runAnalyses( analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign,...
     categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming);
+    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming, picCategories);
 else
   feval(varargin{end},analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign,...
     categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming);
+    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming, picCategories);
 end
 end
 

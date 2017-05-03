@@ -27,11 +27,11 @@ for channel_i = 1:numChannels
       for trial_i = 1:length(spikesByItem{item_i}{channel_i}{unit_i})
         s.counts(trial_i) = (1000/(post-pre))*sum(spikesByItem{item_i}{channel_i}{unit_i}(trial_i).times > pre & spikesByItem{item_i}{channel_i}{unit_i}(trial_i).times < post);
       end
-      unitSpikeCounts{channel_i}{unit_i}{item_i} = s;
+      unitSpikeCounts{item_i} = s;
       channelSpikeCountsTrialAve(unit_i, item_i) = mean(s.counts);
       channelSpikeCountsTrialErr(unit_i, item_i) = std(s.counts)/sqrt(length(s.counts));
     end
-    channelSpikeCounts{channel_i}{unit_i} = unitSpikeCounts;
+    channelSpikeCounts{unit_i} = unitSpikeCounts;
   end
   spikeCounts{channel_i} = channelSpikeCounts;
   spikeCountTrialAve{channel_i} = channelSpikeCountsTrialAve;

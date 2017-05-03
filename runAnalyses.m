@@ -1,6 +1,6 @@
 function [  ] = runAnalyses( analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign, ...
   categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-  spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming)
+  spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming, picCategories)
 %runAnalyses should be the main site for customization
 %   - ideally, function signature should remain constant
 %  this version of runAnalyses does the following:
@@ -89,25 +89,46 @@ if makeCatPSTH
   end
 end
 
+colors = ['b','c','y','g','m','r','k'];
+colorsCell = {'b';'c';'y';'g';'m';'r';'k'};
+chColors = ['b','g','m'];
+
+% todo: make loop?
 [imSpikeCounts, imFr, imFrErr] = spikeCounter(spikesByImage, frCalcOn, frCalcOff);
 [imSpikeCountsEarly, imFrEarly, imFrErrEarly] = spikeCounter(spikesByImage, frCalcOnEarly, frCalcOffEarly);
 [imSpikeCountsLate, imFrLate, imFrErrLate] = spikeCounter(spikesByImage, frCalcOnLate, frCalcOffLate);
 
-[catSpikeCounts, catFr, catFrErr] = spikeCounter(spikesByCategory, frCalcOn, frCalcOff);
-[catSpikeCountsEarly, catFrEarly, catFrErrEarly] = spikeCounter(spikesByCategory, frCalcOnEarly, frCalcOffEarly);
-[catSpikeCountsLate, catFrLate, catFrErrLate] = spikeCounter(spikesByCategory, frCalcOnLate, frCalcOffLate);
-
-faceCatNum = find(strcmp(categoryList,'face'));
-nonfaceCatNum = find(strcmp(categoryList,'nonface'));
-bodyCatNum = find(strcmp(categoryList, 'body'));
-objectCatNum = find(strcmp(categoryList, 'object'));
-categorySlimInds = zeros(length(categoryListSlim),1);
-for i = 1:length(categoryListSlim)
-  categorySlimInds(i) = find(strcmp(categoryList,categoryListSlim{i}));
+if ~isempty(spikesByCategory)
+  [catSpikeCounts, catFr, catFrErr] = spikeCounter(spikesByCategory, frCalcOn, frCalcOff);
+  [catSpikeCountsEarly, catFrEarly, catFrErrEarly] = spikeCounter(spikesByCategory, frCalcOnEarly, frCalcOffEarly);
+  [catSpikeCountsLate, catFrLate, catFrErrLate] = spikeCounter(spikesByCategory, frCalcOnLate, frCalcOffLate);
+  faceCatNum = find(strcmp(categoryList,'face'));
+  nonfaceCatNum = find(strcmp(categoryList,'nonface'));
+  bodyCatNum = find(strcmp(categoryList, 'body'));
+  objectCatNum = find(strcmp(categoryList, 'object'));
+  categorySlimInds = zeros(length(categoryListSlim),1);
+  for i = 1:length(categoryListSlim)
+    categorySlimInds(i) = find(strcmp(categoryList,categoryListSlim{i}));
+  end
+  imageSlimCats = zeros(length(pictureLabels),1);
+  imageSlimCatColors = {};
+  %categoryListFOB = {'face','object','body'};
+  %imageFatCats = zeros(length(pictureLabels),1);
+  for image_i = 1:length(pictureLabels)
+    for slimCat_i = 1:length(categorySlimInds)
+      if any(strcmp(picCategories{image_i},categoryListSlim{slimCat_i}))
+        imageSlimCats(image_i) = slimCat_i;
+        imageSlimCatColors = vertcat(imageSlimCatColors,colors(slimCat_i));
+        break
+      end
+    end
+    if length(imageSlimCatColors) < image_i
+      imageSlimCats(image_i) = 0;
+      imageSlimCatColors = vertcat(imageSlimCatColors,'w');
+      fprintf('no slim category match found for %s\n',pictureLabels{image_i});
+    end
+  end
 end
-colors = ['b','c','y','g','m','r','k'];
-colorsCell = {'b';'c';'y';'g';'m';'r';'k'};
-chColors = ['b','g','m'];
 
 if ~taskData.RFmap
   % preferred images
@@ -116,29 +137,46 @@ if ~taskData.RFmap
       [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');
       imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
       sortedImageLabels = pictureLabels(imageSortOrder);
+      sortedImageSlimCatColors = imageSlimCatColors(imageSortOrder);
       fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
-      for i = 1:10
+      for i = 1:min(10,length(pictureLabels))
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i),imFrErrSorted(i));
       end
       fprintf('\nLeast Preferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
-      for i = 1:5
+      for i = 1:min(5,length(pictureLabels))
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{end-i},imageSortedRates(end-i), imFrErrSorted(end-i));
       end
       % preferred images raster plot
-      figure();
-      raster(spikesByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
-      title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
-      saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      if plotSwitch.prefImRaster
+        figure();
+        raster(spikesByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
+        title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+        saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      end
       % preferred images raster-evoked overlay
-      figure();
-      rasterEvoked(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
-      title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
-      saveFigure(outDir, sprintf('prefImRaster-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      if plotSwitch.prefImRasterEvokedOverlay
+        figure();
+        rasterEvoked(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
+        title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+        saveFigure(outDir, sprintf('prefImRaster-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      end
       % preferred images raster-evoked overlay, with other channels
-      figure();
-      rasterEvoked(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
-      title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
-      saveFigure(outDir, sprintf('prefImRaster-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      if plotSwitch.prefImMultiChRasterEvokedOverlay
+        figure();
+        rasterEvokedMultiCh(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
+        title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+        saveFigure(outDir, sprintf('prefImRaster-LFP-MultiChannel_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      end
+      % image preference barplot
+      if plotSwitch.imageTuningSorted
+        figure();
+        superbar(imageSortedRates,'E',imFrErrSorted,'BarFaceColor',sortedImageSlimCatColors);
+        set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(pictureLabels),'TickDir','out');
+        ylabel('Firing rate, Hz');
+        title(sprintf('Image tuning, sorted, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+        saveFigure(outDir, sprintf('imageTuningSorted_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        % todo: add legend for category-color map
+      end
     end
   end
 
@@ -161,11 +199,11 @@ if ~taskData.RFmap
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMin,2,'descend');
     sortedImageLabels = pictureLabels(imageSortOrder);
     fprintf('\n\n\nMulti-channel Preferred Images, Maximin\n\n');
-    for i = 1:10
+    for i = 1:min(10,length(pictureLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
     end
     fprintf('\n\nMulti-channel Least preferred Images, Maximin\n\n');
-    for i = 1:5
+    for i = 1:min(5,length(pictureLabels))
       fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
     end
 
@@ -183,143 +221,155 @@ if ~taskData.RFmap
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMeanNorm,2,'descend');
     sortedImageLabels = pictureLabels(imageSortOrder);
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Mean\n\n');
-    for i = 1:10
+    for i = 1:min(10,length(pictureLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
     end
     fprintf('\n\nMulti-channel Least preferred Images, Channel-Normalized Mean\n\n');
-    for i = 1:5
+    for i = 1:min(5,length(pictureLabels))
       fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
     end
   end
   % face selectivity index
-  for channel_i = 1:length(spikeChannels)
-    for unit_i = 1:length(channelUnitNames{channel_i})
-      faceVsNonIndex = (catFr{channel_i}(unit_i,faceCatNum) - catFr{channel_i}(unit_i,nonfaceCatNum)) / (catFr{channel_i}(unit_i,faceCatNum) + catFr{channel_i}(unit_i,nonfaceCatNum));
-      faceVsObjectIndex = (catFr{channel_i}(unit_i,faceCatNum) - catFr{channel_i}(unit_i,objectCatNum)) / (catFr{channel_i}(unit_i,faceCatNum) + catFr{channel_i}(unit_i,objectCatNum));
-      faceVsBodyIndex = (catFr{channel_i}(unit_i,faceCatNum) - catFr{channel_i}(unit_i,bodyCatNum)) / (catFr{channel_i}(unit_i,faceCatNum) + catFr{channel_i}(unit_i,bodyCatNum));
-      fprintf('\n\n%s %s Preference Indices, %dms - %d ms\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},frCalcOn,frCalcOff)
-      fprintf('Face > Nonface: %.3f\n',faceVsNonIndex);
-      fprintf('Face > Object: %.3f\n',faceVsObjectIndex);
-      fprintf('Face > Body: %.3f\n',faceVsBodyIndex);
+  if calcSwitch.faceSelectIndex
+    for channel_i = 1:length(spikeChannels)
+      for unit_i = 1:length(channelUnitNames{channel_i})
+        faceVsNonIndex = (catFr{channel_i}(unit_i,faceCatNum) - catFr{channel_i}(unit_i,nonfaceCatNum)) / (catFr{channel_i}(unit_i,faceCatNum) + catFr{channel_i}(unit_i,nonfaceCatNum));
+        faceVsObjectIndex = (catFr{channel_i}(unit_i,faceCatNum) - catFr{channel_i}(unit_i,objectCatNum)) / (catFr{channel_i}(unit_i,faceCatNum) + catFr{channel_i}(unit_i,objectCatNum));
+        faceVsBodyIndex = (catFr{channel_i}(unit_i,faceCatNum) - catFr{channel_i}(unit_i,bodyCatNum)) / (catFr{channel_i}(unit_i,faceCatNum) + catFr{channel_i}(unit_i,bodyCatNum));
+        fprintf('\n\n%s %s Preference Indices, %dms - %d ms\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},frCalcOn,frCalcOff)
+        fprintf('Face > Nonface: %.3f\n',faceVsNonIndex);
+        fprintf('Face > Object: %.3f\n',faceVsObjectIndex);
+        fprintf('Face > Body: %.3f\n',faceVsBodyIndex);
+      end
     end
   end
   % face selectivity index, early
-  for channel_i = 1:length(spikeChannels)
-    for unit_i = 1:length(channelUnitNames{channel_i})
-      faceVsNonIndex = (catFrEarly{channel_i}(unit_i,faceCatNum) - catFrEarly{channel_i}(unit_i,nonfaceCatNum)) / (catFrEarly{channel_i}(unit_i,faceCatNum) + catFrEarly{channel_i}(unit_i,nonfaceCatNum));
-      faceVsObjectIndex = (catFrEarly{channel_i}(unit_i,faceCatNum) - catFrEarly{channel_i}(unit_i,objectCatNum)) / (catFrEarly{channel_i}(unit_i,faceCatNum) + catFrEarly{channel_i}(unit_i,objectCatNum));
-      faceVsBodyIndex = (catFrEarly{channel_i}(unit_i,faceCatNum) - catFrEarly{channel_i}(unit_i,bodyCatNum)) / (catFrEarly{channel_i}(unit_i,faceCatNum) + catFrEarly{channel_i}(unit_i,bodyCatNum));
-      fprintf('\n\n%s %s Preference Indices, %dms - %d ms\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},frCalcOnEarly,frCalcOffEarly)
-      fprintf('Face > Nonface: %.3f\n',faceVsNonIndex);
-      fprintf('Face > Object: %.3f\n',faceVsObjectIndex);
-      fprintf('Face > Body: %.3f\n',faceVsBodyIndex);
+  if calcSwitch.faceSelectIndexEarly
+    for channel_i = 1:length(spikeChannels)
+      for unit_i = 1:length(channelUnitNames{channel_i})
+        faceVsNonIndex = (catFrEarly{channel_i}(unit_i,faceCatNum) - catFrEarly{channel_i}(unit_i,nonfaceCatNum)) / (catFrEarly{channel_i}(unit_i,faceCatNum) + catFrEarly{channel_i}(unit_i,nonfaceCatNum));
+        faceVsObjectIndex = (catFrEarly{channel_i}(unit_i,faceCatNum) - catFrEarly{channel_i}(unit_i,objectCatNum)) / (catFrEarly{channel_i}(unit_i,faceCatNum) + catFrEarly{channel_i}(unit_i,objectCatNum));
+        faceVsBodyIndex = (catFrEarly{channel_i}(unit_i,faceCatNum) - catFrEarly{channel_i}(unit_i,bodyCatNum)) / (catFrEarly{channel_i}(unit_i,faceCatNum) + catFrEarly{channel_i}(unit_i,bodyCatNum));
+        fprintf('\n\n%s %s Preference Indices, %dms - %d ms\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},frCalcOnEarly,frCalcOffEarly)
+        fprintf('Face > Nonface: %.3f\n',faceVsNonIndex);
+        fprintf('Face > Object: %.3f\n',faceVsObjectIndex);
+        fprintf('Face > Body: %.3f\n',faceVsBodyIndex);
+      end
     end
   end
   % face selectivity index, late
-  for channel_i = 1:length(spikeChannels)
-    for unit_i = 1:length(channelUnitNames{channel_i})
-      faceVsNonIndex = (catFrLate{channel_i}(unit_i,faceCatNum) - catFrLate{channel_i}(unit_i,nonfaceCatNum)) / (catFrLate{channel_i}(unit_i,faceCatNum) + catFrLate{channel_i}(unit_i,nonfaceCatNum));
-      faceVsObjectIndex = (catFrLate{channel_i}(unit_i,faceCatNum) - catFrLate{channel_i}(unit_i,objectCatNum)) / (catFrLate{channel_i}(unit_i,faceCatNum) + catFrLate{channel_i}(unit_i,objectCatNum));
-      faceVsBodyIndex = (catFrLate{channel_i}(unit_i,faceCatNum) - catFrLate{channel_i}(unit_i,bodyCatNum)) / (catFrLate{channel_i}(unit_i,faceCatNum) + catFrLate{channel_i}(unit_i,bodyCatNum));
-      fprintf('\n\n%s %s Preference Indices, %dms - %d ms\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},frCalcOnLate,frCalcOffLate)
-      fprintf('Face > Nonface: %.3f\n',faceVsNonIndex);
-      fprintf('Face > Object: %.3f\n',faceVsObjectIndex);
-      fprintf('Face > Body: %.3f\n',faceVsBodyIndex);
+  if calcSwitch.faceSelectIndexLate
+    for channel_i = 1:length(spikeChannels)
+      for unit_i = 1:length(channelUnitNames{channel_i})
+        faceVsNonIndex = (catFrLate{channel_i}(unit_i,faceCatNum) - catFrLate{channel_i}(unit_i,nonfaceCatNum)) / (catFrLate{channel_i}(unit_i,faceCatNum) + catFrLate{channel_i}(unit_i,nonfaceCatNum));
+        faceVsObjectIndex = (catFrLate{channel_i}(unit_i,faceCatNum) - catFrLate{channel_i}(unit_i,objectCatNum)) / (catFrLate{channel_i}(unit_i,faceCatNum) + catFrLate{channel_i}(unit_i,objectCatNum));
+        faceVsBodyIndex = (catFrLate{channel_i}(unit_i,faceCatNum) - catFrLate{channel_i}(unit_i,bodyCatNum)) / (catFrLate{channel_i}(unit_i,faceCatNum) + catFrLate{channel_i}(unit_i,bodyCatNum));
+        fprintf('\n\n%s %s Preference Indices, %dms - %d ms\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},frCalcOnLate,frCalcOffLate)
+        fprintf('Face > Nonface: %.3f\n',faceVsNonIndex);
+        fprintf('Face > Object: %.3f\n',faceVsObjectIndex);
+        fprintf('Face > Body: %.3f\n',faceVsBodyIndex);
+      end
     end
   end
 
   % category preference bar plot
   % full
-  for channel_i = 1:length(spikeChannels)
-    figure();
-    if length(channelUnitNames{channel_i}) == 2
-      ax = subplot(1,2,1);
-      superbar(ax, catFr{channel_i}(2, categorySlimInds),'E',catFrErr{channel_i}(2, categorySlimInds),'BarFaceColor',colorsCell);
-      set(gca,'XTickLabel',categoryList(categorySlimInds),'XTickLabelRotation',45,'XTick',1:length(categorySlimInds),'TickDir','out');
-      ylabel('Firing rate, Hz');
-      ax = subplot(1,2,2);
-      superbar(ax, catFr{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErr{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
-      set(gca,'XTickLabel',{'face','object', 'body'},'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
-      ylabel('Firing rate, Hz');
-      saveFigure(outDir, sprintf('catPrefBars_%s_MUA_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    else
-      for unit_i = 1:length(channelUnitNames{channel_i})
-        ax = subplot(1,length(channelUnitNames{channel_i})+1,unit_i);
-        superbar(ax,catFr{channel_i}(unit_i, categorySlimInds),'E',catFrErr{channel_i}(2, categorySlimInds),'BarFaceColor',colorsCell);
+  if plotSwitch.categoryPrefBarPlot
+    for channel_i = 1:length(spikeChannels)
+      figure();
+      if length(channelUnitNames{channel_i}) == 2
+        ax = subplot(1,2,1);
+        superbar(ax, catFr{channel_i}(2, categorySlimInds),'E',catFrErr{channel_i}(2, categorySlimInds),'BarFaceColor',colorsCell);
         set(gca,'XTickLabel',categoryList(categorySlimInds),'XTickLabelRotation',45,'XTick',1:length(categorySlimInds),'TickDir','out');
         ylabel('Firing rate, Hz');
-        title(channelUnitNames{channel_i}{unit_i});
+        ax = subplot(1,2,2);
+        superbar(ax, catFr{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErr{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
+        set(gca,'XTickLabel',{'face','object', 'body'},'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
+        ylabel('Firing rate, Hz');
+        saveFigure(outDir, sprintf('catPrefBars_%s_MUA_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      else
+        for unit_i = 1:length(channelUnitNames{channel_i})
+          ax = subplot(1,length(channelUnitNames{channel_i})+1,unit_i);
+          superbar(ax,catFr{channel_i}(unit_i, categorySlimInds),'E',catFrErr{channel_i}(2, categorySlimInds),'BarFaceColor',colorsCell);
+          set(gca,'XTickLabel',categoryList(categorySlimInds),'XTickLabelRotation',45,'XTick',1:length(categorySlimInds),'TickDir','out');
+          ylabel('Firing rate, Hz');
+          title(channelUnitNames{channel_i}{unit_i});
+        end
+        ax = subplot(1,length(channelUnitNames{channel_i})+1,length(channelUnitNames{channel_i})+1);
+        superbar(ax, catFr{channel_i}(end, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErr{channel_i}(end, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
+        set(gca,'XTickLabel',{'face','object','body'}, 'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
+        ylabel('Firing rate, Hz');
+        title('MUA');
       end
-      ax = subplot(1,length(channelUnitNames{channel_i})+1,length(channelUnitNames{channel_i})+1);
-      superbar(ax, catFr{channel_i}(end, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErr{channel_i}(end, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
-      set(gca,'XTickLabel',{'face','object','body'}, 'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
-      ylabel('Firing rate, Hz');
-      title('MUA');
+      suptitle(sprintf('%s spikes category tuning, %dms-%dms post-onset',channelNames{channel_i},frCalcOn,frCalcOff));
+      saveFigure(outDir, sprintf('catPrefBars_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
-    suptitle(sprintf('%s spikes category tuning, %dms-%dms post-onset',channelNames{channel_i},frCalcOn,frCalcOff));
-    saveFigure(outDir, sprintf('catPrefBars_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 
   % early
-  for channel_i = 1:length(spikeChannels)
-    figure();
-    if length(channelUnitNames{channel_i}) == 2
-      ax = subplot(1,2,1);
-      superbar(ax, catFrEarly{channel_i}(2, categorySlimInds),'E',catFrErrEarly{channel_i}(2, categorySlimInds),'BarFaceColor',colorsCell);
-      set(gca,'XTickLabel',categoryList(categorySlimInds),'XTickLabelRotation',45,'XTick',1:length(categorySlimInds),'TickDir','out');
-      ylabel('Firing rate, Hz');
-      ax = subplot(1,2,2);
-      superbar(ax, catFrEarly{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErrEarly{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
-      set(gca,'XTickLabel',{'face','object', 'body'},'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
-      ylabel('Firing rate, Hz');
-      saveFigure(outDir, sprintf('catPrefBarsEarly_%s_MUA_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    else
-      for unit_i = 1:length(channelUnitNames{channel_i})
-        ax = subplot(1,length(channelUnitNames{channel_i})+1,unit_i);
-        superbar(ax,catFrEarly{channel_i}(unit_i, categorySlimInds),'E',catFrErrEarly{channel_i}(2, categorySlimInds),'BarFaceColor',colorsCell);
+  if plotSwitch.categoryPrefBarPlotEarly
+    for channel_i = 1:length(spikeChannels)
+      figure();
+      if length(channelUnitNames{channel_i}) == 2
+        ax = subplot(1,2,1);
+        superbar(ax, catFrEarly{channel_i}(2, categorySlimInds),'E',catFrErrEarly{channel_i}(2, categorySlimInds),'BarFaceColor',colorsCell);
         set(gca,'XTickLabel',categoryList(categorySlimInds),'XTickLabelRotation',45,'XTick',1:length(categorySlimInds),'TickDir','out');
         ylabel('Firing rate, Hz');
-        title(channelUnitNames{channel_i}{unit_i});
+        ax = subplot(1,2,2);
+        superbar(ax, catFrEarly{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErrEarly{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
+        set(gca,'XTickLabel',{'face','object', 'body'},'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
+        ylabel('Firing rate, Hz');
+        saveFigure(outDir, sprintf('catPrefBarsEarly_%s_MUA_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      else
+        for unit_i = 1:length(channelUnitNames{channel_i})
+          ax = subplot(1,length(channelUnitNames{channel_i})+1,unit_i);
+          superbar(ax,catFrEarly{channel_i}(unit_i, categorySlimInds),'E',catFrErrEarly{channel_i}(2, categorySlimInds),'BarFaceColor',colorsCell);
+          set(gca,'XTickLabel',categoryList(categorySlimInds),'XTickLabelRotation',45,'XTick',1:length(categorySlimInds),'TickDir','out');
+          ylabel('Firing rate, Hz');
+          title(channelUnitNames{channel_i}{unit_i});
+        end
+        ax = subplot(1,length(channelUnitNames{channel_i})+1,length(channelUnitNames{channel_i})+1);
+        superbar(ax, catFrEarly{channel_i}(end, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErrEarly{channel_i}(end, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
+        set(gca,'XTickLabel',{'face','object','body'}, 'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
+        ylabel('Firing rate, Hz');
+        title('MUA');
       end
-      ax = subplot(1,length(channelUnitNames{channel_i})+1,length(channelUnitNames{channel_i})+1);
-      superbar(ax, catFrEarly{channel_i}(end, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErrEarly{channel_i}(end, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
-      set(gca,'XTickLabel',{'face','object','body'}, 'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
-      ylabel('Firing rate, Hz');
-      title('MUA');
+      suptitle(sprintf('%s spikes category tuning, %dms-%dms post-onset',channelNames{channel_i},frCalcOnEarly,frCalcOffEarly));
+      saveFigure(outDir, sprintf('catPrefBarsEarly_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
-    suptitle(sprintf('%s spikes category tuning, %dms-%dms post-onset',channelNames{channel_i},frCalcOnEarly,frCalcOffEarly));
-    saveFigure(outDir, sprintf('catPrefBarsEarly_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 
   %late
-  for channel_i = 1:length(spikeChannels)
-    figure();
-    if length(channelUnitNames{channel_i}) == 2
-      ax = subplot(1,2,1);
-      superbar(ax, catFrLate{channel_i}(2, categorySlimInds),'E',catFrErrLate{channel_i}(2, categorySlimInds),'BarFaceColor',colorsCell);
-      set(gca,'XTickLabel',categoryList(categorySlimInds),'XTickLabelRotation',45,'XTick',1:length(categorySlimInds),'TickDir','out');
-      ylabel('Firing rate, Hz');
-      ax = subplot(1,2,2);
-      superbar(ax, catFrLate{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErrLate{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
-      set(gca,'XTickLabel',{'face','object', 'body'},'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
-      ylabel('Firing rate, Hz');
-      saveFigure(outDir, sprintf('catPrefBarsLate_%s_MUA_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    else
-      for unit_i = 1:length(channelUnitNames{channel_i})
-        ax = subplot(1,length(channelUnitNames{channel_i})+1,unit_i);
-        superbar(ax,catFrLate{channel_i}(unit_i, categorySlimInds),'E',catFrErrLate{channel_i}(2, categorySlimInds),'BarFaceColor',colorsCell);
+  if plotSwitch.categoryPrefBarPlotLate
+    for channel_i = 1:length(spikeChannels)
+      figure();
+      if length(channelUnitNames{channel_i}) == 2
+        ax = subplot(1,2,1);
+        superbar(ax, catFrLate{channel_i}(2, categorySlimInds),'E',catFrErrLate{channel_i}(2, categorySlimInds),'BarFaceColor',colorsCell);
         set(gca,'XTickLabel',categoryList(categorySlimInds),'XTickLabelRotation',45,'XTick',1:length(categorySlimInds),'TickDir','out');
         ylabel('Firing rate, Hz');
-        title(channelUnitNames{channel_i}{unit_i});
+        ax = subplot(1,2,2);
+        superbar(ax, catFrLate{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErrLate{channel_i}(2, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
+        set(gca,'XTickLabel',{'face','object', 'body'},'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
+        ylabel('Firing rate, Hz');
+        saveFigure(outDir, sprintf('catPrefBarsLate_%s_MUA_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      else
+        for unit_i = 1:length(channelUnitNames{channel_i})
+          ax = subplot(1,length(channelUnitNames{channel_i})+1,unit_i);
+          superbar(ax,catFrLate{channel_i}(unit_i, categorySlimInds),'E',catFrErrLate{channel_i}(2, categorySlimInds),'BarFaceColor',colorsCell);
+          set(gca,'XTickLabel',categoryList(categorySlimInds),'XTickLabelRotation',45,'XTick',1:length(categorySlimInds),'TickDir','out');
+          ylabel('Firing rate, Hz');
+          title(channelUnitNames{channel_i}{unit_i});
+        end
+        ax = subplot(1,length(channelUnitNames{channel_i})+1,length(channelUnitNames{channel_i})+1);
+        superbar(ax, catFrLate{channel_i}(end, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErrLate{channel_i}(end, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
+        set(gca,'XTickLabel',{'face','object','body'}, 'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
+        ylabel('Firing rate, Hz');
+        title('MUA');
       end
-      ax = subplot(1,length(channelUnitNames{channel_i})+1,length(channelUnitNames{channel_i})+1);
-      superbar(ax, catFrLate{channel_i}(end, [faceCatNum objectCatNum bodyCatNum]),'E',catFrErrLate{channel_i}(end, [faceCatNum objectCatNum bodyCatNum]),'BarFaceColor',{'b'; 'g'; 'r'}); %'P', [0 1 1; 1 0 0; 1 0 0]
-      set(gca,'XTickLabel',{'face','object','body'}, 'XTickLabelRotation',45,'XTick',1:3,'TickDir','out');
-      ylabel('Firing rate, Hz');
-      title('MUA');
+      suptitle(sprintf('%s spikes category tuning, %dms-%dms post-onset',channelNames{channel_i},frCalcOnLate,frCalcOffLate));
+      saveFigure(outDir, sprintf('catPrefBarsLate_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
-    suptitle(sprintf('%s spikes category tuning, %dms-%dms post-onset',channelNames{channel_i},frCalcOnLate,frCalcOffLate));
-    saveFigure(outDir, sprintf('catPrefBarsLate_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 
   % tuning curves
@@ -331,147 +381,153 @@ if ~taskData.RFmap
   % tuningCurveParamValues = {[-90 -45 0 45 90], [-90 -45 0 45 90]};
 
   %full
-  for param_i = 1:length(tuningCurveParamLabels)
-    assert(strcmp(tuningCurveItemType{param_i},'category') || strcmp(tuningCurveItemType{param_i},'image'),'Invalid tuning curve type: must be category or image');
-    muaTcFig = figure();
-    for channel_i = 1:length(channelNames)
-      channelTcFig = figure();
-      for unit_i = 1:length(channelUnitNames{channel_i})
-        tcFrs = zeros(length(tuningCurveItems{param_i}),1);
-        tcFrErrs = zeros(length(tuningCurveItems{param_i}),1);
-        if strcmp(tuningCurveItemType{param_i},'category')
-          for item_i = 1:length(tuningCurveItems{param_i})
-            tcFrs(item_i) = catFr{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
-            tcFrErrs(item_i) = catFrErr{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+  if plotSwitch.tuningCurves
+    for param_i = 1:length(tuningCurveParamLabels)
+      assert(strcmp(tuningCurveItemType{param_i},'category') || strcmp(tuningCurveItemType{param_i},'image'),'Invalid tuning curve type: must be category or image');
+      muaTcFig = figure();
+      for channel_i = 1:length(channelNames)
+        channelTcFig = figure();
+        for unit_i = 1:length(channelUnitNames{channel_i})
+          tcFrs = zeros(length(tuningCurveItems{param_i}),1);
+          tcFrErrs = zeros(length(tuningCurveItems{param_i}),1);
+          if strcmp(tuningCurveItemType{param_i},'category')
+            for item_i = 1:length(tuningCurveItems{param_i})
+              tcFrs(item_i) = catFr{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+              tcFrErrs(item_i) = catFrErr{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+            end
+          else
+            for item_i = 1:length(tuningCurveItems{param_i})
+              tcFrs(item_i) = imFr{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+              tcFrErrs(item_i) = imFrErr{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+            end
           end
-        else
-          for item_i = 1:length(tuningCurveItems{param_i})
-            tcFrs(item_i) = imFr{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
-            tcFrErrs(item_i) = imFrErr{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+          if length(channelUnitNames{channel_i}) == 2  % don't make the single-channel plot if no unit defined
+            close(channelTcFig);
+            break
           end
+          subplot(1,length(channelUnitNames{channel_i}),unit_i);
+          errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
+          xlabel(tuningCurveParamLabels{param_i}); 
+          ylabel('firing rate (Hz)');
+          title(channelUnitNames{channel_i}{unit_i});
         end
-        if length(channelUnitNames{channel_i}) == 2  % don't make the single-channel plot if no unit defined
-          close(channelTcFig);
-          break
-        end
-        subplot(1,length(channelUnitNames{channel_i}),unit_i);
+        suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOn, frCalcOff));
+        saveFigure(outDir, sprintf('%s_%s_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+
+        figure(muaTcFig);
+        subplot(1,length(channelNames),channel_i);
         errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
         xlabel(tuningCurveParamLabels{param_i}); 
         ylabel('firing rate (Hz)');
-        title(channelUnitNames{channel_i}{unit_i});
+        title(sprintf('%s MUA',channelNames{channel_i}));
       end
-      suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOn, frCalcOff));
-      saveFigure(outDir, sprintf('%s_%s_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-
-      figure(muaTcFig);
-      subplot(1,length(channelNames),channel_i);
-      errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
-      xlabel(tuningCurveParamLabels{param_i}); 
-      ylabel('firing rate (Hz)');
-      title(sprintf('%s MUA',channelNames{channel_i}));
+      suptitle(sprintf('%s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, frCalcOn, frCalcOff));
+      saveFigure(outDir, sprintf('%s_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
-    suptitle(sprintf('%s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, frCalcOn, frCalcOff));
-    saveFigure(outDir, sprintf('%s_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 
   % early
-  for param_i = 1:length(tuningCurveParamLabels)
-    assert(strcmp(tuningCurveItemType{param_i},'category') || strcmp(tuningCurveItemType{param_i},'image'),'Invalid tuning curve type: must be category or image');
-    muaTcFig = figure();
-    for channel_i = 1:length(channelNames)
-      channelTcFig = figure();
-      for unit_i = 1:length(channelUnitNames{channel_i})
-        tcFrs = zeros(length(tuningCurveItems{param_i}),1);
-        tcFrErrs = zeros(length(tuningCurveItems{param_i}),1);
-        if strcmp(tuningCurveItemType{param_i},'category')
-          for item_i = 1:length(tuningCurveItems{param_i})
-            tcFrs(item_i) = catFrEarly{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
-            tcFrErrs(item_i) = catFrErrEarly{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+  if plotSwitch.tuningCurvesEarly
+    for param_i = 1:length(tuningCurveParamLabels)
+      assert(strcmp(tuningCurveItemType{param_i},'category') || strcmp(tuningCurveItemType{param_i},'image'),'Invalid tuning curve type: must be category or image');
+      muaTcFig = figure();
+      for channel_i = 1:length(channelNames)
+        channelTcFig = figure();
+        for unit_i = 1:length(channelUnitNames{channel_i})
+          tcFrs = zeros(length(tuningCurveItems{param_i}),1);
+          tcFrErrs = zeros(length(tuningCurveItems{param_i}),1);
+          if strcmp(tuningCurveItemType{param_i},'category')
+            for item_i = 1:length(tuningCurveItems{param_i})
+              tcFrs(item_i) = catFrEarly{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+              tcFrErrs(item_i) = catFrErrEarly{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+            end
+          else
+            for item_i = 1:length(tuningCurveItems{param_i})
+              tcFrs(item_i) = imFrEarly{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+              tcFrErrs(item_i) = imFrErrEarly{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+            end
           end
-        else
-          for item_i = 1:length(tuningCurveItems{param_i})
-            tcFrs(item_i) = imFrEarly{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
-            tcFrErrs(item_i) = imFrErrEarly{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+          if length(channelUnitNames{channel_i}) == 2  % don't make the single-channel plot if no unit defined
+            close(channelTcFig);
+            break
           end
+          subplot(1,length(channelUnitNames{channel_i}),unit_i);
+          errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
+          xlabel(tuningCurveParamLabels{param_i}); 
+          ylabel('firing rate (Hz)');
+          title(channelUnitNames{channel_i}{unit_i});
         end
-        if length(channelUnitNames{channel_i}) == 2  % don't make the single-channel plot if no unit defined
-          close(channelTcFig);
-          break
-        end
-        subplot(1,length(channelUnitNames{channel_i}),unit_i);
+        suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOnEarly, frCalcOffEarly));
+        saveFigure(outDir, sprintf('%s_%s_Early_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+
+        figure(muaTcFig);
+        subplot(1,length(channelNames),channel_i);
         errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
         xlabel(tuningCurveParamLabels{param_i}); 
         ylabel('firing rate (Hz)');
-        title(channelUnitNames{channel_i}{unit_i});
+        title(sprintf('%s MUA',channelNames{channel_i}));
       end
-      suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOnEarly, frCalcOffEarly));
-      saveFigure(outDir, sprintf('%s_%s_Early_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-      
-      figure(muaTcFig);
-      subplot(1,length(channelNames),channel_i);
-      errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
-      xlabel(tuningCurveParamLabels{param_i}); 
-      ylabel('firing rate (Hz)');
-      title(sprintf('%s MUA',channelNames{channel_i}));
+      suptitle(sprintf('%s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, frCalcOnEarly, frCalcOffEarly));
+      saveFigure(outDir, sprintf('%s_Early_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
-    suptitle(sprintf('%s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, frCalcOnEarly, frCalcOffEarly));
-    saveFigure(outDir, sprintf('%s_Early_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 
   % late
-  for param_i = 1:length(tuningCurveParamLabels)
-    assert(strcmp(tuningCurveItemType{param_i},'category') || strcmp(tuningCurveItemType{param_i},'image'),'Invalid tuning curve type: must be category or image');
-    muaTcFig = figure();
-    for channel_i = 1:length(channelNames)
-      channelTcFig = figure();
-      for unit_i = 1:length(channelUnitNames{channel_i})
-        tcFrs = zeros(length(tuningCurveItems{param_i}),1);
-        tcFrErrs = zeros(length(tuningCurveItems{param_i}),1);
-        if strcmp(tuningCurveItemType{param_i},'category')
-          for item_i = 1:length(tuningCurveItems{param_i})
-            tcFrs(item_i) = catFrLate{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
-            tcFrErrs(item_i) = catFrErrLate{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+  if plotSwitch.tuningCurvesLate
+    for param_i = 1:length(tuningCurveParamLabels)
+      assert(strcmp(tuningCurveItemType{param_i},'category') || strcmp(tuningCurveItemType{param_i},'image'),'Invalid tuning curve type: must be category or image');
+      muaTcFig = figure();
+      for channel_i = 1:length(channelNames)
+        channelTcFig = figure();
+        for unit_i = 1:length(channelUnitNames{channel_i})
+          tcFrs = zeros(length(tuningCurveItems{param_i}),1);
+          tcFrErrs = zeros(length(tuningCurveItems{param_i}),1);
+          if strcmp(tuningCurveItemType{param_i},'category')
+            for item_i = 1:length(tuningCurveItems{param_i})
+              tcFrs(item_i) = catFrLate{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+              tcFrErrs(item_i) = catFrErrLate{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+            end
+          else
+            for item_i = 1:length(tuningCurveItems{param_i})
+              tcFrs(item_i) = imFrLate{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+              tcFrErrs(item_i) = imFrErrLate{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+            end
           end
-        else
-          for item_i = 1:length(tuningCurveItems{param_i})
-            tcFrs(item_i) = imFrLate{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
-            tcFrErrs(item_i) = imFrErrLate{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+          if length(channelUnitNames{channel_i}) == 2  % don't make the single-channel plot if no unit defined
+            close(channelTcFig);
+            break
           end
+          subplot(1,length(channelUnitNames{channel_i}),unit_i);
+          errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
+          xlabel(tuningCurveParamLabels{param_i}); 
+          ylabel('firing rate (Hz)');
+          title(channelUnitNames{channel_i}{unit_i});
         end
-        if length(channelUnitNames{channel_i}) == 2  % don't make the single-channel plot if no unit defined
-          close(channelTcFig);
-          break
-        end
-        subplot(1,length(channelUnitNames{channel_i}),unit_i);
+        suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOnEarly, frCalcOffEarly));
+        saveFigure(outDir, sprintf('%s_%s_Late_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+
+        figure(muaTcFig);
+        subplot(1,length(channelNames),channel_i);
         errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
         xlabel(tuningCurveParamLabels{param_i}); 
         ylabel('firing rate (Hz)');
-        title(channelUnitNames{channel_i}{unit_i});
+        title(sprintf('%s MUA',channelNames{channel_i}));
       end
-      suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOnEarly, frCalcOffEarly));
-      saveFigure(outDir, sprintf('%s_%s_Late_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-      
-      figure(muaTcFig);
-      subplot(1,length(channelNames),channel_i);
-      errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
-      xlabel(tuningCurveParamLabels{param_i}); 
-      ylabel('firing rate (Hz)');
-      title(sprintf('%s MUA',channelNames{channel_i}));
+      suptitle(sprintf('%s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, frCalcOnLate, frCalcOffLate));
+      saveFigure(outDir, sprintf('%s_Late_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
-    suptitle(sprintf('%s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, frCalcOnLate, frCalcOffLate));
-    saveFigure(outDir, sprintf('%s_Late_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 end
 
 
 % firing rate RF color plot
-rfGrid  = unique(taskData.pictureJumps,'rows');
-gridX = unique(rfGrid(:,1));
-gridsize = 2*mean(gridX(2:end,1)-gridX(1:end-1,1));
-% these are the x and y values at which to interpolate RF values
-xi = linspace(min(rfGrid(:,1)),max(rfGrid(:,1)),200);
-yi = linspace(min(rfGrid(:,2)),max(rfGrid(:,2)),200);
 if taskData.RFmap
+  rfGrid  = unique(taskData.pictureJumps,'rows');
+  gridX = unique(rfGrid(:,1));
+  gridsize = 2*mean(gridX(2:end,1)-gridX(1:end-1,1));
+  % these are the x and y values at which to interpolate RF values
+  xi = linspace(min(rfGrid(:,1)),max(rfGrid(:,1)),200);
+  yi = linspace(min(rfGrid(:,2)),max(rfGrid(:,2)),200);
   for channel_i = 1:length(spikesByImage{1})
     for unit_i = 1:length(spikesByImage{1}{channel_i}) %TODO: BUG! if no spikes on first stimulus, can skip unit entirely (12/12/16: still true?)
       meanRF = zeros(length(rfGrid),1);
@@ -507,11 +563,11 @@ if taskData.RFmap
         meanRF = meanRF + imageRF;
         display_map(rfGrid(:,1),rfGrid(:,2),imageRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
           [outDir sprintf('RF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
-        if calcLatencyRF
+        if plotSwitch.LatencyRF
           display_map(rfGrid(:,1),rfGrid(:,2),spikeLatencyRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Latency RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
             [outDir sprintf('LatencyRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
         end
-        if calcEvokedPowerRF
+        if plotSwtich.calcEvokedPowerRF
           display_map(rfGrid(:,1),rfGrid(:,2),evokedPowerRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Evoked Power RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
             [outDir sprintf('EvokedPowerRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
         end
@@ -531,10 +587,14 @@ end
 
 
 %%%% make evoked potential plots by category
-
+times = -psthPre:psthImDur+psthPost; %todo: rename var to eg psthTimes or lfpTimes
 for channel_i = 1:length(lfpChannels)
+  if plotSwitch.faceVnonEvokedPotential || plotSwitch.faceVnonEvokedMuaMultiCh
+    faceV = squeeze(mean(lfpByCategory{faceCatNum}(1,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
+    nfaceV = squeeze(mean(lfpByCategory{nonfaceCatNum}(1,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
+  end
   % create evoked-psth lineplot, face vs. non, one pane
-  if channel_i == 1
+  if plotSwitch.faceVnonEvokedMuaMultiCh && channel_i == 1
     psthEvokedFig = figure();
     subplot(2,1,1);
     title('Face');
@@ -556,194 +616,405 @@ for channel_i = 1:length(lfpChannels)
     handlesForLegend2 = [];
     forLegend = {};
   end
-  times = -psthPre:psthImDur+psthPost;
-  faceV = squeeze(mean(lfpByCategory{faceCatNum}(1,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
-  nfaceV = squeeze(mean(lfpByCategory{nonfaceCatNum}(1,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
+  
   
   % face vs. nonface evoked potential plot, one channel
-  figure();
-  plot(times,faceV,times, nfaceV, 'linewidth',3);
-  hold on
-  plot([0, psthImDur],[1.05*min(min(faceV),min(nfaceV)), 1.05*min(min(faceV),min(nfaceV))],'color','k','linewidth',3);
-  legend('face','nonface');
-  title(sprintf('%s evoked potential',channelNames{channel_i}));
-  xlabel('time (ms)', 'FontSize',18);
-  ylabel('lfp (uV)', 'FontSize',18);
-  set(gca,'fontsize',18);
-  clear figData
-  figData.y = vertcat(faceV,nfaceV);
-  figData.x = times;
-  saveFigure( outDir,sprintf('Evoked_faceVnon_%s_Run%s',channelNames{channel_i},runNum), vertcat(faceV,nfaceV), saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) ); 
-  
-  % contribute to evoked-psth lineplot, face vs. non, one pane
-  figure(psthEvokedFig);
-  subplot(2,1,1);
-  yyaxis right
-  lhLFP = plot(times,faceV/max(faceV),'color',chColors(channel_i), 'linestyle','-','linewidth',2);  %todo: add errorbars?
-  yyaxis left
-  facePSTH = squeeze(catMuaPsthByChannel(channel_i,faceCatNum,:));
-  lhMUA = plot(times,facePSTH,'color',chColors(channel_i),'linestyle','--','linewidth',2); 
-  handlesForLegend1 = [handlesForLegend1,lhLFP,lhMUA];
-  forLegend = [forLegend,strcat(channelNames{channel_i},' LFP'),strcat(channelNames{channel_i},' MUA')];
-  if channel_i == length(lfpChannels)
-    legend(handlesForLegend1,forLegend);
-    h = get(gca,'ylim');
-    plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3,'linestyle','-');
+  if plotSwitch.faceVnonEvokedPotential
+    figure();
+    plot(times,faceV,times, nfaceV, 'linewidth',3);
+    hold on
+    plot([0, psthImDur],[1.05*min(min(faceV),min(nfaceV)), 1.05*min(min(faceV),min(nfaceV))],'color','k','linewidth',3);
+    legend('face','nonface');
+    title(sprintf('%s evoked potential',channelNames{channel_i}));
+    xlabel('time (ms)', 'FontSize',18);
+    ylabel('lfp (uV)', 'FontSize',18);
+    set(gca,'fontsize',18);
+    clear figData
+    figData.y = vertcat(faceV,nfaceV);
+    figData.x = times;
+    saveFigure( outDir,sprintf('Evoked_faceVnon_%s_Run%s',channelNames{channel_i},runNum), vertcat(faceV,nfaceV), saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) ); 
   end
-  subplot(2,1,2);
-  yyaxis right
-  lhLFP = plot(times,nfaceV/max(nfaceV),'color',chColors(channel_i), 'linestyle', '-','linewidth',2);
-  yyaxis left
-  nfacePSTH = squeeze(catMuaPsthByChannel(channel_i,nonfaceCatNum,:));
-  lhMUA = plot(times,nfacePSTH,'color',chColors(channel_i),'linestyle','--','linewidth',2);
-  handlesForLegend2 = [handlesForLegend2, lhLFP, lhMUA];
-  if channel_i == length(lfpChannels)
-    legend(handlesForLegend2,forLegend);
-    h = get(gca,'ylim');
-    plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3,'linestyle','-');
-    saveFigure(outDir, sprintf('faceVnonPsthEvokedOverlay_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+  % contribute to evoked-psth lineplot, face vs. non, one pane
+  if plotSwitch.faceVnonEvokedMuaMultiCh
+    figure(psthEvokedFig);
+    subplot(2,1,1);
+    yyaxis right
+    lhLFP = plot(times,faceV/max(faceV),'color',chColors(channel_i), 'linestyle','-','linewidth',2);  %todo: add errorbars?
+    yyaxis left
+    facePSTH = squeeze(catMuaPsthByChannel(channel_i,faceCatNum,:));
+    lhMUA = plot(times,facePSTH,'color',chColors(channel_i),'linestyle','--','linewidth',2); 
+    handlesForLegend1 = [handlesForLegend1,lhLFP,lhMUA];
+    forLegend = [forLegend,strcat(channelNames{channel_i},' LFP'),strcat(channelNames{channel_i},' MUA')];
+    if channel_i == length(lfpChannels)
+      legend(handlesForLegend1,forLegend);
+      h = get(gca,'ylim');
+      plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3,'linestyle','-');
+    end
+    subplot(2,1,2);
+    yyaxis right
+    lhLFP = plot(times,nfaceV/max(nfaceV),'color',chColors(channel_i), 'linestyle', '-','linewidth',2);
+    yyaxis left
+    nfacePSTH = squeeze(catMuaPsthByChannel(channel_i,nonfaceCatNum,:));
+    lhMUA = plot(times,nfacePSTH,'color',chColors(channel_i),'linestyle','--','linewidth',2);
+    handlesForLegend2 = [handlesForLegend2, lhLFP, lhMUA];
+    if channel_i == length(lfpChannels)
+      legend(handlesForLegend2,forLegend);
+      h = get(gca,'ylim');
+      plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3,'linestyle','-');
+      saveFigure(outDir, sprintf('faceVnonPsthEvokedOverlay_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    end
   end
   
   
   %lfp category psth
-  figure();
-  channelCatEvoked = zeros(length(categoryListSlim),length(times));
-  for i = 1:length(categoryListSlim)
-    channelCatEvoked(i,:) = squeeze(mean(lfpByCategory{categorySlimInds(i)}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
-    plot(times, channelCatEvoked(i,:), 'color',colors(i), 'linewidth',3);
-    hold on
+  if plotSwitch.evokedByCategory
+    figure();
+    channelCatEvoked = zeros(length(categoryListSlim),length(times));
+    for i = 1:length(categoryListSlim)
+      channelCatEvoked(i,:) = squeeze(mean(lfpByCategory{categorySlimInds(i)}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
+      plot(times, channelCatEvoked(i,:), 'color',colors(i), 'linewidth',3);
+      hold on
+    end
+    legend(categoryListSlim);
+    h = get(gca,'ylim');
+    plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+    hold off
+    title(sprintf('%s evoked potentials',channelNames{channel_i}), 'FontSize',18);
+    xlabel('time after stimulus (ms)', 'FontSize',18);
+    ylabel('lfp (uV)', 'FontSize',18);
+    set(gca,'fontsize',18);
+    clear figData
+    figData.y = squeeze(mean(lfpByCategory{categorySlimInds(i)}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
+    figData.x = times;
+    saveFigure(outDir,sprintf('Evoked_byCat_%s_Run%s',channelNames{channel_i},runNum), channelCatEvoked, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
-  legend(categoryListSlim);
-  h = get(gca,'ylim');
-  plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
-  hold off
-  title(sprintf('%s evoked potentials',channelNames{channel_i}), 'FontSize',18);
-  xlabel('time after stimulus (ms)', 'FontSize',18);
-  ylabel('lfp (uV)', 'FontSize',18);
-  set(gca,'fontsize',18);
-  clear figData
-  figData.y = squeeze(mean(lfpByCategory{categorySlimInds(i)}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
-  figData.x = times;
-  saveFigure(outDir,sprintf('Evoked_byCat_%s_Run%s',channelNames{channel_i},runNum), channelCatEvoked, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   
   % make lfp - psth subplot
-  categoryPSTH = squeeze(catMuaPsthByChannel(channel_i,categorySlimInds,:));
-  figure();
-  ah1 = subplot(2,1,1);
-  plotPSTH(categoryPSTH, [], psthPre, psthPost, psthImDur, 'color', psthTitle, categoryListSlim, psthColormap );
-  yyaxis right
-  plot(times,mean(categoryPSTH,1),'Color',[0.8,0.8,0.9],'LineWidth',4);
-  ylabel('Mean PSTH (Hz)');
-  hold off
-  ah2 = subplot(2,1,2);
-  for i = 1:length(categoryListSlim)
-    plot(times,channelCatEvoked(i,:), 'color',colors(i), 'linewidth',3);
-    hold on
+  if plotSwitch.psthEvokedByCategory
+    categoryPSTH = squeeze(catMuaPsthByChannel(channel_i,categorySlimInds,:));
+    figure();
+    ah1 = subplot(2,1,1);
+    plotPSTH(categoryPSTH, [], psthPre, psthPost, psthImDur, 'color', psthTitle, categoryListSlim, psthColormap );
+    yyaxis right
+    plot(times,mean(categoryPSTH,1),'Color',[0.8,0.8,0.9],'LineWidth',4);
+    ylabel('Mean PSTH (Hz)');
+    hold off
+    ah2 = subplot(2,1,2);
+    for i = 1:length(categoryListSlim)
+      plot(times,channelCatEvoked(i,:), 'color',colors(i), 'linewidth',3);
+      hold on
+    end
+    h = get(gca,'ylim');
+    plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+    hold off
+    legend(categoryListSlim,'Location','northeastoutside','FontSize',10);
+    xlabel('time after stimulus (ms)', 'FontSize',14);
+    ylabel('lfp (uV)', 'FontSize',14);
+    set(gca,'fontsize',14);
+    % align x axes with colorbar; see http://stackoverflow.com/questions/5259853/matlab-how-to-align-the-axes-of-subplots-when-one-of-them-contains-a-colorbar
+    % note: drawnow line synchronizes the rendering thread with the main
+    drawnow;
+    pos1 = get(ah1,'Position');
+    pos2 = get(ah2,'Position');
+    pos2(1) = max(pos1(1),pos2(1)); % right limit
+    pos1(1) = max(pos1(1),pos2(1));
+    pos2(3) = min(pos1(3),pos2(3)); % left limit
+    pos1(3) = min(pos1(3),pos2(3));
+    set(ah2,'Position',pos2);
+    set(ah1,'Position',pos1);
+    title(ah1,sprintf('%s PSTH and Evoked Potentials',channelNames{channel_i}));
+    % put the data in a struct for saving
+    clear figData
+    figData.ax11.z = categoryPSTH;
+    figData.ax11.x = times;
+    figData.ax21.y = channelCatEvoked;
+    figData.ax21.x = times;
+    saveFigure(outDir,sprintf('PSTH_Evoked_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
-  h = get(gca,'ylim');
-  plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
-  hold off
-  legend(categoryListSlim,'Location','northeastoutside','FontSize',10);
-  xlabel('time after stimulus (ms)', 'FontSize',14);
-  ylabel('lfp (uV)', 'FontSize',14);
-  set(gca,'fontsize',14);
-  % align x axes with colorbar; see http://stackoverflow.com/questions/5259853/matlab-how-to-align-the-axes-of-subplots-when-one-of-them-contains-a-colorbar
-  % note: drawnow line synchronizes the rendering thread with the main
-  drawnow;
-  pos1 = get(ah1,'Position');
-  pos2 = get(ah2,'Position');
-  pos2(1) = max(pos1(1),pos2(1)); % right limit
-  pos1(1) = max(pos1(1),pos2(1));
-  pos2(3) = min(pos1(3),pos2(3)); % left limit
-  pos1(3) = min(pos1(3),pos2(3));
-  set(ah2,'Position',pos2);
-  set(ah1,'Position',pos1);
-  title(ah1,sprintf('%s PSTH and Evoked Potentials',channelNames{channel_i}));
-  % put the data in a struct for saving
-  clear figData
-  figData.ax11.z = categoryPSTH;
-  figData.ax11.x = times;
-  figData.ax21.y = channelCatEvoked;
-  figData.ax21.x = times;
-  saveFigure(outDir,sprintf('PSTH_Evoked_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+  
+  % make lfp power-fr scatter plot
+  if plotSwitch.lfpPowerMuaScatterAll
+    for unit_i = 1:length(channelUnitNames{channel_i})
+      figure();
+      hold on;
+      for cat_i = 1:length(categoryListSlim)
+        lfpByTrial = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+        lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
+        lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
+        scatter(lfpPowerByTrial,catSpikeCounts{channel_i}{unit_i}{categorySlimInds(cat_i)}.counts,36,colors(cat_i),'filled')
+      end
+      xlabel('total lfp power (uV)');
+      ylabel('firing rate (Hz)');
+      title(sprintf('LFP power vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frCalcOn, frCalcOff))
+      saveFigure(outDir,sprintf('scatter_lfpPwrVsFr_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    end
+  end
+  
+  if plotSwitch.lfpPeakToPeakMuaScatterAll
+    for unit_i = 1:length(channelUnitNames{channel_i})
+      figure();
+      hold on;
+      for cat_i = 1:length(categoryListSlim)
+        lfpByTrial = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+        scatter(max(lfpByTrial,[],2)-min(lfpByTrial,[],2),catSpikeCounts{channel_i}{unit_i}{categorySlimInds(cat_i)}.counts,36,colors(cat_i),'filled')
+      end
+      xlabel('Peak-to-Trough LFP Amplitude (uV)');
+      ylabel('firing rate (Hz)');
+      title(sprintf('LFP Amplitude vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frCalcOn, frCalcOff))
+      saveFigure(outDir,sprintf('scatter_lfpP2PVsFr_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    end
+  end
+  
+  if plotSwitch.lfpLatencyMuaLatency
+    % todo
+  end
+  
+  % make lfp power-fr scatter plot, early
+  if plotSwitch.lfpPowerMuaScatterAllEarly
+    for unit_i = 1:length(channelUnitNames{channel_i})
+      figure();
+      hold on;
+      for cat_i = 1:length(categoryListSlim)
+        lfpByTrial = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOnEarly:lfpPaddedBy+1+psthPre+frCalcOffEarly));
+        lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
+        lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
+        scatter(lfpPowerByTrial,catSpikeCountsEarly{channel_i}{unit_i}{categorySlimInds(cat_i)}.counts,36,colors(cat_i),'filled')
+      end
+      xlabel('total lfp power (uV)');
+      ylabel('firing rate (Hz)');
+      title(sprintf('LFP power vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frCalcOnEarly, frCalcOffEarly))
+      saveFigure(outDir,sprintf('scatter_lfpPwrVsFr_early_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    end
+  end
+  
+  if plotSwitch.lfpPeakToPeakMuaScatterAllEarly
+    for unit_i = 1:length(channelUnitNames{channel_i})
+      figure();
+      hold on;
+      for cat_i = 1:length(categoryListSlim)
+        lfpByTrial = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOnEarly:lfpPaddedBy+1+psthPre+frCalcOffEarly));
+        scatter(max(lfpByTrial,[],2)-min(lfpByTrial,[],2),catSpikeCountsEarly{channel_i}{unit_i}{categorySlimInds(cat_i)}.counts,36,colors(cat_i),'filled')
+      end
+      xlabel('Peak-to-Trough LFP Amplitude (uV)');
+      ylabel('firing rate (Hz)');
+      title(sprintf('LFP Amplitude vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frCalcOnEarly, frCalcOffEarly))
+      saveFigure(outDir,sprintf('scatter_lfpP2PVsFr_early_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    end
+  end
+  
+  if plotSwitch.lfpLatencyMuaLatencyEarly
+    % todo
+  end
+  
+  % make lfp power-fr scatter plot, late
+  if plotSwitch.lfpPowerMuaScatterAllLate
+    for unit_i = 1:length(channelUnitNames{channel_i})
+      figure();
+      hold on;
+      for cat_i = 1:length(categoryListSlim)
+        lfpByTrial = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOnLate:lfpPaddedBy+1+psthPre+frCalcOffLate));
+        lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
+        lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
+        scatter(lfpPowerByTrial,catSpikeCountsLate{channel_i}{unit_i}{categorySlimInds(cat_i)}.counts,36,colors(cat_i),'filled')
+      end
+      xlabel('total lfp power (uV)');
+      ylabel('firing rate (Hz)');
+      title(sprintf('LFP power vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frCalcOnLate, frCalcOffLate))
+      saveFigure(outDir,sprintf('scatter_lfpPwrVsFr_late_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    end
+  end
+  
+  if plotSwitch.lfpPeakToPeakMuaScatterAllLate
+    for unit_i = 1:length(channelUnitNames{channel_i})
+      figure();
+      hold on;
+      for cat_i = 1:length(categoryListSlim)
+        lfpByTrial = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOnLate:lfpPaddedBy+1+psthPre+frCalcOffLate));
+        scatter(max(lfpByTrial,[],2)-min(lfpByTrial,[],2),catSpikeCountsLate{channel_i}{unit_i}{categorySlimInds(cat_i)}.counts,36,colors(cat_i),'filled')
+      end
+      xlabel('Peak-to-Trough LFP Amplitude (uV)');
+      ylabel('firing rate (Hz)');
+      title(sprintf('LFP Amplitude vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frCalcOnLate, frCalcOffLate))
+      saveFigure(outDir,sprintf('scatter_lfpP2PVsFr_late_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    end
+  end
+  
+  if plotSwitch.lfpLatencyMuaLatencyLate
+    % todo
+  end
+  
+  % lfp power vs lfp power, across channels
+  if plotSwitch.lfpPowerAcrossChannels && channel_i < length(lfpChannels)
+    for channel2_i = channel_i+1:length(lfpChannels)
+      figure();
+      hold on;
+      for cat_i = 1:length(categoryListSlim)
+        lfpByTrialCh1 = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+        lfpMeanSubByTrialCh1 = lfpByTrialCh1 - mean(lfpByTrialCh1,2);
+        lfpPowerByTrialCh1 = sqrt(sum(lfpMeanSubByTrialCh1.^2,2));
+        lfpByTrialCh2 = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+        lfpMeanSubByTrialCh2 = lfpByTrialCh2 - mean(lfpByTrialCh2,2);
+        lfpPowerByTrialCh2 = sqrt(sum(lfpMeanSubByTrialCh2.^2,2));
+        scatter(lfpPowerByTrialCh1,lfpPowerByTrialCh2,36,colors(cat_i),'filled')
+      end
+      xlabel(sprintf('total lfp power, %s (uV)',channelNames{channel_i}));
+      ylabel(sprintf('total lfp power, %s (uV)',channelNames{channel2_i}));
+      title(sprintf('LFP Power, %s vs. %s, %d ms - %d ms',channelNames{channel_i},channelNames{channel2_i}, frCalcOn, frCalcOff))
+      saveFigure(outDir,sprintf('scatter_lfpPwrVSlfpPwr_%s_%s_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    end
+  end
+  
+  % lfp p2p amplitude vs lfp p2p amplitude, across channels
+  if plotSwitch.lfpPeakToPeakAcrossChannels && channel_i < length(lfpChannels)
+    for channel2_i = channel_i+1:length(lfpChannels)
+      figure();
+      hold on;
+      for cat_i = 1:length(categoryListSlim)
+        lfpByTrialCh1 = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+        lfpByTrialCh2 = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+        scatter(max(lfpByTrialCh1,[],2)-min(lfpByTrialCh1,[],2),max(lfpByTrialCh2,[],2)-min(lfpByTrialCh2,[],2),36,colors(cat_i),'filled')
+      end
+      xlabel(sprintf('LFP Amplitude, %s (uV)',channelNames{channel_i}));
+      ylabel(sprintf('LFP Amplitude, %s (uV)',channelNames{channel2_i}));
+      title(sprintf('LFP Amplitude, %s vs. %s, %d ms - %d ms',channelNames{channel_i},channelNames{channel2_i}, frCalcOn, frCalcOff))
+      saveFigure(outDir,sprintf('scatter_lfpP2PVSlfpP2P_%s_%s_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    end
+  end
+  
+  % lfp latency vs lfp latency, across channels, defined as max dot product with mean
+  if plotSwitch.lfpLatencyShiftAcrossChannels && channel_i < length(lfpChannels)
+    for channel2_i = channel_i+1:length(lfpChannels)
+      figure();
+      hold on;
+      for cat_i = 1:length(categoryListSlim)
+        lfpByTrialCh1 = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+        lfpMeanSubByTrialCh1 = lfpByTrialCh1 - mean(lfpByTrialCh1,2);
+        lfpTrialAveCh1 = mean(lfpMeanSubByTrialCh1,1);
+        
+        lfpByTrialCh2 = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+        lfpMeanSubByTrialCh2 = lfpByTrialCh2 - mean(lfpByTrialCh2,2);
+        lfpTrialAveCh2 = mean(lfpMeanSubByTrialCh2,1);
+        shiftsCh1 = zeros(size(lfpByTrialCh1,1),1);
+        shiftsCh2 = zeros(size(lfpByTrialCh1,1),1);
+        for trial_i = 1:size(lfpByTrialCh1,1)
+          bestShiftCh1 = -50;
+          bestMatchCh1 = 0;
+          for shift = -50:50 %magic number; todo replace with variable
+            shiftedTrialLfp = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,trial_i,lfpPaddedBy+1+psthPre+frCalcOn+shift:lfpPaddedBy+1+psthPre+frCalcOff+shift));
+            shiftedTrialLfp = shiftedTrialLfp - mean(shiftedTrialLfp);
+            match = lfpTrialAveCh1*shiftedTrialLfp;
+            if match > bestMatchCh1
+              bestMatchCh1 = match;
+              bestShiftCh1 = shift;
+            end
+            shiftsCh1(trial_i) = bestShiftCh1;
+          end
+          bestShiftCh2 = -50;
+          bestMatchCh2 = 0;
+          for shift = -50:50 %magic number; todo replace with variable
+            shiftedTrialLfp = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel2_i,trial_i,lfpPaddedBy+1+psthPre+frCalcOn+shift:lfpPaddedBy+1+psthPre+frCalcOff+shift));
+            shiftedTrialLfp = shiftedTrialLfp - mean(shiftedTrialLfp);
+            match = lfpTrialAveCh2*shiftedTrialLfp;
+            if match > bestMatchCh2
+              bestMatchCh2 = match;
+              bestShiftCh2 = shift;
+            end
+            shiftsCh2(trial_i) = bestShiftCh2;
+          end
+        end
+        scatter(shiftsCh1,shiftsCh2,36,colors(cat_i),'filled')
+      end
+      xlabel(sprintf('LFP latency shift from category mean, %s (ms)',channelNames{channel_i}));
+      ylabel(sprintf('LFP latency shift from category mean, %s (ms)',channelNames{channel2_i}));
+      title(sprintf('LFP Latency shift from category mean, %s vs. %s, %d ms - %d ms',channelNames{channel_i},channelNames{channel2_i}, frCalcOn, frCalcOff))
+      saveFigure(outDir,sprintf('scatter_lfpShiftVSlfpShift_%s_%s_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    end
+  end
+  
+  % other to-do: one epoch for each peak of trial ave evoked potential, ideally set automatically
+  % todo: across-peak latency within and across channels
+  % todo: spike burstiness vs. lfp bumpiness; can do as p2p evoked/psth; or (low freq power)/(high freq power)
+  
   % single trial evoked lfps; probably better as subplot
-  figure();
-  subplot(2,1,1)
-  hold on
-  ydata = zeros(50,length(times));
-  for i = 1:50
-    plot(times, squeeze(lfpByCategory{faceCatNum}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy)));
-    ydata(i,:) = squeeze(lfpByCategory{nonfaceCatNum}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy));
-  end;
-  h = get(gca,'ylim');
-  plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
-  hold off
-  title(sprintf('single trial face LFPs, %s', channelNames{channel_i}), 'FontSize',18);
-  xlabel('time after stimulus (ms)', 'FontSize',18);
-  ylabel('voltage (uV)', 'FontSize',18);
-  set(gca,'fontsize',18);
-  xlim([min(times) max(times)]);
-  clear figData
-  figData.ax11.y = ydata;
-  figData.ax11.x = times;
+  if plotSwitch.singleTrialLfpFaceVnon
+    figure();
+    subplot(2,1,1)
+    hold on
+    ydata = zeros(50,length(times));
+    for i = 1:50
+      plot(times, squeeze(lfpByCategory{faceCatNum}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy)));
+      ydata(i,:) = squeeze(lfpByCategory{nonfaceCatNum}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy));
+    end;
+    h = get(gca,'ylim');
+    plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+    hold off
+    title(sprintf('single trial face LFPs, %s', channelNames{channel_i}), 'FontSize',18);
+    xlabel('time after stimulus (ms)', 'FontSize',18);
+    ylabel('voltage (uV)', 'FontSize',18);
+    set(gca,'fontsize',18);
+    xlim([min(times) max(times)]);
+    clear figData
+    figData.ax11.y = ydata;
+    figData.ax11.x = times;
+
+    subplot(2,1,2);
+    hold on
+    ydata = zeros(50,length(times));
+    for i = 1:50
+      plot(times, squeeze(lfpByCategory{nonfaceCatNum}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy)));
+      ydata(i,:) = squeeze(lfpByCategory{nonfaceCatNum}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy));
+    end;
+    h = get(gca,'ylim');
+    plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+    hold off
+    title(sprintf('single trial nonface LFPs, %s', channelNames{channel_i}), 'FontSize',18);
+    xlabel('time after stimulus (ms)', 'FontSize',18);
+    ylabel('voltage (uV)', 'FontSize',18);
+    xlim([min(times) max(times)]);
+    figData.ax21.y = ydata;
+    figData.ax21.x = times;
+    saveFigure(outDir,sprintf('Evoked_singleTrials_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+  end
+  % spectra, face v non
+  if plotSwitch.lfpSpectraFaceVnon
+    [faceS,faceF, faceE] = mtspectrumc(squeeze(lfpByCategory{faceCatNum}(1,channel_i,:,:))', chr_params);
+    [nfaceS,nfaceF, nfaceE] = mtspectrumc(squeeze(lfpByCategory{nonfaceCatNum}(1,channel_i,:,:))', chr_params);
+
+    figure();
+    plot(1000*faceF,log(faceS),'linewidth',3,'marker','o');
+    hold on
+    plot(1000*nfaceF,log(nfaceS),'linewidth',3,'color','r','marker','o');
+    hold off
+    title(sprintf('%s evoked power spectrum',channelNames{channel_i}), 'FontSize',18);
+    xlabel('frequency (Hz)', 'FontSize',18);
+    ylabel('voltage, log(uV)', 'FontSize',18);
+    legend('face','non');
+    set(gca,'fontsize',18);
+    clear figData
+    figData.y = vertcat(faceS,nfaceS);
+    figData.x = vertcat(faceF,nfaceF);
+    saveFigure(outDir,sprintf('spectrum_faceVnon_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   
-  subplot(2,1,2);
-  hold on
-  ydata = zeros(50,length(times));
-  for i = 1:50
-    plot(times, squeeze(lfpByCategory{nonfaceCatNum}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy)));
-    ydata(i,:) = squeeze(lfpByCategory{nonfaceCatNum}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy));
-  end;
-  h = get(gca,'ylim');
-  plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
-  hold off
-  title(sprintf('single trial nonface LFPs, %s', channelNames{channel_i}), 'FontSize',18);
-  xlabel('time after stimulus (ms)', 'FontSize',18);
-  ylabel('voltage (uV)', 'FontSize',18);
-  xlim([min(times) max(times)]);
-  figData.ax21.y = ydata;
-  figData.ax21.x = times;
-  saveFigure(outDir,sprintf('Evoked_singleTrials_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-  
-  % spectra
-  [faceS,faceF, faceE] = mtspectrumc(squeeze(lfpByCategory{faceCatNum}(1,channel_i,:,:))', chr_params);
-  [nfaceS,nfaceF, nfaceE] = mtspectrumc(squeeze(lfpByCategory{nonfaceCatNum}(1,channel_i,:,:))', chr_params);
-  
-  figure();
-  plot(1000*faceF,log(faceS),'linewidth',3,'marker','o');
-  hold on
-  plot(1000*nfaceF,log(nfaceS),'linewidth',3,'color','r','marker','o');
-  hold off
-  title(sprintf('%s evoked power spectrum',channelNames{channel_i}), 'FontSize',18);
-  xlabel('frequency (Hz)', 'FontSize',18);
-  ylabel('voltage, log(uV)', 'FontSize',18);
-  legend('face','non');
-  set(gca,'fontsize',18);
-  clear figData
-  figData.y = vertcat(faceS,nfaceS);
-  figData.x = vertcat(faceF,nfaceF);
-  saveFigure(outDir,sprintf('spectrum_faceVnon_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-  
-  figure();
-  specModel = fitlm(log(1000*faceF(6:end)), log(.5*(faceS(6:end)+nfaceS(6:end))));
-  m = specModel.Coefficients.Estimate(2);
-  y0 = specModel.Coefficients.Estimate(1);
-  h1 = loglog(1000*faceF,exp(m*log(1000*faceF) + y0), 'k--');
-  hold on
-  h2 = loglog(1000*faceF,faceS,'linewidth',3,'marker','o');
-  h3 = loglog(1000*nfaceF,nfaceS,'linewidth',3,'color','r','marker','o');
-  hold off
-  title(sprintf('%s evoked power spectrum, loglog',channelNames{channel_i}), 'FontSize',18);
-  xlim([1000*min(faceF) 1000*max(faceF)]); %todo: fix error
-  xlabel('frequency (Hz)', 'FontSize',18);
-  ylabel('voltage (uV)', 'FontSize',18);
-  legend([h2;h3;h1],{'face','nonface',sprintf('fit,m = %.3f',m)});
-  set(gca,'fontsize',18);
-  clear figData
-  figData.y = vertcat(faceS,nfaceS);
-  figData.x = vertcat(faceF,nfaceF);
-  saveFigure(outDir,sprintf('spectrum_log_faceVnon_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-  
+    figure();
+    specModel = fitlm(log(1000*faceF(6:end)), log(.5*(faceS(6:end)+nfaceS(6:end))));
+    m = specModel.Coefficients.Estimate(2);
+    y0 = specModel.Coefficients.Estimate(1);
+    h1 = loglog(1000*faceF,exp(m*log(1000*faceF) + y0), 'k--');
+    hold on
+    h2 = loglog(1000*faceF,faceS,'linewidth',3,'marker','o');
+    h3 = loglog(1000*nfaceF,nfaceS,'linewidth',3,'color','r','marker','o');
+    hold off
+    title(sprintf('%s evoked power spectrum, loglog',channelNames{channel_i}), 'FontSize',18);
+    xlim([1000*min(faceF) 1000*max(faceF)]); %todo: fix error
+    xlabel('frequency (Hz)', 'FontSize',18);
+    ylabel('voltage (uV)', 'FontSize',18);
+    legend([h2;h3;h1],{'face','nonface',sprintf('fit,m = %.3f',m)});
+    set(gca,'fontsize',18);
+    clear figData
+    figData.y = vertcat(faceS,nfaceS);
+    figData.x = vertcat(faceF,nfaceF);
+    saveFigure(outDir,sprintf('spectrum_log_faceVnon_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+  end
   
   %%%%%% TODO %%%%%%
   % todo: multichannel evoked lineplot, categories, subplots
@@ -751,7 +1022,7 @@ for channel_i = 1:length(lfpChannels)
   % psth category lineplot (probably in subplot with evoked by category)
 
   % image-wise time-frequency plots, spikes and lfp
-  if imageTF
+  if calcSwitch.imageTF
     for image_i = 1:length(pictureLabels)
       % todo: put in dB conversion and specgramrowave option
       [S,t,f,R]=mtspecgrampt(spikesByImage{image_i}{channel_i}{end},movingWin,chr_params); %last optional param not used: fscorr
@@ -797,7 +1068,7 @@ for channel_i = 1:length(lfpChannels)
   end
   % category-wise time-frequency plots, spikes and lfp
   
-  if catTF
+  if calcSwitch.catTF
     if channel_i == 1
       lfpTfFig = figure();
       muaTfFig = figure();
@@ -921,7 +1192,7 @@ for channel_i = 1:length(lfpChannels)
   drawnow;
   
   %%% across channels
-  if crossTF
+  if calcSwitch.crossTF
     for channel2_i = channel_i:length(lfpChannels)
       % face vs. nonface spike field coherence, within and across channels
       % channel_i spike -- channel_i field
