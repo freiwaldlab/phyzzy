@@ -5,7 +5,7 @@ function [ analysisParamsFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '002';
+runNum = '001';
 dateSubject = '170405ALAN'; 
 inRig = 0;
 if inRig
@@ -55,11 +55,11 @@ analogInParams.eyeChannels = [];
 stimSyncParams.usePhotodiode = 0;
 
 % parameters for excludeStimuli, see function for details
-excludeStimParams.fixPre = 100; %ms
-excludeStimParams.fixPost = 100; %ms
-excludeStimParams.flashPre = 100;  %ms
-excludeStimParams.flashPost = 100; %ms
-excludeStimParams.juicePre = 100; % optional, ms
+excludeStimParams.fixPre = 0; %ms
+excludeStimParams.fixPost = 0; %ms
+excludeStimParams.flashPre = 0;  %ms
+excludeStimParams.flashPost = 0; %ms
+excludeStimParams.juicePre = 0; % optional, ms
 excludeStimParams.juicePost = 0; % optional, ms
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
@@ -124,33 +124,36 @@ plotSwitch.categoryPrefBarPlotLate = 0;
 plotSwitch.tuningCurves = 0;
 plotSwitch.tuningCurvesEarly = 0;
 plotSwitch.tuningCurvesLate = 0;
-plotSwtich.calcLatencyRF = 0;
-plotSwtich.calcEvokedPowerRF = 0;
+plotSwitch.calcLatencyRF = 0;
+plotSwitch.calcEvokedPowerRF = 0;
 plotSwitch.faceVnonEvokedPotential = 0;
 plotSwitch.faceVnonEvokedMuaMultiCh = 0;
-plotSwitch.evokedByCategory = 1;
-plotSwitch.psthEvokedByCategory = 1;
-plotSwitch.lfpPowerMuaScatterAll = 1; 
-plotSwitch.lfpPeakToPeakMuaScatterAll = 1;
-plotSwitch.lfpPowerMuaScatterAllEarly = 1;
-plotSwitch.lfpPeakToPeakMuaScatterAllEarly = 1;
-plotSwitch.lfpPowerMuaScatterAllLate = 1;
-plotSwitch.lfpPeakToPeakMuaScatterAllLate = 1;
+plotSwitch.evokedByCategory = 0;
+plotSwitch.psthEvokedByCategory = 0;
+plotSwitch.runSummary = 0;
+plotSwitch.runSummaryImMeanSub = 0;
+plotSwitch.runSummaryImMeanSubDiv = 0;
+plotSwitch.lfpPowerMuaScatterAll = 0; 
+plotSwitch.lfpPeakToPeakMuaScatterAll = 0;
+plotSwitch.lfpPowerMuaScatterAllEarly = 0;
+plotSwitch.lfpPeakToPeakMuaScatterAllEarly = 0;
+plotSwitch.lfpPowerMuaScatterAllLate = 0;
+plotSwitch.lfpPeakToPeakMuaScatterAllLate = 0;
 plotSwitch.lfpLatencyMuaLatency = 0;
 plotSwitch.lfpLatencyMuaLatencyEarly = 0;
 plotSwitch.lfpLatencyMuaLatencyLate = 0;
-plotSwitch.lfpPowerAcrossChannels = 1;
-plotSwitch.lfpPeakToPeakAcrossChannels = 1;
-plotSwitch.lfpLatencyShiftAcrossChannels = 1;
-plotSwitch.singleTrialLfpFaceVnon = 1;
+plotSwitch.lfpPowerAcrossChannels = 0;
+plotSwitch.lfpPeakToPeakAcrossChannels = 0;
+plotSwitch.lfpLatencyShiftAcrossChannels = 0;
+plotSwitch.singleTrialLfpFaceVnon = 0;
 plotSwitch.lfpSpectraFaceVnon = 1;
 
-calcSwitch.faceSelectIndex =0;
+calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.imageTF = 0;
-calcSwitch.catTF = 0;
-calcSwitch.crossTF = 0;
+calcSwitch.catTF = 1;
+calcSwitch.crossTF = 1;
 
 %%% set paths and directories, EDIT RARELY %%%
 analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);

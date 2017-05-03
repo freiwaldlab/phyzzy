@@ -1,6 +1,6 @@
 function [  ] = runAnalyses( analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign, ...
   categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-  spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming, picCategories)
+  spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming, picCategories, onsetsByImage, OnsetsByCategory)
 %runAnalyses should be the main site for customization
 %   - ideally, function signature should remain constant
 %  this version of runAnalyses does the following:
@@ -732,6 +732,282 @@ for channel_i = 1:length(lfpChannels)
     saveFigure(outDir,sprintf('PSTH_Evoked_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
   
+  if plotSwitch.runSummary
+%     frHeight = 4;
+%     lfpHeight = 3;
+%     fixHeight = 2;
+%     juiceHeight = 1;
+%     trialsPerRow = 100;
+%     totalTrials = 0;
+%     firstOnset = min(onsetsByImage{1});
+%     for image_i = 1:length(onsetsByImage)
+%       totalTrials = totalTrials + length(onsetsByImage{cat_i});
+%       firstOnset = min(firstOnset,onsetsByImage{1});
+%     end
+%     disp(totalTrials);
+%     numSubplots = ceil(totalTrials/trialsPerRow);
+    f = figure();
+    numSubplots = length(imSpikeCounts{channel_i})-1+4;
+    axisHandles = [];
+    %juice
+    ah = subplot(numSubplots,1,numSubplots);
+    ylabel('juice');
+    xlabel('time (ms)');
+    axisHandles = horzcat(axisHandles,ah);
+    hold on
+    assert(length(taskDataAll.juiceOnTimes) == length(taskDataAll.juiceOffTimes),'different number of juice on and off triggers; do not have defense');
+    assert(min(taskDataAll.juiceOnTimes) < min(taskDataAll.juiceOffTimes),'juice on at beginning of trial; do not have defense');
+    for juice_i = 1:length(taskDataAll.juiceOnTimes)
+      plot([taskDataAll.juiceOnTimes(juice_i) taskDataAll.juiceOffTimes(juice_i)],[0 0]);
+    end
+    % fix spot flash
+    ah = subplot(numSubplots,1,numSubplots-1);
+    ylabel('flash');
+    axisHandles = horzcat(axisHandles,ah);
+    hold on
+    assert(min(taskDataAll.fixSpotFlashStartTimes) < min(taskDataAll.fixSpotFlashEndTimes),'fix spot flash off trigger before on; do not have defense');
+    %handle case where flash on at end of run with indexing on end times
+    for flash_i = 1:length(taskDataAll.fixSpotFlashEndTimes)
+      plot([taskDataAll.fixSpotFlashStartTimes(flash_i) taskDataAll.fixSpotFlashEndTimes(flash_i)],[0 0]);
+    end
+    %fixation
+    ah = subplot(numSubplots,1,numSubplots-2);
+    ylabel('fix');
+    axisHandles = horzcat(axisHandles,ah);
+    hold on
+    assert(min(taskDataAll.fixationInTimes) < min(taskDataAll.fixationOutTimes),'fixation out trigger before in; do not have defense');
+    %handle case where fix in at end of run
+    if length(taskDataAll.fixationInTimes) == length(taskDataAll.fixationOutTimes)+1
+      fixationOutTimesTmp = vertcat(taskDataAll.fixationOutTimes,taskDataAll.pictureEndTimes(end));
+    else
+      fixationOutTimesTmp = taskDataAll.fixationOutTimes;
+    end
+    for fix_i = 1:length(taskDataAll.fixationInTimes)
+      plot([taskDataAll.fixationInTimes(fix_i) fixationOutTimesTmp(fix_i)],[0 0]);
+    end
+    %spikes and lfp
+    for image_i = 1:length(onsetsByImage)
+      onsets = onsetsByImage{image_i};
+      lfpByTrial = squeeze(lfpByImage{image_i}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+      lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
+      lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
+      
+      for trial_i = 1:length(onsets)
+        %trialSubplot = ceil((onsets(trial_i)-firstOnset)/(trialsPerRow*(psthImDur+stimTiming.ISI)));
+        %subplot(trialSubplot,1,1);
+        
+        %lfp
+        ah = subplot(numSubplots,1,numSubplots-3);
+        if image_i == trial_i && trial_i == 1
+          axisHandles = horzcat(axisHandles,ah);
+          ylabel('lfp pwr');
+        end
+        hold on
+        plot([onsets(trial_i) onsets(trial_i)+psthImDur], [lfpPowerByTrial(trial_i) lfpPowerByTrial(trial_i)], 'color','blue');
+        %spikes
+        for unit_i = 1:length(imSpikeCounts{channel_i})-1 %for now, don't show MUA in addition to units and hash
+          ah = subplot(numSubplots,1,unit_i);
+          if image_i == trial_i && trial_i == 1
+            axisHandles = horzcat(axisHandles,ah);
+            ylabel(sprintf('fr, u%d',unit_i-1));
+          end
+          hold on
+          plot([onsets(trial_i) onsets(trial_i)+psthImDur], [imSpikeCounts{channel_i}{unit_i}{image_i}.counts(trial_i) imSpikeCounts{channel_i}{unit_i}{image_i}.counts(trial_i)], 'color','blue')
+        end
+      end
+    end
+    linkaxes(axisHandles,'x');
+    suptitle(channelNames{channel_i});
+    drawnow;
+    figData = 'none';
+    saveFigure(outDir,sprintf('runSummary_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    close(f);
+  end
+  
+  if plotSwitch.runSummaryImMeanSub
+%     frHeight = 4;
+%     lfpHeight = 3;
+%     fixHeight = 2;
+%     juiceHeight = 1;
+%     trialsPerRow = 100;
+%     totalTrials = 0;
+%     firstOnset = min(onsetsByImage{1});
+%     for image_i = 1:length(onsetsByImage)
+%       totalTrials = totalTrials + length(onsetsByImage{cat_i});
+%       firstOnset = min(firstOnset,onsetsByImage{1});
+%     end
+%     disp(totalTrials);
+%     numSubplots = ceil(totalTrials/trialsPerRow);
+    f = figure();
+    numSubplots = length(imSpikeCounts{channel_i})-1+4;
+    axisHandles = [];
+    %juice
+    ah = subplot(numSubplots,1,numSubplots);
+    ylabel('juice');
+    xlabel('time (ms)');
+    axisHandles = horzcat(axisHandles,ah);
+    hold on
+    assert(length(taskDataAll.juiceOnTimes) == length(taskDataAll.juiceOffTimes),'different number of juice on and off triggers; do not have defense');
+    assert(min(taskDataAll.juiceOnTimes) < min(taskDataAll.juiceOffTimes),'juice on at beginning of trial; do not have defense');
+    for juice_i = 1:length(taskDataAll.juiceOnTimes)
+      plot([taskDataAll.juiceOnTimes(juice_i) taskDataAll.juiceOffTimes(juice_i)],[0 0]);
+    end
+    % fix spot flash
+    ah = subplot(numSubplots,1,numSubplots-1);
+    ylabel('flash');
+    axisHandles = horzcat(axisHandles,ah);
+    hold on
+    assert(min(taskDataAll.fixSpotFlashStartTimes) < min(taskDataAll.fixSpotFlashEndTimes),'fix spot flash off trigger before on; do not have defense');
+    %handle case where flash on at end of run with indexing on end times
+    for flash_i = 1:length(taskDataAll.fixSpotFlashEndTimes)
+      plot([taskDataAll.fixSpotFlashStartTimes(flash_i) taskDataAll.fixSpotFlashEndTimes(flash_i)],[0 0]);
+    end
+    %fixation
+    ah = subplot(numSubplots,1,numSubplots-2);
+    ylabel('fix');
+    axisHandles = horzcat(axisHandles,ah);
+    hold on
+    assert(min(taskDataAll.fixationInTimes) < min(taskDataAll.fixationOutTimes),'fixation out trigger before in; do not have defense');
+    %handle case where fix in at end of run
+    if length(taskDataAll.fixationInTimes) == length(taskDataAll.fixationOutTimes)+1
+      fixationOutTimesTmp = vertcat(taskDataAll.fixationOutTimes,taskDataAll.pictureEndTimes(end));
+    end
+    for fix_i = 1:length(taskDataAll.fixationInTimes)
+      plot([taskDataAll.fixationInTimes(fix_i) fixationOutTimesTmp(fix_i)],[0 0]);
+    end
+    %spikes and lfp
+    for image_i = 1:length(onsetsByImage)
+      onsets = onsetsByImage{image_i};
+      lfpByTrial = squeeze(lfpByImage{image_i}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+      lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
+      lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
+      lfpPowerByTrialImMeanSub = lfpPowerByTrial - mean(lfpPowerByTrial);
+      
+      for trial_i = 1:length(onsets)
+        %trialSubplot = ceil((onsets(trial_i)-firstOnset)/(trialsPerRow*(psthImDur+stimTiming.ISI)));
+        %subplot(trialSubplot,1,1);
+        
+        %lfp
+        ah = subplot(numSubplots,1,numSubplots-3);
+        if image_i == trial_i && trial_i == 1
+          axisHandles = horzcat(axisHandles,ah);
+          ylabel('lfp pwr fluct.');
+        end
+        hold on
+        plot([onsets(trial_i) onsets(trial_i)+psthImDur], [lfpPowerByTrialImMeanSub(trial_i) lfpPowerByTrialImMeanSub(trial_i)], 'color','blue');
+        %spikes
+        for unit_i = 1:length(imSpikeCounts{channel_i})-1 %for now, don't show MUA in addition to units and hash
+          ah = subplot(numSubplots,1,unit_i);
+          if image_i == trial_i && trial_i == 1
+            axisHandles = horzcat(axisHandles,ah);
+            ylabel(sprintf('fr fluct., u%d',unit_i-1));
+          end
+          hold on
+          imageUnitMeanFr = mean(imSpikeCounts{channel_i}{unit_i}{image_i}.counts);
+          plot([onsets(trial_i) onsets(trial_i)+psthImDur], [imSpikeCounts{channel_i}{unit_i}{image_i}.counts(trial_i) imSpikeCounts{channel_i}{unit_i}{image_i}.counts(trial_i)] - imageUnitMeanFr, 'color','blue')
+        end
+      end
+    end
+    linkaxes(axisHandles,'x');
+    suptitle(sprintf('LFP and FR trial fluctuations, %s',channelNames{channel_i}));
+    drawnow;
+    figData = 'none';
+    saveFigure(outDir,sprintf('runSummary_fluct_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    close(f);
+  end
+  
+  if plotSwitch.runSummaryImMeanSubDiv
+%     frHeight = 4;
+%     lfpHeight = 3;
+%     fixHeight = 2;
+%     juiceHeight = 1;
+%     trialsPerRow = 100;
+%     totalTrials = 0;
+%     firstOnset = min(onsetsByImage{1});
+%     for image_i = 1:length(onsetsByImage)
+%       totalTrials = totalTrials + length(onsetsByImage{cat_i});
+%       firstOnset = min(firstOnset,onsetsByImage{1});
+%     end
+%     disp(totalTrials);
+%     numSubplots = ceil(totalTrials/trialsPerRow);
+    f = figure();
+    numSubplots = length(imSpikeCounts{channel_i})-1+4;
+    axisHandles = [];
+    %juice
+    ah = subplot(numSubplots,1,numSubplots);
+    ylabel('juice');
+    xlabel('time (ms)');
+    axisHandles = horzcat(axisHandles,ah);
+    hold on
+    assert(length(taskDataAll.juiceOnTimes) == length(taskDataAll.juiceOffTimes),'different number of juice on and off triggers; do not have defense');
+    assert(min(taskDataAll.juiceOnTimes) < min(taskDataAll.juiceOffTimes),'juice on at beginning of trial; do not have defense');
+    for juice_i = 1:length(taskDataAll.juiceOnTimes)
+      plot([taskDataAll.juiceOnTimes(juice_i) taskDataAll.juiceOffTimes(juice_i)],[0 0]);
+    end
+    % fix spot flash
+    ah = subplot(numSubplots,1,numSubplots-1);
+    ylabel('flash');
+    axisHandles = horzcat(axisHandles,ah);
+    hold on
+    assert(min(taskDataAll.fixSpotFlashStartTimes) < min(taskDataAll.fixSpotFlashEndTimes),'fix spot flash off trigger before on; do not have defense');
+    %handle case where flash on at end of run with indexing on end times
+    for flash_i = 1:length(taskDataAll.fixSpotFlashEndTimes)
+      plot([taskDataAll.fixSpotFlashStartTimes(flash_i) taskDataAll.fixSpotFlashEndTimes(flash_i)],[0 0]);
+    end
+    %fixation
+    ah = subplot(numSubplots,1,numSubplots-2);
+    ylabel('fix');
+    axisHandles = horzcat(axisHandles,ah);
+    hold on
+    assert(min(taskDataAll.fixationInTimes) < min(taskDataAll.fixationOutTimes),'fixation out trigger before in; do not have defense');
+    %handle case where fix in at end of run
+    if length(taskDataAll.fixationInTimes) == length(taskDataAll.fixationOutTimes)+1
+      fixationOutTimesTmp = vertcat(taskDataAll.fixationOutTimes,taskDataAll.pictureEndTimes(end));
+    end
+    for fix_i = 1:length(taskDataAll.fixationInTimes)
+      plot([taskDataAll.fixationInTimes(fix_i) fixationOutTimesTmp(fix_i)],[0 0]);
+    end
+    %spikes and lfp
+    for image_i = 1:length(onsetsByImage)
+      onsets = onsetsByImage{image_i};
+      lfpByTrial = squeeze(lfpByImage{image_i}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+      lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
+      lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
+      lfpPowerByTrialImMeanSubDiv = (lfpPowerByTrial - mean(lfpPowerByTrial))/mean(lfpPowerByTrial);
+      
+      for trial_i = 1:length(onsets)
+        %trialSubplot = ceil((onsets(trial_i)-firstOnset)/(trialsPerRow*(psthImDur+stimTiming.ISI)));
+        %subplot(trialSubplot,1,1);
+        
+        %lfp
+        ah = subplot(numSubplots,1,numSubplots-3);
+        if image_i == trial_i && trial_i == 1
+          axisHandles = horzcat(axisHandles,ah);
+          ylabel('lfp pwr fluct.');
+        end
+        hold on
+        plot([onsets(trial_i) onsets(trial_i)+psthImDur], [lfpPowerByTrialImMeanSubDiv(trial_i) lfpPowerByTrialImMeanSubDiv(trial_i)], 'color','blue');
+        %spikes
+        for unit_i = 1:length(imSpikeCounts{channel_i})-1 %for now, don't show MUA in addition to units and hash
+          ah = subplot(numSubplots,1,unit_i);
+          if image_i == trial_i && trial_i == 1
+            axisHandles = horzcat(axisHandles,ah);
+            ylabel(sprintf('fr fluct., u%d',unit_i-1));
+          end
+          hold on
+          imageUnitMeanFr = mean(imSpikeCounts{channel_i}{unit_i}{image_i}.counts);
+          plot([onsets(trial_i) onsets(trial_i)+psthImDur], ([imSpikeCounts{channel_i}{unit_i}{image_i}.counts(trial_i) imSpikeCounts{channel_i}{unit_i}{image_i}.counts(trial_i)] - imageUnitMeanFr)/imageUnitMeanFr, 'color','blue');
+        end
+      end
+    end
+    linkaxes(axisHandles,'x');
+    suptitle(sprintf('LFP and FR trial fractional fluctuations, %s',channelNames{channel_i}));
+    drawnow;
+    figData = 'none';
+    saveFigure(outDir,sprintf('runSummary_fracfluct_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    close(f);
+  end
+  
   % make lfp power-fr scatter plot
   if plotSwitch.lfpPowerMuaScatterAll
     for unit_i = 1:length(channelUnitNames{channel_i})
@@ -1028,7 +1304,7 @@ for channel_i = 1:length(lfpChannels)
       [S,t,f,R]=mtspecgrampt(spikesByImage{image_i}{channel_i}{end},movingWin,chr_params); %last optional param not used: fscorr
       t = t - lfpAlignParams.msPreAlign;
       f = 1000*f;
-      figure();
+      fh = figure();
       imagesc(t,f,S'); %TODO: fix to match cat version, which is correct!!
       set(gca,'Ydir','normal'); % also need 'Yscale,'log'??
       xlabel('Time'); % todo: units
@@ -1043,12 +1319,14 @@ for channel_i = 1:length(lfpChannels)
       figData.x = t;
       figData.y = f;
       figData.z = S';
+      drawnow;
       saveFigure(outDir,sprintf('TF_MUA_%s_%s.fig',channelNames{channel_i},pictureLabels{image_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      close(fh);
       
       [S,t,f]=mtspecgramc(squeeze(lfpByImage{image_i}(1,channel_i,:,:))',movingWin,chr_params);
       t = t - lfpAlignParams.msPreAlign;
       f = 1000*f;
-      figure();
+      fh = figure();
       imagesc(t,f,S');
       set(gca,'Ydir','normal'); % also need 'Yscale,'log'??
       xlabel('Time'); % todo: units
@@ -1063,7 +1341,9 @@ for channel_i = 1:length(lfpChannels)
       figData.x = t;
       figData.y = f;
       figData.z = S;
+      drawnow;
       saveFigure(outDir,sprintf('TF_LFP_%s_%s',channelNames{channel_i},pictureLabels{image_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      close(fh);
     end
   end
   % category-wise time-frequency plots, spikes and lfp
@@ -1081,7 +1361,7 @@ for channel_i = 1:length(lfpChannels)
       t = t - lfpAlignParams.msPreAlign;
       f = 1000*f;
       totalPower = sum(S,2)';
-      figure();
+      fh = figure();
       if specgramRowAve
         for i = 1:size(S,2)
           S(:,i) = S(:,i)/mean(S(:,i)); 
@@ -1108,7 +1388,9 @@ for channel_i = 1:length(lfpChannels)
       figData.x = t;
       figData.y = f;
       figData.z = S;
+      drawnow;
       saveFigure(outDir,sprintf('TF_MUA_%s_%s',channelNames{channel_i},categoryList{cat_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      close(fh);
       % contribute to shared figure
       figure(muaTfFig);
       if cat_i == faceCatNum
@@ -1132,7 +1414,7 @@ for channel_i = 1:length(lfpChannels)
       f = 1000*f;
       totalPower = sum(S,2)';
       
-      figure();
+      fh = figure();
       if specgramRowAve
         for i = 1:size(S,2)
           S(:,i) = S(:,i)/mean(S(:,i));
@@ -1158,8 +1440,9 @@ for channel_i = 1:length(lfpChannels)
       figData.x = t;
       figData.y = f;
       figData.z = S';
+      drawnow;
       saveFigure(outDir,sprintf('TF_LFP_%s_%s.fig',channelNames{channel_i},categoryList{cat_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-      
+      close(fh);
       % contribute to shared figure
       figure(lfpTfFig);
       if cat_i == faceCatNum
@@ -1178,18 +1461,21 @@ for channel_i = 1:length(lfpChannels)
       title(forTitle);
     end
     
+    drawnow;
     % todo: convert to saveFigure and build its fig data as we go
     if saveFig && channel_i == length(lfpChannels) && cat_i == max(faceCatNum, nonfaceCatNum)
       figure(muaTfFig);
       savefig(strcat(outDir,sprintf('TF_MUA_%s_%s.fig',channelNames{channel_i},categoryList{cat_i})));
       export_fig([outDir sprintf('TF_MUA_%s_%s.png',channelNames{channel_i},categoryList{cat_i})],'-m1.2','-transparent','-opengl');
+      close(muaTfFig);
       figure(lfpTfFig);
       savefig(lfpTfFig,strcat(outDir,sprintf('TF_LFP_%s_%s.fig',channelNames{channel_i},categoryList{cat_i})));
       export_fig([outDir sprintf('TF_LFP_%s_%s.png',channelNames{channel_i},categoryList{cat_i})],'-m1.2','-transparent','-opengl');
+      close(lfpTfFig);
     end
   end
   
-  drawnow;
+  
   
   %%% across channels
   if calcSwitch.crossTF
@@ -1212,7 +1498,7 @@ for channel_i = 1:length(lfpChannels)
           spikesByCategoryForTF{nonfaceCatNum}{channel_i}{end},chr_params);
         errs = vertcat(confCface*ones(1,length(Cface(fface < 0.1))),confCnface*ones(1,length(Cface(fface < 0.1))));
       end
-      figure();
+      fh = figure();
       mseb(1000*repmat(fface(fface < 0.1),2,1),vertcat((Cface(fface < 0.1))',(Cnface(fface < 0.1))'), errs);
       legend('face', 'nonface');
       xlabel('frequency (Hz)');
@@ -1221,7 +1507,9 @@ for channel_i = 1:length(lfpChannels)
       clear figData
       figData.x = vertcat(fface, fnface);
       figData.y = [Cface, Cnface];
+      drawnow;
       saveFigure(outDir,sprintf('coh_MUA-LFP_%s_%s_FACEvsNON_Run%s',channelNames{channel_i},channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      close(fh);
       if channel2_i > channel_i 
         % channel2_i spike -- channel_i field
         useJacknife = 0;
@@ -1239,7 +1527,7 @@ for channel_i = 1:length(lfpChannels)
             spikesByCategoryForTF{nonfaceCatNum}{channel2_i}{end},chr_params);
           errs = vertcat(confCface*ones(1,length(Cface(fface < 0.1))),confCnface*ones(1,length(Cface(fface < 0.1))));
         end
-        figure();
+        fh = figure();
         mseb(1000*repmat(fface(fface < 0.1),2,1),vertcat((Cface(fface < 0.1))',(Cnface(fface < 0.1))'), errs);
         legend('face', 'nonface');
         xlabel('frequency (Hz)');
@@ -1248,7 +1536,9 @@ for channel_i = 1:length(lfpChannels)
         clear figData
         figData.x = vertcat(fface, fnface);
         figData.y = [Cface, Cnface];
+        drawnow;
         saveFigure(outDir,sprintf('coh_MUA-LFP_%s_%s_FACEvsNON_Run%s',channelNames{channel2_i},channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
         % channel_i spike -- channel2_i field
         useJacknife = 0;
         if useJacknife
@@ -1265,7 +1555,7 @@ for channel_i = 1:length(lfpChannels)
             spikesByCategory{nonfaceCatNum}{channel_i}{end},chr_params);
           errs = vertcat(confCface*ones(1,length(Cface(fface < 0.1))),confCnface*ones(1,length(Cface(fface < 0.1))));
         end
-        figure();
+        fh = figure();
         mseb(1000*repmat(fface(fface < 0.1),2,1),vertcat((Cface(fface < 0.1))',(Cnface(fface < 0.1))'), errs);
         legend('face', 'nonface');
         xlabel('frequency (Hz)');
@@ -1274,8 +1564,9 @@ for channel_i = 1:length(lfpChannels)
         clear figData
         figData.x = vertcat(fface, fnface);
         figData.y = [Cface, Cnface];
+        drawnow;
         saveFigure(outDir,sprintf('coh_MUA-LFP_%s_%s_FACEvsNON_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-        
+        close(fh);
 
         % field-field
         [Cface,phiface,S12,S1,S2,fface,confCface,phistdface]=coherencyc(squeeze(lfpByCategory{faceCatNum}(1,channel_i,:,:))',...
@@ -1283,7 +1574,7 @@ for channel_i = 1:length(lfpChannels)
         [Cnface,phinface,S12,S1,S2,fnface,confCnface,phistdnface]=coherencyc(squeeze(lfpByCategory{nonfaceCatNum}(1,channel_i,:,:))',...
           squeeze(lfpByCategory{nonfaceCatNum}(1,channel2_i,:,:))',chr_params);
         errs = vertcat(confCface*ones(1,length(Cface(fface < 0.1))),confCnface*ones(1,length(Cface(fface < 0.1))));
-        figure();
+        fh = figure();
         mseb(1000*repmat(fface(fface < 0.1),2,1),vertcat((Cface(fface < 0.1))',(Cnface(fface < 0.1))'), errs);
         legend('face', 'nonface');
         xlabel('frequency (Hz)');
@@ -1292,8 +1583,9 @@ for channel_i = 1:length(lfpChannels)
         clear figData
         figData.x = vertcat(fface, fnface);
         figData.y = [Cface, Cnface];
+        drawnow;
         saveFigure(outDir,sprintf('coh_LFP-LFP_%s_%s_FACEvsNON_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-        
+        close(fh);
         
         % field-field time-frequency coherency, face
         [Cface,phiface,S12,S1,S2,tface,fface,confCface,phistdface]=cohgramc(squeeze(lfpByCategory{faceCatNum}(1,channel_i,:,:))',...
@@ -1301,7 +1593,7 @@ for channel_i = 1:length(lfpChannels)
         t = tface - lfpAlignParams.msPreAlign;
         f = 1000*fface;
         
-        figure(); 
+        fh = figure(); 
         imagesc(t,f,Cface'); axis xy
         xlabel('Time (ms)'); 
         ylabel('Frequency (Hz)');
@@ -1315,9 +1607,11 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = f;
         figData.z = Cface';
+        drawnow;
         saveFigure(outDir,sprintf('coh_TF_LFP-LFP_%s_%s_FACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
         
-        figure(); 
+        fh = figure(); 
         imagesc(t,f,phiface'); axis xy
         xlabel('Time (ms)'); 
         ylabel('Frequency (Hz)');
@@ -1331,14 +1625,16 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = fface;
         figData.z = phiface';
+        drawnow;
         saveFigure(outDir,sprintf('phase_TF_LFP-LFP_%s_%s_FACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
         
         % lfp-lfp time-frequency coherency, nonface
         [Cnface,phinface,S12,S1,S2,tnface,fnface,confCnface,phistdnface]=cohgramc(squeeze(lfpByCategory{nonfaceCatNum}(1,channel_i,:,:))',...
           squeeze(lfpByCategory{nonfaceCatNum}(1,channel2_i,:,:))',movingWin,chr_params);
         t = tnface - lfpAlignParams.msPreAlign;
         f = 1000*fnface;
-        figure();
+        fh = figure();
         imagesc(t,f,Cnface'); axis xy
         xlabel('Time (ms)');
         ylabel('Frequency (Hz)');
@@ -1352,9 +1648,11 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = f;
         figData.z = Cnface';
+        drawnow;
         saveFigure(outDir,sprintf('coh_TF_LFP-LFP_%s_%s_NONFACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
         
-        figure(); 
+        fh = figure(); 
         imagesc(t,f,phinface'); axis xy
         xlabel('Time (ms)'); 
         ylabel('Frequency (Hz)');
@@ -1368,15 +1666,18 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = f;
         figData.z = phinface';
+        drawnow;
         saveFigure(outDir,sprintf('phase_TF_LFP-LFP_%s_%s_NONFACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
         
         % spike-spike coherency, face vs. non
-        [Cface,phiface,S12,S1,S2,fface,zerosp,confCface,phistdface]=coherencypt(spikesByCategory{faceCatNum}{channel_i}{end},...
-          spikesByCategory{faceCatNum}{channel2_i}{end},chr_params,0,1);
-        [Cnface,phinface,S12,S1,S2,fnface,zerosp,confCnface,phistdnface]=coherencycpt(spikesByCategory{faceCatNum}{channel_i}{end},...
-          spikesByCategory{nonfaceCatNum}{channel2_i}{end},chr_params,0,1);
+        coherencyPtGrid = 1:length(squeeze(lfpByCategory{faceCatNum}(1,channel_i,1,:))); %todo: replace with calc windowed version
+        [Cface,phiface,S12,S1,S2,fface,zerosp,confCface,phistdface]=coherencypt(spikesByCategoryForTF{faceCatNum}{channel_i}{end},...
+          spikesByCategoryForTF{faceCatNum}{channel2_i}{end},chr_params); %can have time grid e.g. coherencyPtGrid as additional arg
+        [Cnface,phinface,S12,S1,S2,fnface,zerosp,confCnface,phistdnface]=coherencypt(spikesByCategoryForTF{nonfaceCatNum}{channel_i}{end},...
+          spikesByCategoryForTF{nonfaceCatNum}{channel2_i}{end},chr_params); %can have time grid e.g. coherencyPtGrid as additional arg
         errs = vertcat(confCface*ones(1,length(Cface(fface < 0.1))),confCnface*ones(1,length(Cface(fface < 0.1))));
-        figure();
+        fh = figure();
         mseb(1000*repmat(fface(fface < 0.1),2,1),vertcat((Cface(fface < 0.1))',(Cnface(fface < 0.1))'), errs);
         legend('face', 'nonface');
         xlabel('frequency (Hz)');
@@ -1385,7 +1686,9 @@ for channel_i = 1:length(lfpChannels)
         clear figData
         figData.x = vertcat(fface, fnface); %todo: fix; add freq cutoff array slice [ applies to all coherence figures ]
         figData.y = [Cface, Cnface];
+        drawnow;
         saveFigure(outDir,sprintf('coh_MUA-MUA_%s_%s_FACEvsNON_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
         
         % spike-spike time-frequency coherency, face vs. non
         
@@ -1395,7 +1698,7 @@ for channel_i = 1:length(lfpChannels)
         t = tface - lfpAlignParams.msPreAlign;
         f = 1000*fface;
         
-        figure(); 
+        fh = figure(); 
         imagesc(t,f,Cface'); axis xy
         xlabel('Time (ms)'); 
         ylabel('Frequency (Hz)');
@@ -1409,9 +1712,11 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = f;
         figData.z = Cface';
+        drawnow;
         saveFigure(outDir,sprintf('coh_TF_MUA-MUA_%s_%s_FACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
         
-        figure(); 
+        fh = figure(); 
         imagesc(t,f,phiface'); axis xy
         xlabel('Time (ms)'); 
         ylabel('Frequency (Hz)');
@@ -1425,7 +1730,9 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = fface;
         figData.z = phiface';
+        drawnow;
         saveFigure(outDir,sprintf('phase_TF_MUA-MUA_%s_%s_FACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
         
         % nonface
         [Cnface,phinface,S12,S1,S2,tnface,fnface,zerosp,confCnface,phistdnface]=cohgrampt(spikesByCategoryForTF{nonfaceCatNum}{channel_i}{end},...
@@ -1434,7 +1741,7 @@ for channel_i = 1:length(lfpChannels)
         t = tnface - lfpAlignParams.msPreAlign;
         f = 1000*fnface;
         
-        figure(); 
+        fh = figure(); 
         imagesc(t,f,Cnface'); axis xy
         xlabel('Time (ms)'); 
         ylabel('Frequency (Hz)');
@@ -1448,9 +1755,11 @@ for channel_i = 1:length(lfpChannels)
         figData.x = t;
         figData.y = f;
         figData.z = Cnface';
+        drawnow;
         saveFigure(outDir,sprintf('coh_TF_MUA-MUA_%s_%s_NONFACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
         
-        figure(); 
+        fh = figure(); 
         imagesc(t,f,phinface'); axis xy
         xlabel('Time (ms)'); 
         ylabel('Frequency (Hz)');
@@ -1462,9 +1771,11 @@ for channel_i = 1:length(lfpChannels)
         title(sprintf('%s spike - %s spike phase, nonface',channelNames{channel_i},channelNames{channel2_i}),'FontSize',18);
         clear figData
         figData.x = t;
-        figData.y = fNface;
+        figData.y = f;
         figData.z = phinface';
+        drawnow;
         saveFigure(outDir,sprintf('phase_TF_MUA-MUA_%s_%s_NONFACE_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
         % todo: granger (full, passbands)
       end
     end
