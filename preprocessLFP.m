@@ -29,20 +29,38 @@ end
 lfpChannelMap = lfpChannelMap(lfpChannelMap > 0);
 lfpData = lfpDataRaw(lfpChannelMap,:);
 clear lfpDataRaw
-lfpDataDec = zeros(size(lfpData,1),ceil(size(lfpData,2)/(decimateFactorPass1*decimateFactorPass2)));
+filterPad = 0;
+lfpDataDecPadded = zeros(size(lfpData,1),ceil(size(lfpData,2)/(decimateFactorPass1*decimateFactorPass2))+2*filterPad);
 % convert scaled units to microvolts, and decimate (note: decimation broken
 % into two steps, per matlab doc recommendation
 disp('decimating, scaling, and filtering LFP');
 for i = 1:size(lfpData,1)
-  lfpDataDec(i,:) = lfpChannelScaleBy(i)*decimate(decimate(lfpChannelScaleBy(i)*lfpData(i,:),decimateFactorPass1),decimateFactorPass2);
-  if isa(lfpFilter,'digitalFilter')
-    lfpDataDec(i,:) = filter(lfpFilter, lfpDataDec(i,:));
-  end
-end
-lfpData = lfpDataDec;
-for i = 1:size(lfpData,1)
   lfpData(i,:) = lfpData(i,:) - mean(lfpData(i,:));
 end
+for i = 1:size(lfpData,1)
+  lfpDataDecPadded(i,filterPad+1:end-filterPad) = lfpChannelScaleBy(i)*decimate(decimate(lfpData(i,:),decimateFactorPass1),decimateFactorPass2);
+  %lfpDataDecPadded(i,1:filterPad) = lfpDataDecPadded(i,filterPad+1)*lfpDataDecPadded(i,1:filterPad);
+  %lfpDataDecPadded(i,end-(filterPad-1):end) = lfpDataDecPadded(i,end-filterPad)*lfpDataDecPadded(i,end-(filterPad-1):end);
+  if i == 1
+    figure();
+    plot(lfpDataDecPadded(1,filterPad+100000:filterPad+105000),'color','r');
+    hold on
+  end
+  if isa(lfpFilter,'digitalFilter')
+    disp('using digital filter object');
+    lfpDataDecPadded(i,:) = filtfilt(lfpFilter, lfpDataDecPadded(i,:));
+  else
+    if length(lfpFilter) == 2
+      lfpDataDecPadded(i,:) = filtfilt(lfpFilter(1),lfpFilter(2),lfpDataDecPadded(i,:));
+    end
+  end
+end
+lfpData = lfpDataDecPadded(:,filterPad+1:end-filterPad);
+plot(lfpData(1,100000:105000),'color','b');
+legend({'raw','filtered'});
+drawnow;
+disp(mean(lfpData(1,:)));
+
 Output.VERBOSE('done decimating, scaling, and filtering LFP');
 Output.DEBUG('size LFP data:'); Output.DEBUG(size(lfpData));
 Output.DEBUG('size LFP data after decimation:'); Output.DEBUG(size(lfpData));

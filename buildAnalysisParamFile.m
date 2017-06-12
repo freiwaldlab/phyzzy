@@ -5,7 +5,7 @@ function [ analysisParamsFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '001';
+runNum = '002';
 dateSubject = '170405ALAN'; 
 inRig = 0;
 if inRig
@@ -42,7 +42,12 @@ ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should 
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
 hp1Hz = designfilt('highpassiir', 'FilterOrder',8,'PassbandFrequency',1, ...
   'StopbandAttenuation',100,'PassbandRipple',0.5,'SampleRate',1000); 
-ephysParams.filter = ''; % if filtering desired, ephysFilter is a digitalFilter 
+% note: with these specifications, returns a 48th order butterworth filter
+butter1Hz200Hz_v1 = designfilt('bandpassiir','DesignMethod','butter','PassbandFrequency1',1,'PassbandFrequency2',200,...
+  'SampleRate',1000,'MatchExactly','passband','StopbandFrequency1',0.67,'StopbandFrequency2',250);
+[tmp1,tmp2] = butter(4,[1/500,200/500]);
+butter1Hz200Hz_v2 = [tmp1,tmp2];
+ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter 
 
 % parameters preprocessAnalogIn, see function for details
 analogInParams.needAccel = 0;
@@ -145,22 +150,41 @@ plotSwitch.lfpLatencyMuaLatencyLate = 0;
 plotSwitch.lfpPowerAcrossChannels = 0;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
-plotSwitch.singleTrialLfpFaceVnon = 0;
+plotSwitch.singleTrialLfpFaceVnon = 1;
 plotSwitch.lfpSpectraFaceVnon = 1;
+plotSwitch.spikeSpectraFacevNon = 1;
+plotSwitch.SpikeSpectraTfByImage = 1;
+plotSwitch.lfpSpectraTfByImage = 1;
+
+analysisGroups.byCategory = {{'face','nonface'},{'face','object','body'},{'humanFace','monkeyFace','place','fruit','humanBody','monkeyBody','hand','techno'}};
+analysisGroupColors.byCategory = {{'r','b'},{'r','g','b'},{'b','c','y','g','m','r','k','k'}};
+analysisGroups.byCategoryForTf = {{'face','nonface'},{'face','object','body'}};
+analysisGroups.byImage = {};
+analysisGroupColors.byImage = {};
+analysisGroups.byCatTfByBand = {{'face','nonface'},{'face','object','body'}};
+analysisGroupColors.byCatTfByBand = {{'r','b'},{'r','g','b'},{'b','c','y','g','m','r','k','k'}};
 
 calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
-calcSwitch.imageTF = 0;
-calcSwitch.catTF = 1;
-calcSwitch.crossTF = 1;
+calcSwitch.inducedTrialMagnitudeCorrection = 0;
+calcSwitch.evokedSpectra = 1;
+calcSwitch.inducedSpectra = 1;
+calcSwitch.evokedImageTF = 0;
+calcSwitch.inducedImageTF = 0;
+calcSwitch.evokedCatTF = 0;
+calcSwitch.inducedCatTF = 0;
+calcSwitch.meanEvokedTF = 0;
+calcSwitch.crossTF = 0;
+calcSwitch.spikeTimes = 0;
+calcSwitch.useJacknife = 0;
 
 %%% set paths and directories, EDIT RARELY %%%
 analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);
 lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);
 spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
 taskFilename = sprintf('%s/%s/%s0%s.log',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
-outDir = strcat(sprintf(strcat(outputVolume,'/%s/'),dateSubject),analysisLabel,'/');
+outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
 analysisParamsFilename = strcat(outDir,analysisParamsFilenameStem);
 %
 load('cocode2.mat');
