@@ -150,19 +150,33 @@ plotSwitch.lfpLatencyMuaLatencyLate = 0;
 plotSwitch.lfpPowerAcrossChannels = 0;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
-plotSwitch.singleTrialLfpFaceVnon = 1;
-plotSwitch.lfpSpectraFaceVnon = 1;
-plotSwitch.spikeSpectraFacevNon = 1;
+plotSwitch.singleTrialLfpByCategory = 1;
+plotSwitch.lfpSpectraByCategory = 1;
+plotSwitch.spikeSpectraByCategory = 1;
 plotSwitch.SpikeSpectraTfByImage = 1;
 plotSwitch.lfpSpectraTfByImage = 1;
+plotSwitch.tfErrs = 1;
 
-analysisGroups.byCategory = {{'face','nonface'},{'face','object','body'},{'humanFace','monkeyFace','place','fruit','humanBody','monkeyBody','hand','techno'}};
-analysisGroupColors.byCategory = {{'r','b'},{'r','g','b'},{'b','c','y','g','m','r','k','k'}};
-analysisGroups.byCategoryForTf = {{'face','nonface'},{'face','object','body'}};
+%%%%
+analysisGroups.spectraByCategory.groups = {{'face','nonface'}};  %todo: add spectra diff?
+analysisGroups.spectraByCategory.names = {{'faceVnon'}};
+analysisGroups.spectraByCategory.colors = {{'faceVnon'}};
+%
+analysisGroups.tfSpectraByCategory.groups = {{'face'},{'nonface'},{'object'},{'body'}}; %todo: add tf spectra diff?
+analysisGroups.tfSpectraByCategory.names = {{'face'},{'nonface'},{'object'},{'body'}};
+%
+analysisGroups.lfpSingleTrialsByCategory.groups = {{'face','nonface'}};
+analysisGroups.lfpSingleTrialsByCategory.names = {{'faceVnon'}};
+%
+analysisGroups.coherenceByCategory.groups = {{'face','nonface'},{'face','object','body'},{'humanFace','monkeyFace','place','fruit','humanBody','monkeyBody','hand','techno'}};
+analysisGroups.coherenceByCategory.colors = {{'r','b'},{'r','g','b'},{'b','c','y','g','m','r','k','k'}};
+analysisGroups.coherenceByCategory.names = {'faceVnon','fob','slimCats'};
+%
+analysisGroups.tfCouplingByCategory.groups = {{'face'},{'nonface'},{'object'},{'body'}};
+
 analysisGroups.byImage = {};
 analysisGroupColors.byImage = {};
-analysisGroups.byCatTfByBand = {{'face','nonface'},{'face','object','body'}};
-analysisGroupColors.byCatTfByBand = {{'r','b'},{'r','g','b'},{'b','c','y','g','m','r','k','k'}};
+%%%%%
 
 calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
@@ -175,7 +189,7 @@ calcSwitch.inducedImageTF = 0;
 calcSwitch.evokedCatTF = 0;
 calcSwitch.inducedCatTF = 0;
 calcSwitch.meanEvokedTF = 0;
-calcSwitch.crossTF = 0;
+calcSwitch.coherenceByCategory = 0;
 calcSwitch.spikeTimes = 0;
 calcSwitch.useJacknife = 0;
 
