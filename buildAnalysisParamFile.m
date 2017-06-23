@@ -18,11 +18,13 @@ end
 outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
 analysisLabel = 'Basic';
 analysisParamsFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
+preprocessedDataFilenameStem = 'preprocessedData.mat';
 picParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';
 categoryListSlim = {'humanFace','monkeyFace','place','fruit','humanBody','monkeyBody','techno'}; %minimal cat list for clean plots
 saveFig = 1;
 exportFig = 0;
 saveFigData = 0;
+savePreprocessed = 0;
 verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 
 
@@ -131,10 +133,10 @@ plotSwitch.tuningCurvesEarly = 0;
 plotSwitch.tuningCurvesLate = 0;
 plotSwitch.calcLatencyRF = 0;
 plotSwitch.calcEvokedPowerRF = 0;
-plotSwitch.faceVnonEvokedPotential = 0;
-plotSwitch.faceVnonEvokedMuaMultiCh = 0;
-plotSwitch.evokedByCategory = 0;
-plotSwitch.psthEvokedByCategory = 0;
+plotSwitch.faceVnonEvokedPotential = 1;
+plotSwitch.faceVnonEvokedMuaMultiCh = 1;
+plotSwitch.evokedByCategory = 1;
+plotSwitch.psthEvokedByCategory = 1;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
 plotSwitch.runSummaryImMeanSubDiv = 0;
@@ -155,24 +157,25 @@ plotSwitch.lfpSpectraByCategory = 1;
 plotSwitch.spikeSpectraByCategory = 1;
 plotSwitch.SpikeSpectraTfByImage = 1;
 plotSwitch.lfpSpectraTfByImage = 1;
+plotSwitch.tfSpectraByCategory = 1;
 plotSwitch.tfErrs = 1;
 
 %%%%
-analysisGroups.spectraByCategory.groups = {{'face','nonface'}};  %todo: add spectra diff?
-analysisGroups.spectraByCategory.names = {{'faceVnon'}};
-analysisGroups.spectraByCategory.colors = {{'faceVnon'}};
+analysisGroups.spectraByCategory.groups = {{'face';'nonface'}};  %todo: add spectra diff?
+analysisGroups.spectraByCategory.names = {'faceVnon'};
+analysisGroups.spectraByCategory.colors = {{'r';'b'}};
 %
-analysisGroups.tfSpectraByCategory.groups = {{'face'},{'nonface'},{'object'},{'body'}}; %todo: add tf spectra diff?
-analysisGroups.tfSpectraByCategory.names = {{'face'},{'nonface'},{'object'},{'body'}};
+analysisGroups.tfSpectraByCategory.groups = {{'face'};{'nonface'};{'object'};{'body'}}; %todo: add tf spectra diff?
+analysisGroups.tfSpectraByCategory.names = {'face';'nonface';'object';'body'};
 %
-analysisGroups.lfpSingleTrialsByCategory.groups = {{'face','nonface'}};
-analysisGroups.lfpSingleTrialsByCategory.names = {{'faceVnon'}};
+analysisGroups.lfpSingleTrialsByCategory.groups = {{'face';'nonface'}};
+analysisGroups.lfpSingleTrialsByCategory.names = {'faceVnon'};
 %
-analysisGroups.coherenceByCategory.groups = {{'face','nonface'},{'face','object','body'},{'humanFace','monkeyFace','place','fruit','humanBody','monkeyBody','hand','techno'}};
-analysisGroups.coherenceByCategory.colors = {{'r','b'},{'r','g','b'},{'b','c','y','g','m','r','k','k'}};
-analysisGroups.coherenceByCategory.names = {'faceVnon','fob','slimCats'};
+analysisGroups.coherenceByCategory.groups = {{'face';'nonface'};{'face';'object';'body'};{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'hand';'techno'}};
+analysisGroups.coherenceByCategory.colors = {{'r';'b'};{'r';'g';'b'};{'b';'c';'y';'g';'m';'r';'k';'k'}};
+analysisGroups.coherenceByCategory.names = {'faceVnon';'fob';'slimCats'};
 %
-analysisGroups.tfCouplingByCategory.groups = {{'face'},{'nonface'},{'object'},{'body'}};
+analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'};{'object'};{'body'}};
 
 analysisGroups.byImage = {};
 analysisGroupColors.byImage = {};
@@ -183,13 +186,14 @@ calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
 calcSwitch.evokedSpectra = 1;
-calcSwitch.inducedSpectra = 1;
+calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatTF = 0;
+calcSwitch.evokedCatTF = 1;
 calcSwitch.inducedCatTF = 0;
-calcSwitch.meanEvokedTF = 0;
-calcSwitch.coherenceByCategory = 0;
+calcSwitch.meanEvokedTF = 1;
+calcSwitch.trialMeanSpectra = 1;
+calcSwitch.coherenceByCategory = 1;
 calcSwitch.spikeTimes = 0;
 calcSwitch.useJacknife = 0;
 
@@ -200,6 +204,7 @@ spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,run
 taskFilename = sprintf('%s/%s/%s0%s.log',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
 outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
 analysisParamsFilename = strcat(outDir,analysisParamsFilenameStem);
+preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);
 %
 load('cocode2.mat');
 psthColormap = map;

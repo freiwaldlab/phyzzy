@@ -632,9 +632,9 @@ if taskData.RFmap
   end
   display_map(rfGrid(:,1),rfGrid(:,2),meanRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('Channel %d, Unit %d, Mean RF',channel_i,unit_i),...
     [outDir sprintf('MeanRF_%s_Unit%d_Run%s.png',channelNames{channel_i},unit_i,runNum)]);
+  disp('Receptive field mapping run; returning before coupling analyses');
   return
 end  
-
 % evokedTF says to do TF analysis on the trial average psth and evoked potentials
 if calcSwitch.meanEvokedTF && calcSwitch.spikeTimes
   % note: because I'm currently working with spike times rather than
@@ -708,9 +708,9 @@ if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF) && ~calcSwitch.spikeTi
     end
   end
 end
-
 %%%% make evoked potential plots by category
 times = -psthPre:psthImDur+psthPost; %todo: rename var to eg psthTimes or lfpTimes
+%todo: remove face-specific aspects/hardcodes
 for channel_i = 1:length(lfpChannels)
   
   % todo: programatize on category
@@ -731,7 +731,7 @@ for channel_i = 1:length(lfpChannels)
     yyaxis right
     ylabel('lfp (normalized)'); % todo: units
     yyaxis left
-    ylabel('firing rate (Hz)');
+    ylabel('firing rate (normalized)');
     hold on
     subplot(2,1,2);
     title('Non-face');
@@ -739,7 +739,7 @@ for channel_i = 1:length(lfpChannels)
     yyaxis right
     ylabel('lfp (normalized)'); % todo: units
     yyaxis left
-    ylabel('firing rate (Hz)');
+    ylabel('firing rate (normalized)');
     hold on
     handlesForLegend1 = [];
     handlesForLegend2 = [];
@@ -771,7 +771,7 @@ for channel_i = 1:length(lfpChannels)
     lhLFP = plot(times,faceV/max(faceV),'color',chColors(channel_i), 'linestyle','-','linewidth',2);  %todo: add errorbars?
     yyaxis left
     facePSTH = squeeze(catMuaPsthByChannel(channel_i,faceCatNum,:));
-    lhMUA = plot(times,facePSTH,'color',chColors(channel_i),'linestyle','--','linewidth',2); 
+    lhMUA = plot(times,facePSTH/max(facePSTH),'color',chColors(channel_i),'linestyle','--','linewidth',2); 
     handlesForLegend1 = [handlesForLegend1,lhLFP,lhMUA];
     forLegend = [forLegend,strcat(channelNames{channel_i},' LFP'),strcat(channelNames{channel_i},' MUA')];
     if channel_i == length(lfpChannels)
@@ -784,7 +784,7 @@ for channel_i = 1:length(lfpChannels)
     lhLFP = plot(times,nfaceV/max(nfaceV),'color',chColors(channel_i), 'linestyle', '-','linewidth',2);
     yyaxis left
     nfacePSTH = squeeze(catMuaPsthByChannel(channel_i,nonfaceCatNum,:));
-    lhMUA = plot(times,nfacePSTH,'color',chColors(channel_i),'linestyle','--','linewidth',2);
+    lhMUA = plot(times,nfacePSTH/max(nfacePSTH),'color',chColors(channel_i),'linestyle','--','linewidth',2);
     handlesForLegend2 = [handlesForLegend2, lhLFP, lhMUA];
     if channel_i == length(lfpChannels)
       legend(handlesForLegend2,forLegend);
@@ -859,7 +859,6 @@ for channel_i = 1:length(lfpChannels)
     saveFigure(outDir,sprintf('PSTH_Evoked_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
 end
-
 if plotSwitch.runSummary
   for channel_i = 1:length(channelNames)
     f = figure();
@@ -1102,8 +1101,8 @@ if plotSwitch.runSummaryImMeanSubDiv
     close(f);
   end
 end
-  
-  % make lfp power-fr scatter plot
+%%% scatter plots %%%
+% make lfp power-fr scatter plot
 if plotSwitch.lfpPowerMuaScatterAll
   for channel_i = 1:length(channelNames)
     for unit_i = 1:length(channelUnitNames{channel_i})
@@ -1180,6 +1179,7 @@ if plotSwitch.lfpPeakToPeakMuaScatterAllEarly
       saveFigure(outDir,sprintf('scatter_lfpP2PVsFr_early_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
   end
+end 
   
 if plotSwitch.lfpLatencyMuaLatencyEarly
   for channel_i = 1:length(channelNames)
@@ -1222,12 +1222,10 @@ if plotSwitch.lfpPeakToPeakMuaScatterAllLate
     end
   end
 end
-  
 if plotSwitch.lfpLatencyMuaLatencyLate
   for channel_i = 1:length(channelNames)
   end
 end
-  
 % lfp power vs lfp power, across channels
 if plotSwitch.lfpPowerAcrossChannels && channel_i < length(lfpChannels)
   for channel_i = 1:length(channelNames)
@@ -1350,20 +1348,20 @@ for calc_i = 1:length(calcSwitches)
         group = analysisGroups.lfpSingleTrialsByCategory.groups{group_i};
         groupName = analysisGroups.lfpSingleTrialsByCategory.names{group_i};
         for channel_i = 1:length(channelNames)
-          figure();
+          f = figure();
           figdata = cell(length(group),1);
-          for cat_i = 1:length(group)
-            subplot(length(group),1,cat_i)
+          for gcat_i = 1:length(group)
+            subplot(length(group),1,gcat_i)
             hold on
             ydata = zeros(50,length(times));
             for i = 1:50
-              plot(times, squeeze(lfpByCategory{catInds.(group{i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy)));
-              ydata(i,:) = squeeze(lfpByCategory{catInds.(group{i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy));
+              plot(times, squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy)));
+              ydata(i,:) = squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy));
             end;
             h = get(gca,'ylim');
             plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
             hold off
-            title(sprintf('single trial LFPs, %s, %s%s', group{cat_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}), 'FontSize',18);
+            title(sprintf('single trial LFPs, %s, %s%s', group{gcat_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}), 'FontSize',18);
             xlabel('time after stimulus (ms)', 'FontSize',18);
             ylabel('voltage (uV)', 'FontSize',18);
             set(gca,'fontsize',18);
@@ -1373,6 +1371,7 @@ for calc_i = 1:length(calcSwitches)
             figdata{cat_i} = tmp;
           end
           saveFigure(outDir,sprintf('Evoked_singleTrials_%s_%s%s_Run%s',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+          close(f);
         end
       end
     end
@@ -1386,25 +1385,26 @@ for calc_i = 1:length(calcSwitches)
         for channel_i = 1:length(channelNames)
           for gcat_i = 1:length(group)
             [S,F,E] = mtspectrumc(squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,:,:))', chr_params);
-            if cat_i == 1
+            if gcat_i == 1
               spectra = zeros(length(group),length(S));
               freqs = zeros(length(group),length(F));
-              errs = zeros(length(group),length(E));
+              errs = zeros(length(group),length(E),2);
             end
-            spectra(cat_i,:) = S;
-            freqs(cat_i,:) = F;
-            errs(cat_i,:) = E;
+            spectra(gcat_i,:) = S';
+            freqs(gcat_i,:) = 1000*F';
+            errs(gcat_i,:,1) = E(1,:)'-S;
+            errs(gcat_i,:,2) = S-E(2,:)';
           end
-          figure();
-          lineprops.width = 3;
-          lineprops.col = analysisGroups.spectraByCategory.colors{group_i};
-          mseb(1000*freqs,spectra,errs,'linewidth',lineprops);
+          f = figure();
+          lineProps.width = 3;
+          lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
+          mseb(freqs,spectra,errs,lineProps);
           hold on
           % need to plot individually as well, to get point markers
-          handles = cell(length(group),1);
-          for cat_i = 1:length(group)
-            h = plot(freqs(cat_i,:),spectra(cat_i,:),'linewidth',3,'linestyle','none','marker','o','color',groupColors{cat_i});
-            handles{cat_i} = h;
+          handles = gobjects(length(group),1);
+          for gcat_i = 1:length(group)
+            h = plot(freqs(gcat_i,:),spectra(gcat_i,:),'linewidth',3,'linestyle','none','marker','o','color',groupColors{gcat_i});
+            handles(gcat_i) = h;
           end
           set(gca,'yScale','log');
           title(sprintf('%s evoked power spectra, %s%s',channelNames{channel_i},groupName,tfCalcSwitchTitleSuffixes{calc_i}), 'FontSize',18);
@@ -1418,20 +1418,105 @@ for calc_i = 1:length(calcSwitches)
           figData.e = errs;
           drawnow;
           saveFigure(outDir,sprintf('spectrum_%s_%s%s_Run%s',groupName,channelNames{channel_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-
-          specModel = fitlm(log(1000*mean(freqs(:,6:end),1), log(mean(spectra(:,6:end),1))));
+          close(f);
+          
+          %loglog spectrum with power law fit
+          specModel = fitlm(log(1000*mean(freqs(:,6:end),1)), log(mean(spectra(:,6:end),1)));
           m = specModel.Coefficients.Estimate(2);
           y0 = specModel.Coefficients.Estimate(1);
-          h = plot(1000*mean(freqs(:,6:end),1),exp(m*log(1000*mean(freqs(:,6:end),1)) + y0), 'k--');
+          f = figure();
+          lineProps.width = 3;
+          lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
+          mseb(freqs,spectra,errs,lineProps);
+          hold on
+          % need to plot individually as well, to get point markers
+          handles = gobjects(length(group),1);
+          for gcat_i = 1:length(group)
+            h = plot(freqs(gcat_i,:),spectra(gcat_i,:),'linewidth',3,'linestyle','none','marker','o','color',groupColors{gcat_i});
+            handles(gcat_i) = h;
+          end
+          h = plot(mean(freqs(:,6:end),1),exp(m*log(1000*mean(freqs(:,6:end),1)) + y0), 'k--');
+          set(gca,'yScale','log');
           set(gca,'xScale','log');
           xlabel('frequency (Hz)', 'FontSize',18);
           ylabel('voltage (uV)', 'FontSize',18);
-          legend(vertcat(handles,{h}),vertcat(group,{sprintf('fit,m = %.3f',m)}));
+          title(sprintf('%s evoked power spectra, %s%s',channelNames{channel_i},groupName,tfCalcSwitchTitleSuffixes{calc_i}), 'FontSize',18);
+          legend(vertcat(handles,h),vertcat(group,{sprintf('fit,m = %.3f',m)}));
           set(gca,'fontsize',18);
           clear figData
-          figData.y = vertcat(faceS,nfaceS);
-          figData.x = vertcat(faceF,nfaceF);
+          figData.y = spectra;
+          figData.x = freqs;
+          figData.e = errs;
           saveFigure(outDir,sprintf('spectrum_loglog_%s_%s%s_Run%s',groupName,channelNames{channel_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+          close(f);
+          
+          if calcSwitch.trialMeanSpectra
+            for gcat_i = 1:length(group)
+              [S,F,E] = mtspectrumc(squeeze(mean(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,:,:),3)), chr_params);
+              if gcat_i == 1
+                spectra = zeros(length(group),length(S));
+                freqs = zeros(length(group),length(F));
+                errs = zeros(length(group),length(E),2);
+              end
+              spectra(gcat_i,:) = S'; %note: explicit transposition not technically necessary, since matlab will transpose automatically for singleton dimensions
+              freqs(gcat_i,:) = 1000*F';
+              errs(gcat_i,:,1) = E(1,:)'-S;
+              errs(gcat_i,:,2) = S-E(2,:)';
+            end
+            f = figure();
+            lineProps.width = 3;
+            lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
+            mseb(freqs,spectra,errs,lineProps);
+            hold on
+            % need to plot individually as well, to get point markers
+            handles = gobjects(length(group),1);
+            for gcat_i = 1:length(group)
+              h = plot(freqs(gcat_i,:),spectra(gcat_i,:),'linewidth',2,'linestyle','none','marker','o','color',groupColors{gcat_i});
+              handles(gcat_i) = h;
+            end
+            set(gca,'yScale','log');
+            title(sprintf('%s mean-evoked power spectra, %s%s',channelNames{channel_i},groupName,tfCalcSwitchTitleSuffixes{calc_i}), 'FontSize',18);
+            xlabel('frequency (Hz)', 'FontSize',18);
+            ylabel('voltage, log(uV)', 'FontSize',18);
+            legend(handles,group);
+            set(gca,'fontsize',18);
+            clear figData
+            figData.y = spectra;
+            figData.x = freqs;
+            figData.e = errs;
+            drawnow;
+            saveFigure(outDir,sprintf('spectrum_mean_%s_%s%s_Run%s',groupName,channelNames{channel_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+            close(f);
+            
+            f = figure();
+            lineProps.width = 3;
+            lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
+            mseb(freqs,spectra,errs,lineProps);
+            hold on
+            % need to plot individually as well, to get point markers
+            handles = gobjects(length(group),1);
+            for gcat_i = 1:length(group)
+              h = plot(freqs(gcat_i,:),spectra(gcat_i,:),'linewidth',3,'linestyle','none','marker','o','color',groupColors{gcat_i});
+              handles(gcat_i) = h;
+            end
+            set(gca,'yScale','log');
+            set(gca,'xScale','log');
+            title(sprintf('%s mean-evoked power spectra, %s%s',channelNames{channel_i},groupName,tfCalcSwitchTitleSuffixes{calc_i}), 'FontSize',18);
+            specModel = fitlm(log(mean(freqs(:,6:end),1)), log(mean(spectra(:,6:end),1)));
+            m = specModel.Coefficients.Estimate(2);
+            y0 = specModel.Coefficients.Estimate(1);
+            h = plot(mean(freqs(:,6:end),1),exp(m*log(mean(freqs(:,6:end),1)) + y0), 'k--');
+            xlabel('frequency (Hz)', 'FontSize',18);
+            ylabel('voltage (uV)', 'FontSize',18);
+            legend(vertcat(handles,h),vertcat(group,{sprintf('fit,m = %.3f',m)}));
+            set(gca,'fontsize',18);
+            clear figData
+            figData.y = spectra;
+            figData.x = freqs;
+            figData.e = errs;
+            saveFigure(outDir,sprintf('spectrum__mean_loglog_%s_%s%s_Run%s',groupName,channelNames{channel_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+            close(f);
+          end
         end
       end
     end
@@ -1453,25 +1538,26 @@ for calc_i = 1:length(calcSwitches)
               else
                 [S,F,~,E] = mtspectrumpb(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i}', chr_params);
               end
-              if cat_i == 1
+              if gcat_i == 1
                 spectra = zeros(length(group),length(S));
                 freqs = zeros(length(group),length(F));
-                errs = zeros(length(group),length(E));
+                errs = zeros(length(group),length(E),2);
               end
-              spectra(cat_i,:) = S;
-              freqs(cat_i,:) = F;
-              errs(cat_i,:) = E;
+              spectra(gcat_i,:) = S';
+              freqs(gcat_i,:) = 1000*F';
+              errs(gcat_i,:,1) = E(1,:)'-S;
+              errs(gcat_i,:,2) = S-E(2,:)';
             end
-            figure();
-            lineprops.width = 3;
-            lineprops.col = analysisGroups.spectraByCategory.colors{group_i};
-            mseb(1000*freqs,spectra,errs,'linewidth',3,'marker','o');
+            f = figure();
+            lineProps.width = 3;
+            lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
+            mseb(freqs,spectra,errs,lineProps);
             hold on
             % need to plot individually as well, to get point markers
-            handles = cell(length(group),1);
-            for cat_i = 1:length(group)
-              h = plot(freqs(cat_i,:),spectra(cat_i,:),'linewidth',3,'linestyle','none','marker','o','color',groupColors{cat_i});
-              handles{cat_i} = h;
+            handles = gobjects(length(group),1);
+            for gcat_i = 1:length(group)
+              h = plot(freqs(gcat_i,:),spectra(gcat_i,:),'linewidth',3,'linestyle','none','marker','o','color',groupColors{gcat_i});
+              handles(gcat_i) = h;
             end
             set(gca,'yScale','log');
             title(sprintf('%s %s evoked power spectra, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchTitleSuffixes{calc_i}), 'FontSize',18);
@@ -1484,20 +1570,109 @@ for calc_i = 1:length(calcSwitches)
             figData.x = freqs;
             figData.e = errs;
             drawnow;
+            saveFigure(outDir,sprintf('spectrum_%s_%s%s%s_Run%s',groupName,channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+            close(f);
             
-            specModel = fitlm(log(1000*mean(freqs(:,6:end),1), log(mean(spectra(:,6:end),1))));
+            f = figure();
+            lineProps.width = 3;
+            lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
+            mseb(freqs,spectra,errs,lineProps);
+            hold on
+            % need to plot individually as well, to get point markers
+            handles = gobjects(length(group),1);
+            for gcat_i = 1:length(group)
+              h = plot(freqs(gcat_i,:),spectra(gcat_i,:),'linewidth',3,'linestyle','none','marker','o','color',groupColors{gcat_i});
+              handles(gcat_i) = h;
+            end
+            set(gca,'yScale','log');
+            set(gca,'xScale','log');
+            specModel = fitlm(log(mean(freqs(:,6:end),1)), log(mean(spectra(:,6:end),1)));
             m = specModel.Coefficients.Estimate(2);
             y0 = specModel.Coefficients.Estimate(1);
-            h = plot(1000*mean(freqs(:,6:end),1),exp(m*log(1000*mean(freqs(:,6:end),1)) + y0), 'k--');
-            set(gca,'xScale','log');
+            h = plot(mean(freqs(:,6:end),1),exp(m*log(mean(freqs(:,6:end),1)) + y0), 'k--');
             xlabel('frequency (Hz)', 'FontSize',18);
             ylabel('power (spks/s)', 'FontSize',18);
-            legend(vertcat(handles,{h}),vertcat(group,{sprintf('fit,m = %.3f',m)}));
+            title(sprintf('%s %s evoked power spectra, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchTitleSuffixes{calc_i}), 'FontSize',18);
+            legend(vertcat(handles,h),vertcat(group,{sprintf('fit,m = %.3f',m)}));
             set(gca,'fontsize',18);
             clear figData
-            figData.y = vertcat(faceS,nfaceS);
-            figData.x = vertcat(faceF,nfaceF);
+            figData.y = spectra;
+            figData.x = freqs;
+            figData.e = errs;
             saveFigure(outDir,sprintf('spectrum_loglog_%s_%s%s%s_Run%s',groupName,channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+            close(f);
+            
+            if calcSwitch.trialMeanSpectra
+              for gcat_i = 1:length(group)              
+                if calcSwitch.spikeTimes
+                  [S,F,~,E] = mtspectrumpt(allSpikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i}, chr_params); %matlab note: '~' is placeholder for unneeded output
+                else
+                  [S,F,~,E] = mtspectrumpb(mean(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i},1)', chr_params);
+                end
+                if gcat_i == 1
+                  spectra = zeros(length(group),length(S));
+                  freqs = zeros(length(group),length(F));
+                  errs = zeros(length(group),length(E),2);
+                end
+                spectra(gcat_i,:) = S';
+                freqs(gcat_i,:) = 1000*F';
+                errs(gcat_i,:,1) = E(1,:)'-S;
+                errs(gcat_i,:,2) = S-E(2,:)';
+              end
+              f = figure();
+              lineProps.width = 3;
+              lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
+              mseb(freqs,spectra,errs,lineProps);
+              hold on
+              % need to plot individually as well, to get point markers
+              handles = gobjects(length(group),1);
+              for gcat_i = 1:length(group)
+                h = plot(freqs(gcat_i,:),spectra(gcat_i,:),'linewidth',3,'linestyle','none','marker','o','color',groupColors{gcat_i});
+                handles(gcat_i) = h;
+              end
+              set(gca,'yScale','log');
+              title(sprintf('%s %s mean-evoked power spectra, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchTitleSuffixes{calc_i}), 'FontSize',18);
+              xlabel('frequency (Hz)', 'FontSize',18);
+              ylabel('power (spks/s)', 'FontSize',18);
+              legend(handles,group);
+              set(gca,'fontsize',18);
+              clear figData
+              figData.y = spectra;
+              figData.x = freqs;
+              figData.e = errs;
+              drawnow;
+              saveFigure(outDir,sprintf('spectrum_mean_%s_%s%s%s_Run%s',groupName,channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              close(f);
+              
+              f = figure();
+              lineProps.width = 3;
+              lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
+              mseb(freqs,spectra,errs,lineProps);
+              hold on
+              % need to plot individually as well, to get point markers
+              handles = gobjects(length(group),1);
+              for gcat_i = 1:length(group)
+                h = plot(freqs(gcat_i,:),spectra(gcat_i,:),'linewidth',3,'linestyle','none','marker','o','color',groupColors{gcat_i});
+                handles(gcat_i) = h;
+              end
+              set(gca,'yScale','log');
+              set(gca,'xScale','log');
+              specModel = fitlm(log(mean(freqs(:,6:end),1)), log(mean(spectra(:,6:end),1)));
+              m = specModel.Coefficients.Estimate(2);
+              y0 = specModel.Coefficients.Estimate(1);
+              h = plot(mean(freqs(:,6:end),1),exp(m*log(mean(freqs(:,6:end),1)) + y0), 'k--');
+              xlabel('frequency (Hz)', 'FontSize',18);
+              ylabel('power (spks/s)', 'FontSize',18);
+              title(sprintf('%s %s mean-evoked power spectra, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchTitleSuffixes{calc_i}), 'FontSize',18);              
+              legend(vertcat(handles,h),vertcat(group,{sprintf('fit,m = %.3f',m)}));
+              set(gca,'fontsize',18);
+              clear figData
+              figData.y = spectra;
+              figData.x = freqs;
+              figData.e = errs;
+              saveFigure(outDir,sprintf('spectrum_mean_loglog_%s_%s%s%s_Run%s',groupName,channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              close(f);
+            end
           end
         end
       end
@@ -1564,6 +1739,36 @@ for calc_i = 1:length(tfCalcSwitches)
             drawnow;
             saveFigure(outDir,sprintf('TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
             close(fh);
+            
+            if calcSwitch.trialMeanSpectra
+              if calcSwitch.spikeTimes
+                [S,t,f,~,Serr]=mtspecgrampt(allSpikesByImageForTF{image_i}{channel_i}{unit_i},movingWin,chr_params); %last optional param not used: fscorr
+              else
+                [S,t,f,~,Serr]=mtspecgrampb(mean(spikesByImageBinned{image_i}{channel_i}{unit_i},1)',movingWin,chr_params); %last optional param not used: fscorr
+              end
+              %todo: add Serr plot, significance plot, effect size plot, or similar
+              %todo: add support for image calc groups, incl 'pref' wildcard
+              t = t - lfpAlignParams.msPreAlign;
+              f = 1000*f;
+              fh = figure();
+              imagesc(t,f,S'); %TODO: fix to match cat version, which is correct!!
+              set(gca,'Ydir','normal'); % also need 'Yscale,'log'??
+              xlabel('Time'); % todo: units
+              ylabel('Frequency (Hz)');
+              c = colorbar();
+              ylabel(c,'Power'); % todo: check units
+              hold on
+              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              title(sprintf('%s %s Time-Frequency, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
+              clear FigData
+              figData.x = t;
+              figData.y = f;
+              figData.z = S';
+              drawnow;
+              saveFigure(outDir,sprintf('TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              close(fh);
+            end
           end
         end
       end
@@ -1585,13 +1790,13 @@ for calc_i = 1:length(tfCalcSwitches)
         hold on
         draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
         draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-        title(sprintf('%s LFP Time-Frequency, %s%s',channelNames{channel_i},pictureLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
+        title(sprintf('%s mean LFP Time-Frequency, %s%s',channelNames{channel_i},pictureLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
         clear figData
         figData.x = t;
         figData.y = f;
         figData.z = S;
         drawnow;
-        saveFigure(outDir,sprintf('TF_LFP_%s_%s%s_Run%s',channelNames{channel_i},pictureLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('TF_mean_LFP_%s_%s%s_Run%s',channelNames{channel_i},pictureLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         close(fh);
       end
     end
@@ -1689,6 +1894,46 @@ for calc_i = 1:length(tfCalcSwitches)
                 ylabel('Frequency (Hz)');
                 title(forTitle);
               end
+              
+              if calcSwitch.trialMeanSpectra
+                if calcSwitch.spikeTimes
+                  [S,t,f,~,Serr] = mtspecgrampt(allSpikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},movingWin,chr_params); %last optional param not used: fscorr
+                else
+                  [S,t,f,~,Serr] = mtspecgrampb(mean(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i},1)',movingWin,chr_params); %last optional param not used: fscorr
+                end
+                t = t - lfpAlignParams.msPreAlign;
+                f = 1000*f;
+                totalPower = sum(S,2)';
+                fh = figure();
+                if specgramRowAve
+                  for i = 1:size(S,2)
+                    S(:,i) = S(:,i)/mean(S(:,i)); 
+                  end
+                  imagesc(t,f,S'); axis xy; c = colorbar();
+                  ylabel(c,'Row-Normalized Power');
+                else
+                  S = 10*log10(S);
+                  imagesc(t,f,S'); axis xy; c = colorbar();
+                  ylabel(c,'Power (dB)');
+                end
+                xlabel('Time (ms)'); 
+                ylabel('Frequency (Hz)');
+                hold on
+                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                yyaxis right
+                plot(t,totalPower,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                ylabel('Integrated Power');
+                hold off
+                title(sprintf('%s %s mean Time-Frequency, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},categoryList{catInds.(group{gcat_i})},tfCalcSwitchTitleSuffixes{calc_i}));
+                clear figData
+                figData.x = t;
+                figData.y = f;
+                figData.z = S;
+                drawnow;
+                saveFigure(outDir,sprintf('TF_mean_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},categoryList{catInds.(group{gcat_i})},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                close(fh);
+              end
             end
             % lfp
             [S,t,f]=mtspecgramc(squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,:,:))',movingWin,chr_params);
@@ -1736,9 +1981,45 @@ for calc_i = 1:length(tfCalcSwitches)
             xlabel('Time (ms)'); 
             ylabel('Frequency (Hz)');
             title(forTitle);
+            
+            if calcSwitch.trialMeanSpectra
+              [S,t,f]=mtspecgramc(squeeze(mean(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,:,:),3)),movingWin,chr_params);
+              t = t - lfpAlignParams.msPreAlign;
+              f = 1000*f;
+              totalPower = sum(S,2)';
+
+              fh = figure();
+              if specgramRowAve
+                for i = 1:size(S,2)
+                  S(:,i) = S(:,i)/mean(S(:,i));
+                end
+                imagesc(t,f,S'); axis xy; c = colorbar();
+                ylabel(c,'Row-Normalized Power');
+              else
+                S = 10*log10(S);
+                imagesc(t,f,S'); axis xy; c = colorbar();
+                ylabel(c,'Power (dB)');
+              end
+              xlabel('Time (ms)'); 
+              ylabel('Frequency (Hz)');
+              hold on
+              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              yyaxis right
+              plot(t,totalPower,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              ylabel('Integrated Power');
+              hold off
+              title(sprintf('%s mean LFP Time-Frequency, %s%s',channelNames{channel_i},categoryList{catInds.(group{gcat_i})},tfCalcSwitchTitleSuffixes{calc_i}));
+              clear figData
+              figData.x = t;
+              figData.y = f;
+              figData.z = S';
+              drawnow;
+              saveFigure(outDir,sprintf('TF_mean_%s_LFP_%s%s_Run%s',channelNames{channel_i},categoryList{catInds.(group{gcat_i})},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              close(fh);
+            end
           end
           drawnow;
-          
           if channel_i == length(lfpChannels) && gcat_i == length(group)
             figure(muaTfFig);
             saveFigure(outDir,sprintf('TF_MUA_%s_%s%s.fig',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
@@ -1775,151 +2056,6 @@ for calc_i = 1:length(tfCalcSwitches)
       lfpByCategoryEvokedTmp = lfpByCategory;
       lfpByCategory = lfpByCategoryInduced;
     end      
-    if calcSwitch.coherenceByCategory 
-      % spike field coherence, within and across channels
-      for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
-        group = analysisGroups.coherenceCategory.groups{group_i};
-        groupName = analysisGroups.coherenceCategory.names{group_i};
-         % channel_i spike -- channel_i field
-        for channel_i = 1:length(channelNames)
-          for unit_i = 1:length(channelUnitNames{channel_i})
-            if length(channelUnitNames{channel_i}) == 2 && unit_i == 1
-              continue
-            end
-            for gcat_i = 1:length(group)
-              if calcSwitch.spikeTimes
-                [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencycpt(squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,:,:))',...
-                  spikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},chr_params);
-              else
-                [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencycpb(squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,:,:))',...
-                  spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i}',chr_params);
-              end
-              if ~calcSwitch.useJacknife
-                Cerr = ones(2,size(C,1),size(C,2));
-                Cerr(1,:,:) = C+confC; %todo: confirm that this works
-                Cerr(2,:,:) = C-confC;
-              end
-              if gcat_i == 1
-                spectra = zeros(length(group),length(C));
-                specErrs = zeros(length(group),length(C),2);
-                phases = zeros(length(group),length(C));
-                phaseErrs = zeros(length(group),length(C));
-                freqs=  zeros(length(group),length(C));
-              end
-              spectra(gcat_i,:) = C';
-              phases(gcat_i,:) = phi';
-              specErrs(gcat_i,:,:) = Cerr';
-              phaseErrs(gcat_i,:) = phistd';
-              freqs(gcat_i,:) = f';
-            end
-            % note: this correction maintains consistency with X-Y coherence, where X comes first in the call to coherency, but so we can say X=spike,
-            % Y=field, while chronux requires us to put field first in the function call
-            phases = -1*phases;
-
-            fh = figure();
-            lineprops.width = 3;
-            lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-            plotCutoffFreq = .1;
-            mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
-            legend(group);
-            xlabel('frequency (Hz)');
-            ylabel('coherency');
-            title(sprintf('%s %s - %s field coherence%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-            clear figData
-            figData.x = freqs; %todo: save with or without cutoff freq?
-            figData.y = spectra;
-            figdata.e = specErrs;
-            drawnow;
-            saveFigure(outDir,sprintf('coh_%s_%s_%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
-            
-            %phases %todo: convert from std to sterr?
-            fh = figure();
-            lineprops.width = 3;
-            lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-            plotCutoffFreq = .1;
-            mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
-            legend(group);
-            xlabel('frequency (Hz)');
-            ylabel('phase');
-            title(sprintf('%s %s - %s field phase%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-            clear figData
-            figData.x = freqs; %todo: save with or without cutoff freq?
-            figData.y = phases;
-            figdata.e = phaseErrs;
-            drawnow;
-            saveFigure(outDir,sprintf('phase_%s_%s_%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
-          end
-          
-          if calcSwitch.meanEvokedTF  
-            for gcat_i = 1:length(group)
-              if calcSwitch.spikeTimes
-                [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencycpt(squeeze(mean(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,:,:),3)),...
-                  allSpikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},chr_params);
-              else
-                [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencycpb(squeeze(mean(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,:,:),3)),...
-                  mean(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i},3)',chr_params);
-              end
-              if ~calcSwitch.useJacknife
-                Cerr = ones(2,size(C,1),size(C,2));
-                Cerr(1,:,:) = C+confC; %todo: confirm that this works
-                Cerr(2,:,:) = C-confC;
-              end
-              if gcat_i == 1
-                spectra = zeros(length(group),length(C));
-                specErrs = zeros(length(group),length(C),2);
-                phases = zeros(length(group),length(C));
-                phaseErrs = zeros(length(group),length(C));
-                freqs=  zeros(length(group),length(C));
-              end
-              spectra(gcat_i,:) = C';
-              phases(gcat_i,:) = phi';
-              specErrs(gcat_i,:,:) = Cerr';
-              phaseErrs(gcat_i,:) = phistd';
-              freqs(gcat_i,:) = f';
-            end
-            % note: this correction maintains consistency with X-Y coherence, where X comes first in the call to coherency, but so we can say X=spike,
-            % Y=field, while chronux requires us to put field first in the function call
-            phases = -1*phases;
-
-            fh = figure();
-            lineprops.width = 3;
-            lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-            plotCutoffFreq = .1;
-            mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
-            legend(group);
-            xlabel('frequency (Hz)');
-            ylabel('coherency');
-            title(sprintf('Trial mean %s %s - %s field coherence%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-            clear figData
-            figData.x = freqs; %todo: save with or without cutoff freq?
-            figData.y = spectra;
-            figdata.e = specErrs;
-            drawnow;
-            saveFigure(outDir,sprintf('coh_mean_%s_%s_%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
-
-            fh = figure();
-            lineprops.width = 3;
-            lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-            plotCutoffFreq = .1;
-            mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
-            legend(group);
-            xlabel('frequency (Hz)');
-            ylabel('phase');
-            title(sprintf('Trial mean %s %s - %s field phase%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-            clear figData
-            figData.x = freqs; %todo: save with or without cutoff freq?
-            figData.y = phases;
-            figdata.e = phaseErrs;
-            drawnow;
-            saveFigure(outDir,sprintf('phase_mean_%s_%s_%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh); 
-          end
-        end
-      end
-    end
 
         %todo: intra-channel spike-field "JPSTH"
 %           % autocorrellogram, TF TODO finish
@@ -1942,438 +2078,24 @@ for calc_i = 1:length(tfCalcSwitches)
 %           plot(-100:1:100,autocorrel);
 %           % todo: autocorrellogram with spike times
         
+    %spike -- field, within and across channel
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
-      group = analysisGroups.coherenceCategory.groups{group_i};
-      groupName = analysisGroups.coherenceCategory.names{group_i};
-       % channel_i spike -- channel_i field
-      for channel_i = 1:length(channelNames)
-        for unit_i = 1:length(channelUnitNames{channel_i})
-          for gcat_i = 1:length(group)
-            if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %skip unsorted if no isolated units; just do mua
+      group = analysisGroups.coherenceByCategory.groups{group_i};
+      groupName = analysisGroups.coherenceByCategory.names{group_i};
+      for tmp_channel_i = 1:length(channelNames)
+        for tmp_channel2_i = tmp_channel_i:length(lfpChannels) %make sure we only calculate once for each pair
+          for order_i = 1:2
+            if order_i == 2 && tmp_channel_i == tmp_channel2_i %intrachannel, then two orders are equivalent
               continue
             end
-            if calcSwitch.spikeTimes
-              [C,phi,~,~,~,t,f,~,confC,phistd,Cerr]=cohgramcpt(squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,:,:))',...
-                spikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i}',movingWin,chr_params);
+            if order_i == 1 % tmp_channel2_i spike -- tmp_channel_i field
+              channel_i = tmp_channel_i;
+              channel2_i = tmp_channel2_i;
             else
-              [C,phi,~,~,~,t,f,~,confC,phistd,Cerr]=cohgramcpb(squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,:,:))',...
-                spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i}',movingWin,chr_params);
+              channel_i = tmp_channel_i; % tmp_channel2_i spike -- tmp_channel_i field
+              channel2_i = tmp_channel2_i;
             end
-            if ~calcSwitch.useJacknife
-              Cerr = ones(2,size(C,1),size(C,2));
-              Cerr(1,:,:) = C+confC; %todo: confirm that this works
-              Cerr(2,:,:) = C-confC;
-            end
-
-            t = t - lfpAlignParams.msPreAlign;
-            plotCutoffFreq = .1;
-            % note: this correction maintains consistency with X-Y coherence, where X comes first in the call to coherency, but so we can say X=spike,
-            % Y=field, while chronux requires us to put field first in the function call
-            phi = -1*phi;
-
-            fh = figure(); 
-            imagesc(t,1000*f(f < plotCutoffFreq),C(f<plotCutoffFreq,:)'); axis xy
-            xlabel('Time (ms)'); 
-            ylabel('Frequency (Hz)');
-            c = colorbar();
-            ylabel(c,'Coherency');
-            hold on
-            draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            title(sprintf('%s %s - %s field coherence, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},group{gcat_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-            clear figData
-            figData.x = t;
-            figData.y = f;
-            figData.z = C';
-            drawnow;
-            saveFigure(outDir,sprintf('coh_TF_%s_%s_-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
-
-            fh = figure();
-            imagesc(t,1000*f(f < plotCutoffFreq),phi(f<plotCutoffFreq,:)'); axis xy
-            xlabel('Time (ms)'); 
-            ylabel('Frequency (Hz)');
-            c = colorbar();
-            ylabel(c,'phase');
-            phasemap('rad');
-            hold on
-            draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            title(sprintf('%s %s - %s phase, face%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-            clear figData
-            figData.x = t;
-            figData.y = f;
-            figData.z = phi';
-            drawnow;
-            saveFigure(outDir,sprintf('phase_TF_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
-
-
-            if plotSwitch.tfErrs
-              fh = figure(); 
-              subplot(2,3,1);
-              imagesc(t,1000*f(f < plotCutoffFreq),C(f<plotCutoffFreq,:)'); axis xy
-              xlabel('Time (ms)'); 
-              ylabel('Frequency (Hz)');
-              c = colorbar();
-              ylabel(c,'Coherency');
-              hold on
-              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              title(sprintf('%s %s - %s field coherence, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},group{gcat_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
-              subplot(2,3,2);
-              imagesc(t,1000*f(f < plotCutoffFreq),Cerr(1,f<plotCutoffFreq,:)'); axis xy
-              xlabel('Time (ms)'); 
-              ylabel('Frequency (Hz)');
-              c = colorbar();
-              ylabel(c,'Coherency');
-              hold on
-              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              title('coherence, upper confidence bound','FontSize',18);
-
-              subplot(2,3,3);
-              imagesc(t,1000*f(f < plotCutoffFreq),Cerr(2,f<plotCutoffFreq,:)'); axis xy
-              xlabel('Time (ms)'); 
-              ylabel('Frequency (Hz)');
-              c = colorbar();
-              ylabel(c,'Coherency');
-              hold on
-              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              title('coherence, lower confidence bound','FontSize',18);
-
-
-              subplot(2,3,4); 
-              imagesc(t,1000*f(f < plotCutoffFreq),phi(f<plotCutoffFreq,:)'); axis xy
-              xlabel('Time (ms)'); 
-              ylabel('Frequency (Hz)');
-              c = colorbar();
-              ylabel(c,'phase');
-              phasemap('rad');
-              hold on
-              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              title(sprintf('%s %s - %s phase, face%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
-              subplot(2,3,5);
-              imagesc(t,1000*f(f < plotCutoffFreq),phistd(2,f<plotCutoffFreq,:)); axis xy
-              xlabel('Time (ms)'); 
-              ylabel('Frequency (Hz)');
-              c = colorbar();
-              phasemap('rad');
-              ylabel(c,'phase std');
-              hold on
-              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);  
-              title('phase, upper confidence bound','FontSize',18);
-
-              subplot(2,3,6);
-              imagesc(t,1000*f(f < plotCutoffFreq),phistd(2,f<plotCutoffFreq,:)); axis xy  %correct? what shape is phistd???
-              xlabel('Time (ms)'); 
-              ylabel('Frequency (Hz)');
-              c = colorbar();
-              phasemap('rad');
-              ylabel(c,'phase std');
-              hold on
-              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              title('phase, lower confidence bound','FontSize',18);
-
-              saveFigure(outDir,sprintf('coh_TF_errs_%s_%s_-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
-            end
-          end
-        end
-      end
-    end
-
-   %todo: JPSTH, cross-correllogram/covariogram
-
-   %intra-channel tf, spike-spike (e.g. isolated vs. unsorted, u1 v u2, etc.)
-   for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
-      group = analysisGroups.coherenceCategory.groups{group_i};
-      groupName = analysisGroups.coherenceCategory.names{group_i};
-      for channel_i = 1:length(channelNames)
-        for unit_i = 1:length(channelUnitNames{channel_i})-1 %note: don't consider mua here, b/c would have contribution of spike coupling to itself
-          for unit2_i = unit_i+1:length(channelUnitNames{channel_i})-1
-            for gcat_i = 1:length(group)       
-              if calcSwitch.spikeTimes
-                [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencypt(spikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},...
-                  spikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit2_i},chr_params); %can have time grid as additional arg
-              else
-                [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencypb(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i},...
-                  spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit2_i},chr_params);
-              end
-              if ~calcSwitch.useJacknife
-                Cerr(1,:) = C+confC;
-                Cerr(2,:) = C-confC;
-              end
-              if gcat_i == 1
-                spectra = zeros(length(group),length(C));
-                specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
-                phases = zeros(length(group),length(C));
-                phaseErrs = zeros(length(group),length(C));
-                freqs=  zeros(length(group),length(C));
-              end
-              spectra(gcat_i,:) = C';
-              phases(gcat_i,:) = phi';
-              specErrs(gcat_i,:,:) = Cerr';    
-              phaseErrs(gcat_i,:) = phistd';
-              freqs(gcat_i,:) = f';
-            end
-
-            fh = figure();
-            lineprops.width = 3;
-            lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-            plotCutoffFreq = .1;
-            mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
-            legend(group);
-            xlabel('frequency (Hz)');
-            ylabel('coherency');
-            title(sprintf('%s %s - %s %s coherence%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-            clear figData
-            figData.x = freqs; %todo: save with or without cutoff freq?
-            figData.y = spectra;
-            figdata.e = specErrs;
-            drawnow;
-            saveFigure(outDir,sprintf('coh_%s_%s_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
-
-            %phases %todo: convert from std to sterr?
-            fh = figure();
-            lineprops.width = 3;
-            lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-            plotCutoffFreq = .1;
-            mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
-            legend(group);
-            xlabel('frequency (Hz)');
-            ylabel('phase');
-            title(sprintf('%s %s - %s %s phase%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-            drawnow;
-            saveFigure(outDir,sprintf('phase_%s_%s-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
-
-            if calcSwitch.meanEvokedTF
-              for gcat_i = 1:length(group)
-                if calcSwitch.spikeTimes
-                  [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencypt(allSpikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},...
-                    allSpikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit2_i},chr_params); %can have time grid as additional arg
-                else
-                  [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencypb(mean(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i},3)',...
-                    mean(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit2_i},3),chr_params);
-                end
-                if ~calcSwitch.useJacknife
-                  Cerr(1,:) = C+confC;
-                  Cerr(2,:) = C-confC;
-                end
-                if gcat_i == 1
-                  spectra = zeros(length(group),length(C));
-                  specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
-                  phases = zeros(length(group),length(C));
-                  phaseErrs = zeros(length(group),length(C));
-                  freqs=  zeros(length(group),length(C));
-                end
-                spectra(gcat_i,:) = C';
-                phases(gcat_i,:) = phi';
-                specErrs(gcat_i,:,:) = Cerr';    
-                phaseErrs(gcat_i,:) = phistd';
-                freqs(gcat_i,:) = f';
-              end
-
-              fh = figure();
-              lineprops.width = 3;
-              lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-              plotCutoffFreq = .1;
-              mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
-              legend(group);
-              xlabel('frequency (Hz)');
-              ylabel('coherency');
-              title(sprintf('Trial mean %s %s - %s %s coherence%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-              clear figData
-              figData.x = freqs; %todo: save with or without cutoff freq?
-              figData.y = spectra;
-              figdata.e = specErrs;
-              drawnow;
-              saveFigure(outDir,sprintf('coh_mean_%s_%s_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
-
-              %phases %todo: convert from std to sterr?
-              fh = figure();
-              lineprops.width = 3;
-              lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-              plotCutoffFreq = .1;
-              mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
-              legend(group);
-              xlabel('frequency (Hz)');
-              ylabel('phase');
-              title(sprintf('Trial mean %s %s - %s %s phase%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-              drawnow;
-              saveFigure(outDir,sprintf('phase_mean_%s_%s-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
-            end
-          end
-        end
-      end
-    end
-            
-            
-    % spike-spike time-frequency coherency by category
-    for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
-      group = analysisGroups.coherenceCategory.groups{group_i};
-      groupName = analysisGroups.coherenceCategory.names{group_i};
-      for channel_i = 1:length(channelNames)
-        for unit_i = 1:length(channelUnitNames{channel_i})-1 %note: don't consider mua here, b/c would have contribution of spike coupling to itself
-          for unit2_i = unit_i+1:length(channelUnitNames{channel_i})-1
-            for gcat_i = 1:length(group)       
-              if calcSwitch.spikeTimes 
-                [C,phi,~,~,~,t,f,~,confC,phistd]=cohgrampt(spikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},...
-                  spikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit2_i}, movingWin,chr_params);
-              else
-                [C,phi,~,~,~,t,f,~,confC,phistd]=cohgrampb(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i}',...
-                  spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit2_i}', movingWin,chr_params);
-              end
-              if ~calcSwitch.useJacknife
-                Cerr = ones(2,size(C,1),size(C,2));
-                Cerr(1,:,:) = C+confC; %todo: confirm that this works
-                Cerr(2,:,:) = C-confC;
-              end
-              t = t - lfpAlignParams.msPreAlign;
-              plotCutoffFreq = .1;
-              % note: this correction maintains consistency with X-Y coherence, where X comes first in the call to coherency, but so we can say X=spike,
-              % Y=field, while chronux requires us to put field first in the function call
-              phi = -1*phi;
-
-              fh = figure(); 
-              imagesc(t,1000*f(f < plotCutoffFreq),C(f<plotCutoffFreq,:)'); axis xy
-              xlabel('Time (ms)'); 
-              ylabel('Frequency (Hz)');
-              c = colorbar();
-              ylabel(c,'Coherency');
-              hold on
-              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              title(sprintf('%s %s - %s %s coherence, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},group{gcat_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-              clear figData
-              figData.x = t;
-              figData.y = f;
-              figData.z = C';
-              drawnow;
-              saveFigure(outDir,sprintf('coh_TF_%s_%s_-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
-
-              fh = figure();
-              imagesc(t,1000*f(f < plotCutoffFreq),phi(f<plotCutoffFreq,:)'); axis xy
-              xlabel('Time (ms)'); 
-              ylabel('Frequency (Hz)');
-              c = colorbar();
-              ylabel(c,'phase');
-              phasemap('rad');
-              hold on
-              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              title(sprintf('%s %s - %s %s phase, face%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-              clear figData
-              figData.x = t;
-              figData.y = f;
-              figData.z = phi';
-              drawnow;
-              saveFigure(outDir,sprintf('phase_TF_%s_%s-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
-
-
-              if plotSwitch.tfErrs
-                fh = figure(); 
-                subplot(2,3,1);
-                imagesc(t,1000*f(f < plotCutoffFreq),C(f<plotCutoffFreq,:)'); axis xy
-                xlabel('Time (ms)'); 
-                ylabel('Frequency (Hz)');
-                c = colorbar();
-                ylabel(c,'Coherency');
-                hold on
-                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                title(sprintf('%s %s - %s %s coherence, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},group{gcat_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
-                subplot(2,3,2);
-                imagesc(t,1000*f(f < plotCutoffFreq),Cerr(1,f<plotCutoffFreq,:)'); axis xy
-                xlabel('Time (ms)'); 
-                ylabel('Frequency (Hz)');
-                c = colorbar();
-                ylabel(c,'Coherency');
-                hold on
-                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                title('coherence, upper confidence bound','FontSize',18);
-
-                subplot(2,3,3);
-                imagesc(t,1000*f(f < plotCutoffFreq),Cerr(2,f<plotCutoffFreq,:)'); axis xy
-                xlabel('Time (ms)'); 
-                ylabel('Frequency (Hz)');
-                c = colorbar();
-                ylabel(c,'Coherency');
-                hold on
-                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                title('coherence, lower confidence bound','FontSize',18);
-
-
-                subplot(2,3,4); 
-                imagesc(t,1000*f(f < plotCutoffFreq),phi(f<plotCutoffFreq,:)'); axis xy
-                xlabel('Time (ms)'); 
-                ylabel('Frequency (Hz)');
-                c = colorbar();
-                ylabel(c,'phase');
-                phasemap('rad');
-                hold on
-                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                title(sprintf('%s %s - %s %s phase, face%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
-                subplot(2,3,5);
-                imagesc(t,1000*f(f < plotCutoffFreq),phistd(2,f<plotCutoffFreq,:)); axis xy
-                xlabel('Time (ms)'); 
-                ylabel('Frequency (Hz)');
-                c = colorbar();
-                phasemap('rad');
-                ylabel(c,'phase std');
-                hold on
-                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);  
-                title('phase, upper confidence bound','FontSize',18);
-
-                subplot(2,3,6);
-                imagesc(t,1000*f(f < plotCutoffFreq),phistd(2,f<plotCutoffFreq,:)); axis xy  %correct? what shape is phistd???
-                xlabel('Time (ms)'); 
-                ylabel('Frequency (Hz)');
-                c = colorbar();
-                phasemap('rad');
-                ylabel(c,'phase std');
-                hold on
-                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                title('phase, lower confidence bound','FontSize',18);
-                
-                saveFigure(outDir,sprintf('coh_TF_errs_%s_%s_-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
-              end
-            end
-          end
-        end
-      end
-    end
-    
-    %%%%%%
-    % across channel %
-    %%%%%%
-    % channel2_i spike -- channel_i field
-    for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
-      group = analysisGroups.coherenceCategory.groups{group_i};
-      groupName = analysisGroups.coherenceCategory.names{group_i};
-      for channel_i = 1:length(channelNames)
-        for channel2_i = channel_i:length(lfpChannels) %these two lines make sure we only calculate once for each pair
-          if channel2_i > channel_i 
+            % channel2_i spike -- channel_i field (order set above)
             for unit_i = 1:length(channelUnitNames{channel2_i})
               if length(channelUnitNames{channel2_i}) == 2 && unit_i == 1 %skip unsorted if no isolated units; just do mua
                 continue
@@ -2386,10 +2108,6 @@ for calc_i = 1:length(tfCalcSwitches)
                   [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencycpb(squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel_i,:,:))',...
                     spikesByCategoryBinned{catInds.(group{gcat_i})}{channel2_i}{unit_i},chr_params);
                 end
-                if ~calcSwitch.useJacknife
-                  Cerr(1,:) = C+confC;
-                  Cerr(2,:) = C-confC;
-                end
                 if gcat_i == 1
                   spectra = zeros(length(group),length(C));
                   specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
@@ -2399,7 +2117,12 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
                 spectra(gcat_i,:) = C';
                 phases(gcat_i,:) = phi';
-                specErrs(gcat_i,:,:) = Cerr';    
+                if calcSwitch.useJacknife
+                  specErrs(gcat_i,:,1) = Cerr(1,:)-C;
+                  specErrs(gcat_i,:,2) = C-Cerr(2,:);
+                else
+                  specErrs(gcat_i,:,:) = confC; %where I stopped; current todo: make Chronux git tree(?),fix silly chronux Cerr nargout behavior; fix 1000*freqs, check cutoff freq 
+                end
                 phaseErrs(gcat_i,:) = phistd';
                 freqs(gcat_i,:) = f';
               end
@@ -2408,8 +2131,8 @@ for calc_i = 1:length(tfCalcSwitches)
               phases = -1*phases;
 
               fh = figure();
-              lineprops.width = 3;
-              lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
+              lineProps.width = 3;
+              lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
               plotCutoffFreq = .1;
               mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
               legend(group);
@@ -2426,8 +2149,8 @@ for calc_i = 1:length(tfCalcSwitches)
 
               %phases %todo: convert from std to sterr?
               fh = figure();
-              lineprops.width = 3;
-              lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
+              lineProps.width = 3;
+              lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
               plotCutoffFreq = .1;
               mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
               legend(group);
@@ -2469,8 +2192,8 @@ for calc_i = 1:length(tfCalcSwitches)
                 phases = -1*phases;
 
                 fh = figure();
-                lineprops.width = 3;
-                lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
+                lineProps.width = 3;
+                lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
                 plotCutoffFreq = .1;
                 mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
                 legend(group);
@@ -2487,8 +2210,8 @@ for calc_i = 1:length(tfCalcSwitches)
 
                 %phases %todo: convert from std to sterr?
                 fh = figure();
-                lineprops.width = 3;
-                lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
+                lineProps.width = 3;
+                lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
                 plotCutoffFreq = .1;
                 mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
                 legend(group);
@@ -2504,13 +2227,25 @@ for calc_i = 1:length(tfCalcSwitches)
         end
       end
     end
-    %time-frequency coherency, channel2_i spike channel_i field tf   
+    
+    %time-frequency spike -- field coherency
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
-      group = analysisGroups.coherenceCategory.groups{group_i};
-      groupName = analysisGroups.coherenceCategory.names{group_i};
-      for channel_i = 1:length(channelNames)
-        for channel2_i = channel_i:length(lfpChannels) %these two lines make sure we only calculate once for each pair
-          if channel2_i > channel_i 
+      group = analysisGroups.coherenceByCategory.groups{group_i};
+      groupName = analysisGroups.coherenceByCategory.names{group_i};
+      for tmp_channel_i = 1:length(channelNames)
+        for tmp_channel2_i = tmp_channel_i:length(lfpChannels) %make sure we only calculate once for each pair
+          for order_i = 1:2
+            if order_i == 2 && tmp_channel_i == tmp_channel2_i %intrachannel, then two orders are equivalent
+              continue
+            end
+            if order_i == 1 % tmp_channel2_i spike -- tmp_channel_i field
+              channel_i = tmp_channel_i;
+              channel2_i = tmp_channel2_i;
+            else
+              channel_i = tmp_channel_i; % tmp_channel2_i spike -- tmp_channel_i field
+              channel2_i = tmp_channel2_i;
+            end
+            % channel2_i spike -- channel_i field (order set above)
             for unit_i = 1:length(channelUnitNames{channel2_i})
               if length(channelUnitNames{channel2_i}) == 2 && unit_i == 1 %skip unsorted if no isolated units; just do mua
                 continue
@@ -2655,301 +2390,11 @@ for calc_i = 1:length(tfCalcSwitches)
       end
     end
     
-    % channel_i spike -- channel2_i field
-    for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
-      group = analysisGroups.coherenceCategory.groups{group_i};
-      groupName = analysisGroups.coherenceCategory.names{group_i};
-      for channel_i = 1:length(channelNames)
-        for channel2_i = channel_i:length(lfpChannels) %these two lines make sure we only calculate once for each pair
-          if channel2_i > channel_i 
-            for unit_i = 1:length(channelUnitNames{channel_i})
-              if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %skip unsorted if no isolated units; just do mua
-                continue
-              end 
-              for gcat_i = 1:length(group)
-                if calcSwitch.spikeTimes
-                  [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencycpt(squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel2_i,:,:))',...
-                    spikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},chr_params); %can have time grid as additional arg
-                else
-                  [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencycpb(squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel2_i,:,:))',...
-                    spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i},chr_params);
-                end
-                if ~calcSwitch.useJacknife
-                  Cerr(1,:) = C+confC;
-                  Cerr(2,:) = C-confC;
-                end
-                if gcat_i == 1
-                  spectra = zeros(length(group),length(C));
-                  specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
-                  phases = zeros(length(group),length(C));
-                  phaseErrs = zeros(length(group),length(C));
-                  freqs=  zeros(length(group),length(C));
-                end
-                spectra(gcat_i,:) = C';
-                phases(gcat_i,:) = phi';
-                specErrs(gcat_i,:,:) = Cerr';    
-                phaseErrs(gcat_i,:) = phistd';
-                freqs(gcat_i,:) = f';
-              end
-              % note: this correction maintains consistency with X-Y coherence, where X comes first in the call to coherency, but so we can say X=spike,
-              % Y=field, while chronux requires us to put field first in the function call
-              phases = -1*phases;
-
-              fh = figure();
-              lineprops.width = 3;
-              lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-              plotCutoffFreq = .1;
-              mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
-              legend(group);
-              xlabel('frequency (Hz)');
-              ylabel('coherency');
-              title(sprintf('%s %s - %s field coherence%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-              clear figData
-              figData.x = freqs; %todo: save with or without cutoff freq?
-              figData.y = spectra;
-              figdata.e = specErrs;
-              drawnow;
-              saveFigure(outDir,sprintf('coh_%s_%s_%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
-
-              %phases %todo: convert from std to sterr?
-              fh = figure();
-              lineprops.width = 3;
-              lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-              plotCutoffFreq = .1;
-              mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
-              legend(group);
-              xlabel('frequency (Hz)');
-              ylabel('phase');
-              title(sprintf('%s %s - %s field phase%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-              drawnow;
-              saveFigure(outDir,sprintf('phase_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
-
-              if calcSwitch.meanEvokedTF
-                for gcat_i = 1:length(group)
-                  if calcSwitch.spikeTimes
-                    [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencycpt(squeeze(mean(lfpByCategory{catInds.(group{gcat_i})}(1,channel2_i,:,:),3)),...
-                      allSpikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},chr_params); %can have time grid as additional arg
-                  else
-                    [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencycpb(squeeze(mean(lfpByCategory{catInds.(group{gcat_i})}(1,channel2_i,:,:),3)),...
-                      mean(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i},1)',chr_params);
-                  end
-                  if ~calcSwitch.useJacknife
-                    Cerr(1,:) = C+confC;
-                    Cerr(2,:) = C-confC;
-                  end
-                  if gcat_i == 1
-                    spectra = zeros(length(group),length(C));
-                    specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
-                    phases = zeros(length(group),length(C));
-                    phaseErrs = zeros(length(group),length(C));
-                    freqs=  zeros(length(group),length(C));
-                  end
-                  spectra(gcat_i,:) = C';
-                  phases(gcat_i,:) = phi';
-                  specErrs(gcat_i,:,:) = Cerr';    
-                  phaseErrs(gcat_i,:) = phistd';
-                  freqs(gcat_i,:) = f';
-                end
-                % note: this correction maintains consistency with X-Y coherence, where X comes first in the call to coherency, but so we can say X=spike,
-                % Y=field, while chronux requires us to put field first in the function call
-                phases = -1*phases;
-
-                fh = figure();
-                lineprops.width = 3;
-                lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-                plotCutoffFreq = .1;
-                mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
-                legend(group);
-                xlabel('frequency (Hz)');
-                ylabel('coherency');
-                title(sprintf('Trial mean %s %s - %s field coherence%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-                clear figData
-                figData.x = freqs; %todo: save with or without cutoff freq?
-                figData.y = spectra;
-                figdata.e = specErrs;
-                drawnow;
-                saveFigure(outDir,sprintf('coh_mean_%s_%s_%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
-
-                %phases %todo: convert from std to sterr?
-                fh = figure();
-                lineprops.width = 3;
-                lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-                plotCutoffFreq = .1;
-                mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
-                legend(group);
-                xlabel('frequency (Hz)');
-                ylabel('phase');
-                title(sprintf('Trial mean %s %s - %s field phase%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-                drawnow;
-                saveFigure(outDir,sprintf('phase_mean_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
-              end
-            end
-          end
-        end
-      end
-    end
-    %time-frequency coherency, channel_i spike -- channel2_i field
-    for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
-      group = analysisGroups.coherenceCategory.groups{group_i};
-      groupName = analysisGroups.coherenceCategory.names{group_i};
-      for channel_i = 1:length(channelNames)
-        for channel2_i = channel_i:length(lfpChannels) %these two lines make sure we only calculate once for each pair
-          if channel2_i > channel_i 
-            for unit_i = 1:length(channelUnitNames{channel_i})
-              if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %skip unsorted if no isolated units; just do mua
-                continue
-              end 
-              for gcat_i = 1:length(group)
-                if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %skip unsorted if no isolated units; just do mua
-                  continue
-                end
-                if calcSwitch.spikeTimes
-                  [C,phi,~,~,~,t,f,~,confC,phistd,Cerr]=cohgramcpt(squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel2_i,:,:))',...
-                    spikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i}',movingWin,chr_params);
-                else
-                  [C,phi,~,~,~,t,f,~,confC,phistd,Cerr]=cohgramcpb(squeeze(lfpByCategory{catInds.(group{gcat_i})}(1,channel2_i,:,:))',...
-                    spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i}',movingWin,chr_params);
-                end
-                if ~calcSwitch.useJacknife
-                  Cerr = ones(2,size(C,1),size(C,2));
-                  Cerr(1,:,:) = C+confC; %todo: confirm that this works
-                  Cerr(2,:,:) = C-confC;
-                end
-
-                t = t - lfpAlignParams.msPreAlign;
-                plotCutoffFreq = .1;
-                % note: this correction maintains consistency with X-Y coherence, where X comes first in the call to coherency, but so we can say X=spike,
-                % Y=field, while chronux requires us to put field first in the function call
-                phi = -1*phi;
-
-                fh = figure(); 
-                imagesc(t,1000*f(f < plotCutoffFreq),C(f<plotCutoffFreq,:)'); axis xy
-                xlabel('Time (ms)'); 
-                ylabel('Frequency (Hz)');
-                c = colorbar();
-                ylabel(c,'Coherency');
-                hold on
-                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                title(sprintf('%s %s - %s field coherence, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},group{gcat_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-                clear figData
-                figData.x = t;
-                figData.y = f;
-                figData.z = C';
-                drawnow;
-                saveFigure(outDir,sprintf('coh_TF_%s_%s_-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
-
-                fh = figure();
-                imagesc(t,1000*f(f < plotCutoffFreq),phi(f<plotCutoffFreq,:)'); axis xy
-                xlabel('Time (ms)'); 
-                ylabel('Frequency (Hz)');
-                c = colorbar();
-                ylabel(c,'phase');
-                phasemap('rad');
-                hold on
-                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                title(sprintf('%s %s - %s phase, face%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-                clear figData
-                figData.x = t;
-                figData.y = f;
-                figData.z = phi';
-                drawnow;
-                saveFigure(outDir,sprintf('phase_TF_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
-
-
-                if plotSwitch.tfErrs
-                  fh = figure(); 
-                  subplot(2,3,1);
-                  imagesc(t,1000*f(f < plotCutoffFreq),C(f<plotCutoffFreq,:)'); axis xy
-                  xlabel('Time (ms)'); 
-                  ylabel('Frequency (Hz)');
-                  c = colorbar();
-                  ylabel(c,'Coherency');
-                  hold on
-                  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  title(sprintf('%s %s - %s field coherence, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},group{gcat_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
-                  subplot(2,3,2);
-                  imagesc(t,1000*f(f < plotCutoffFreq),Cerr(1,f<plotCutoffFreq,:)'); axis xy
-                  xlabel('Time (ms)'); 
-                  ylabel('Frequency (Hz)');
-                  c = colorbar();
-                  ylabel(c,'Coherency');
-                  hold on
-                  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  title('coherence, upper confidence bound','FontSize',18);
-
-                  subplot(2,3,3);
-                  imagesc(t,1000*f(f < plotCutoffFreq),Cerr(2,f<plotCutoffFreq,:)'); axis xy
-                  xlabel('Time (ms)'); 
-                  ylabel('Frequency (Hz)');
-                  c = colorbar();
-                  ylabel(c,'Coherency');
-                  hold on
-                  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  title('coherence, lower confidence bound','FontSize',18);
-
-
-                  subplot(2,3,4); 
-                  imagesc(t,1000*f(f < plotCutoffFreq),phi(f<plotCutoffFreq,:)'); axis xy
-                  xlabel('Time (ms)'); 
-                  ylabel('Frequency (Hz)');
-                  c = colorbar();
-                  ylabel(c,'phase');
-                  phasemap('rad');
-                  hold on
-                  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  title(sprintf('%s %s - %s LFP phase, face%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
-                  subplot(2,3,5);
-                  imagesc(t,1000*f(f < plotCutoffFreq),phistd(2,f<plotCutoffFreq,:)); axis xy
-                  xlabel('Time (ms)'); 
-                  ylabel('Frequency (Hz)');
-                  c = colorbar();
-                  phasemap('rad');
-                  ylabel(c,'phase std');
-                  hold on
-                  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);  
-                  title('phase, upper confidence bound','FontSize',18);
-
-                  subplot(2,3,6);
-                  imagesc(t,1000*f(f < plotCutoffFreq),phistd(2,f<plotCutoffFreq,:)); axis xy  %correct? what shape is phistd???
-                  xlabel('Time (ms)'); 
-                  ylabel('Frequency (Hz)');
-                  c = colorbar();
-                  phasemap('rad');
-                  ylabel(c,'phase std');
-                  hold on
-                  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  title('phase, lower confidence bound','FontSize',18);
-
-                  saveFigure(outDir,sprintf('coh_TF_errs_%s_%s_-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                  close(fh);
-                end
-              end
-            end
-          end
-        end
-      end
-    end
     
-   % channel_i field -- channel2_i field 
+   % field -- field coherency 
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
-      group = analysisGroups.coherenceCategory.groups{group_i};
-      groupName = analysisGroups.coherenceCategory.names{group_i};
+      group = analysisGroups.coherenceByCategory.groups{group_i};
+      groupName = analysisGroups.coherenceByCategory.names{group_i};
       for channel_i = 1:length(channelNames)
         for channel2_i = channel_i:length(lfpChannels) %these two lines make sure we only calculate once for each pair
           if channel2_i > channel_i 
@@ -2975,8 +2420,8 @@ for calc_i = 1:length(tfCalcSwitches)
             end
             
             fh = figure();
-            lineprops.width = 3;
-            lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
+            lineProps.width = 3;
+            lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
             plotCutoffFreq = .1;
             mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
             legend(group);
@@ -2993,8 +2438,8 @@ for calc_i = 1:length(tfCalcSwitches)
 
             %phases %todo: convert from std to sterr?
             fh = figure();
-            lineprops.width = 3;
-            lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
+            lineProps.width = 3;
+            lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
             plotCutoffFreq = .1;
             mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
             legend(group);
@@ -3031,8 +2476,8 @@ for calc_i = 1:length(tfCalcSwitches)
               phases = -1*phases;
 
               fh = figure();
-              lineprops.width = 3;
-              lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
+              lineProps.width = 3;
+              lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
               plotCutoffFreq = .1;
               mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
               legend(group);
@@ -3049,8 +2494,8 @@ for calc_i = 1:length(tfCalcSwitches)
 
               %phases %todo: convert from std to sterr?
               fh = figure();
-              lineprops.width = 3;
-              lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
+              lineProps.width = 3;
+              lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
               plotCutoffFreq = .1;
               mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
               legend(group);
@@ -3065,10 +2510,10 @@ for calc_i = 1:length(tfCalcSwitches)
         end
       end
     end
-    % field-field time-frequency coherency
+    % time-frequency field --field coherency
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
-      group = analysisGroups.coherenceCategory.groups{group_i};
-      groupName = analysisGroups.coherenceCategory.names{group_i};
+      group = analysisGroups.coherenceByCategory.groups{group_i};
+      groupName = analysisGroups.coherenceByCategory.names{group_i};
       for channel_i = 1:length(channelNames)
         for channel2_i = channel_i:length(lfpChannels) %these two lines make sure we only calculate once for each pair
           if channel2_i > channel_i 
@@ -3207,28 +2652,89 @@ for calc_i = 1:length(tfCalcSwitches)
     end
     
 
-    % spike-spike coherency
+    % spike --spike coherency
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
-      group = analysisGroups.coherenceCategory.groups{group_i};
-      groupName = analysisGroups.coherenceCategory.names{group_i};
+      group = analysisGroups.coherenceByCategory.groups{group_i};
+      groupName = analysisGroups.coherenceByCategory.names{group_i};
       for channel_i = 1:length(channelNames)
-        for channel2_i = channel_i:length(lfpChannels) %these two lines make sure we only calculate once for each pair
-          if channel2_i > channel_i 
-            for unit_i = 1:length(channelUnitNames{channel_i})
-              if length(channelUnitNames{channel_i}) == 1 && unit_i == 1
+        for channel2_i = channel_i:length(lfpChannels) %make sure we only calculate once for each pair
+          for unit_i = 1:length(channelUnitNames{channel_i})
+            if length(channelUnitNames{channel_i}) == 1 && unit_i == 1
+              continue
+            end
+            for unit2_i = 1:length(channelUnitNames{channel2_i})
+              if length(channelUnitNames{channel2_i}) == 1 && unit2_i == 1
                 continue
               end
-              for unit2_i = 1:length(channelUnitNames{channel2_i})
-                if length(channelUnitNames{channel2_i}) == 1 && unit2_i == 1
-                  continue
+              %if intrachannel, check that pair is unique and non-self
+              if channel_i == channel2_i && unit_i >= unit2_i 
+                continue
+              end
+              for gcat_i = 1:length(group)
+                if calcSwitch.spikeTimes
+                  [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencypt(spikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},...
+                    spikesByCategoryForTF{catInds.(group{gcat_i})}{channel2_i}{unit2_i},chr_params); %can have time grid as additional arg
+                else
+                  [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencypb(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i},...
+                    spikesByCategoryBinned{catInds.(group{gcat_i})}{channel2_i}{unit2_i},chr_params);
                 end
+                if ~calcSwitch.useJacknife
+                  Cerr(1,:) = C+confC;
+                  Cerr(2,:) = C-confC;
+                end
+                if gcat_i == 1
+                  spectra = zeros(length(group),length(C));
+                  specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
+                  phases = zeros(length(group),length(C));
+                  phaseErrs = zeros(length(group),length(C));
+                  freqs=  zeros(length(group),length(C));
+                end
+                spectra(gcat_i,:) = C';
+                phases(gcat_i,:) = phi';
+                specErrs(gcat_i,:,:) = Cerr';    
+                phaseErrs(gcat_i,:) = phistd';
+                freqs(gcat_i,:) = f';
+              end
+
+              fh = figure();
+              lineProps.width = 3;
+              lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+              plotCutoffFreq = .1;
+              mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
+              legend(group);
+              xlabel('frequency (Hz)');
+              ylabel('coherency');
+              title(sprintf('%s %s - %s %s coherence%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+              clear figData
+              figData.x = freqs; %todo: save with or without cutoff freq?
+              figData.y = spectra;
+              figdata.e = specErrs;
+              drawnow;
+              saveFigure(outDir,sprintf('coh_%s_%s_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              close(fh);
+
+              %phases %todo: convert from std to sterr?
+              fh = figure();
+              lineProps.width = 3;
+              lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+              plotCutoffFreq = .1;
+              mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
+              legend(group);
+              xlabel('frequency (Hz)');
+              ylabel('phase');
+              title(sprintf('%s %s - %s %s phase%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+              drawnow;
+              saveFigure(outDir,sprintf('phase_%s_%s-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              close(fh);
+
+              if calcSwitch.meanEvokedTF
                 for gcat_i = 1:length(group)
                   if calcSwitch.spikeTimes
-                    [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencypt(spikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},...
-                      spikesByCategoryForTF{catInds.(group{gcat_i})}{channel2_i}{unit2_i},chr_params); %can have time grid as additional arg
+                    [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencypt(allSpikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},...
+                      allSpikesByCategoryForTF{catInds.(group{gcat_i})}{channel2_i}{unit2_i},chr_params); %can have time grid as additional arg
                   else
-                    [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencypb(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i},...
-                      spikesByCategoryBinned{catInds.(group{gcat_i})}{channel2_i}{unit2_i},chr_params);
+                    [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencypb(mean(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i},3)',...
+                      mean(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel2_i}{unit2_i},3),chr_params);
                   end
                   if ~calcSwitch.useJacknife
                     Cerr(1,:) = C+confC;
@@ -3249,94 +2755,35 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
 
                 fh = figure();
-                lineprops.width = 3;
-                lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
+                lineProps.width = 3;
+                lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
                 plotCutoffFreq = .1;
                 mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
                 legend(group);
                 xlabel('frequency (Hz)');
                 ylabel('coherency');
-                title(sprintf('%s %s - %s %s coherence%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                title(sprintf('Trial mean %s %s - %s %s coherence%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 clear figData
                 figData.x = freqs; %todo: save with or without cutoff freq?
                 figData.y = spectra;
                 figdata.e = specErrs;
                 drawnow;
-                saveFigure(outDir,sprintf('coh_%s_%s_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                saveFigure(outDir,sprintf('coh_mean_%s_%s_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
                 close(fh);
 
                 %phases %todo: convert from std to sterr?
                 fh = figure();
-                lineprops.width = 3;
-                lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
+                lineProps.width = 3;
+                lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
                 plotCutoffFreq = .1;
                 mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
                 legend(group);
                 xlabel('frequency (Hz)');
                 ylabel('phase');
-                title(sprintf('%s %s - %s %s phase%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                title(sprintf('Trial mean %s %s - %s %s phase%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 drawnow;
-                saveFigure(outDir,sprintf('phase_%s_%s-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                saveFigure(outDir,sprintf('phase_mean_%s_%s-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
                 close(fh);
-
-                if calcSwitch.meanEvokedTF
-                  for gcat_i = 1:length(group)
-                    if calcSwitch.spikeTimes
-                      [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencypt(allSpikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},...
-                        allSpikesByCategoryForTF{catInds.(group{gcat_i})}{channel2_i}{unit2_i},chr_params); %can have time grid as additional arg
-                    else
-                      [C,phi,~,~,~,f,~,confC,phistd, Cerr] = coherencypb(mean(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i},3)',...
-                        mean(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel2_i}{unit2_i},3),chr_params);
-                    end
-                    if ~calcSwitch.useJacknife
-                      Cerr(1,:) = C+confC;
-                      Cerr(2,:) = C-confC;
-                    end
-                    if gcat_i == 1
-                      spectra = zeros(length(group),length(C));
-                      specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
-                      phases = zeros(length(group),length(C));
-                      phaseErrs = zeros(length(group),length(C));
-                      freqs=  zeros(length(group),length(C));
-                    end
-                    spectra(gcat_i,:) = C';
-                    phases(gcat_i,:) = phi';
-                    specErrs(gcat_i,:,:) = Cerr';    
-                    phaseErrs(gcat_i,:) = phistd';
-                    freqs(gcat_i,:) = f';
-                  end
-
-                  fh = figure();
-                  lineprops.width = 3;
-                  lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-                  plotCutoffFreq = .1;
-                  mseb(1000*freqs(:,freqs < plotCutoffFreq),spectra(:,freqs<plotCutoffFreq),specErrs(:,freqs<plotCutoffFreq,:));
-                  legend(group);
-                  xlabel('frequency (Hz)');
-                  ylabel('coherency');
-                  title(sprintf('Trial mean %s %s - %s %s coherence%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-                  clear figData
-                  figData.x = freqs; %todo: save with or without cutoff freq?
-                  figData.y = spectra;
-                  figdata.e = specErrs;
-                  drawnow;
-                  saveFigure(outDir,sprintf('coh_mean_%s_%s_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                  close(fh);
-
-                  %phases %todo: convert from std to sterr?
-                  fh = figure();
-                  lineprops.width = 3;
-                  lineprops.col = analysisGroups.coherenceByCategory.colors{group_i};
-                  plotCutoffFreq = .1;
-                  mseb(1000*freqs(:,freqs < plotCutoffFreq),phases(:,freqs<plotCutoffFreq),phaseErrs(:,freqs<plotCutoffFreq));
-                  legend(group);
-                  xlabel('frequency (Hz)');
-                  ylabel('phase');
-                  title(sprintf('Trial mean %s %s - %s %s phase%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-                  drawnow;
-                  saveFigure(outDir,sprintf('phase_mean_%s_%s-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                  close(fh);
-                end
               end
             end
           end
@@ -3344,41 +2791,84 @@ for calc_i = 1:length(tfCalcSwitches)
       end
     end
     
-    %time-frequency spike-spike coherency
+    %time-frequency spike --spike coherency
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
-      group = analysisGroups.coherenceCategory.groups{group_i};
-      groupName = analysisGroups.coherenceCategory.names{group_i};
+      group = analysisGroups.coherenceByCategory.groups{group_i};
+      groupName = analysisGroups.coherenceByCategory.names{group_i};
       for channel_i = 1:length(channelNames)
-        for channel2_i = channel_i:length(lfpChannels) %these two lines make sure we only calculate once for each pair
-          if channel2_i > channel_i 
-            for unit_i = 1:length(channelUnitNames{channel_i})
-              if length(channelUnitNames{channel_i}) == 1 && unit_i == 1
+        for channel2_i = channel_i:length(lfpChannels) %make sure we only calculate once for each pair
+          for unit_i = 1:length(channelUnitNames{channel_i})
+            if length(channelUnitNames{channel_i}) == 1 && unit_i == 1
+              continue
+            end
+            for unit2_i = 1:length(channelUnitNames{channel2_i})
+              if length(channelUnitNames{channel2_i}) == 1 && unit2_i == 1
                 continue
               end
-              for unit2_i = 1:length(channelUnitNames{channel2_i})
-                if length(channelUnitNames{channel2_i}) == 1 && unit2_i == 1
-                  continue
+              %if intrachannel, check that pair is unique and non-self
+              if channel_i == channel2_i && unit_i >= unit2_i 
+                continue
+              end
+              for gcat_i = 1:length(group)
+                if calcSwitch.spikeTimes 
+                  [C,phi,~,~,~,t,f,~,confC,phistd]=cohgrampt(spikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},...
+                    spikesByCategoryForTF{catInds.(group{gcat_i})}{channel2_i}{unit2_i}, movingWin,chr_params);
+                else
+                  [C,phi,~,~,~,t,f,~,confC,phistd]=cohgrampb(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i}',...
+                    spikesByCategoryBinned{catInds.(group{gcat_i})}{channel2_i}{unit2_i}', movingWin,chr_params);
                 end
-                for gcat_i = 1:length(group)
-                  if calcSwitch.spikeTimes 
-                    [C,phi,~,~,~,t,f,~,confC,phistd]=cohgrampt(spikesByCategoryForTF{catInds.(group{gcat_i})}{channel_i}{unit_i},...
-                      spikesByCategoryForTF{catInds.(group{gcat_i})}{channel2_i}{unit2_i}, movingWin,chr_params);
-                  else
-                    [C,phi,~,~,~,t,f,~,confC,phistd]=cohgrampb(spikesByCategoryBinned{catInds.(group{gcat_i})}{channel_i}{unit_i}',...
-                      spikesByCategoryBinned{catInds.(group{gcat_i})}{channel2_i}{unit2_i}', movingWin,chr_params);
-                  end
-                  if ~calcSwitch.useJacknife
-                    Cerr = ones(2,size(C,1),size(C,2));
-                    Cerr(1,:,:) = C+confC; %todo: confirm that this works
-                    Cerr(2,:,:) = C-confC;
-                  end
-                  t = t - lfpAlignParams.msPreAlign;
-                  plotCutoffFreq = .1;
-                  % note: this correction maintains consistency with X-Y coherence, where X comes first in the call to coherency, but so we can say X=spike,
-                  % Y=field, while chronux requires us to put field first in the function call
-                  phi = -1*phi;
+                if ~calcSwitch.useJacknife
+                  Cerr = ones(2,size(C,1),size(C,2));
+                  Cerr(1,:,:) = C+confC; %todo: confirm that this works
+                  Cerr(2,:,:) = C-confC;
+                end
+                t = t - lfpAlignParams.msPreAlign;
+                plotCutoffFreq = .1;
+                % note: this correction maintains consistency with X-Y coherence, where X comes first in the call to coherency, but so we can say X=spike,
+                % Y=field, while chronux requires us to put field first in the function call
+                phi = -1*phi;
 
+                fh = figure(); 
+                imagesc(t,1000*f(f < plotCutoffFreq),C(f<plotCutoffFreq,:)'); axis xy
+                xlabel('Time (ms)'); 
+                ylabel('Frequency (Hz)');
+                c = colorbar();
+                ylabel(c,'Coherency');
+                hold on
+                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                title(sprintf('%s %s - %s %s coherence, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{gcat_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                clear figData
+                figData.x = t;
+                figData.y = f;
+                figData.z = C';
+                drawnow;
+                saveFigure(outDir,sprintf('coh_TF_%s_%s_-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                close(fh);
+
+                fh = figure();
+                imagesc(t,1000*f(f < plotCutoffFreq),phi(f<plotCutoffFreq,:)'); axis xy
+                xlabel('Time (ms)'); 
+                ylabel('Frequency (Hz)');
+                c = colorbar();
+                ylabel(c,'phase');
+                phasemap('rad');
+                hold on
+                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                title(sprintf('%s %s - %s %s phase, face%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                clear figData
+                figData.x = t;
+                figData.y = f;
+                figData.z = phi';
+                drawnow;
+                saveFigure(outDir,sprintf('phase_TF_%s_%s-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                close(fh);
+
+
+                if plotSwitch.tfErrs
                   fh = figure(); 
+                  subplot(2,3,1);
                   imagesc(t,1000*f(f < plotCutoffFreq),C(f<plotCutoffFreq,:)'); axis xy
                   xlabel('Time (ms)'); 
                   ylabel('Frequency (Hz)');
@@ -3387,16 +2877,32 @@ for calc_i = 1:length(tfCalcSwitches)
                   hold on
                   draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  title(sprintf('%s %s - %s %s coherence, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{gcat_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-                  clear figData
-                  figData.x = t;
-                  figData.y = f;
-                  figData.z = C';
-                  drawnow;
-                  saveFigure(outDir,sprintf('coh_TF_%s_%s_-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                  close(fh);
+                  title(sprintf('%s %s - %s %s coherence, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},group{gcat_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
 
-                  fh = figure();
+                  subplot(2,3,2);
+                  imagesc(t,1000*f(f < plotCutoffFreq),Cerr(1,f<plotCutoffFreq,:)'); axis xy
+                  xlabel('Time (ms)'); 
+                  ylabel('Frequency (Hz)');
+                  c = colorbar();
+                  ylabel(c,'Coherency');
+                  hold on
+                  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  title('coherence, upper confidence bound','FontSize',18);
+
+                  subplot(2,3,3);
+                  imagesc(t,1000*f(f < plotCutoffFreq),Cerr(2,f<plotCutoffFreq,:)'); axis xy
+                  xlabel('Time (ms)'); 
+                  ylabel('Frequency (Hz)');
+                  c = colorbar();
+                  ylabel(c,'Coherency');
+                  hold on
+                  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  title('coherence, lower confidence bound','FontSize',18);
+
+
+                  subplot(2,3,4); 
                   imagesc(t,1000*f(f < plotCutoffFreq),phi(f<plotCutoffFreq,:)'); axis xy
                   xlabel('Time (ms)'); 
                   ylabel('Frequency (Hz)');
@@ -3407,90 +2913,33 @@ for calc_i = 1:length(tfCalcSwitches)
                   draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   title(sprintf('%s %s - %s %s phase, face%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-                  clear figData
-                  figData.x = t;
-                  figData.y = f;
-                  figData.z = phi';
-                  drawnow;
-                  saveFigure(outDir,sprintf('phase_TF_%s_%s-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+
+                  subplot(2,3,5);
+                  imagesc(t,1000*f(f < plotCutoffFreq),phistd(2,f<plotCutoffFreq,:)); axis xy
+                  xlabel('Time (ms)'); 
+                  ylabel('Frequency (Hz)');
+                  c = colorbar();
+                  phasemap('rad');
+                  ylabel(c,'phase std');
+                  hold on
+                  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);  
+                  title('phase, upper confidence bound','FontSize',18);
+
+                  subplot(2,3,6);
+                  imagesc(t,1000*f(f < plotCutoffFreq),phistd(2,f<plotCutoffFreq,:)); axis xy  %correct? what shape is phistd???
+                  xlabel('Time (ms)'); 
+                  ylabel('Frequency (Hz)');
+                  c = colorbar();
+                  phasemap('rad');
+                  ylabel(c,'phase std');
+                  hold on
+                  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  title('phase, lower confidence bound','FontSize',18);
+
+                  saveFigure(outDir,sprintf('coh_TF_errs_%s_%s_-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
                   close(fh);
-
-
-                  if plotSwitch.tfErrs
-                    fh = figure(); 
-                    subplot(2,3,1);
-                    imagesc(t,1000*f(f < plotCutoffFreq),C(f<plotCutoffFreq,:)'); axis xy
-                    xlabel('Time (ms)'); 
-                    ylabel('Frequency (Hz)');
-                    c = colorbar();
-                    ylabel(c,'Coherency');
-                    hold on
-                    draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                    draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                    title(sprintf('%s %s - %s %s coherence, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel_i}{unit2_i},group{gcat_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
-                    subplot(2,3,2);
-                    imagesc(t,1000*f(f < plotCutoffFreq),Cerr(1,f<plotCutoffFreq,:)'); axis xy
-                    xlabel('Time (ms)'); 
-                    ylabel('Frequency (Hz)');
-                    c = colorbar();
-                    ylabel(c,'Coherency');
-                    hold on
-                    draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                    draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                    title('coherence, upper confidence bound','FontSize',18);
-
-                    subplot(2,3,3);
-                    imagesc(t,1000*f(f < plotCutoffFreq),Cerr(2,f<plotCutoffFreq,:)'); axis xy
-                    xlabel('Time (ms)'); 
-                    ylabel('Frequency (Hz)');
-                    c = colorbar();
-                    ylabel(c,'Coherency');
-                    hold on
-                    draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                    draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                    title('coherence, lower confidence bound','FontSize',18);
-
-
-                    subplot(2,3,4); 
-                    imagesc(t,1000*f(f < plotCutoffFreq),phi(f<plotCutoffFreq,:)'); axis xy
-                    xlabel('Time (ms)'); 
-                    ylabel('Frequency (Hz)');
-                    c = colorbar();
-                    ylabel(c,'phase');
-                    phasemap('rad');
-                    hold on
-                    draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                    draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                    title(sprintf('%s %s - %s %s phase, face%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
-                    subplot(2,3,5);
-                    imagesc(t,1000*f(f < plotCutoffFreq),phistd(2,f<plotCutoffFreq,:)); axis xy
-                    xlabel('Time (ms)'); 
-                    ylabel('Frequency (Hz)');
-                    c = colorbar();
-                    phasemap('rad');
-                    ylabel(c,'phase std');
-                    hold on
-                    draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                    draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);  
-                    title('phase, upper confidence bound','FontSize',18);
-
-                    subplot(2,3,6);
-                    imagesc(t,1000*f(f < plotCutoffFreq),phistd(2,f<plotCutoffFreq,:)); axis xy  %correct? what shape is phistd???
-                    xlabel('Time (ms)'); 
-                    ylabel('Frequency (Hz)');
-                    c = colorbar();
-                    phasemap('rad');
-                    ylabel(c,'phase std');
-                    hold on
-                    draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                    draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                    title('phase, lower confidence bound','FontSize',18);
-
-                    saveFigure(outDir,sprintf('coh_TF_errs_%s_%s_-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{gcat_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                    close(fh);
-                  end
                 end
               end
             end
