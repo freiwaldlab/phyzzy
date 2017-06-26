@@ -160,20 +160,20 @@ plotSwitch.lfpSpectraTfByImage = 1;
 plotSwitch.tfSpectraByCategory = 1;
 plotSwitch.tfErrs = 1;
 
-%%%%
+%%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 analysisGroups.spectraByCategory.groups = {{'face';'nonface'}};  %todo: add spectra diff?
 analysisGroups.spectraByCategory.names = {'faceVnon'};
 analysisGroups.spectraByCategory.colors = {{'r';'b'}};
 %
-analysisGroups.tfSpectraByCategory.groups = {{'face'};{'nonface'};{'object'};{'body'}}; %todo: add tf spectra diff?
-analysisGroups.tfSpectraByCategory.names = {'face';'nonface';'object';'body'};
+analysisGroups.tfSpectraByCategory.groups = {{'face'};{'nonface'}};%{'object'};{'body'}      %todo: add tf spectra diff?
+analysisGroups.tfSpectraByCategory.names = {'face','nonface'};%'nonface';'object';'body'
 %
 analysisGroups.lfpSingleTrialsByCategory.groups = {{'face';'nonface'}};
 analysisGroups.lfpSingleTrialsByCategory.names = {'faceVnon'};
 %
-analysisGroups.coherenceByCategory.groups = {{'face';'nonface'};{'face';'object';'body'};{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'hand';'techno'}};
-analysisGroups.coherenceByCategory.colors = {{'r';'b'};{'r';'g';'b'};{'b';'c';'y';'g';'m';'r';'k';'k'}};
-analysisGroups.coherenceByCategory.names = {'faceVnon';'fob';'slimCats'};
+analysisGroups.coherenceByCategory.groups = {{'face';'nonface'}}; %{'face';'object';'body'};{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'hand';'techno'}
+analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; %{'r';'g';'b'};{'b';'c';'y';'g';'m';'r';'k';'k'}
+analysisGroups.coherenceByCategory.names = {'faceVnon'}; %'fob';'slimCats'
 %
 analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'};{'object'};{'body'}};
 
@@ -185,14 +185,14 @@ calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 1;
+calcSwitch.evokedSpectra = 0;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
 calcSwitch.evokedCatTF = 1;
 calcSwitch.inducedCatTF = 0;
 calcSwitch.meanEvokedTF = 1;
-calcSwitch.trialMeanSpectra = 1;
+calcSwitch.trialMeanSpectra = 0;
 calcSwitch.coherenceByCategory = 1;
 calcSwitch.spikeTimes = 0;
 calcSwitch.useJacknife = 0;
