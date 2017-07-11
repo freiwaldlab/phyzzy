@@ -18,8 +18,9 @@ pictureLabels = {};
 for i = 1:length(pictureFilenames)
   tmp = regexp(pictureFilenames{i}, '\','split');
   tmp2 = regexp(tmp{end},'.bm','split');
-  pictureLabels = vertcat(pictureLabels, regexprep(tmp2{1},'_',''));
+  pictureLabels = vertcat(pictureLabels, regexprep(tmp2{1},'\.|_','')); %remove '.' and '_' characters
 end
+disp(pictureLabels);
 categories = {'Humanhead','HumanheadoriA','HumanheadoriB','HumanheadoriC','HumanheadoriD','HumanheadoriE','Monkeyhead',...
   'MonkeyheadoriA','MonkeyheadoriB','MonkeyheadoriC','MonkeyheadoriD','MonkeyheadoriE','fruit','hand','humanbody','monkeybody',...
   'monkeybodypart','monkeybodywhole','place','techno', 'head','headoriA','headoriB','headoriC','headoriD','headoriE'};

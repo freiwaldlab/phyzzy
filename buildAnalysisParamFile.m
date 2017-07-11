@@ -1,4 +1,4 @@
-function [ analysisParamsFilename ] = buildAnalysisParamFile( )
+function [ analysisParamsFilename ] = buildAnalysisParamFile( )    
 %buildAnalysisParamFile saves a mat file of parameters, which control the
 %behavior of analyzeSession
 %   todo: option to load 'fixed' params from file, for ease accross days
@@ -7,24 +7,38 @@ function [ analysisParamsFilename ] = buildAnalysisParamFile( )
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '002';
 dateSubject = '170405ALAN'; 
-inRig = 0;
-if inRig
-  ephysVolume = '/Volumes/Users-1/User/Desktop';
-  stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';
-else
-  ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
-  stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
+machine = 'laptop';
+
+switch machine
+  case 'rig'
+    ephysVolume = '/Volumes/Users-1/User/Desktop';
+    stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';
+    outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
+    picParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+  case 'laptop'
+    ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
+    stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
+    outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
+    picParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+  case 'hopper'
+    ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
+    stimulusLogVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Visiko';
+    outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
+    picParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+  case 'turing'
+    ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
+    stimulusLogVolume = '/Freiwald/ephys/sserene/ALAN_DATA/Visiko';
+    outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
+    picParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
 end
-outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
 analysisLabel = 'Basic';
 analysisParamsFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
-picParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';
 categoryListSlim = {'humanFace','monkeyFace','place','fruit','humanBody','monkeyBody','techno'}; %minimal cat list for clean plots
-saveFig = 1;
-exportFig = 0;
-saveFigData = 0;
-savePreprocessed = 0;
+saveFig = 1;           %#ok
+exportFig = 0;         %#ok
+saveFigData = 0;       %#ok
+savePreprocessed = 0;  %#ok
 verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 
 
@@ -43,12 +57,12 @@ ephysParams.decimateFactorPass2 = 5;
 ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should be raw rate/productOfDecimateFactors)
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
 hp1Hz = designfilt('highpassiir', 'FilterOrder',8,'PassbandFrequency',1, ...
-  'StopbandAttenuation',100,'PassbandRipple',0.5,'SampleRate',1000); 
+  'StopbandAttenuation',100,'PassbandRipple',0.5,'SampleRate',1000);     %#ok
 % note: with these specifications, returns a 48th order butterworth filter
 butter1Hz200Hz_v1 = designfilt('bandpassiir','DesignMethod','butter','PassbandFrequency1',1,'PassbandFrequency2',200,...
   'SampleRate',1000,'MatchExactly','passband','StopbandFrequency1',0.67,'StopbandFrequency2',250);
 [tmp1,tmp2] = butter(4,[1/500,200/500]);
-butter1Hz200Hz_v2 = [tmp1,tmp2];
+butter1Hz200Hz_v2 = [tmp1,tmp2];        %#ok
 ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter 
 
 % parameters preprocessAnalogIn, see function for details
@@ -59,7 +73,7 @@ analogInParams.accelChannelNames = {}; % row vector, whose length matches num ro
 analogInParams.eyeChannels = [];
 
 % parameters preprocessLogFile, see function for details
-stimSyncParams.usePhotodiode = 0;
+stimSyncParams.usePhotodiode = 0;        %#ok
 
 % parameters for excludeStimuli, see function for details
 excludeStimParams.fixPre = 0; %ms
@@ -84,42 +98,57 @@ chr_params.pad = 1;
 chr_params.fs = 1;
 chr_params.trialave = 1;
 chr_params.err = [1 .05];
-chr_params.fpass = [0 .1];
+chr_params.fpass = [0 .1];          %#ok
 tfParams.movingWin = [200 5];
 tfParams.specgramRowAve = 0;
+
+correlParams.maxShift = 50;
+correlParams.matchTimeRanges = 1;
+correlParams.timeDifferenceBound = [0,200];
+correlParams.normalize = 1;
+correlParams.useJacknife = 1;
+correlParams.jacknifeDraws = 100;
+switch machine
+  case 'laptop'
+    correlParams.jacknifeParallelWorkers = 0;    %#ok
+  case 'hopper'
+    correlParams.jacknifeParallelWorkers = 0;   %#ok
+  case 'turing'
+    corelParams.jacknifeParallelWorkers = 20;    %#ok
+end
 
 lfpAlignParams.samPerMS = 1; % because this is after decimation
 lfpAlignParams.msPreAlign = psthParams.psthPre+tfParams.movingWin(1)/2; 
 lfpAlignParams.msPostAlign = psthParams.psthImDur+psthParams.psthPost+tfParams.movingWin(1)/2;
 spikeAlignParams.preAlign = psthParams.psthPre+3*psthParams.smoothingWidth;
-spikeAlignParams.postAlign = psthParams.psthImDur+psthParams.psthPost+3*psthParams.smoothingWidth;
+spikeAlignParams.postAlign = psthParams.psthImDur+psthParams.psthPost+3*psthParams.smoothingWidth;   %#ok
 % for lfps, constrain first and (optional) last [n m] samples to 0 mean
 useDCSUB = 0;
 if useDCSUB
   %lfpAlignParams.DCSUB_SAM = [lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10; 0, 0 ]; % 0-th order 
   lfpAlignParams.DCSUB_SAM = [lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10;lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10 ]; % 1st order 
 else
-  lfpAlignParams.DCSUB_SAM = 0;
+  lfpAlignParams.DCSUB_SAM = 0;   %#ok
 end
 %
-frCalcOn = 60;
-frCalcOff = 0; %note: if frCalcOff < frCalcOn, will update when psthImDur is set after reading log file 
-frCalcOnEarly = 60;
-frCalcOffEarly = 260;
-frCalcOnLate = 260;
-frCalcOffLate = 460;
+frCalcOn = 60;          %#ok
+frCalcOff = 0; %note: if frCalcOff < frCalcOn, will update when psthImDur is set after reading log file         
+frCalcOnEarly = 60;     %#ok
+frCalcOffEarly = 260;   %#ok
+frCalcOnLate = 260;     %#ok
+frCalcOffLate = 460;    %#ok
 %
 psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
 
 % Boolean variables to specify which computations to perform; TODO: read
 % from config file, eventually with conditional on log file info
-makeImPSTH = 1;
-makeCatPSTH = 1;
+makeImPSTH = 1;        %#ok 
+makeCatPSTH = 1;       %#ok
 
-calcCoherenceRFcpt = 0;
-calcCoherenceRFcc = 0;
-calcCoherenceRFptpt = 0;
-calcGrangerRF = 0;
+calcCoherenceRFcpt = 0;  %#ok
+calcCoherenceRFcc = 0;   %#ok
+calcCoherenceRFptpt = 0; %#ok
+calcGrangerRF = 0;       %#ok 
 
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
@@ -157,10 +186,12 @@ plotSwitch.lfpSpectraByCategory = 1;
 plotSwitch.spikeSpectraByCategory = 1;
 plotSwitch.SpikeSpectraTfByImage = 1;
 plotSwitch.lfpSpectraTfByImage = 1;
-plotSwitch.tfSpectraByCategory = 1;
-plotSwitch.tfErrs = 1;
+plotSwitch.tfSpectraByCategory = 0;
+plotSwitch.tfErrs = 1;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
+analysisGroups.selectivityIndex.groups = {{'face';'nonface'},{'face';'object'},{'face';'body'}};
+%
 analysisGroups.spectraByCategory.groups = {{'face';'nonface'}};  %todo: add spectra diff?
 analysisGroups.spectraByCategory.names = {'faceVnon'};
 analysisGroups.spectraByCategory.colors = {{'r';'b'}};
@@ -177,15 +208,15 @@ analysisGroups.coherenceByCategory.names = {'faceVnon'}; %'fob';'slimCats'
 %
 analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'};{'object'};{'body'}};
 
-analysisGroups.byImage = {};
-analysisGroupColors.byImage = {};
+analysisGroups.byImage = {};      %#ok
+analysisGroupColors.byImage = {}; %#ok
 %%%%%
 
 calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 0;
+calcSwitch.evokedSpectra = 1;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
@@ -195,19 +226,19 @@ calcSwitch.meanEvokedTF = 1;
 calcSwitch.trialMeanSpectra = 0;
 calcSwitch.coherenceByCategory = 1;
 calcSwitch.spikeTimes = 0;
-calcSwitch.useJacknife = 0;
+calcSwitch.useJacknife = 0;       %#ok
 
 %%% set paths and directories, EDIT RARELY %%%
-analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);
-lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);
+analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
+lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        %#ok
 spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
 taskFilename = sprintf('%s/%s/%s0%s.log',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
 outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
 analysisParamsFilename = strcat(outDir,analysisParamsFilenameStem);
-preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);
+preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
 %
 load('cocode2.mat');
-psthColormap = map;
+psthColormap = map;  %#ok
 %
 if ~exist(outDir,'dir')
   mkdir(outDir);
