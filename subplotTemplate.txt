@@ -1,0 +1,7 @@
+\documentclass{beamer}
+\mode<presentation> {
+\usetheme{default}
+\setbeamertemplate{navigation symbols}{} % To remove the navigation symbols
+}
+\usepackage{graphicx} % Allows including images
+\begin{document}
