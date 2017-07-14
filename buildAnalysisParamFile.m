@@ -48,6 +48,7 @@ ephysParams.needSpikes = 1;
 ephysParams.spikeChannels = [1,35,33]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
 ephysParams.lfpChannels = [1,35,33]; 
 ephysParams.channelNames = {'ML','AL','AM'};
+ephysParams.unitsToIgnore = {{},{},{}}; %note: use Blackrock indexing, so unsorted is 0, first defined unit is 1, etc.
 ephysParams.lfpChannelScaleBy = [8191/32764 8191/32764 8191/32764]; %converts raw values to microvolts
 ephysParams.common_ref = [0, 35, 35]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
@@ -89,7 +90,12 @@ excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 psthParams.psthPre = 100; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 0;  % only need to set this for variable length stim runs; else, comes from log file
 psthParams.psthPost = 300;
-psthParams.smoothingWidth = 10; %psth smoothing width, in ms
+psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
+psthParams.errorType = 1; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
+psthParams.errorRangeZ = 1; %how many standard errors to show
+psthParams.bootstrapSamples = 100;
+
+
 % TW=3 with T=.2, then W = 15 Hz (5 tapers)
 % TW=1.5 with T=.1, then W = 15 Hz (2 tapers)
 % TW = 1.5 with T=.2, then W = 7.5 Hz (2 tapers)
@@ -142,30 +148,31 @@ psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap cal
 
 % Boolean variables to specify which computations to perform; TODO: read
 % from config file, eventually with conditional on log file info
-makeImPSTH = 1;        %#ok 
-makeCatPSTH = 1;       %#ok
 
 calcCoherenceRFcpt = 0;  %#ok
 calcCoherenceRFcc = 0;   %#ok
 calcCoherenceRFptpt = 0; %#ok
 calcGrangerRF = 0;       %#ok 
 
+plotSwitch.imagePsth = 1;
+plotSwitch.categoryPsth = 1;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
 plotSwitch.imageTuningSorted = 0;
-plotSwitch.categoryPrefBarPlot = 0;
-plotSwitch.categoryPrefBarPlotEarly = 0;
-plotSwitch.categoryPrefBarPlotLate = 0;
-plotSwitch.tuningCurves = 0;
-plotSwitch.tuningCurvesEarly = 0;
-plotSwitch.tuningCurvesLate = 0;
+plotSwitch.stimPrefBarPlot = 1;
+plotSwitch.stimPrefBarPlotEarly = 1;
+plotSwitch.stimPrefBarPlotLate = 1;
+plotSwitch.tuningCurves = 1;
+plotSwitch.tuningCurvesEarly = 1;
+plotSwitch.tuningCurvesLate = 1;
 plotSwitch.calcLatencyRF = 0;
 plotSwitch.calcEvokedPowerRF = 0;
 plotSwitch.faceVnonEvokedPotential = 1;
-plotSwitch.faceVnonEvokedMuaMultiCh = 1;
+plotSwitch.evokedPsthMuaMultiCh = 1;
 plotSwitch.evokedByCategory = 1;
-plotSwitch.psthEvokedByCategory = 1;
+plotSwitch.colorPsthEvoked = 1;
+plotSwitch.linePsthEvoked = 1;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
 plotSwitch.runSummaryImMeanSubDiv = 0;
@@ -192,6 +199,25 @@ plotSwitch.tfErrs = 1;           %#ok
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 analysisGroups.selectivityIndex.groups = {{'face';'nonface'},{'face';'object'},{'face';'body'}};
 %
+analysisGroups.stimPrefBarPlot.groups = {{{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};{'face';'object';'body'}}};
+analysisGroups.stimPrefBarPlot.colors  = {{{'b';'c';'y';'g';'m';'r';'k'};{'b';'g';'r'}}};
+analysisGroups.stimPrefBarPlot.names = {'fobPlus'};
+%
+analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.evokedPotentials.names = {'fobPlus'};
+analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+%
+analysisGroups.colorPsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.colorPsthEvoked.names = {'fobPlus'};
+analysisGroups.colorPsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+%
+analysisGroups.linePsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.linePsthEvoked.names = {'fobPlus'};
+analysisGroups.linePsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+%
+analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'}};
+analysisGroups.evokedPsthOnePane.names = {'faceVnon'};
+%
 analysisGroups.spectraByCategory.groups = {{'face';'nonface'}};  %todo: add spectra diff?
 analysisGroups.spectraByCategory.names = {'faceVnon'};
 analysisGroups.spectraByCategory.colors = {{'r';'b'}};
@@ -212,6 +238,8 @@ analysisGroups.byImage = {};      %#ok
 analysisGroupColors.byImage = {}; %#ok
 %%%%%
 
+calcSwitch.categoryPSTH = 1;
+calcSwitch.imagePSTH = 1;
 calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;

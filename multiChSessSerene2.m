@@ -19,8 +19,8 @@ function [ spikesByImage, spikesByCategory, lfpByImage, lfpByCategory, categoryL
 %   - R2016a (or later) if joint psth-evoked potential plots desired
 %   - Signal Processing Toolbox (for dpss taper calculation, LFP filters)
 
-
-addpath(genpath('dependencies'));
+addpath(genpath('dependencies/genpath_exclude'));
+addpath(genpath_exclude('dependencies',{'*mvgc_v1.0'})); %note: use this to exclude libraries that overwrite matlab builtin namespaces, until they're needed
 % load analysis parameters
 if nargin == 0
   analysisParamFilename = buildAnalysisParamFile();
