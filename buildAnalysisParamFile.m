@@ -94,18 +94,19 @@ psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
 psthParams.errorType = 1; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;
+psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
 
 
 % TW=3 with T=.2, then W = 15 Hz (5 tapers)
 % TW=1.5 with T=.1, then W = 15 Hz (2 tapers)
 % TW = 1.5 with T=.2, then W = 7.5 Hz (2 tapers)
-chr_params.tapers = [3 5]; %[3 5] is chronux default; 
-chr_params.pad = 1;
-chr_params.fs = 1;
-chr_params.trialave = 1;
-chr_params.err = [1 .05];
-chr_params.fpass = [0 .1];          %#ok
-tfParams.movingWin = [200 5];
+chronuxParams.tapers = [3 5]; %[3 5] is chronux default; 
+chronuxParams.pad = 1;
+chronuxParams.fs = 1;
+chronuxParams.trialave = 1;
+chronuxParams.err = [1 .05];  %note: first entry will be automatically switched to 2 if calcSwitch.useJacknife == 1
+chronuxParams.fpass = [0 .1]; 
+tfParams.movingWin = [200 5]; 
 tfParams.specgramRowAve = 0;
 
 correlParams.maxShift = 50;
@@ -136,19 +137,15 @@ if useDCSUB
 else
   lfpAlignParams.DCSUB_SAM = 0;   %#ok
 end
-%
-frCalcOn = 60;          %#ok
-frCalcOff = 0; %note: if frCalcOff < frCalcOn, will update when psthImDur is set after reading log file         
-frCalcOnEarly = 60;     %#ok
-frCalcOffEarly = 260;   %#ok
-frCalcOnLate = 260;     %#ok
-frCalcOffLate = 460;    %#ok
-%
-psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
+% firing rate calculation epochs. Can provide either time (ms from stim onset),
+% or function handle, which will receive the minimum stimulus duration in the run as an input
+frEpochs = [60, @(stimDur) stimDur+60;...
+            60, 260; ...
+            260, @(stimDur) stimDur+60]%#ok
+
 
 % Boolean variables to specify which computations to perform; TODO: read
 % from config file, eventually with conditional on log file info
-
 calcCoherenceRFcpt = 0;  %#ok
 calcCoherenceRFcc = 0;   %#ok
 calcCoherenceRFptpt = 0; %#ok
@@ -254,7 +251,11 @@ calcSwitch.meanEvokedTF = 1;
 calcSwitch.trialMeanSpectra = 0;
 calcSwitch.coherenceByCategory = 1;
 calcSwitch.spikeTimes = 0;
-calcSwitch.useJacknife = 0;       %#ok
+calcSwitch.useJacknife = 0;      
+
+if calcSwitch.useJacknife
+  chronuxParams.err(1) = 2; %#ok
+end
 
 %%% set paths and directories, EDIT RARELY %%%
 analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok

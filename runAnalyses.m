@@ -29,6 +29,7 @@ smoothingWidth = psthParams.smoothingWidth;
 psthErrorType = psthParams.errorType;
 psthErrorRangeZ = psthParams.errorRangeZ;
 psthBootstrapSamples = psthParams.bootstrapSamples;
+psthColormapFilename = psthParams.psthColormapFilename;
 
 lfpPreAlign = lfpAlignParams.msPreAlign; 
 lfpPostAlign = lfpAlignParams.msPostAlign;
@@ -38,13 +39,15 @@ lfpPaddedBy = tfParams.movingWin(1)/2;
 movingWin = tfParams.movingWin;
 specgramRowAve = tfParams.specgramRowAve;
 samPerMS = ephysParams.samPerMS;
-if frCalcOff < frCalcOn
-  frCalcOff = psthImDur+frCalcOn;
+for epoch_i = 1:size(frEpochs,1)
+  for range_i = 1:2
+    tmp = frEpochs(epoch_i,range_i);
+    if isa(tmp,'function_handle')
+      frEpochs(range_i) = tmp(psthImDur);
+    end
+  end
 end
 
-if calcSwitch.useJacknife  %todo: put this somewhere else, e.g. buildAnalysisParamFile
-  chr_params.err = [2 .05];
-end
 
 colors = ['b','c','y','g','m','r','k'];
 chColors = ['b','g','m'];
@@ -186,24 +189,33 @@ if plotSwitch.categoryPsth
 end
 
 
-% todo: make loop?
-[imSpikeCounts, imFr, imFrErr] = spikeCounter(spikesByImage, frCalcOn, frCalcOff);
-[imSpikeCountsEarly, imFrEarly, imFrErrEarly] = spikeCounter(spikesByImage, frCalcOnEarly, frCalcOffEarly);
-[imSpikeCountsLate, imFrLate, imFrErrLate] = spikeCounter(spikesByImage, frCalcOnLate, frCalcOffLate);
-
-firingRatesByImageByEpoch = {imFr; imFrEarly; imFrLate};
-firingRateErrsByImageByEpoch = {imFrErr; imFrErrEarly; imFrErrLate};
-spikeCountsByImageByEpoch = {imSpikeCounts; imSpikeCountsEarly; imSpikeCountsLate};
+firingRatesByImageByEpoch = cell(size(frEpochs,1),1);
+firingRateErrsByImageByEpoch = cell(size(frEpochs,1),1);
+spikeCountsByImageByEpoch = cell(size(frEpochs,1),1);
+for epoch_i = 1:size(frEpochs,1)
+  [spikeCounts, fr, frErr] = spikeCounter(spikesByImage, frEpochs(epoch_i,1), frEpochs(epoch_i,2));
+  firingRatesByImageByEpoch{epoch_i} = fr;
+  firingRateErrsByImageByEpoch{epoch_i} = frErr;
+  spikeCountsByImageByEpoch{epoch_i} = spikeCounts;
+end
+imFr = firingRatesByImageByEpoch{1};
+imFrErr = firingRateErrsByImageByEpoch{1};
+imSpikeCounts = spikeCountsByImageByEpoch{1};
 
 if ~isempty(spikesByCategory)
-  [catSpikeCounts, catFr, catFrErr] = spikeCounter(spikesByCategory, frCalcOn, frCalcOff);
-  [catSpikeCountsEarly, catFrEarly, catFrErrEarly] = spikeCounter(spikesByCategory, frCalcOnEarly, frCalcOffEarly);
-  [catSpikeCountsLate, catFrLate, catFrErrLate] = spikeCounter(spikesByCategory, frCalcOnLate, frCalcOffLate);
+  firingRatesByCategoryByEpoch = cell(size(frEpochs,1),1);
+  firingRateErrsByCategoryByEpoch = cell(size(frEpochs,1),1);
+  spikeCountsByCategoryByEpoch = cell(size(frEpochs,1),1);
+  for epoch_i = 1:size(frEpochs,1)
+    [spikeCounts, fr, frErr] = spikeCounter(spikesByImage, frEpochs(epoch_i,1), frEpochs(epoch_i,2));
+    firingRatesByCategoryByEpoch{epoch_i} = fr;
+    firingRateErrsByCategoryByEpoch{epoch_i} = frErr;
+    spikeCountsByCategoryByEpoch{epoch_i} = spikeCounts;
+  end
+  catFr = firingRatesByCategoryByEpoch{1};
+  catFrErr = firingRateErrsByCategoryByEpoch{1};
+  catSpikeCounts = spikeCountsByCategoryByEpoch{1};
   
-  firingRatesByCategoryByEpoch = {catFr; catFrEarly; catFrLate};
-  firingRateErrsByCategoryByEpoch = {catFrErr; catFrErrEarly; catFrErrLate};
-  spikeCountsByCategoryByEpoch = {catSpikeCounts; catSpikeCountsEarly; catSpikeCountsLate};
-  frEpochs = [frCalcOn, frCalcOff; frCalcOnEarly, frCalcOffEarly; frCalcOnLate, frCalcOffLate];
 
   %%%% todo: remove this section; replaced with more general catInds variable
   categorySlimInds = zeros(length(categoryListSlim),1);
@@ -211,14 +223,14 @@ if ~isempty(spikesByCategory)
     categorySlimInds(i) = find(strcmp(categoryList,categoryListSlim{i}));
   end
   imageSlimCats = zeros(length(pictureLabels),1);
-  imageSlimCatColors = {};
+  imageSlimCatColors = cell(length(pictureLabels),1);
   %%%% end section to remove
   % todo: rename this variable to something better
   for image_i = 1:length(pictureLabels)
     for slimCat_i = 1:length(categorySlimInds)
       if any(strcmp(picCategories{image_i},categoryListSlim{slimCat_i}))
         imageSlimCats(image_i) = slimCat_i;
-        imageSlimCatColors = vertcat(imageSlimCatColors,colors(slimCat_i));
+        imageSlimCatColors{image_i} = colors(slimCat_i);
         break
       end
     end
@@ -1447,7 +1459,7 @@ for calc_i = 1:length(calcSwitches)
         groupColors = analysisGroups.spectraByCategory.colors{group_i};
         for channel_i = 1:length(channelNames)
           for item_i = 1:length(group)
-            [S,F,E] = mtspectrumc(squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,:))', chr_params);
+            [S,F,E] = mtspectrumc(squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,:))', chronuxParams);
             if item_i == 1
               spectra = zeros(length(group),length(S));
               freqs = zeros(length(group),length(F));
@@ -1516,7 +1528,7 @@ for calc_i = 1:length(calcSwitches)
           
           if calcSwitch.trialMeanSpectra
             for item_i = 1:length(group)
-              [S,F,E] = mtspectrumc(squeeze(mean(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,:),3)), chr_params);
+              [S,F,E] = mtspectrumc(squeeze(mean(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,:),3)), chronuxParams);
               if item_i == 1
                 spectra = zeros(length(group),length(S));
                 freqs = zeros(length(group),length(F));
@@ -1657,9 +1669,9 @@ for calc_i = 1:length(calcSwitches)
             end       
             for item_i = 1:length(group)              
               if calcSwitch.spikeTimes
-                [S,F,~,E] = mtspectrumpt(spikesByCategoryForTF{catInds.(group{item_i})}{channel_i}{unit_i}, chr_params); %matlab note: '~' is placeholder for unneeded output
+                [S,F,~,E] = mtspectrumpt(spikesByCategoryForTF{catInds.(group{item_i})}{channel_i}{unit_i}, chronuxParams); %matlab note: '~' is placeholder for unneeded output
               else
-                [S,F,~,E] = mtspectrumpb(spikesByCategoryBinned{catInds.(group{item_i})}{channel_i}{unit_i}', chr_params);
+                [S,F,~,E] = mtspectrumpb(spikesByCategoryBinned{catInds.(group{item_i})}{channel_i}{unit_i}', chronuxParams);
               end
               if item_i == 1
                 spectra = zeros(length(group),length(S));
@@ -1728,9 +1740,9 @@ for calc_i = 1:length(calcSwitches)
             if calcSwitch.trialMeanSpectra
               for item_i = 1:length(group)              
                 if calcSwitch.spikeTimes
-                  [S,F,~,E] = mtspectrumpt(allSpikesByCategoryForTF{catInds.(group{item_i})}{channel_i}{unit_i}, chr_params); %matlab note: '~' is placeholder for unneeded output
+                  [S,F,~,E] = mtspectrumpt(allSpikesByCategoryForTF{catInds.(group{item_i})}{channel_i}{unit_i}, chronuxParams); %matlab note: '~' is placeholder for unneeded output
                 else
-                  [S,F,~,E] = mtspectrumpb(mean(spikesByCategoryBinned{catInds.(group{item_i})}{channel_i}{unit_i},1)', chr_params);
+                  [S,F,~,E] = mtspectrumpb(mean(spikesByCategoryBinned{catInds.(group{item_i})}{channel_i}{unit_i},1)', chronuxParams);
                 end
                 if item_i == 1
                   spectra = zeros(length(group),length(S));
@@ -1902,9 +1914,9 @@ for calc_i = 1:length(tfCalcSwitches)
               continue
             end
             if calcSwitch.spikeTimes
-              [S,t,f,~,Serr]=mtspecgrampt(spikesByImageForTF{image_i}{channel_i}{unit_i},movingWin,chr_params); %last optional param not used: fscorr
+              [S,t,f,~,Serr]=mtspecgrampt(spikesByImageForTF{image_i}{channel_i}{unit_i},movingWin,chronuxParams); %last optional param not used: fscorr
             else
-              [S,t,f,~,Serr]=mtspecgrampb(spikesByImageBinned{image_i}{channel_i}{unit_i}',movingWin,chr_params); %last optional param not used: fscorr
+              [S,t,f,~,Serr]=mtspecgrampb(spikesByImageBinned{image_i}{channel_i}{unit_i}',movingWin,chronuxParams); %last optional param not used: fscorr
             end
             %todo: add Serr plot, significance plot, effect size plot, or similar
             %todo: add support for image calc groups, incl 'pref' wildcard
@@ -1931,9 +1943,9 @@ for calc_i = 1:length(tfCalcSwitches)
             
             if calcSwitch.trialMeanSpectra
               if calcSwitch.spikeTimes
-                [S,t,f,~,Serr]=mtspecgrampt(allSpikesByImageForTF{image_i}{channel_i}{unit_i},movingWin,chr_params); %last optional param not used: fscorr
+                [S,t,f,~,Serr]=mtspecgrampt(allSpikesByImageForTF{image_i}{channel_i}{unit_i},movingWin,chronuxParams); %last optional param not used: fscorr
               else
-                [S,t,f,~,Serr]=mtspecgrampb(mean(spikesByImageBinned{image_i}{channel_i}{unit_i},1)',movingWin,chr_params); %last optional param not used: fscorr
+                [S,t,f,~,Serr]=mtspecgrampb(mean(spikesByImageBinned{image_i}{channel_i}{unit_i},1)',movingWin,chronuxParams); %last optional param not used: fscorr
               end
               %todo: add Serr plot, significance plot, effect size plot, or similar
               %todo: add support for image calc groups, incl 'pref' wildcard
@@ -1966,7 +1978,7 @@ for calc_i = 1:length(tfCalcSwitches)
       for channel_i = 1:length(channelNames)
         %todo: add Serr plot, significance plot, effect size plot, or similar
         %todo: add support for image calc groups, incl 'pref' wildcard
-        [S,t,f,Serr]=mtspecgramc(squeeze(lfpByImage{image_i}(1,channel_i,:,:))',movingWin,chr_params);
+        [S,t,f,Serr]=mtspecgramc(squeeze(lfpByImage{image_i}(1,channel_i,:,:))',movingWin,chronuxParams);
         t = t - lfpAlignParams.msPreAlign;
         f = 1000*f;
         fh = figure();
@@ -2032,9 +2044,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 continue
               end
               if calcSwitch.spikeTimes
-                [S,t,f,~,Serr] = mtspecgrampt(spikesByCategoryForTF{catInds.(group{item_i})}{channel_i}{unit_i},movingWin,chr_params); %last optional param not used: fscorr
+                [S,t,f,~,Serr] = mtspecgrampt(spikesByCategoryForTF{catInds.(group{item_i})}{channel_i}{unit_i},movingWin,chronuxParams); %last optional param not used: fscorr
               else
-                [S,t,f,~,Serr] = mtspecgrampb(spikesByCategoryBinned{catInds.(group{item_i})}{channel_i}{unit_i}',movingWin,chr_params); %last optional param not used: fscorr
+                [S,t,f,~,Serr] = mtspecgrampb(spikesByCategoryBinned{catInds.(group{item_i})}{channel_i}{unit_i}',movingWin,chronuxParams); %last optional param not used: fscorr
               end
               t = t - lfpAlignParams.msPreAlign;
               f = 1000*f;
@@ -2086,9 +2098,9 @@ for calc_i = 1:length(tfCalcSwitches)
               
               if calcSwitch.trialMeanSpectra
                 if calcSwitch.spikeTimes
-                  [S,t,f,~,Serr] = mtspecgrampt(allSpikesByCategoryForTF{catInds.(group{item_i})}{channel_i}{unit_i},movingWin,chr_params); %last optional param not used: fscorr
+                  [S,t,f,~,Serr] = mtspecgrampt(allSpikesByCategoryForTF{catInds.(group{item_i})}{channel_i}{unit_i},movingWin,chronuxParams); %last optional param not used: fscorr
                 else
-                  [S,t,f,~,Serr] = mtspecgrampb(mean(spikesByCategoryBinned{catInds.(group{item_i})}{channel_i}{unit_i},1)',movingWin,chr_params); %last optional param not used: fscorr
+                  [S,t,f,~,Serr] = mtspecgrampb(mean(spikesByCategoryBinned{catInds.(group{item_i})}{channel_i}{unit_i},1)',movingWin,chronuxParams); %last optional param not used: fscorr
                 end
                 t = t - lfpAlignParams.msPreAlign;
                 f = 1000*f;
@@ -2125,7 +2137,7 @@ for calc_i = 1:length(tfCalcSwitches)
               end
             end
             % lfp
-            [S,t,f]=mtspecgramc(squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,:))',movingWin,chr_params);
+            [S,t,f]=mtspecgramc(squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,:))',movingWin,chronuxParams);
             t = t - lfpAlignParams.msPreAlign;
             f = 1000*f;
             totalPower = sum(S,2)';
@@ -2172,7 +2184,7 @@ for calc_i = 1:length(tfCalcSwitches)
             title(forTitle);
             
             if calcSwitch.trialMeanSpectra
-              [S,t,f]=mtspecgramc(squeeze(mean(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,:),3)),movingWin,chr_params);
+              [S,t,f]=mtspecgramc(squeeze(mean(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,:),3)),movingWin,chronuxParams);
               t = t - lfpAlignParams.msPreAlign;
               f = 1000*f;
               totalPower = sum(S,2)';
@@ -2378,10 +2390,10 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
                 if calcSwitch.spikeTimes
                   [C,phi,~,~,~,f,~,confC,phistd, Cerr] = callChronuxCoherency(@coherencycpt,squeeze(lfpByItem{itemNum}(1,channel_i,:,:))',...
-                    spikesByItemForTF{itemNum}{channel2_i}{unit_i},chr_params); %can have time grid as additional arg
+                    spikesByItemForTF{itemNum}{channel2_i}{unit_i},chronuxParams); %can have time grid as additional arg
                 else
                   [C,phi,~,~,~,f,~,confC,phistd, Cerr] = callChronuxCoherency(@coherencycpb,squeeze(lfpByItem{itemNum}(1,channel_i,:,:))',...
-                    spikesByItemBinned{itemNum}{channel2_i}{unit_i}',chr_params);
+                    spikesByItemBinned{itemNum}{channel2_i}{unit_i}',chronuxParams);
                 end
                 if item_i == 1
                   spectra = zeros(length(group),length(C));
@@ -2449,10 +2461,10 @@ for calc_i = 1:length(tfCalcSwitches)
                   end
                   if calcSwitch.spikeTimes
                     [C,phi,~,~,~,f,~,confC,phistd, Cerr] = callChronuxCoherency(@coherencycpt,squeeze(mean(lfpByItem{itemNum}(1,channel_i,:,:),3)),...
-                      allSpikesByItemForTF{itemNum}{channel2_i}{unit_i},chr_params); %can have time grid as additional arg
+                      allSpikesByItemForTF{itemNum}{channel2_i}{unit_i},chronuxParams); %can have time grid as additional arg
                   else
                     [C,phi,~,~,~,f,~,confC,phistd, Cerr] = callChronuxCoherency(@coherencycpb,squeeze(mean(lfpByItem{itemNum}(1,channel_i,:,:),3)),...
-                      mean(spikesByItemBinned{itemNum}{channel2_i}{unit_i},1)',chr_params);
+                      mean(spikesByItemBinned{itemNum}{channel2_i}{unit_i},1)',chronuxParams);
                   end
                   if item_i == 1
                     spectra = zeros(length(group),length(C));
@@ -2547,10 +2559,10 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
                 if calcSwitch.spikeTimes
                   [C,phi,~,~,~,t,f,~,confC,phistd,Cerr] = callChronuxCoherency(@cohgramcpt,squeeze(lfpByItem{itemNum}(1,channel_i,:,:))',...
-                    spikesByItemForTF{itemNum}{channel2_i}{unit_i}',movingWin,chr_params);
+                    spikesByItemForTF{itemNum}{channel2_i}{unit_i}',movingWin,chronuxParams);
                 else
                   [C,phi,~,~,~,t,f,~,confC,phistd,Cerr] = callChronuxCoherency(@cohgramcpb,squeeze(lfpByItem{itemNum}(1,channel_i,:,:))',...
-                    spikesByItemBinned{itemNum}{channel2_i}{unit_i}',movingWin,chr_params);
+                    spikesByItemBinned{itemNum}{channel2_i}{unit_i}',movingWin,chronuxParams);
                 end
                 if ~calcSwitch.useJacknife
                   Cerr = ones(2,size(C,1),size(C,2));
@@ -2710,7 +2722,7 @@ for calc_i = 1:length(tfCalcSwitches)
               end
               
               [C,phi,~,~,~,f,confC,phistd, Cerr] = callChronuxCoherency(@coherencyc,squeeze(lfpByItem{itemNum}(1,channel_i,:,:))',...
-                squeeze(lfpByItem{itemNum}(1,channel2_i,:,:))',chr_params);
+                squeeze(lfpByItem{itemNum}(1,channel2_i,:,:))',chronuxParams);
               if item_i == 1
                 spectra = zeros(length(group),length(C));
                 specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
@@ -2769,7 +2781,7 @@ for calc_i = 1:length(tfCalcSwitches)
                   itemNum = imInds.(group{item_i});
                 end
                 [C,phi,~,~,~,f,confC,phistd, Cerr] = callChronuxCoherency(@coherencyc,squeeze(mean(lfpByItem{itemNum}(1,channel_i,:,:),3)),...
-                  squeeze(mean(lfpByItem{itemNum}(1,channel2_i,:,:),3)),chr_params); 
+                  squeeze(mean(lfpByItem{itemNum}(1,channel2_i,:,:),3)),chronuxParams); 
                 if item_i == 1
                   spectra = zeros(length(group),length(C));
                   specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
@@ -2838,7 +2850,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 itemNum = imInds.(group{item_i});
               end
               [C,phi,~,~,~,t,f,confC,phistd,Cerr]=callChronuxCoherency(@cohgramc,squeeze(lfpByItem{itemNum}(1,channel_i,:,:))',...
-                squeeze(lfpByItem{itemNum}(1,channel2_i,:,:))',movingWin,chr_params);
+                squeeze(lfpByItem{itemNum}(1,channel2_i,:,:))',movingWin,chronuxParams);
               if ~calcSwitch.useJacknife
                 Cerr = ones(2,size(C,1),size(C,2));
                 Cerr(1,:,:) = C+confC; %todo: confirm that this works
@@ -3005,10 +3017,10 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
                 if calcSwitch.spikeTimes
                   [C,phi,~,~,~,f,~,confC,phistd, Cerr] = callChronuxCoherency(@coherencypt,spikesByItemForTF{itemNum}{channel_i}{unit_i},...
-                    spikesByItemForTF{itemNum}{channel2_i}{unit2_i},chr_params); %can have time grid as additional arg
+                    spikesByItemForTF{itemNum}{channel2_i}{unit2_i},chronuxParams); %can have time grid as additional arg
                 else
                   [C,phi,~,~,~,f,~,confC,phistd, Cerr] = callChronuxCoherency(@coherencypb,spikesByItemBinned{itemNum}{channel_i}{unit_i},...
-                    spikesByItemBinned{itemNum}{channel2_i}{unit2_i},chr_params);
+                    spikesByItemBinned{itemNum}{channel2_i}{unit2_i},chronuxParams);
                 end
                 if item_i == 1
                   spectra = zeros(length(group),length(C));
@@ -3071,10 +3083,10 @@ for calc_i = 1:length(tfCalcSwitches)
                   end
                   if calcSwitch.spikeTimes
                     [C,phi,~,~,~,f,~,confC,phistd, Cerr] = callChronuxCoherency(@coherencypt,allSpikesByItemForTF{itemNum}{channel_i}{unit_i},...
-                      allSpikesByItemForTF{itemNum}{channel2_i}{unit2_i},chr_params); %can have time grid as additional arg
+                      allSpikesByItemForTF{itemNum}{channel2_i}{unit2_i},chronuxParams); %can have time grid as additional arg
                   else
                     [C,phi,~,~,~,f,~,confC,phistd, Cerr] = callChronuxCoherency(@coherencypb,squeeze(mean(spikesByItemBinned{itemNum}{channel_i}{unit_i},3)),...
-                      squeeze(mean(spikesByItemBinned{itemNum}{channel2_i}{unit2_i},3)),chr_params);
+                      squeeze(mean(spikesByItemBinned{itemNum}{channel2_i}{unit2_i},3)),chronuxParams);
                   end
                   if item_i == 1
                     spectra = zeros(length(group),length(C));
@@ -3160,10 +3172,10 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
                 if calcSwitch.spikeTimes 
                   [C,phi,~,~,~,t,f,~,confC,phistd]=callChronuxCoherency(@cohgrampt,spikesByItemForTF{itemNum}{channel_i}{unit_i},...
-                    spikesByItemForTF{itemNum}{channel2_i}{unit2_i}, movingWin,chr_params);
+                    spikesByItemForTF{itemNum}{channel2_i}{unit2_i}, movingWin,chronuxParams);
                 else
                   [C,phi,~,~,~,t,f,~,confC,phistd]=callChronuxCoherency(@cohgrampb,spikesByItemBinned{itemNum}{channel_i}{unit_i}',...
-                    spikesByItemBinned{itemNum}{channel2_i}{unit2_i}', movingWin,chr_params);
+                    spikesByItemBinned{itemNum}{channel2_i}{unit2_i}', movingWin,chronuxParams);
                 end
                 if ~calcSwitch.useJacknife
                   Cerr = ones(2,size(C,1),size(C,2));
