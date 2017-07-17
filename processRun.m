@@ -1,5 +1,5 @@
-function [ spikesByImage, spikesByCategory, lfpByImage, lfpByCategory, categoryList, picFiles ] = multiChSessSerene2( varargin )
-%multiChSessSerene is a top level function to analyze units, MUA, lfps, coupling, and RFs. 
+function [ spikesByImage, spikesByCategory, lfpByImage, lfpByCategory, categoryList, picFiles ] = processRun( varargin )
+%processRun is a top level function to analyze units, MUA, lfps, coupling, and RFs. 
 %   - handles single-channel and multi-channel sessions
 %   - relies on raw visiko (.log) and blackrock (.ns5) files
 %   - aligns visiko events to blackrock clock (preprocessLogFile.m)
@@ -14,7 +14,6 @@ function [ spikesByImage, spikesByCategory, lfpByImage, lfpByCategory, categoryL
 %       - 'paramBuilder', paramBuilderFilename, 'analyzer', analyzerFilename
 %   Notes:
 %   Depends:
-%   - chronux toolbox
 %   - contents of 'dependencies' folder (details coming)
 %   - R2016a (or later) if joint psth-evoked potential plots desired
 %   - Signal Processing Toolbox (for dpss taper calculation, LFP filters)
