@@ -1,4 +1,4 @@
-function [ taskDataValid ] = excludeStimuli( taskData, params )
+function [ taskDataValid ] = excludeTrials( taskData, params )
 %excludeStimuli removes stim based on
 %   - fix spot flashes within flashPre before or flashPost after (msec)
 %   - broken fixation within fixPre before or fixPost after (msec)
@@ -31,21 +31,21 @@ if isfield(params,'minStimDur')
   minStimDur = params.minStimDur;
 end
 
-pictureValid = zeros(length(taskData.pictureFilenames),1);
-for i = 1:length(taskData.pictureFilenames)
-  if taskData.pictureFramesLost(i) > 0
+pictureValid = zeros(length(taskData.stimFilenames),1);
+for i = 1:length(taskData.stimFilenames)
+  if taskData.stimFramesLost(i) > 0
     continue
   end
-  lastFixIn = max(taskData.fixationInTimes(taskData.fixationInTimes < taskData.pictureStartTimes(i) - fixPre));
-  lastFixOut = max(taskData.fixationOutTimes(taskData.fixationOutTimes < taskData.pictureEndTimes(i) + fixPost));
+  lastFixIn = max(taskData.fixationInTimes(taskData.fixationInTimes < taskData.stimStartTimes(i) - fixPre));
+  lastFixOut = max(taskData.fixationOutTimes(taskData.fixationOutTimes < taskData.stimEndTimes(i) + fixPost));
   if isempty(lastFixIn)
     continue
   end
   if ~isempty(lastFixOut) && lastFixOut > lastFixIn %note: && short circuits, so won't throw error
     continue
   end
-  lastFlashEnd = max(taskData.fixSpotFlashEndTimes(taskData.fixSpotFlashEndTimes < taskData.pictureStartTimes(i) - flashPre));
-  lastFlashStart = max(taskData.fixSpotFlashStartTimes(taskData.fixSpotFlashStartTimes < taskData.pictureEndTimes(i) + flashPost));
+  lastFlashEnd = max(taskData.fixSpotFlashEndTimes(taskData.fixSpotFlashEndTimes < taskData.stimStartTimes(i) - flashPre));
+  lastFlashStart = max(taskData.fixSpotFlashStartTimes(taskData.fixSpotFlashStartTimes < taskData.stimEndTimes(i) + flashPost));
   if ~isempty(lastFlashStart) && isempty(lastFlashEnd)
     continue
   end
@@ -53,8 +53,8 @@ for i = 1:length(taskData.pictureFilenames)
     continue
   end
   if exist('juicePre','var') && exist('juicePost','var')
-    lastJuiceOff = max(taskData.juiceOffTimes(taskData.juiceOffTimes < taskData.pictureStartTimes(i) - juicePre));
-    lastJuiceOn = max(taskData.juiceOnTimes(taskData.juiceOnTimes < taskData.pictureEndTimes(i) + juicePost));
+    lastJuiceOff = max(taskData.juiceOffTimes(taskData.juiceOffTimes < taskData.stimStartTimes(i) - juicePre));
+    lastJuiceOn = max(taskData.juiceOnTimes(taskData.juiceOnTimes < taskData.stimEndTimes(i) + juicePost));
     if ~isempty(lastJuiceOn) && isempty(lastJuiceOff)
       continue
     end
@@ -68,8 +68,8 @@ for i = 1:length(taskData.pictureFilenames)
       shakeOn = vertcat(1,shakeOn);
     end
     shakeOff = find(diff(accel1.data > accel1.threshold) < 0);
-    lastShakeOff = max(shakeOff(shakeOff < taskData.pictureStartTimes(i) - accel1.pre));
-    lastShakeOn = max(shakeOn(shakeOn < taskData.pictureEndTimes(i) + accel1.post));
+    lastShakeOff = max(shakeOff(shakeOff < taskData.stimStartTimes(i) - accel1.pre));
+    lastShakeOn = max(shakeOn(shakeOn < taskData.stimEndTimes(i) + accel1.post));
     if ~isempty(lastShakeOn) && isempty(lastShakeOff)
       continue
     end
@@ -83,8 +83,8 @@ for i = 1:length(taskData.pictureFilenames)
       shakeOn = vertcat(1,shakeOn);
     end
     shakeOff = find(diff(accel2.data > accel2.threshold) < 0);
-    lastShakeOff = max(shakeOff(shakeOff < taskData.pictureStartTimes(i) - accel2.pre));
-    lastShakeOn = max(shakeOn(shakeOn < taskData.pictureEndTimes(i) + accel2.post));
+    lastShakeOff = max(shakeOff(shakeOff < taskData.stimStartTimes(i) - accel2.pre));
+    lastShakeOn = max(shakeOn(shakeOn < taskData.stimEndTimes(i) + accel2.post));
     if ~isempty(lastShakeOn) && isempty(lastShakeOff)
       continue
     end
@@ -99,11 +99,11 @@ disp(strcat('Percent of stimuli excluded: ', num2str(100-round(100*sum(pictureVa
 disp(strcat('total remaining stimuli: ', num2str(sum(pictureValid))));
 pictureValid = logical(pictureValid);
 taskDataValid = taskData;
-taskDataValid.pictureFilenames = taskData.pictureFilenames(pictureValid);
-taskDataValid.pictureJumps = taskData.pictureJumps(pictureValid,:);
-taskDataValid.pictureFramesLost = taskData.pictureFramesLost(pictureValid);
-taskDataValid.pictureStartTimes = taskData.pictureStartTimes(pictureValid);
-taskDataValid.pictureEndTimes = taskData.pictureEndTimes(pictureValid);
+taskDataValid.pictureFilenames = taskData.stimFilenames(pictureValid);
+taskDataValid.pictureJumps = taskData.stimJumps(pictureValid,:);
+taskDataValid.pictureFramesLost = taskData.stimFramesLost(pictureValid);
+taskDataValid.pictureStartTimes = taskData.stimStartTimes(pictureValid);
+taskDataValid.pictureEndTimes = taskData.stimEndTimes(pictureValid);
 
 if params.DEBUG
   figure();

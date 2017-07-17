@@ -1,0 +1,30 @@
+High-level Architecture:
+
+- Variables that change frequently are specified in buildAnalysisParamFile.m, or in additional files built off the buildAnalysisParamFile template. This has two positive effects. First, variables that change are in a separate file from the code, which makes versioning easier. Second, a copy of the processing parameters is always stored with the analyzed data.
+
+- processRun is the top-level function to analyze one ephys run. To do this, it:             —- calls buildAnalysisParamFile, then reads the variables file it writes.
+—- calls preprocessSpikes, preprocessLog, preprocessLfp, preprocessAnalogIn to load data and deal with file-format specific aspects. If you want to use this library with systems other than Visiko/Blackrock, these four functions are what you’ll need to modify
+—- calls excludeTrials to remove trials where e.g. fixation broke, fix spot flashed, etc.
+—- reads the stimulus and category information in stimParamFilename, and parses trials by stimulus and category
+—- calls alignSpikes and alignLFP to parse ephys data by stimulus and category structure
+—- calls runAnalyses to run analyses, e.g. psth’s; preferred stimuli; data quality checks; category preferences; tuning curves; receptive fields; LFP and spike power and coupling spectra (time averaged and time-frequency); LFP and spike auto- and cross-correlograms; and more to be added later including Granger causality, partial coupling, and tuning transfer.
+
+
+
+Nomenclature:
+- Run: one instance of data collection, from when you hit start on the data logger to when you hit end
+- Possible future nomenclature
+—- Site: one location for one electrode, or set of locations for multiple (not yet used)
+—- Unit: to be improved, the recordings from one isolated cell
+—- Penetration: all the recordings from a given penetration
+
+Getting started:
+
+Guidelines for modification:
+
+Style Guide:
+- use two spaces as your indent
+- use abbreviations sparingly in variable names; where not painfully obvious, say what the abbreviation is abbreviating in a comment when the variable first appears in each function
+- variable and function names are of the form thisVariableName. This is even true for acronyms, so, for instance thisNameIncludesPsthSee. One exception is trailing acronyms, which may be all caps, e.g. preprocessLFP
+- the on exception is loop iterators. In general, these should be of the form thingItsIterating_i, for example, channel_i for a loop over channels. 
+- don’t put multiple statements on one line

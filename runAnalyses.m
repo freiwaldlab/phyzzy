@@ -5,7 +5,7 @@ function [  ] = runAnalyses( analysisParamFilename, spikesByChannel, lfpData, an
 %   - ideally, function signature should remain constant
 %  this version of runAnalyses does the following:
 %   - makes psth's and evoked potentials for (possibly overlapping)categories, 
-%     specified at picParamsFilename
+%     specified at stimParamsFilename
 %   - RF analyses: spike rate, evoked power, mean spike latency
 %   - performs time-frequency and spike-field coherence analyses for each
 %     channel, using the multitaper method implemented in Chronux
@@ -14,12 +14,11 @@ function [  ] = runAnalyses( analysisParamFilename, spikesByChannel, lfpData, an
 %   - makes tuning curves for parameterized images or categories, as
 %     specified in the stim param file
 %   - todo: perform band-resolved Granger causality analysis across bands
-%     - currently, assumes that 'face' and 'nonface' appear as categories in
-%     picParamsFilename
+
 
 load(analysisParamFilename);
 pictureLabelsTmp = pictureLabels; %note: hack to avoid overwriting list of not presented stimuli
-load(picParamsFilename);
+load(stimParamsFilename);
 pictureLabels = pictureLabelsTmp; % conclusion of hack
 channelNames = ephysParams.channelNames;
 spikeChannels = ephysParams.spikeChannels;
@@ -498,7 +497,7 @@ end
 
 % firing rate RF color plot
 if taskData.RFmap
-  rfGrid  = unique(taskData.pictureJumps,'rows');
+  rfGrid  = unique(taskData.stimJumps,'rows');
   gridX = unique(rfGrid(:,1));
   gridsize = 2*mean(gridX(2:end,1)-gridX(1:end-1,1));
   % these are the x and y values at which to interpolate RF values
@@ -933,7 +932,7 @@ if plotSwitch.runSummary
     assert(min(taskDataAll.fixationInTimes) < min(taskDataAll.fixationOutTimes),'fixation out trigger before in; do not have defense');
     %handle case where fix in at end of run
     if length(taskDataAll.fixationInTimes) == length(taskDataAll.fixationOutTimes)+1
-      fixationOutTimesTmp = vertcat(taskDataAll.fixationOutTimes,taskDataAll.pictureEndTimes(end));
+      fixationOutTimesTmp = vertcat(taskDataAll.fixationOutTimes,taskDataAll.stimEndTimes(end));
     else
       fixationOutTimesTmp = taskDataAll.fixationOutTimes;
     end
@@ -1020,7 +1019,7 @@ if plotSwitch.runSummaryImMeanSub
     assert(min(taskDataAll.fixationInTimes) < min(taskDataAll.fixationOutTimes),'fixation out trigger before in; do not have defense');
     %handle case where fix in at end of run
     if length(taskDataAll.fixationInTimes) == length(taskDataAll.fixationOutTimes)+1
-      fixationOutTimesTmp = vertcat(taskDataAll.fixationOutTimes,taskDataAll.pictureEndTimes(end));
+      fixationOutTimesTmp = vertcat(taskDataAll.fixationOutTimes,taskDataAll.stimEndTimes(end));
     end
     for fix_i = 1:length(taskDataAll.fixationInTimes)
       plot([taskDataAll.fixationInTimes(fix_i) fixationOutTimesTmp(fix_i)],[0 0]);
@@ -1107,7 +1106,7 @@ if plotSwitch.runSummaryImMeanSubDiv
     assert(min(taskDataAll.fixationInTimes) < min(taskDataAll.fixationOutTimes),'fixation out trigger before in; do not have defense');
     %handle case where fix in at end of run
     if length(taskDataAll.fixationInTimes) == length(taskDataAll.fixationOutTimes)+1
-      fixationOutTimesTmp = vertcat(taskDataAll.fixationOutTimes,taskDataAll.pictureEndTimes(end));
+      fixationOutTimesTmp = vertcat(taskDataAll.fixationOutTimes,taskDataAll.stimEndTimes(end));
     end
     for fix_i = 1:length(taskDataAll.fixationInTimes)
       plot([taskDataAll.fixationInTimes(fix_i) fixationOutTimesTmp(fix_i)],[0 0]);

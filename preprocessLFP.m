@@ -1,10 +1,12 @@
 function [ lfpData ] = preprocessLFP( lfpFilename, params )
 %UNTITLED Summary of this function goes here
 %   
-
 % unpack params fields
-needLFP = params.needLFP;  %todo: implement
-needSpikes = params.needSpikes; %todo: needed?
+if ~params.needLFP
+  lfpData = [];
+  Output.VERBOSE(sprintf('not loading LFP data from %s',lfpFilename));
+  return
+end
 lfpChannels = params.lfpChannels;
 lfpChannelScaleBy = params.lfpChannelScaleBy; %converts raw values to microvolts
 common_ref = params.common_ref; %not yet implemented; will allow software re-refrence across headstages

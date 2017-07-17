@@ -83,12 +83,12 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   end
 
   taskDataAll = taskData;
-  % exclude stimuli for fixation out, flash on, frame dropped, (accel high, juice on)
+  % exclude trails for fixation out, flash on, frame dropped, (accel high, juice on)
   % params are ( taskData, fixPre, fixPost, flashPre, flashPost, varargin )
-  taskData = excludeStimuli( taskData, excludeStimParams);
+  taskData = excludeTrials( taskData, excludeStimParams);
 
   %sort trials by image and image category
-  tmp = load(picParamsFilename); %loads variables paramArray, categoryLabels,pictureLabels
+  tmp = load(stimParamsFilename); %loads variables paramArray, categoryLabels,pictureLabels
   picCategories = tmp.paramArray;
   categoryList = tmp.categoryLabels;
   pictureLabels = tmp.pictureLabels;
@@ -100,8 +100,8 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   offsetsByImage = cell(length(picFiles),1);
   picsNotPresented = zeros(length(picFiles),1);
   for i = 1:length(picFiles)
-    onsetsByImage{i} = taskData.pictureStartTimes(strcmp(taskData.pictureFilenames,picFiles{i}));
-    offsetsByImage{i} = taskData.pictureEndTimes(strcmp(taskData.pictureFilenames,picFiles{i}));
+    onsetsByImage{i} = taskData.stimStartTimes(strcmp(taskData.stimFilenames,picFiles{i}));
+    offsetsByImage{i} = taskData.stimEndTimes(strcmp(taskData.stimFilenames,picFiles{i}));
     picsNotPresented(i) = isempty(onsetsByImage{i});
   end
   % todo: add similar defense for categories
@@ -137,7 +137,7 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   if taskData.RFmap
     jumpsByImage = cell(length(picFiles),1);
     for i = 1:length(picFiles)
-      jumpsByImage{i} = taskData.pictureJumps(strcmp(taskData.pictureFilenames,picFiles{i}),:);
+      jumpsByImage{i} = taskData.stimJumps(strcmp(taskData.stimFilenames,picFiles{i}),:);
     end
   else
     jumpsByImage = [];

@@ -14,22 +14,22 @@ switch machine
     ephysVolume = '/Volumes/Users-1/User/Desktop';
     stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    picParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
   case 'laptop'
     ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    picParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
   case 'hopper'
     ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Visiko';
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    picParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
   case 'turing'
     ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Freiwald/ephys/sserene/ALAN_DATA/Visiko';
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    picParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
 end
 analysisLabel = 'Basic';
 analysisParamsFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
