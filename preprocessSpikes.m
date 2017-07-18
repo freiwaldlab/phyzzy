@@ -1,4 +1,4 @@
-function [ spikesByChannel, taskTriggers ] = preprocessSpikes( spikeFilename, params )
+function [ spikesByChannel, taskTriggers, channelUnitNames ] = preprocessSpikes( spikeFilename, params )
 %UNTITLED5 Summary of this function goes here
 %   params is struct with fields
 %   - spikeChannels: same length as LFP channels, in the same order, if analyzing both
@@ -17,28 +17,41 @@ taskTriggers = NEV.Data.SerialDigitalIO;
 
 %%%%% remove spike data from non-spike channels (e.g. reference electrodes), unsort low quality units, and remove noise units
 spikesByChannel = repmat(struct('times',[],'units',[],'waveforms',[]),length(params.spikeChannels),1);
+unitNames = {'unsorted', 'unit 1','unit 2','unit 3','unit 4','unit 5'};
+channelUnitNames = cell(length(params.spikeChannels),1);
 for channel_i = 1:length(params.spikeChannels)
   %change units from sample index to ms; type from int32 to double
   tmp.times = params.cPtCal*double(NEV.Data.Spikes.Timestamps(NEV.Data.Spikes.Electrode == params.spikeChannels(channel_i)));
   tmp.units = NEV.Data.Spikes.Unit(NEV.Data.Spikes.Electrode == params.spikeChannels(channel_i));
   tmp.waveforms = NEV.Data.Spikes.Waveform(NEV.Data.Spikes.Electrode == params.spikeChannels(channel_i),:);
+  unitNamesTmp = unitNames(1:length(unique(tmp.units)));
   for discard_i = 1:length(params.unitsToDiscard{channel_i})
     tmp.times = tmp.times(tmp.units ~= params.unitsToDiscard{channel_i}(discard_i));
     tmp.waveforms = tmp.waveforms(tmp.units ~= params.unitsToDiscard{channel_i}(discard_i));
     tmp.units = tmp.units(tmp.units ~= params.unitsToDiscard{channel_i}(discard_i));
   end
+  assert(~ismember(0,params.unitsToUnsort{channel_i}),'0 cannot appear in params.unitsToUnsort: cannot unsort unsorted');
   for unsort_i = 1:length(params.unitsToUnsort{channel_i})
     tmp.units(tmp.units == params.unitsToUnsort{channel_i}(unsort_i)) = 0;
   end
   spikesByChannel(channel_i) = tmp;
+  if ~isempty(tmp.units)
+    channelUnitNames{channel_i} = [unitNamesTmp(setdiff(0:(length(unitNamesTmp)-1),union(params.unitsToUnsort{channel_i},params.unitsToDiscard{channel_i}))+1),{'MUA'}];
+  end
+  disp(channelUnitNames{channel_i});
 end
+
 
 
 colors = ['k','r','c','g','b'];
 if params.plotSpikeWaveforms
   endTime = 0;
   for channel_i = 1:length(params.spikeChannels)
-    endTime = max(endTime, spikesByChannel(channel_i).times(end));
+    try %defense against unit with no spikes
+      endTime = max(endTime, spikesByChannel(channel_i).times(end));
+    catch
+      continue
+    end
   end
   halfTime = endTime/2;
   for channel_i = 1:length(params.spikeChannels)
@@ -88,29 +101,29 @@ if params.plotSpikeWaveforms
     toSkipByUnit = zeros(numPlotColumns-1,1);
     spikesToPlot = 100;
     for unit_i = 1:length(toSkipByUnit)
-      toSkipByUnit(unit_i) = floor(sum(tmp.units == unit_i)/spikesToPlot);
+      toSkipByUnit(unit_i) = floor(sum(tmp.units == unit_i-1)/spikesToPlot);
     end
-    for spike_i = 1:length(tmp.waveforms)
-      skippedByUnit(tmp.units(spike_i)+1) = skippedByUnit(tmp.units(spike_i)+1) + 1;
-      if ~(skippedByUnit(tmp.units(spike_i)+1) > toSkipByUnit(tmp.units(spike_i)+1))
-        continue
-      else
-        skippedByUnit(tmp.units(spike_i)+1) = 0;
-      end
-      subplot(3,numPlotColumns,double(tmp.units(spike_i))+1);
-      plot(tAxis,tmp.waveforms(spike_i,:),'color',colors(tmp.units(spike_i)+1));
-      subplot(3,numPlotColumns,numPlotColumns); %MUA plot
-      plot(tAxis,tmp.waveforms(spike_i,:),'color',colors(tmp.units(spike_i)+1));
-      if tmp.times(spike_i) < halfTime
-        subplot(3,numPlotColumns,numPlotColumns+double(tmp.units(spike_i))+1) %second row of the subplot
-        plot(tAxis,tmp.waveforms(spike_i,:),'color',colors(tmp.units(spike_i)+1));
-        subplot(3,numPlotColumns,2*numPlotColumns); %MUA plot
-        plot(tAxis,tmp.waveforms(spike_i,:),'color',colors(tmp.units(spike_i)+1));
-      else
-        subplot(3,numPlotColumns,2*numPlotColumns+double(tmp.units(spike_i))+1) %third row of the subplot
-        plot(tAxis,tmp.waveforms(spike_i,:),'color',colors(tmp.units(spike_i)+1));
-        subplot(3,numPlotColumns,3*numPlotColumns); %MUA plot
-        plot(tAxis,tmp.waveforms(spike_i,:),'color',colors(tmp.units(spike_i)+1));
+    for unit_i = 1:numPlotColumns-1
+      unitWaveforms = tmp.waveforms(tmp.units == unit_i-1,:);
+      unitTimes = tmp.times(tmp.units == unit_i-1);
+      unitWaveformsToPlot = unitWaveforms(1:toSkipByUnit(unit_i):size(unitWaveforms,1),:);
+      unitTimesToPlot = unitTimes(1:toSkipByUnit(unit_i):size(unitWaveforms,1));
+      for spike_i = 1:length(unitWaveformsToPlot)
+        subplot(3,numPlotColumns,unit_i);
+        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+        subplot(3,numPlotColumns,numPlotColumns); %MUA plot
+        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+        if unitTimesToPlot(spike_i) < halfTime
+          subplot(3,numPlotColumns,numPlotColumns+unit_i) %second row of the subplot
+          plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+          subplot(3,numPlotColumns,2*numPlotColumns); %MUA plot
+          plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+        else
+          subplot(3,numPlotColumns,2*numPlotColumns+unit_i) %third row of the subplot
+          plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+          subplot(3,numPlotColumns,3*numPlotColumns); %MUA plot
+          plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+        end
       end
     end
     drawnow;
@@ -127,42 +140,115 @@ if params.spikeWaveformPca
     end
     halfTime = endTime/2;
   end
-  legendStrings = {'unsorted','unit 1','unit 2','unit 3','unit 4','unit 5'};
   for channel_i = 1:length(params.spikeChannels)
     tmp = spikesByChannel(channel_i);
-    disp('starting pca');
-    [coeff,score] = pca(tmp.waveforms,'NumComponents',2);
-    disp('finished pca');
+    if size(tmp.waveforms,1) < 3
+      continue
+    end
+    [~,score] = pca(tmp.waveforms,'NumComponents',3);
     numUnits = length(unique(tmp.units));
     fh = figure();
-    subplot(1,3,1);
+    subplot(3,3,1);
     title(sprintf('%s',params.channelNames{channel_i}));
-    xlabel('1st PCA coefficient');
-    ylabel('second PCA coefficient');
+    xlabel('1st PC coefficient');
+    ylabel('2nd PC coefficient');
     hold on
-    subplot(1,3,2);
+    subplot(3,3,4);
     title(sprintf('%s early',params.channelNames{channel_i}));
-    xlabel('1st PCA coefficient');
-    ylabel('second PCA coefficient');
+    xlabel('1st PC coefficient');
+    ylabel('2nd PC coefficient');
     hold on
-    subplot(1,3,3);
+    subplot(3,3,7);
     title(sprintf('%s late',params.channelNames{channel_i}));
-    xlabel('1st PCA coefficient');
-    ylabel('second PCA coefficient');
+    xlabel('1st PC coefficient');
+    ylabel('2nd PC coefficient');
     hold on
+    % 1 vs 3
+    subplot(3,3,2);
+    title(sprintf('%s',params.channelNames{channel_i}));
+    xlabel('1st PC coefficient');
+    ylabel('3rd PC coefficient');
+    hold on
+    subplot(3,3,5);
+    title(sprintf('%s early',params.channelNames{channel_i}));
+    xlabel('1st PC coefficient');
+    ylabel('3rd PC coefficient');
+    hold on
+    subplot(3,3,8);
+    title(sprintf('%s late',params.channelNames{channel_i}));
+    xlabel('1st PC coefficient');
+    ylabel('3rd PC coefficient');
+    hold on
+    % 2 vs 3
+    subplot(3,3,3);
+    title(sprintf('%s',params.channelNames{channel_i}));
+    xlabel('2nd PC coefficient');
+    ylabel('3rd PC coefficient');
+    hold on
+    subplot(3,3,6);
+    title(sprintf('%s early',params.channelNames{channel_i}));
+    xlabel('2nd PC coefficient');
+    ylabel('3rd PC coefficient');
+    hold on
+    subplot(3,3,9);
+    title(sprintf('%s late',params.channelNames{channel_i}));
+    xlabel('2nd PC coefficient');
+    ylabel('3rd PC coefficient');
+    hold on
+    %%% now, draw scatters
+    scatterHandles = gobjects(9,1);
+    % 1 vs 2
+    h = subplot(3,3,1);
+    scatterHandles(1) = h;
     for unit_i = 1:numUnits
-%       disp(size(coeff));
-%       disp(unit_i);
-%       disp(size(colors));
-%       disp(size(tmp.units));
-      scatter(score(tmp.units == unit_i & tmp.times < halfTime,1),score(tmp.units == unit_i & tmp.times < halfTime,2),36,colors(unit_i));
+      scatter(score(tmp.units == unit_i-1,1),score(tmp.units == unit_i-1,2),36,colors(unit_i));
     end
-    subplot(1,3,1);
+    h = subplot(3,3,4);
+    scatterHandles(4) = h;
     for unit_i = 1:numUnits
-      scatter(coeff(tmp.units == unit_i & tmp.times >= halfTime,1),coeff(tmp.units == unit_i & tmp.times >= halfTime,2),36,colors(unit_i));
+      scatter(score(tmp.units == unit_i-1 & tmp.times < halfTime,1),score(tmp.units == unit_i-1 & tmp.times < halfTime,2),36,colors(unit_i));
     end
-    legend(legendStrings(1:numUnits));
-    if spikeWaveformPca == 1
+    h = subplot(3,3,7);
+    scatterHandles(7) = h;
+    for unit_i = 1:numUnits
+      scatter(score(tmp.units == unit_i-1 & tmp.times >= halfTime,1),score(tmp.units == unit_i-1 & tmp.times >= halfTime,2),36,colors(unit_i));
+    end
+    % 1 vs 3
+    h = subplot(3,3,2);
+    scatterHandles(2) = h;
+    for unit_i = 1:numUnits
+      scatter(score(tmp.units == unit_i-1,1),score(tmp.units == unit_i-1,3),36,colors(unit_i));
+    end
+    h = subplot(3,3,5);
+    scatterHandles(5) = h;
+    for unit_i = 1:numUnits
+      scatter(score(tmp.units == unit_i-1 & tmp.times < halfTime,1),score(tmp.units == unit_i-1 & tmp.times < halfTime,3),36,colors(unit_i));
+    end
+    h = subplot(3,3,8);
+    scatterHandles(8) = h;
+    for unit_i = 1:numUnits
+      scatter(score(tmp.units == unit_i-1 & tmp.times >= halfTime,1),score(tmp.units == unit_i-1 & tmp.times >= halfTime,3),36,colors(unit_i));
+    end
+    % 2 vs 3
+    h = subplot(3,3,3);
+    scatterHandles(3) = h;
+    for unit_i = 1:numUnits
+      scatter(score(tmp.units == unit_i-1,2),score(tmp.units == unit_i-1,3),36,colors(unit_i));
+    end
+    h = subplot(3,3,6);
+    scatterHandles(6) = h;
+    for unit_i = 1:numUnits
+      scatter(score(tmp.units == unit_i-1 & tmp.times < halfTime,2),score(tmp.units == unit_i-1 & tmp.times < halfTime,3),36,colors(unit_i));
+    end
+    h = subplot(3,3,9);
+    scatterHandles(9) = h;
+    for unit_i = 1:numUnits
+      scatter(score(tmp.units == unit_i-1 & tmp.times >= halfTime,2),score(tmp.units == unit_i-1 & tmp.times >= halfTime,3),36,colors(unit_i));
+    end
+    linkaxes(scatterHandles);
+    %
+    drawnow;
+    if params.spikeWaveformPca == 1
       close(fh);
     end
   end

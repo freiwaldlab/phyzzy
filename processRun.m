@@ -60,7 +60,7 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
 
   %%%%%%%%%%%%%%%%%
   analogInData = preprocessAnalogIn(analogInFilename, analogInParams); %todo: implement return variables
-  [spikesByChannel, taskTriggers] = preprocessSpikes(spikeFilename, ephysParams);
+  [spikesByChannel, taskTriggers, channelUnitNames] = preprocessSpikes(spikeFilename, ephysParams);
   lfpData = preprocessLFP(lfpFilename, ephysParams);
   [ taskData, stimTiming ] = preprocessLogFile(taskFilename, taskTriggers, stimSyncParams); % load visual stimulus data and transform its timestamps to ephys clock reference
   if stimTiming.shortest == stimTiming.longest
@@ -158,25 +158,6 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
     Output.VERBOSE(size(lfpByCategory{cat_i}));
   end
 
-  channelUnitNames = cell(length(spikeChannels),1);
-  for channel_i = 1:length(spikesByImage{1})
-    channelUnitNames{channel_i} = cell(length(spikesByImage{1}{channel_i}),1);
-    if ~ismember(0,ephysParams.unitsToDiscard{channel_i} && isepmty(ephysParams.unitsToUnsort))
-      channelUnitNames{channel_i}{1} = 'Unsorted';
-      hasUnsorted = 1;
-    else
-      hasUnsorted = 0;
-    end
-    isolatedUnitNames = sort(setdiff(horzcat(ephysParams.unitsToUnsort{channel_i},ephysParams.unitsToDiscard{channel_i}),1:length(spikesByImage{1}{channel_i})-1 - hasUnsorted));
-    for unit_i = hasUnsorted+1:length(spikesByImage{1}{channel_i})-1
-      channelUnitNames{channel_i}{unit_i} = sprintf('Unit %d',isolatedUnitNames(unit_i-1)); 
-    end
-    if length(isolatedUnitNames) == 1 && ~hasUnsorted 
-      channelUnitNames{channel_i}{end} = isolatedUnitNames(1);
-    else
-      channelUnitNames{channel_i}{end} = 'MUA';
-    end
-  end
   if savePreprocessed
     save(preprocessedDataFilename,'analysisParamFilename', 'spikesByChannel', 'lfpData', 'analogInData', 'taskData', 'taskDataAll', 'psthImDur', 'preAlign', 'postAlign',...
       'categoryList', 'pictureLabels', 'jumpsByImage', 'spikesByImage', 'psthEmptyByImage', 'spikesByCategory', 'psthEmptyByCategory',...
