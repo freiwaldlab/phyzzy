@@ -9,8 +9,8 @@ refOffset = params.refOffset; % this value is subtracted from all times; so, to 
 spikesByItem = cell(length(alignPointsByItem),1);
 psthEmptyByItem = cell(length(alignPointsByItem),1);
 for item_i = 1:length(alignPointsByItem)
-  item_spikesByChannel = cell(length(spikeChannels),1); %channels x 1
-  item_emptyByChannel = cell(length(spikeChannels),1);
+  itemSpikesByChannel = cell(length(spikeChannels),1); %channels x 1
+  itemEmptyByChannel = cell(length(spikeChannels),1);
   onsets = alignPointsByItem{item_i}; 
   for channel_i = 1:length(spikeChannels)
     channelSpikes = spikesByChannel(channel_i);
@@ -42,11 +42,11 @@ for item_i = 1:length(alignPointsByItem)
     end
     itemChannelSpikes{end} = itemChannelMUA;
     itemChannelEmpty{end} = empty;
-    item_spikesByChannel{channel_i} = itemChannelSpikes;
-    item_emptyByChannel{channel_i} = itemChannelEmpty;
+    itemSpikesByChannel{channel_i} = itemChannelSpikes;
+    itemEmptyByChannel{channel_i} = itemChannelEmpty;
   end
-  spikesByItem{item_i} = item_spikesByChannel;
-  psthEmptyByItem{item_i} = item_emptyByChannel;
+  spikesByItem{item_i} = itemSpikesByChannel;
+  psthEmptyByItem{item_i} = itemEmptyByChannel;
 end
 end
 

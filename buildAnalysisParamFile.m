@@ -48,7 +48,6 @@ ephysParams.needSpikes = 1;
 ephysParams.spikeChannels = [1,35,33]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
 ephysParams.lfpChannels = [1,35,33]; 
 ephysParams.channelNames = {'ML','AL','AM'};
-ephysParams.unitsToIgnore = {{},{},{}}; %note: use Blackrock indexing, so unsorted is 0, first defined unit is 1, etc.
 ephysParams.lfpChannelScaleBy = [8191/32764 8191/32764 8191/32764]; %converts raw values to microvolts
 ephysParams.common_ref = [0, 35, 35]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
@@ -56,6 +55,11 @@ ephysParams.cPtCal = 1/30; % conversion from spike sample indices to timestep of
 ephysParams.decimateFactorPass1 = 6; %note: product of the two decimate factors should be 30, if 1 khz samples desired
 ephysParams.decimateFactorPass2 = 5;
 ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should be raw rate/productOfDecimateFactors)
+%note: use Blackrock indexing for unitsToUnsort and unitsToDiscard, so unsorted is 0, first defined unit is 1, etc.
+ephysParams.unitsToUnsort = {[],[],[]}; %these units will be re-grouped with u0
+ephysParams.unitsToDiscard = {[],[],[]}; %these units will be considered noise and discarded
+ephysParams.spikeWaveformPca = 2;
+ephysParams.plotSpikeWaveforms = 2;
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
 hp1Hz = designfilt('highpassiir', 'FilterOrder',8,'PassbandFrequency',1, ...
   'StopbandAttenuation',100,'PassbandRipple',0.5,'SampleRate',1000);     %#ok
@@ -64,7 +68,7 @@ butter1Hz200Hz_v1 = designfilt('bandpassiir','DesignMethod','butter','PassbandFr
   'SampleRate',1000,'MatchExactly','passband','StopbandFrequency1',0.67,'StopbandFrequency2',250);
 [tmp1,tmp2] = butter(4,[1/500,200/500]);
 butter1Hz200Hz_v2 = [tmp1,tmp2];        %#ok
-ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter 
+ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter
 
 % parameters preprocessAnalogIn, see function for details
 analogInParams.needAccel = 0;
@@ -123,10 +127,11 @@ switch machine
   case 'turing'
     corelParams.jacknifeParallelWorkers = 20;    %#ok
 end
-
+%
 lfpAlignParams.samPerMS = 1; % because this is after decimation
 lfpAlignParams.msPreAlign = psthParams.psthPre+tfParams.movingWin(1)/2; 
 lfpAlignParams.msPostAlign = psthParams.psthImDur+psthParams.psthPost+tfParams.movingWin(1)/2;
+%
 spikeAlignParams.preAlign = psthParams.psthPre+3*psthParams.smoothingWidth;
 spikeAlignParams.postAlign = psthParams.psthImDur+psthParams.psthPost+3*psthParams.smoothingWidth;   %#ok
 % for lfps, constrain first and (optional) last [n m] samples to 0 mean

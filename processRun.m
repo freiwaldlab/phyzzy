@@ -81,9 +81,7 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
 
 
   taskDataAll = taskData;
-  % exclude trails for fixation out, flash on, frame dropped, (accel high, juice on)
-  % params are ( taskData, fixPre, fixPost, flashPre, flashPost, varargin )
-  taskData = excludeTrials( taskData, excludeStimParams);
+  taskData = excludeTrials( taskData, excludeStimParams); %exclude trials for lost fixation etc. 
 
   %sort trials by image and image category
   tmp = load(stimParamsFilename); %loads variables paramArray, categoryLabels,pictureLabels
@@ -163,10 +161,20 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   channelUnitNames = cell(length(spikeChannels),1);
   for channel_i = 1:length(spikesByImage{1})
     channelUnitNames{channel_i} = cell(length(spikesByImage{1}{channel_i}),1);
-    channelUnitNames{channel_i}{1} = 'Unsorted';
-    channelUnitNames{channel_i}{end} = 'MUA';
-    for unit_i = 2:length(spikesByImage{1}{channel_i})-1
-      channelUnitNames{channel_i}{unit_i} = sprintf('Unit %d',unit_i-1); 
+    if ~ismember(0,ephysParams.unitsToDiscard{channel_i} && isepmty(ephysParams.unitsToUnsort))
+      channelUnitNames{channel_i}{1} = 'Unsorted';
+      hasUnsorted = 1;
+    else
+      hasUnsorted = 0;
+    end
+    isolatedUnitNames = sort(setdiff(horzcat(ephysParams.unitsToUnsort{channel_i},ephysParams.unitsToDiscard{channel_i}),1:length(spikesByImage{1}{channel_i})-1 - hasUnsorted));
+    for unit_i = hasUnsorted+1:length(spikesByImage{1}{channel_i})-1
+      channelUnitNames{channel_i}{unit_i} = sprintf('Unit %d',isolatedUnitNames(unit_i-1)); 
+    end
+    if length(isolatedUnitNames) == 1 && ~hasUnsorted 
+      channelUnitNames{channel_i}{end} = isolatedUnitNames(1);
+    else
+      channelUnitNames{channel_i}{end} = 'MUA';
     end
   end
   if savePreprocessed
