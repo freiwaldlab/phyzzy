@@ -99,16 +99,16 @@ disp(strcat('Percent of stimuli excluded: ', num2str(100-round(100*sum(pictureVa
 disp(strcat('total remaining stimuli: ', num2str(sum(pictureValid))));
 pictureValid = logical(pictureValid);
 taskDataValid = taskData;
-taskDataValid.pictureFilenames = taskData.stimFilenames(pictureValid);
-taskDataValid.pictureJumps = taskData.stimJumps(pictureValid,:);
-taskDataValid.pictureFramesLost = taskData.stimFramesLost(pictureValid);
-taskDataValid.pictureStartTimes = taskData.stimStartTimes(pictureValid);
-taskDataValid.pictureEndTimes = taskData.stimEndTimes(pictureValid);
+taskDataValid.stimFilenames = taskData.stimFilenames(pictureValid);
+taskDataValid.stimJumps = taskData.stimJumps(pictureValid,:);
+taskDataValid.stimFramesLost = taskData.stimFramesLost(pictureValid);
+taskDataValid.stimStartTimes = taskData.stimStartTimes(pictureValid);
+taskDataValid.stimEndTimes = taskData.stimEndTimes(pictureValid);
 
 if params.DEBUG
   figure();
   hold on
-  plot(taskDataValid.pictureStartTimes,ones(size(taskDataValid.pictureStartTimes)),'color','red','marker','o', 'linestyle','none');
+  plot(taskDataValid.stimStartTimes,ones(size(taskDataValid.stimStartTimes)),'color','red','marker','o', 'linestyle','none');
   plot(taskData.fixationInTimes, 2*ones(size(taskData.fixationInTimes)),'color','green','marker','o','linestyle','none');
   plot(taskData.fixationOutTimes,2*ones(size(taskData.fixationOutTimes)),'color','red','marker','o', 'linestyle','none');
   plot(taskData.juiceOnTimes, 3*ones(size(taskData.juiceOnTimes)),'color','red','marker','o', 'linestyle','none');

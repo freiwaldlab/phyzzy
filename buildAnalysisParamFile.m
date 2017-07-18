@@ -64,7 +64,7 @@ butter1Hz200Hz_v1 = designfilt('bandpassiir','DesignMethod','butter','PassbandFr
   'SampleRate',1000,'MatchExactly','passband','StopbandFrequency1',0.67,'StopbandFrequency2',250);
 [tmp1,tmp2] = butter(4,[1/500,200/500]);
 butter1Hz200Hz_v2 = [tmp1,tmp2];        %#ok
-ephysParams.filter = 0;%butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter 
+ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter 
 
 % parameters preprocessAnalogIn, see function for details
 analogInParams.needAccel = 0;
