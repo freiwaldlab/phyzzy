@@ -39,15 +39,17 @@ lfpPaddedBy = tfParams.movingWin(1)/2;
 movingWin = tfParams.movingWin;
 specgramRowAve = tfParams.specgramRowAve;
 samPerMS = ephysParams.samPerMS;
-for epoch_i = 1:size(frEpochs,1)
+frEpochs = zeros(length(frEpochsCell),2);
+for epoch_i = 1:length(frEpochsCell)
   for range_i = 1:2
-    tmp = frEpochs(epoch_i,range_i);
+    tmp = frEpochsCell{epoch_i}{range_i};
     if isa(tmp,'function_handle')
-      frEpochs(range_i) = tmp(psthImDur);
+      frEpochs(epoch_i,range_i) = tmp(psthImDur);
+    else
+      frEpochs(epoch_i,range_i) = tmp;
     end
   end
 end
-
 
 colors = ['b','c','y','g','m','r','k'];
 chColors = ['b','g','m'];
@@ -207,7 +209,7 @@ if ~isempty(spikesByCategory)
   firingRateErrsByCategoryByEpoch = cell(size(frEpochs,1),1);
   spikeCountsByCategoryByEpoch = cell(size(frEpochs,1),1);
   for epoch_i = 1:size(frEpochs,1)
-    [spikeCounts, fr, frErr] = spikeCounter(spikesByImage, frEpochs(epoch_i,1), frEpochs(epoch_i,2));
+    [spikeCounts, fr, frErr] = spikeCounter(spikesByCategory, frEpochs(epoch_i,1), frEpochs(epoch_i,2));
     firingRatesByCategoryByEpoch{epoch_i} = fr;
     firingRateErrsByCategoryByEpoch{epoch_i} = frErr;
     spikeCountsByCategoryByEpoch{epoch_i} = spikeCounts;
@@ -217,27 +219,31 @@ if ~isempty(spikesByCategory)
   catSpikeCounts = spikeCountsByCategoryByEpoch{1};
   
 
-  %%%% todo: remove this section; replaced with more general catInds variable
-  categorySlimInds = zeros(length(categoryListSlim),1);
-  for i = 1:length(categoryListSlim)
-    categorySlimInds(i) = find(strcmp(categoryList,categoryListSlim{i}));
-  end
-  imageSlimCats = zeros(length(pictureLabels),1);
-  imageSlimCatColors = cell(length(pictureLabels),1);
-  %%%% end section to remove
-  % todo: rename this variable to something better
-  for image_i = 1:length(pictureLabels)
-    for slimCat_i = 1:length(categorySlimInds)
-      if any(strcmp(picCategories{image_i},categoryListSlim{slimCat_i}))
-        imageSlimCats(image_i) = slimCat_i;
-        imageSlimCatColors{image_i} = colors(slimCat_i);
-        break
+  groupLabelsByImage = zeros(length(pictureLabels),length(analysisGroups.stimulusLabelGroups));
+  groupLabelColorsByImage = ones(length(pictureLabels),3,length(analysisGroups.stimulusLabelGroups));
+  for group_i = 1:1:length(analysisGroups.stimulusLabelGroups.groups)
+    group = analysisGroups.stimulusLabelGroups.groups{group_i};
+    groupColors = analysisGroups.stimulusLabelGroups.colors{group_i};
+    if iscell(groupColors)
+      colorArray = zeros(length(groupColors),3);
+      for item_i = 1:length(groupColors)
+        % this silly line converts from colorspec letters to the corresponding rgb values
+        colorArray(item_i,:) = rem(floor((strfind('kbgcrmyw', groupColors{item_i}) - 1) * [0.25 0.5 1]), 2);
       end
+      groupColors = colorArray;
+      analysisGroups.stimulusLabelGroups.colors{group_i} = groupColors;
     end
-    if length(imageSlimCatColors) < image_i
-      imageSlimCats(image_i) = 0;
-      imageSlimCatColors = vertcat(imageSlimCatColors,'w');
-      fprintf('no slim category match found for %s\n',pictureLabels{image_i});
+    for image_i = 1:length(pictureLabels)
+      for item_i = 1:length(group)
+        if any(strcmp(picCategories{image_i},group{item_i})) || strcmp(pictureLabels{image_i},group_i)
+          groupLabelsByImage(image_i,group_i) = item_i;
+          groupLabelColorsByImage(image_i,:,group_i) = groupColors(item_i,:);
+          break
+        end
+      end
+      if groupLabelsByImage(image_i,group_i) == 0
+        Output.VERBOSE(sprintf('no slim category match found for %s\n',pictureLabels{image_i}));
+      end
     end
   end
 end
@@ -249,7 +255,7 @@ if ~taskData.RFmap
       [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');
       imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
       sortedImageLabels = pictureLabels(imageSortOrder);
-      sortedImageSlimCatColors = imageSlimCatColors(imageSortOrder);
+      sortedGroupLabelColors = groupLabelColorsByImage(imageSortOrder,:,:);
       fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
       for i = 1:min(10,length(pictureLabels))
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i),imFrErrSorted(i));
@@ -260,34 +266,43 @@ if ~taskData.RFmap
       end
       % preferred images raster plot
       if plotSwitch.prefImRaster
-        figure();
+        fh = figure();
         raster(spikesByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
         title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
       end
       % preferred images raster-evoked overlay
       if plotSwitch.prefImRasterEvokedOverlay
-        figure();
+        fh = figure();
         rasterEvoked(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
         title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
       end
       % preferred images raster-evoked overlay, with other channels
       if plotSwitch.prefImMultiChRasterEvokedOverlay
-        figure();
+        fh = figure();
         rasterEvokedMultiCh(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
         title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster-LFP-MultiChannel_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
       end
       % image preference barplot
       if plotSwitch.imageTuningSorted
-        figure();
-        superbar(imageSortedRates,'E',imFrErrSorted,'BarFaceColor',sortedImageSlimCatColors);
-        set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(pictureLabels),'TickDir','out');
-        ylabel('Firing rate, Hz');
-        title(sprintf('Image tuning, sorted, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
-        saveFigure(outDir, sprintf('imageTuningSorted_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-        % todo: add legend for category-color map
+        for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
+          fh = figure();
+          groupName = analysisGroups.stimulusLabelGroups.names{group_i};
+          superbar(imageSortedRates,'E',imFrErrSorted,'BarFaceColor',sortedGroupLabelColors(:,:,group_i));
+          set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(pictureLabels),'TickDir','out');
+          ylabel('Firing rate, Hz');
+          title(sprintf('Image tuning, sorted, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+          clear figData
+          figData.y = imageSortedRates;
+          figData.e = imFrErrSorted;
+          saveFigure(outDir, sprintf('imageTuningSorted_%s_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+          close(fh);
+        end
       end
     end
   end
@@ -773,6 +788,7 @@ for channel_i = 1:length(lfpChannels)
       end
       fh = figure();
       ah1 = subplot(2,1,1);
+      psthTitle = sprintf('%s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{end});
       plotPSTH(spkResponses, [], psthPre, psthPost, psthImDur, 'color', psthTitle, group, psthColormap );
       yyaxis right
       plot(times,mean(spkResponses,1),'Color',[0.8,0.8,0.9],'LineWidth',2); %todo: this mean should probably be weighted by number of images per category
@@ -803,7 +819,7 @@ for channel_i = 1:length(lfpChannels)
       pos1(3) = min(pos1(3),pos2(3));
       set(ah2,'Position',pos2);
       set(ah1,'Position',pos1);
-      %linkaxes([ah1,ah2],'x');
+      linkaxes([ah1,ah2],'x');
       title(ah1,sprintf('%s PSTH and Evoked Potentials',channelNames{channel_i}));
       clear figData
       figData.ax11.z = spkResponses;
@@ -1082,7 +1098,7 @@ end
   
 if plotSwitch.runSummaryImMeanSubDiv
   for channel_i = 1:length(channelNames)
-    f = figure();
+    fh = figure();
     numSubplots = length(imSpikeCounts{channel_i})-1+4;
     axisHandles = gobjects(numSubplots,1);
     axisNum = 1;
@@ -1163,180 +1179,171 @@ if plotSwitch.runSummaryImMeanSubDiv
     figData = 'none';
     drawnow;
     saveFigure(outDir,sprintf('runSummary_fracfluct_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    close(f);
+    close(fh);
   end
 end
+
 %%% scatter plots %%%
-% make lfp power-fr scatter plot
-if plotSwitch.lfpPowerMuaScatterAll
-  for channel_i = 1:length(channelNames)
-    for unit_i = 1:length(channelUnitNames{channel_i})
-      figure();
-      hold on;
-      for cat_i = 1:length(categoryListSlim)
-        lfpByTrial = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
-        lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
-        lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
-        scatter(lfpPowerByTrial,catSpikeCounts{channel_i}{unit_i}{categorySlimInds(cat_i)}.counts,36,colors(cat_i),'filled')
+if plotSwitch.lfpPowerMuaScatter
+  for epoch_i = 1:size(frEpochs,1)
+    for channel_i = 1:length(channelNames)
+      for unit_i = 1:length(channelUnitNames{channel_i})
+        for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
+          fh = figure();
+          group = analysisGroups.stimulusLabelGroups.groups{group_i};
+          groupName = analysisGroups.stimulusLabelGroups.names{group_i};
+          groupColors = analysisGroups.stimulusLabelGroups.colors{group_i};
+          hold on;
+          handlesForLegend = gobjects(length(group),1);
+          for item_i = 1:length(group)
+            if isfield(catInds,group{item_i})
+              lfpByTrial = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              spikeCountsByTrial = spikeCountsByCategoryByEpoch{epoch_i}{channel_i}{unit_i}{catInds.(group{item_i})}.counts;
+            else
+              lfpByTrial = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              spikeCountsByTrial = spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}{imInds.(group{item_i})}.counts;
+            end
+            lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
+            lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
+            h = scatter(lfpPowerByTrial,spikeCountsByTrial,36,repmat(groupColors(item_i,:),size(lfpByTrial,1),1),'filled');
+            handlesForLegend(item_i) = h;
+          end
+          xlabel('total lfp power (uV)');
+          ylabel('firing rate (Hz)');
+          title(sprintf('LFP power vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frEpochs(epoch_i,1), frEpochs(epoch_i,2)))
+          legend(handlesForLegend,group,'location','northeastoutside');
+          drawnow;
+          clear figData
+          figData.x = [];
+          figData.y = [];
+          saveFigure(outDir,sprintf('scatter_lfpPwrVsFr_%s_%s_%s_%dms-%dms_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,frEpochs(epoch_i,1),frEpochs(epoch_i,2),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+          close(fh);
+        end
       end
-      xlabel('total lfp power (uV)');
-      ylabel('firing rate (Hz)');
-      title(sprintf('LFP power vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frCalcOn, frCalcOff))
-      drawnow;
-      saveFigure(outDir,sprintf('scatter_lfpPwrVsFr_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
   end
 end
   
-if plotSwitch.lfpPeakToPeakMuaScatterAll
-  for channel_i = 1:length(channelNames)
-    for unit_i = 1:length(channelUnitNames{channel_i})
-      figure();
-      hold on;
-      for cat_i = 1:length(categoryListSlim)
-        lfpByTrial = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
-        scatter(max(lfpByTrial,[],2)-min(lfpByTrial,[],2),catSpikeCounts{channel_i}{unit_i}{categorySlimInds(cat_i)}.counts,36,colors(cat_i),'filled')
+if plotSwitch.lfpPeakToPeakMuaScatter
+  for epoch_i = 1:size(frEpochs,1)
+    for channel_i = 1:length(channelNames)
+      for unit_i = 1:length(channelUnitNames{channel_i})
+        for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
+          group = analysisGroups.stimulusLabelGroups.groups{group_i};
+          groupName = analysisGroups.stimulusLabelGroups.names{group_i};
+          groupColors = analysisGroups.stimulusLabelGroups.colors{group_i};
+          fh = figure();
+          hold on;
+          handlesForLegend = gobjects(length(group),1);
+          for item_i = 1:length(group)
+            if isfield(catInds,group{item_i})
+              lfpByTrial = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              spikeCountsByTrial = spikeCountsByCategoryByEpoch{epoch_i}{channel_i}{unit_i}{catInds.(group{item_i})}.counts;
+            else
+              lfpByTrial = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              spikeCountsByTrial = spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}{imInds.(group{item_i})}.counts;
+            end
+            h = scatter(max(lfpByTrial,[],2)-min(lfpByTrial,[],2),spikeCountsByTrial,36,groupColors(item_i,:),'filled');
+            handlesForLegend(item_i) = h;
+          end
+          xlabel('Peak-to-Trough LFP Amplitude (uV)');
+          ylabel('firing rate (Hz)');
+          title(sprintf('LFP Amplitude vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frEpochs(epoch_i,1),frEpochs(epoch_i,2)))
+          legend(handlesForLegend,group,'location','northeastoutside');
+          drawnow;
+          clear figData
+          figData.x = [];
+          figData.y = [];
+          saveFigure(outDir,sprintf('scatter_lfpP2PVsFr_%s_%s_%s_%dms-%dms_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,frEpochs(epoch_i,1),frEpochs(epoch_i,2),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+          close(fh);
+        end
       end
-      xlabel('Peak-to-Trough LFP Amplitude (uV)');
-      ylabel('firing rate (Hz)');
-      title(sprintf('LFP Amplitude vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frCalcOn, frCalcOff))
-      drawnow;
-      saveFigure(outDir,sprintf('scatter_lfpP2PVsFr_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
   end
-end
+end 
   
 if plotSwitch.lfpLatencyMuaLatency
   for channel_i = 1:length(channelNames)
   end
 end
   
-% make lfp power-fr scatter plot, early
-if plotSwitch.lfpPowerMuaScatterAllEarly
-  for channel_i = 1:length(channelNames)
-    for unit_i = 1:length(channelUnitNames{channel_i})
-      figure();
-      hold on;
-      for cat_i = 1:length(categoryListSlim)
-        lfpByTrial = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOnEarly:lfpPaddedBy+1+psthPre+frCalcOffEarly));
-        lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
-        lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
-        scatter(lfpPowerByTrial,catSpikeCountsEarly{channel_i}{unit_i}{categorySlimInds(cat_i)}.counts,36,colors(cat_i),'filled')
-      end
-      xlabel('total lfp power (uV)');
-      ylabel('firing rate (Hz)');
-      title(sprintf('LFP power vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frCalcOnEarly, frCalcOffEarly))
-      drawnow;
-      saveFigure(outDir,sprintf('scatter_lfpPwrVsFr_early_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    end
-  end
-end
-  
-if plotSwitch.lfpPeakToPeakMuaScatterAllEarly
-  for channel_i = 1:length(channelNames)
-    for unit_i = 1:length(channelUnitNames{channel_i})
-      figure();
-      hold on;
-      for cat_i = 1:length(categoryListSlim)
-        lfpByTrial = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOnEarly:lfpPaddedBy+1+psthPre+frCalcOffEarly));
-        scatter(max(lfpByTrial,[],2)-min(lfpByTrial,[],2),catSpikeCountsEarly{channel_i}{unit_i}{categorySlimInds(cat_i)}.counts,36,colors(cat_i),'filled')
-      end
-      xlabel('Peak-to-Trough LFP Amplitude (uV)');
-      ylabel('firing rate (Hz)');
-      title(sprintf('LFP Amplitude vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frCalcOnEarly, frCalcOffEarly))
-      drawnow;
-      saveFigure(outDir,sprintf('scatter_lfpP2PVsFr_early_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    end
-  end
-end 
-  
-if plotSwitch.lfpLatencyMuaLatencyEarly
-  for channel_i = 1:length(channelNames)
-  end
-end
-  
-% make lfp power-fr scatter plot, late
-if plotSwitch.lfpPowerMuaScatterAllLate
-  for channel_i = 1:length(channelNames)
-    for unit_i = 1:length(channelUnitNames{channel_i})
-      figure();
-      hold on;
-      for cat_i = 1:length(categoryListSlim)
-        lfpByTrial = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOnLate:lfpPaddedBy+1+psthPre+frCalcOffLate));
-        lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
-        lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
-        scatter(lfpPowerByTrial,catSpikeCountsLate{channel_i}{unit_i}{categorySlimInds(cat_i)}.counts,36,colors(cat_i),'filled')
-      end
-      xlabel('total lfp power (uV)');
-      ylabel('firing rate (Hz)');
-      title(sprintf('LFP power vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frCalcOnLate, frCalcOffLate))
-      drawnow;
-      saveFigure(outDir,sprintf('scatter_lfpPwrVsFr_late_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    end
-  end
-end
-  
-if plotSwitch.lfpPeakToPeakMuaScatterAllLate
-  for channel_i = 1:length(channelNames)
-    for unit_i = 1:length(channelUnitNames{channel_i})
-      figure();
-      hold on;
-      for cat_i = 1:length(categoryListSlim)
-        lfpByTrial = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOnLate:lfpPaddedBy+1+psthPre+frCalcOffLate));
-        scatter(max(lfpByTrial,[],2)-min(lfpByTrial,[],2),catSpikeCountsLate{channel_i}{unit_i}{categorySlimInds(cat_i)}.counts,36,colors(cat_i),'filled')
-      end
-      xlabel('Peak-to-Trough LFP Amplitude (uV)');
-      ylabel('firing rate (Hz)');
-      title(sprintf('LFP Amplitude vs Firing rate, %s %s, %d ms - %d ms',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}, frCalcOnLate, frCalcOffLate))
-      drawnow;
-      saveFigure(outDir,sprintf('scatter_lfpP2PVsFr_late_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    end
-  end
-end
-if plotSwitch.lfpLatencyMuaLatencyLate
-  for channel_i = 1:length(channelNames)
-  end
-end
-% lfp power vs lfp power, across channels
 if plotSwitch.lfpPowerAcrossChannels && channel_i < length(lfpChannels)
-  for channel_i = 1:length(channelNames)
-    for channel2_i = channel_i+1:length(lfpChannels)
-      figure();
-      hold on;
-      for cat_i = 1:length(categoryListSlim)
-        lfpByTrialCh1 = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
-        lfpMeanSubByTrialCh1 = lfpByTrialCh1 - mean(lfpByTrialCh1,2);
-        lfpPowerByTrialCh1 = sqrt(sum(lfpMeanSubByTrialCh1.^2,2));
-        lfpByTrialCh2 = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
-        lfpMeanSubByTrialCh2 = lfpByTrialCh2 - mean(lfpByTrialCh2,2);
-        lfpPowerByTrialCh2 = sqrt(sum(lfpMeanSubByTrialCh2.^2,2));
-        scatter(lfpPowerByTrialCh1,lfpPowerByTrialCh2,36,colors(cat_i),'filled')
+  for epoch_i = 1:size(frEpochs,1)
+    for channel_i = 1:length(channelNames)
+      for channel2_i = channel_i+1:length(lfpChannels)
+        for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
+          fh = figure();
+          group = analysisGroups.stimulusLabelGroups.groups{group_i};
+          groupName = analysisGroups.stimulusLabelGroups.names{group_i};
+          groupColors = analysisGroups.stimulusLabelGroups.colors{group_i};
+          hold on;
+          handlesForLegend = gobjects(length(group),1);
+          for item_i = 1:length(group)
+            if isfield(catInds,group{item_i})
+              lfpByTrialCh1 = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              lfpByTrialCh2 = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+            else
+              lfpByTrialCh1 = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              lfpByTrialCh2 = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+            end
+            lfpMeanSubByTrialCh1 = lfpByTrialCh1 - mean(lfpByTrialCh1,2);
+            lfpPowerByTrialCh1 = sqrt(sum(lfpMeanSubByTrialCh1.^2,2));
+            lfpMeanSubByTrialCh2 = lfpByTrialCh2 - mean(lfpByTrialCh2,2);
+            lfpPowerByTrialCh2 = sqrt(sum(lfpMeanSubByTrialCh2.^2,2));
+            h = scatter(lfpPowerByTrialCh1,lfpPowerByTrialCh2,36,groupColors(item_i,:),'filled');
+            handlesForLegend(item_i) = h;
+          end
+          xlabel(sprintf('total lfp power, %s (uV)',channelNames{channel_i}));
+          ylabel(sprintf('total lfp power, %s (uV)',channelNames{channel2_i}));
+          title(sprintf('LFP Power, %s vs. %s, %d ms - %d ms',channelNames{channel_i},channelNames{channel2_i}, frEpochs(epoch_i,1), frEpochs(epoch_i,2)))
+          legend(handlesForLegend,group,'location','northeastoutside');
+          drawnow;
+          clear figData
+          figData.x = [];
+          figData.y = [];
+          saveFigure(outDir,sprintf('scatter_lfpPwrVSlfpPwr_%s_%s_%s_%dms-%dms_Run%s',channelNames{channel_i},channelNames{channel2_i},groupName,frEpochs(epoch_i,1),frEpochs(epoch_i,2),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+          close(fh);
+        end
       end
-      xlabel(sprintf('total lfp power, %s (uV)',channelNames{channel_i}));
-      ylabel(sprintf('total lfp power, %s (uV)',channelNames{channel2_i}));
-      title(sprintf('LFP Power, %s vs. %s, %d ms - %d ms',channelNames{channel_i},channelNames{channel2_i}, frCalcOn, frCalcOff))
-      drawnow;
-      saveFigure(outDir,sprintf('scatter_lfpPwrVSlfpPwr_%s_%s_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
   end
 end
   
 % lfp p2p amplitude vs lfp p2p amplitude, across channels
 if plotSwitch.lfpPeakToPeakAcrossChannels && channel_i < length(lfpChannels)
-  for channel_i = 1:length(channelNames)
-    for channel2_i = channel_i+1:length(lfpChannels)
-      figure();
-      hold on;
-      for cat_i = 1:length(categoryListSlim)
-        lfpByTrialCh1 = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
-        lfpByTrialCh2 = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
-        scatter(max(lfpByTrialCh1,[],2)-min(lfpByTrialCh1,[],2),max(lfpByTrialCh2,[],2)-min(lfpByTrialCh2,[],2),36,colors(cat_i),'filled')
+  for epoch_i = 1:size(frEpochs,1)
+    for channel_i = 1:length(channelNames)
+      for channel2_i = channel_i+1:length(lfpChannels)
+        for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
+          fh = figure();
+          group = analysisGroups.stimulusLabelGroups.groups{group_i};
+          groupName = analysisGroups.stimulusLabelGroups.names{group_i};
+          groupColors = analysisGroups.stimulusLabelGroups.colors{group_i};
+          hold on;
+          handlesForLegend = gobjects(length(group),1);
+          for item_i = 1:length(group)
+            if isfield(catInds,group{item_i})
+              lfpByTrialCh1 = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              lfpByTrialCh2 = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+            else
+              lfpByTrialCh1 = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              lfpByTrialCh2 = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+            end
+            h = scatter(max(lfpByTrialCh1,[],2)-min(lfpByTrialCh1,[],2),max(lfpByTrialCh2,[],2)-min(lfpByTrialCh2,[],2),36,groupColors(item_i,:),'filled');
+            handlesForLegend(item_i) = h;
+          end
+          xlabel(sprintf('LFP Amplitude, %s (uV)',channelNames{channel_i}));
+          ylabel(sprintf('LFP Amplitude, %s (uV)',channelNames{channel2_i}));
+          title(sprintf('LFP Amplitude, %s vs. %s, %d ms - %d ms',channelNames{channel_i},channelNames{channel2_i}, frEpochs(epoch_i,1), frEpochs(epoch_i,2)))
+          legend(handlesForLegend,group,'location','northeastoutside');
+          drawnow;
+          clear figData
+          figData.x = [];
+          figData.y = [];
+          saveFigure(outDir,sprintf('scatter_lfpP2PVSlfpP2P_%s_%s_%s_%dms-%dms_Run%s',channelNames{channel_i},channelNames{channel2_i},groupName,frEpochs(epoch_i,1),frEpochs(epoch_i,2),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+          close(fh);
+        end
       end
-      xlabel(sprintf('LFP Amplitude, %s (uV)',channelNames{channel_i}));
-      ylabel(sprintf('LFP Amplitude, %s (uV)',channelNames{channel2_i}));
-      title(sprintf('LFP Amplitude, %s vs. %s, %d ms - %d ms',channelNames{channel_i},channelNames{channel2_i}, frCalcOn, frCalcOff))
-      drawnow;
-      saveFigure(outDir,sprintf('scatter_lfpP2PVSlfpP2P_%s_%s_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
   end
 end
@@ -1345,51 +1352,67 @@ end
 if plotSwitch.lfpLatencyShiftAcrossChannels && channel_i < length(lfpChannels)
   for channel_i = 1:length(channelNames)
     for channel2_i = channel_i+1:length(lfpChannels)
-      figure();
-      hold on;
-      for cat_i = 1:length(categoryListSlim)
-        lfpByTrialCh1 = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
-        lfpMeanSubByTrialCh1 = lfpByTrialCh1 - mean(lfpByTrialCh1,2);
-        lfpTrialAveCh1 = mean(lfpMeanSubByTrialCh1,1);
-        
-        lfpByTrialCh2 = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
-        lfpMeanSubByTrialCh2 = lfpByTrialCh2 - mean(lfpByTrialCh2,2);
-        lfpTrialAveCh2 = mean(lfpMeanSubByTrialCh2,1);
-        shiftsCh1 = zeros(size(lfpByTrialCh1,1),1);
-        shiftsCh2 = zeros(size(lfpByTrialCh1,1),1);
-        for trial_i = 1:size(lfpByTrialCh1,1)
-          bestShiftCh1 = -50;
-          bestMatchCh1 = 0;
-          for shift = -50:50 %magic number; todo replace with variable
-            shiftedTrialLfp = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,trial_i,lfpPaddedBy+1+psthPre+frCalcOn+shift:lfpPaddedBy+1+psthPre+frCalcOff+shift));
-            shiftedTrialLfp = shiftedTrialLfp - mean(shiftedTrialLfp);
-            match = lfpTrialAveCh1*shiftedTrialLfp;
-            if match > bestMatchCh1
-              bestMatchCh1 = match;
-              bestShiftCh1 = shift;
-            end
-            shiftsCh1(trial_i) = bestShiftCh1;
+      for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
+        fh = figure();
+        group = analysisGroups.stimulusLabelGroups.groups{group_i};
+        groupName = analysisGroups.stimulusLabelGroups.names{group_i};
+        groupColors = analysisGroups.stimulusLabelGroups.colors{group_i};
+        hold on;
+        handlesForLegend = gobjects(length(group),1);
+        for item_i = 1:length(group)
+          if isfield(catInds,group{item_i})
+            lfpByTrialCh1 = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+            lfpByTrialCh2 = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+          else
+            lfpByTrialCh1 = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+            lfpByTrialCh2 = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
           end
-          bestShiftCh2 = -50;
-          bestMatchCh2 = 0;
-          for shift = -50:50 %magic number; todo replace with variable
-            shiftedTrialLfp = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel2_i,trial_i,lfpPaddedBy+1+psthPre+frCalcOn+shift:lfpPaddedBy+1+psthPre+frCalcOff+shift));
-            shiftedTrialLfp = shiftedTrialLfp - mean(shiftedTrialLfp);
-            match = lfpTrialAveCh2*shiftedTrialLfp;
-            if match > bestMatchCh2
-              bestMatchCh2 = match;
-              bestShiftCh2 = shift;
+          lfpMeanSubByTrialCh1 = lfpByTrialCh1 - mean(lfpByTrialCh1,2);
+          lfpTrialAveCh1 = mean(lfpMeanSubByTrialCh1,1);
+          lfpMeanSubByTrialCh2 = lfpByTrialCh2 - mean(lfpByTrialCh2,2);
+          lfpTrialAveCh2 = mean(lfpMeanSubByTrialCh2,1);
+          shiftsCh1 = zeros(size(lfpByTrialCh1,1),1);
+          shiftsCh2 = zeros(size(lfpByTrialCh1,1),1);
+          for trial_i = 1:size(lfpByTrialCh1,1)
+            bestShiftCh1 = -50;
+            bestMatchCh1 = 0;
+            for shift = -50:50 %magic number; todo replace with variable
+              shiftedTrialLfp = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel_i,trial_i,lfpPaddedBy+1+psthPre+frCalcOn+shift:lfpPaddedBy+1+psthPre+frCalcOff+shift));
+              shiftedTrialLfp = shiftedTrialLfp - mean(shiftedTrialLfp);
+              match = lfpTrialAveCh1*shiftedTrialLfp;
+              if match > bestMatchCh1
+                bestMatchCh1 = match;
+                bestShiftCh1 = shift;
+              end
+              shiftsCh1(trial_i) = bestShiftCh1;
             end
-            shiftsCh2(trial_i) = bestShiftCh2;
+            bestShiftCh2 = -50;
+            bestMatchCh2 = 0;
+            for shift = -50:50 %magic number; todo replace with variable
+              shiftedTrialLfp = squeeze(lfpByCategory{categorySlimInds(cat_i)}(1,channel2_i,trial_i,lfpPaddedBy+1+psthPre+frCalcOn+shift:lfpPaddedBy+1+psthPre+frCalcOff+shift));
+              shiftedTrialLfp = shiftedTrialLfp - mean(shiftedTrialLfp);
+              match = lfpTrialAveCh2*shiftedTrialLfp;
+              if match > bestMatchCh2
+                bestMatchCh2 = match;
+                bestShiftCh2 = shift;
+              end
+              shiftsCh2(trial_i) = bestShiftCh2;
+            end
           end
+          h = scatter(shiftsCh1,shiftsCh2,36,groupColors(item_i,:),'filled');
+          handlesForLegend(item_i) = h;
         end
-        scatter(shiftsCh1,shiftsCh2,36,colors(cat_i),'filled')
+        xlabel(sprintf('LFP latency shift from category mean, %s (ms)',channelNames{channel_i}));
+        ylabel(sprintf('LFP latency shift from category mean, %s (ms)',channelNames{channel2_i}));
+        title(sprintf('LFP Latency shift from category mean, %s vs. %s, %d ms - %d ms',channelNames{channel_i},channelNames{channel2_i}, frCalcOn, frCalcOff))
+        legend(handlesForLegend,group,'location','northeastoutside');
+        drawnow;
+        clear figData
+        figData.x = [];
+        figData.y = [];
+        saveFigure(outDir,sprintf('scatter_lfpShiftVSlfpShift_%s_%s__%s_Run%s',channelNames{channel_i},channelNames{channel2_i},groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        close(fh);
       end
-      xlabel(sprintf('LFP latency shift from category mean, %s (ms)',channelNames{channel_i}));
-      ylabel(sprintf('LFP latency shift from category mean, %s (ms)',channelNames{channel2_i}));
-      title(sprintf('LFP Latency shift from category mean, %s vs. %s, %d ms - %d ms',channelNames{channel_i},channelNames{channel2_i}, frCalcOn, frCalcOff))
-      drawnow;
-      saveFigure(outDir,sprintf('scatter_lfpShiftVSlfpShift_%s_%s_Run%s',channelNames{channel_i},channelNames{channel2_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
   end
 end
@@ -1440,6 +1463,7 @@ for calc_i = 1:length(calcSwitches)
             ylabel('voltage (uV)', 'FontSize',18);
             set(gca,'fontsize',18);
             xlim([min(times) max(times)]);
+            clear tmp
             tmp.y = ydata;
             tmp.x = times;
             figData{cat_i} = tmp;

@@ -34,7 +34,7 @@ end
 analysisLabel = 'Basic';
 analysisParamsFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
-categoryListSlim = {'humanFace','monkeyFace','place','fruit','humanBody','monkeyBody','techno'}; %minimal cat list for clean plots
+%categoryListSlim = {'humanFace','monkeyFace','place','fruit','humanBody','monkeyBody','techno'}; %minimal cat list for clean plots
 saveFig = 1;           %#ok
 exportFig = 0;         %#ok
 saveFigData = 0;       %#ok
@@ -64,7 +64,7 @@ butter1Hz200Hz_v1 = designfilt('bandpassiir','DesignMethod','butter','PassbandFr
   'SampleRate',1000,'MatchExactly','passband','StopbandFrequency1',0.67,'StopbandFrequency2',250);
 [tmp1,tmp2] = butter(4,[1/500,200/500]);
 butter1Hz200Hz_v2 = [tmp1,tmp2];        %#ok
-ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter 
+ephysParams.filter = 0;%butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter 
 
 % parameters preprocessAnalogIn, see function for details
 analogInParams.needAccel = 0;
@@ -94,7 +94,7 @@ psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
 psthParams.errorType = 1; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;
-psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
+psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
 
 
 % TW=3 with T=.2, then W = 15 Hz (5 tapers)
@@ -139,9 +139,9 @@ else
 end
 % firing rate calculation epochs. Can provide either time (ms from stim onset),
 % or function handle, which will receive the minimum stimulus duration in the run as an input
-frEpochs = [60, @(stimDur) stimDur+60;...
-            60, 260; ...
-            260, @(stimDur) stimDur+60]%#ok
+frEpochsCell = {{60, @(stimDur) stimDur+60};...
+                {60, 260}; ...
+                {260, @(stimDur) stimDur+60}}; %#ok
 
 
 % Boolean variables to specify which computations to perform; TODO: read
@@ -151,40 +151,33 @@ calcCoherenceRFcc = 0;   %#ok
 calcCoherenceRFptpt = 0; %#ok
 calcGrangerRF = 0;       %#ok 
 
-plotSwitch.imagePsth = 1;
-plotSwitch.categoryPsth = 1;
+plotSwitch.imagePsth = 0;
+plotSwitch.categoryPsth = 0;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
 plotSwitch.imageTuningSorted = 0;
-plotSwitch.stimPrefBarPlot = 1;
-plotSwitch.stimPrefBarPlotEarly = 1;
-plotSwitch.stimPrefBarPlotLate = 1;
-plotSwitch.tuningCurves = 1;
-plotSwitch.tuningCurvesEarly = 1;
-plotSwitch.tuningCurvesLate = 1;
+plotSwitch.stimPrefBarPlot = 0;
+plotSwitch.stimPrefBarPlotEarly = 0;
+plotSwitch.stimPrefBarPlotLate = 0;
+plotSwitch.tuningCurves = 0;
+plotSwitch.tuningCurvesEarly = 0;
+plotSwitch.tuningCurvesLate = 0;
 plotSwitch.calcLatencyRF = 0;
 plotSwitch.calcEvokedPowerRF = 0;
-plotSwitch.faceVnonEvokedPotential = 1;
-plotSwitch.evokedPsthMuaMultiCh = 1;
-plotSwitch.evokedByCategory = 1;
-plotSwitch.colorPsthEvoked = 1;
-plotSwitch.linePsthEvoked = 1;
+plotSwitch.evokedPsthMuaMultiCh = 0;
+plotSwitch.evokedByCategory = 0;
+plotSwitch.colorPsthEvoked = 0;
+plotSwitch.linePsthEvoked = 0;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
 plotSwitch.runSummaryImMeanSubDiv = 0;
-plotSwitch.lfpPowerMuaScatterAll = 0; 
-plotSwitch.lfpPeakToPeakMuaScatterAll = 0;
-plotSwitch.lfpPowerMuaScatterAllEarly = 0;
-plotSwitch.lfpPeakToPeakMuaScatterAllEarly = 0;
-plotSwitch.lfpPowerMuaScatterAllLate = 0;
-plotSwitch.lfpPeakToPeakMuaScatterAllLate = 0;
-plotSwitch.lfpLatencyMuaLatency = 0;
-plotSwitch.lfpLatencyMuaLatencyEarly = 0;
-plotSwitch.lfpLatencyMuaLatencyLate = 0;
-plotSwitch.lfpPowerAcrossChannels = 0;
-plotSwitch.lfpPeakToPeakAcrossChannels = 0;
-plotSwitch.lfpLatencyShiftAcrossChannels = 0;
+plotSwitch.lfpPowerMuaScatter = 1; 
+plotSwitch.lfpPeakToPeakMuaScatter = 1;
+plotSwitch.lfpLatencyMuaLatency = 1;
+plotSwitch.lfpPowerAcrossChannels = 1;
+plotSwitch.lfpPeakToPeakAcrossChannels = 1;
+plotSwitch.lfpLatencyShiftAcrossChannels = 1;
 plotSwitch.singleTrialLfpByCategory = 1;
 plotSwitch.lfpSpectraByCategory = 1;
 plotSwitch.spikeSpectraByCategory = 1;
@@ -199,6 +192,10 @@ analysisGroups.selectivityIndex.groups = {{'face';'nonface'},{'face';'object'},{
 analysisGroups.stimPrefBarPlot.groups = {{{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};{'face';'object';'body'}}};
 analysisGroups.stimPrefBarPlot.colors  = {{{'b';'c';'y';'g';'m';'r';'k'};{'b';'g';'r'}}};
 analysisGroups.stimPrefBarPlot.names = {'fobPlus'};
+%
+analysisGroups.stimulusLabelGroups.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.stimulusLabelGroups.names = {'fobPlus'};
+analysisGroups.stimulusLabelGroups.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
 %
 analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
 analysisGroups.evokedPotentials.names = {'fobPlus'};

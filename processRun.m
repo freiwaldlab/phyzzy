@@ -78,9 +78,7 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
     assert(psthImDur > 0, 'psthImDur = 0; nothing to analyze. Likely cause: unexpected variable stimulus length');
     fprintf('Variable stimulus length run. Excluding trials shorter than %d\n',psthImDur);
   end
-  if frCalcOff < frCalcOn
-    frCalcOff = psthImDur+frCalcOn;
-  end
+
 
   taskDataAll = taskData;
   % exclude trails for fixation out, flash on, frame dropped, (accel high, juice on)
