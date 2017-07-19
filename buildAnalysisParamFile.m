@@ -60,7 +60,7 @@ ephysParams.unitsToUnsort = {[],[],[]}; %these units will be re-grouped with u0
 ephysParams.unitsToDiscard = {[],[],[]}; %these units will be considered noise and discarded
 ephysParams.spikeWaveformPca = 2;
 ephysParams.plotSpikeWaveforms = 2;
-ephysParams.shiftSpikeWaveforms = 1;
+ephysParams.shiftSpikeWaveforms = 0;
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
 hp1Hz = designfilt('highpassiir', 'FilterOrder',8,'PassbandFrequency',1, ...
   'StopbandAttenuation',100,'PassbandRipple',0.5,'SampleRate',1000);     %#ok

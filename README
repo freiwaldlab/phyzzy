@@ -1,6 +1,28 @@
-High-level Architecture:
+Specifying your analysis:
 
 - Variables that change frequently are specified in buildAnalysisParamFile.m, or in additional files built off the buildAnalysisParamFile template. This has two positive effects. First, variables that change are in a separate file from the code, which makes versioning easier. Second, a copy of the processing parameters is always stored with the analyzed data.
+
+- The structure of the stimulus space is described in a mat file, whose name is specified as the variable stimParamsFilename in buildAnalysisParamFile. The core of this file is the variable paramArray, a cell array with two indices, the first over stimuli (for example an image or a movie), the second over stimulus properties. The first property is take to be the unique identifier or the stimulus. Subsequent properties specify category membership: specifically, each category to which the stimulus belongs has its name in the stimulus’s cell. Categories can be listed in any order. They can overlap in any way. For instance, here’s paramArray for a tiny FOB type stimulus set: 
+{{‘humanFace1.bmp’,’face’,’humanFace’},{‘monkeyFace1.bmp’,’face’,’monkeyFace’},{‘body1.bmp’,’nonface’,’body’},{‘apple1.bmp’,’fruit’,’object’,’nonface’}}
+Note that the order in which stimuli appear in paramArray sets the order in which they appear in the default psth by image. 
+Additional variables in the stimulus parameter file are:
+- pictureLabels: the name (for display in figures, filenames, etc.) of each stimulus: a cell array of strings, with the same length and indexing as paramArray. 
+- categoryLabels: a list of names for categories. Like pictureLabels, it is a cell array of strings, but they can appear in any order. However, certain plotting functions will arrange categories in this order. For instance, this is the order that will be used to show a default psth by category. 
+- tuningCurveItems: 2-index cell array of strings. First index gives specifies the tuning curve, second index specifies the category or image of each entry in the tuning curve. 
+- tuningCurveItemType: for now, each tuning curve can consist only of images, or only of categories. TuningCurveItemType is a 1 index cell array of strings, indexed by tuning curve as tuningCurveItems. Entries are ‘category’ or ‘image’.
+- tuningCurveParamLables: 1 index cell array of strings, giving the label for the parameter of the tuning curve, for axis labels.
+- tuningCurveParamValues: 1 index cell array of 1xN numeric arrays, where the cell index is over tuning curves as above, and the numeric array index is over tuning curve items, as in tuningCurveItems. 
+- tuningCurveTitles: 1 index cell array of strings, indexed by tuning curve as above, giving the title, which will be used in filenames and figure titles. 
+For instance, we might have 
+tuningCurveItems = {{‘faceL90’,’faceFront’,’faceR90’}};
+tuningCurveItemType = {‘category’};
+tuningCurveParamLabels = {{‘viewing angle’}};
+tuningCurveParamValues = {[-90 0 90]};
+tuningCurveTitles = {‘face view’};
+
+A target for future development is to make the variable names more intuitive for situations in which there isn’t a one-to-one map from stimulus files to alignment points, for example where alignment points are certain frames in a movie, behavioral events, or stimuli preceded by specific other stimuli. The current framework can accommodate all these situations: you just think of ‘pictureLabels’ as ‘alignmentPointLabels’, and the first entry in paramArray as the unique identifier of your alignment point type, which could be ‘movie1frame30’, or ‘im1afterim2,’ or ‘lipsmackOnset’, or even ‘11000101’ if you’re using serial digital IO packets as alignment points and, for simplicity, want to use their raw packet bits as the unique identifiers. It will be up to your preprocessLogFile code to figure out which times in the recording correspond to which alignment point, given these unique identifiers. 
+
+High-level Architecture:
 
 - processRun is the top-level function to analyze one ephys run. To do this, it:             —- calls buildAnalysisParamFile, then reads the variables file it writes.
 —- calls preprocessSpikes, preprocessLog, preprocessLfp, preprocessAnalogIn to load data and deal with file-format specific aspects. If you want to use this library with systems other than Visiko/Blackrock, these four functions are what you’ll need to modify
@@ -9,6 +31,11 @@ High-level Architecture:
 —- calls alignSpikes and alignLFP to parse ephys data by stimulus and category structure
 —- calls runAnalyses to run analyses, e.g. psth’s; preferred stimuli; data quality checks; category preferences; tuning curves; receptive fields; LFP and spike power and coupling spectra (time averaged and time-frequency); LFP and spike auto- and cross-correlograms; and more to be added later including Granger causality, partial coupling, and tuning transfer.
 
+The preprocessing and alignment functions take their configuration variables from an input variable called params, which is a structure. The params structs are built in buildAnalysisParamFile. Each function’s docstrings describes the fields needed for its params struct, and any defaults values or optional fields. 
+
+
+Displaying text:
+To display debugging and progress information, the code uses a library called Output. This library lets you specify one of three output ‘levels:’ DEBUG, VERBOSE, and INFO. This level is defined as a parameter in buildAnalysisParamFile, and set in processRun. A print statement has the form Output.DEBUG(string), Output.VERBOSE(string), or Output.INFO(string). In addition to letting you easily toggle the verbosity, this library has the excellent property that it gives the line and function from which each printed statement originated. That makes it annoying for displaying long blocks of text, like a list of preferred stimuli, so for such blocks I use disp(string).
 
 
 Nomenclature:
@@ -18,13 +45,20 @@ Nomenclature:
 —- Unit: to be improved, the recordings from one isolated cell
 —- Penetration: all the recordings from a given penetration
 
-Getting started:
+Getting started to-do:
+- make your stimulus params file
+- make your buildAnalysisParamsFile based on the template
+- make your preprocessLogFile, if you’re doing something other than a simple Visiko bcont task. 
+- run processRun
 
 Guidelines for modification:
+- We should discuss this together. A major goal of this project is to separate the parts of the code that everyone modifies from the parts that almost no one modifies. The structure doesn’t do that perfectly yet. In particular, it doesn’t separate plotting functions (which people might want to modify to suit their aesthetic idiosyncrasies) from compute steps, which should remain relatively static. More later…
 
 Style Guide:
-- use two spaces as your indent
+- use two spaces as your indent. To do this, set tab size and indent size as described here: https://www.mathworks.com/help/matlab/matlab_env/about-editor-debugger-preferences.html
 - use abbreviations sparingly in variable names; where not painfully obvious, say what the abbreviation is abbreviating in a comment when the variable first appears in each function
 - variable and function names are of the form thisVariableName. This is even true for acronyms, so, for instance thisNameIncludesPsthSee. One exception is trailing acronyms, which may be all caps, e.g. preprocessLFP
 - the on exception is loop iterators. In general, these should be of the form thingItsIterating_i, for example, channel_i for a loop over channels. 
 - don’t put multiple statements on one line
+- do not display a variable by omitting a training semicolon. Display it using the Output library or, if that isn’t practical for a long block of text, the disp() function.
+- Function docstrings should give the types of all input and output variables, and a brief description where the variable name leaves ambiguity. In particular, should describe the indexing scheme in input or output arrays.  

@@ -292,6 +292,9 @@ if params.spikeWaveformPca
     end
   end
 end
+if params.shiftSpikeWaveforms
+  spikesByChannel = rawSpikes;
+end
 clear NEV
 end
 

@@ -1712,7 +1712,7 @@ for calc_i = 1:length(calcSwitches)
             lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
             mseb(freqs,spectra,errs,lineProps);
             hold on
-            % need to plot individually as well, to get point markers
+            % plot individually as well, to get point markers
             handles = gobjects(length(group),1);
             for item_i = 1:length(group)
               h = plot(freqs(item_i,:),spectra(item_i,:),'linewidth',3,'linestyle','none','marker','o','color',groupColors{item_i});
@@ -1737,7 +1737,7 @@ for calc_i = 1:length(calcSwitches)
             lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
             mseb(freqs,spectra,errs,lineProps);
             hold on
-            % need to plot individually as well, to get point markers
+            % plot individually as well, to get point markers
             handles = gobjects(length(group),1);
             for item_i = 1:length(group)
               h = plot(freqs(item_i,:),spectra(item_i,:),'linewidth',3,'linestyle','none','marker','o','color',groupColors{item_i});
