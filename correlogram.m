@@ -101,10 +101,8 @@ if normalize
   data2stds = std(data2,[],1);
 end
 for t1 = 1:size(data1,2)
+  pointwiseProductMeans = mean(data1(:,t1).*data2,1);
   for t2 = 1:size(data1,2)
-    if abs(t1-t2) < timeDifferenceBound(1) || abs(t1-t2) > timeDifferenceBound(2)
-      continue
-    end
     if ~normalize
       if ~useJacknife
         if t1 == 1 && t2 == 1
@@ -127,7 +125,7 @@ for t1 = 1:size(data1,2)
         if t1 == 1 && t2 == 1
           Output.DEBUG('using non-jacknife, normalized computation');
         end
-        rawCorrel = mean(data1(:,t1).*data2(:,t2));
+        rawCorrel = pointwiseProductMeans(t2);
         normFactor = data1stds(t1)*data2stds(t2);
         Cgram(t1,t2) = rawCorrel/normFactor;
         CgramErr(t1,t2) = Cgram(t1,t2)*((3/2)*sqrt(2)/size(data1,1));
