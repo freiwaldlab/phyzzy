@@ -38,10 +38,42 @@ for channel_i = 1:length(params.spikeChannels)
   if ~isempty(tmp.units)
     channelUnitNames{channel_i} = [unitNamesTmp(setdiff(0:(length(unitNamesTmp)-1),union(params.unitsToUnsort{channel_i},params.unitsToDiscard{channel_i}))+1),{'MUA'}];
   end
-  disp(channelUnitNames{channel_i});
+  Output.VERBOSE(channelUnitNames{channel_i});
 end
 
-
+if params.shiftSpikeWaveforms
+  rawSpikes = spikesByChannel;
+  for channel_i = 1:length(params.spikeChannels)
+    if length(channelUnitNames{channel_i}) == 2
+      continue
+    end
+    for unit_i = 1:(length(channelUnitNames{channel_i})-2)
+      unitWaveforms = spikesByChannel(channel_i).waveforms(spikesByChannel(channel_i).units == unit_i,:);
+      meanWaveform = mean(unitWaveforms,1);
+      meanWaveform = meanWaveform - mean(meanWaveform,2);
+      meanWaveform = repmat(meanWaveform,size(unitWaveforms,1),1);
+      unitWaveforms = unitWaveforms - mean(unitWaveforms,2);
+      shiftedWaveforms = zeros(size(unitWaveforms));
+      shiftQuality = zeros(size(unitWaveforms,1),11);
+      shifts = -5:5;
+      for shift_i = 1:length(shifts)
+        shift = shifts(shift_i);
+        shiftQuality(:,shift_i) = sum(meanWaveform(:,6+shift:end-5+shift).*unitWaveforms(:,6-shift:end-5-shift),2);
+      end
+      [~,bestShifts] = max(shiftQuality,[],2);
+      figure();
+      disp('opening figure');
+      hist(bestShifts - 6);
+      for spike_i = 1:size(unitWaveforms,1)
+        shift = shifts(bestShifts(spike_i));
+        shiftedWaveforms(spike_i,6+shift:end-5+shift) = unitWaveforms(spike_i,6-shift:end-5-shift);
+        shiftedWaveforms(spike_i,1:6+shift) = shiftedWaveforms(spike_i,6+shift);
+        shiftedWaveforms(spike_i,end-5+shift:end) = shiftedWaveforms(spike_i,end-5+shift);
+      end
+      spikesByChannel(channel_i).waveforms(spikesByChannel(channel_i).units == unit_i,:) = shiftedWaveforms;
+    end
+  end
+end
 
 colors = ['k','r','c','g','b'];
 if params.plotSpikeWaveforms
@@ -97,7 +129,6 @@ if params.plotSpikeWaveforms
     xlabel('time (ms)');
     hold on
     tAxis = params.cPtCal*(1:size(tmp.waveforms,2));
-    skippedByUnit = zeros(numPlotColumns-1,1); %numPlotColumns-1 = numUnits
     toSkipByUnit = zeros(numPlotColumns-1,1);
     spikesToPlot = 100;
     for unit_i = 1:length(toSkipByUnit)
@@ -108,22 +139,30 @@ if params.plotSpikeWaveforms
       unitTimes = tmp.times(tmp.units == unit_i-1);
       unitWaveformsToPlot = unitWaveforms(1:toSkipByUnit(unit_i):size(unitWaveforms,1),:);
       unitTimesToPlot = unitTimes(1:toSkipByUnit(unit_i):size(unitWaveforms,1));
+      midPoint = find(unitTimesToPlot > halfTime, 1 );
+      subplot(3,numPlotColumns,unit_i);
       for spike_i = 1:length(unitWaveformsToPlot)
-        subplot(3,numPlotColumns,unit_i);
         plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
-        subplot(3,numPlotColumns,numPlotColumns); %MUA plot
+      end
+      subplot(3,numPlotColumns,numPlotColumns); %MUA plot
+      for spike_i = 1:length(unitWaveformsToPlot)
         plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
-        if unitTimesToPlot(spike_i) < halfTime
-          subplot(3,numPlotColumns,numPlotColumns+unit_i) %second row of the subplot
-          plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
-          subplot(3,numPlotColumns,2*numPlotColumns); %MUA plot
-          plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
-        else
-          subplot(3,numPlotColumns,2*numPlotColumns+unit_i) %third row of the subplot
-          plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
-          subplot(3,numPlotColumns,3*numPlotColumns); %MUA plot
-          plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
-        end
+      end
+      subplot(3,numPlotColumns,numPlotColumns+unit_i) %second row of the subplot
+      for spike_i = 1:midPoint - 1
+        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+      end    
+      subplot(3,numPlotColumns,2*numPlotColumns); %MUA plot
+      for spike_i = 1:midPoint - 1
+        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+      end
+      subplot(3,numPlotColumns,2*numPlotColumns+unit_i) %third row of the subplot
+      for spike_i = midPoint:length(unitWaveformsToPlot)
+        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+      end
+      subplot(3,numPlotColumns,3*numPlotColumns); %MUA plot
+      for spike_i = midPoint:length(unitWaveformsToPlot)
+        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
       end
     end
     drawnow;
