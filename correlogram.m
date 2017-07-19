@@ -7,7 +7,7 @@ function [ Cgram, C, shifts, confCgram, confC ] = correlogram( data1, data2, var
 %       - matchTimeRanges: if 1, use the same time range for each entry in C
 %       - useJacknife: if 0, use theoretical errorbars assuming independent samples
 %       - normalize: if 1, return correlation coefficients; else, return raw pointwise product
-%       - timeDifferenceBound: [minDiff, maxDiff], only compute Cgram entries in range 
+%       - timeDifferenceBound: [minDiff, maxDiff], only compute Cgram entries in range [currently not implemented]
 %       - timeAverageRange: 
 %       - jacknifeDraws: default is true jacknife
 %       - jacknifeTrialsPerDraw: defualt is true jacknife
@@ -29,60 +29,60 @@ if ~isempty(varargin)
 else
   params.dummy = 1;
 end
-if isfield(params,'maxShift')
+if isfield(params,'maxShift') && ~isempty(params.maxShift)
   maxShift = params.maxShift;
 else
-  maxShift = 50;
+  maxShift = ceil(size(data1,2)/4);  %this means we'll include the middle half of the data, if matchTimeRanges == 1
 end
-if isfield(params,'matchTimeRanges')
+if isfield(params,'matchTimeRanges') && ~isempty(params.matchTimeRanges)
   matchTimeRangeAllShifts = params.matchTimeRanges;
 else
   matchTimeRangeAllShifts = 1;
 end
-if isfield(params, 'useJacknife')
+if isfield(params, 'useJacknife') && ~isempty(params.useJacknife)
   useJacknife = params.useJacknife;
 else
   useJacknife = 0;
 end
-if isfield(params,'normalize')
+if isfield(params,'normalize') && ~isempty(params.normalize)
   normalize = params.normalize;
 else
   normalize = 1;
 end
-if isfield(params,'timeDifferenceBound')
+if isfield(params,'timeDifferenceBound') && ~isempty(params.timeDifferenceBound)
   timeDifferenceBound = params.timeDifferenceBound;
 else
   timeDifferenceBound = [0,size(data1,2)];
 end
-if isfield(params,'timeAverageRange')
+if isfield(params,'timeAverageRange') && ~isempty(params.timeAverageRange)
   timeAverageStartInd = params.timeAverageRange(1);
   timeAverageEndInd = params.timeAverageRange(2);
 else
   timeAverageStartInd = 1;
   timeAverageEndInd = size(data1,2);
 end
-if isfield(params, 'jacknifeDraws')
+if isfield(params, 'jacknifeDraws') && ~isempty(params.jacknifeDraws)
   jacknifeDraws = min(params.jacknifeDraws, size(data1,1));
 else
   jacknifeDraws = size(data1,1);
 end
-if isfield(params, 'jacknifeTrialsPerDraw')
+if isfield(params, 'jacknifeTrialsPerDraw') && ~isempty(params.jacknifeTrialsPerDraw)
   jacknifeTrialsPerDraw = params.jacknifeTrialsPerDraw;
 else
   jacknifeTrialsPerDraw = size(data1,1)-1;
 end
-if isfield(params, 'jacknifeParallelWorkers')
+if isfield(params, 'jacknifeParallelWorkers') && ~isempty(params.jacknifeParallelWorkers)
   jacknifeParallelWorkers = params.jacknifeParallelWorkers;
 else
   jacknifeParallelWorkers = 0; %note that in matlab parallel worker counting, 0 means serial
 end
-if isfield(params, 'confidenceThreshold')
+if isfield(params, 'confidenceThreshold') && ~isempty(params.confidenceThreshold)
   tcrit = tinv(params.confidenceThreshold,1);
 else
   tcrit = 1; %default error bar is +/- 1 std
   confidenceThreshold = 0.75; %tcdf(1,1) = 0.75
 end
-if isfield(params, 'usePercentileConf')
+if isfield(params, 'usePercentileConf') && ~isempty(params.usePercentileConf)
   usePercentileConf = params.usePercentileConf;
 else
   usePercentileConf = 0;
@@ -95,44 +95,39 @@ if normalize
   data1 = data1 - mean(data1,1);
   data2 = data2 - mean(data2,1);
 end
-
-if normalize
-  data1stds = std(data1,[],1);
-  data2stds = std(data2,[],1);
-end
-for t1 = 1:size(data1,2)
-  pointwiseProductMeans = mean(data1(:,t1).*data2,1);
-  for t2 = 1:size(data1,2)
-    if ~normalize
-      if ~useJacknife
-        if t1 == 1 && t2 == 1
-          Output.DEBUG('using non-jacknife, non-normalized computation');
-        end
-        Cgram(t1,t2) = mean(data1(:,t1).*data2(:,t2));
-        CgramErr(t1,t2) = Cgram(t1,t2)*(sqrt(2)/size(data1,1));
-      else
-        if t1 == 1 && t2 == 1
-          Output.DEBUG('using jacknife, non-normalized computation');
-        end
+numTrials = size(data1,1);
+if ~normalize
+  if ~useJacknife
+    Output.DEBUG('using non-jacknife, non-normalized computation');
+    for t1 = 1:size(data1,2)
+      Cgram(t1,:) = mean(data1(:,t1).*data2,1);
+    end
+    CgramErr = CgramErr*((3/2)*sqrt(2)/numTrials);
+  else
+    Output.DEBUG('using jacknife, non-normalized computation');
+    for t1 = 1:size(data1,2)
+      for t2 = 1:size(data2,2)
         [CgramEntry, CgramStd, confCgramEntry] = jacknifeHelper([data1(:,t1),data2(:,t2)],@(d) mean(d(:,1).*d(:,2)),'draws',jacknifeDraws,...
           'trialsPerDraw',jacknifeTrialsPerDraw,'confPercentile',usePercentileConf*confidenceThreshold, 'parallelWorkers',jacknifeParallelWorkers,'separableF',1);
         Cgram(t1,t2) = CgramEntry;
         CgramErr(t1,t2) = CgramStd;
         confCgram(t1,t2,:) = confCgramEntry;
       end
-    else
-      if ~useJacknife
-        if t1 == 1 && t2 == 1
-          Output.DEBUG('using non-jacknife, normalized computation');
-        end
-        rawCorrel = pointwiseProductMeans(t2);
-        normFactor = data1stds(t1)*data2stds(t2);
-        Cgram(t1,t2) = rawCorrel/normFactor;
-        CgramErr(t1,t2) = Cgram(t1,t2)*((3/2)*sqrt(2)/size(data1,1));
-      else
-        if t1 == 1 && t2 == 1
-          Output.DEBUG('using jacknife, normalized computation');
-        end
+    end
+  end
+else
+  data1stds = std(data1,[],1);
+  data2stds = std(data2,[],1);
+  if ~useJacknife
+    Output.DEBUG('using non-jacknife, normalized computation');
+    for t1 = 1:size(data1,2)
+      Cgram(t1,:) = mean(data1(:,t1).*data2,1)./(data1stds(t1)*data2stds);
+    end
+    CgramErr = CgramErr*((3/2)*sqrt(2)/numTrials);
+  else
+    Output.DEBUG('using jacknife, normalized computation');
+    for t1 = 1:size(data1,2)
+      for t2 = 1:size(data2,2)
         [CgramEntry, CgramStd, confCgramEntry] = jacknifeHelper([data1(:,t1),data2(:,t2)],@(d) mean(d(:,1).*d(:,2))/(std(d(:,1))*std(d(:,2))),'draws',jacknifeDraws,...
           'trialsPerDraw',jacknifeTrialsPerDraw,'confPercentile',usePercentileConf*confidenceThreshold, 'parallelWorkers',jacknifeParallelWorkers,'separableF',0);
         Cgram(t1,t2) = CgramEntry;
@@ -142,6 +137,7 @@ for t1 = 1:size(data1,2)
     end
   end
 end
+
 
 C = zeros(2*maxShift+1,1);
 confC = zeros(2*maxShift+1,2);

@@ -58,8 +58,8 @@ ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should 
 %note: use Blackrock indexing for unitsToUnsort and unitsToDiscard, so unsorted is 0, first defined unit is 1, etc.
 ephysParams.unitsToUnsort = {[],[],[]}; %these units will be re-grouped with u0
 ephysParams.unitsToDiscard = {[],[],[]}; %these units will be considered noise and discarded
-ephysParams.spikeWaveformPca = 2;
-ephysParams.plotSpikeWaveforms = 2;
+ephysParams.spikeWaveformPca = 0;
+ephysParams.plotSpikeWaveforms = 0; %0, 1 to build then close, 2 to build and leave open
 ephysParams.shiftSpikeWaveforms = 0;
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
 hp1Hz = designfilt('highpassiir', 'FilterOrder',8,'PassbandFrequency',1, ...
@@ -114,7 +114,7 @@ chronuxParams.fpass = [0 .1];
 tfParams.movingWin = [200 5]; 
 tfParams.specgramRowAve = 0;
 
-correlParams.maxShift = 50;
+correlParams.maxShift = []; % a number, or empty
 correlParams.matchTimeRanges = 1;
 correlParams.timeDifferenceBound = [0,200];
 correlParams.normalize = 1;

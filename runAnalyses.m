@@ -1627,11 +1627,8 @@ for calc_i = 1:length(calcSwitches)
               lfpByItem = lfpByImage;
               itemNum = imInds.(group{item_i});
             end
-            t1 = tic;
             [Cgram, C, shiftList, confCgram, confC] = correlogram(squeeze(lfpByItem{itemNum}(1,channel_i,:,:)),...
               squeeze(lfpByItem{itemNum}(1,channel_i,:,:)), correlParams);    
-            disp('correlogram time:');
-            disp(toc(t1));
             Cgram = Cgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
             confCgram = confCgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
             if item_i == 1
@@ -1645,7 +1642,7 @@ for calc_i = 1:length(calcSwitches)
             t = -psthPre:psthImDur+psthPost;
 
             fh = figure(); 
-            imagesc(t,t,Cgram); axis xy
+            imagesc(t,t,Cgram); axis xy  
             xlabel('Time (ms)'); 
             ylabel('Time(ms)');
             c = colorbar();
@@ -2323,11 +2320,11 @@ for calc_i = 1:length(tfCalcSwitches)
                   disp('requested time-domain spike-field analysis. STA lfp not yet implemented.');
                   continue
                 else
-                  [Cgram, C, shiftList, confC] = correlogram(squeeze(lfpByItem{itemNum}(1,channel_i,:,:)),...
+                  [Cgram, C, shiftList, confCgram, confC] = correlogram(squeeze(lfpByItem{itemNum}(1,channel_i,:,:)),...
                     spikesByItemBinned{itemNum}{channel2_i}{unit_i}, correlParams);
                 end
-                Cgram = Cgram(lfpPaddedBy+1:end-lfpPaddedBy);
-                CgramErr = CgramErr(lfpPaddedBy+1:end-lfpPaddedBy);
+                Cgram = Cgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
+                confCgram = confCgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
                 if item_i == 1
                   spectra = zeros(length(group),length(C));
                   specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
@@ -2337,9 +2334,8 @@ for calc_i = 1:length(tfCalcSwitches)
                 specErrs(item_i,:,:) = confC;  
                 shifts(item_i,:) = shiftList';
                 t = -psthPre:psthImDur+psthPost;
-                
                 fh = figure(); 
-                imagesc(t,t,Cgram); axis xy
+                imagesc(t,t,Cgram'); axis xy
                 xlabel(sprintf('Time, %s field (ms)', channelNames{channel_i})); 
                 ylabel(sprintf('Time, %s %s (ms)', channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i}));
                 c = colorbar();
@@ -2353,7 +2349,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 clear figData
                 figData.x = t;
                 figData.y = 1;
-                figData.z = Cgram;
+                figData.z = Cgram';
                 drawnow;
                 saveFigure(outDir,sprintf('correl_TF_%s_%s_-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
                 close(fh);
@@ -2378,8 +2374,6 @@ for calc_i = 1:length(tfCalcSwitches)
         end
       end
     end
-    
-    return;
     
     %spike -- field, within and across channel
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
