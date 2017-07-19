@@ -96,6 +96,10 @@ if normalize
   data2 = data2 - mean(data2,1);
 end
 
+if normalize
+  data1stds = std(data1,[],1);
+  data2stds = std(data2,[],1);
+end
 for t1 = 1:size(data1,2)
   for t2 = 1:size(data1,2)
     if abs(t1-t2) < timeDifferenceBound(1) || abs(t1-t2) > timeDifferenceBound(2)
@@ -124,7 +128,7 @@ for t1 = 1:size(data1,2)
           Output.DEBUG('using non-jacknife, normalized computation');
         end
         rawCorrel = mean(data1(:,t1).*data2(:,t2));
-        normFactor = std(data1(:,t1))*std(data2(:,t2));
+        normFactor = data1stds(t1)*data2stds(t2);
         Cgram(t1,t2) = rawCorrel/normFactor;
         CgramErr(t1,t2) = Cgram(t1,t2)*((3/2)*sqrt(2)/size(data1,1));
       else

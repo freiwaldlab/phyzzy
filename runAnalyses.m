@@ -1627,8 +1627,11 @@ for calc_i = 1:length(calcSwitches)
               lfpByItem = lfpByImage;
               itemNum = imInds.(group{item_i});
             end
+            t1 = tic;
             [Cgram, C, shiftList, confCgram, confC] = correlogram(squeeze(lfpByItem{itemNum}(1,channel_i,:,:)),...
               squeeze(lfpByItem{itemNum}(1,channel_i,:,:)), correlParams);    
+            disp('correlogram time:');
+            disp(toc(t1));
             Cgram = Cgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
             confCgram = confCgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
             if item_i == 1

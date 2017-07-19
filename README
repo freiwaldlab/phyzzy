@@ -51,8 +51,31 @@ Getting started to-do:
 - make your preprocessLogFile, if you’re doing something other than a simple Visiko bcont task. 
 - run processRun
 
+System requirements and dependencies:
+- Matlab R2016a or later
+- Signal Processing Toolbox (DPSS tapers, lfp filtering)
+- Statistics and Machine Learning Toolbox (for bootstrap functions)
+Optional, will accelerate:
+- Parallel computing toolbox
+- System Identification Toolbox
+
+Quick sync to the servers: 
+from the server directory, >> 
+
 Guidelines for modification:
+
 - We should discuss this together. A major goal of this project is to separate the parts of the code that everyone modifies from the parts that almost no one modifies. The structure doesn’t do that perfectly yet. In particular, it doesn’t separate plotting functions (which people might want to modify to suit their aesthetic idiosyncrasies) from compute steps, which should remain relatively static. More later…
+
+- Using git:
+—— view changes since last commit: >> git diff filename, or >> git diff —-cached filename, see https://stackoverflow.com/questions/4456532/how-can-i-see-what-has-changed-in-a-file-before-committing-to-git
+—— merge: >> git merge otherBranchName
+—— stage all files for commit: >> git add .
+—— check which files have changed, and which are staged for commit: >> git status
+—— commit your files: >> git commit -m ‘brief description of what you changed’
+—— push your commits to github: >> git push
+—— temporarily revert to past version: >> git stash, then >> git checkout hashOfOtherCommit  (can get from git log, or from the link to the commit on github).
+—— work on the tip of a branch (for instance, return to where you were before checking out a previous commit): >> git checkout nameOfOtherBranch
+
 
 Style Guide:
 - use two spaces as your indent. To do this, set tab size and indent size as described here: https://www.mathworks.com/help/matlab/matlab_env/about-editor-debugger-preferences.html
