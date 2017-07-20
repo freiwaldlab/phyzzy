@@ -72,15 +72,27 @@ butter1Hz200Hz_v2 = [tmp1,tmp2];        %#ok
 ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter
 
 % parameters preprocessAnalogIn, see function for details
-analogInParams.needAccel = 0;
-analogInParams.needEyes = 0;
-analogInParams.accelChannels = []; %2d array, numAccelerometers x numChannelsPerAccelerometer
-analogInParams.accelChannelNames = {}; % row vector, whose length matches num rows in accelChannels
-analogInParams.eyeChannels = [];
+analogInParams.needAnalogIn = 1;
+analogInParams.analogInChannels = [138,139,140]; 
+analogInParams.channelNames = {'eyeX','eyeY','eyeD'};
+analogInParams.analogInChannelScaleBy = [1 1 1]; %converts raw values to microvolts
+analogInParams.decimateFactorPass1 = 1; %note: product of the two decimate factors should be 30, if 1 khz samples desired
+analogInParams.decimateFactorPass2 = 1;
+analogInParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to analogIn (should be raw rate/productOfDecimateFactors)
+% see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
+butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 120, 'StopbandFrequency', 480, 'PassbandRipple', 1,...
+  'StopbandAttenuation', 60, 'SampleRate', 1000, 'MatchExactly', 'passband');  %this returns a 3rd order iir filter
+analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
+analogInParams.plotFilteredSignal = 1; %#ok
 
 % parameters preprocessLogFile, see function for details
 stimSyncParams.usePhotodiode = 0;        %#ok
-
+%
+eyeCalParams.method = 'auto';
+eyeCalParams.gainX = 112;
+eyeCalParams.gainY = 107;
+eyeCalParams.flipX = 1;
+eyeCalParams.flipY = 1; %#ok
 % parameters for excludeStimuli, see function for details
 excludeStimParams.fixPre = 0; %ms
 excludeStimParams.fixPost = 0; %ms

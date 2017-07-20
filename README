@@ -59,8 +59,12 @@ Optional, will accelerate:
 - Parallel computing toolbox
 - System Identification Toolbox
 
-Quick sync to the servers: 
-from the server directory, >> 
+Code sync to servers: use git, or
+Initial sync: 
+from the server directory, >> rsync -rz yourMachineIP:/path/to/analysisCode .
+Quick sync:
+from the server directory, >> rsync -r —-exclude “*dependencies” —-exclude “*.git*” yourMachineIP:/path/to/analysisCode .
+
 
 Guidelines for modification:
 

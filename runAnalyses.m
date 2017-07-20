@@ -1,6 +1,7 @@
 function [  ] = runAnalyses( analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign, ...
   categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-  spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming, picCategories, onsetsByImage, OnsetsByCategory)
+  spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, analogInByImage, analogInByCategory,channelUnitNames, ...
+  stimTiming, picCategories, onsetsByImage, OnsetsByCategory)
 %runAnalyses should be the main site for customization
 %   - ideally, function signature should remain constant
 %  this version of runAnalyses does the following:
@@ -23,6 +24,8 @@ pictureLabels = pictureLabelsTmp; % conclusion of hack
 channelNames = ephysParams.channelNames;
 spikeChannels = ephysParams.spikeChannels;
 lfpChannels = ephysParams.lfpChannels;
+analogInChannels = analogInParams.analogInChannels;
+analogInChannelNames = analogInParams.analogInChannelNames;
 psthPre = psthParams.psthPre;
 psthPost = psthParams.psthPost;
 smoothingWidth = psthParams.smoothingWidth;

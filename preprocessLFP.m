@@ -1,6 +1,7 @@
 function [ lfpData ] = preprocessLFP( lfpFilename, params )
-%UNTITLED Summary of this function goes here
-%   
+% Load, decimate, and filter LFP, and index it by order in params. lfpChannels
+%    decimation and filtering are optional; specified in params
+
 % unpack params fields
 if ~params.needLFP
   lfpData = [];
@@ -22,7 +23,7 @@ lfpHeader = tmp.MetaTags;
 assert(lfpHeader.SamplingFreq/(decimateFactorPass1*decimateFactorPass2) == 1000, 'error: expected lfp data to decimate to 1ks/sec');
 lfpDataRaw = tmp.Data; %note: returns each channel as a row
 
-% sort ns5 data so channel indexing matches indexing in ns5channels array
+% sort lfp data so channel indexing matches indexing in lfpChannels array
 lfpChannelMap = zeros(length(lfpChannels),1);
 for i = 1:length(lfpChannels)
   assert(any(lfpHeader.ChannelID == lfpChannels(i)), strcat('error: requested analysis for unrecorded LFP channel: ',num2str(lfpChannels(i))));

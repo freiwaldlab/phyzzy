@@ -59,7 +59,7 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   end
 
   %%%%%%%%%%%%%%%%%
-  analogInData = preprocessAnalogIn(analogInFilename, analogInParams); %todo: implement return variables
+  analogInData = preprocessAnalogIn(analogInFilename, analogInParams); 
   [spikesByChannel, taskTriggers, channelUnitNames] = preprocessSpikes(spikeFilename, ephysParams);
   lfpData = preprocessLFP(lfpFilename, ephysParams);
   [ taskData, stimTiming ] = preprocessLogFile(taskFilename, taskTriggers, stimSyncParams); % load visual stimulus data and transform its timestamps to ephys clock reference
@@ -79,7 +79,8 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
     fprintf('Variable stimulus length run. Excluding trials shorter than %d\n',psthImDur);
   end
 
-
+  [eyeX,eyeY,eyeD] = calibrateEyeSignals(analogInData(1,:),analogInData(2,:),analogInData(3,:),taskData,eyeCalParams);
+  return
   taskDataAll = taskData;
   taskData = excludeTrials( taskData, excludeStimParams); %exclude trials for lost fixation etc. 
 
@@ -152,7 +153,9 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   %  align LFP data  by trial, sort by image and category, and possibly remove DC and linear components
   lfpByImage = alignLFP(lfpData, onsetsByImage, lfpChannels, lfpAlignParams);
   lfpByCategory = alignLFP(lfpData, onsetsByCategory, lfpChannels, lfpAlignParams);
-
+  analogInByImage = alignAnalogIn(analogInData, onsetsByImage, analogInChannels, analogInParams);
+  analogInByCategory = alignAnalogIn(analogInData, onsetsByCategory, analogInChannels, analogInParams);
+  
   for cat_i = 1:length(categoryList)
     Output.VERBOSE(categoryList{cat_i});
     Output.VERBOSE(size(lfpByCategory{cat_i}));
@@ -161,17 +164,20 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   if savePreprocessed
     save(preprocessedDataFilename,'analysisParamFilename', 'spikesByChannel', 'lfpData', 'analogInData', 'taskData', 'taskDataAll', 'psthImDur', 'preAlign', 'postAlign',...
       'categoryList', 'pictureLabels', 'jumpsByImage', 'spikesByImage', 'psthEmptyByImage', 'spikesByCategory', 'psthEmptyByCategory',...
-      'spikesByImageForTF', 'spikesByCategoryForTF', 'lfpByImage', 'lfpByCategory', 'channelUnitNames', 'stimTiming', 'picCategories', 'onsetsByImage', 'onsetsByCategory')
+      'spikesByImageForTF', 'spikesByCategoryForTF', 'lfpByImage', 'lfpByCategory', 'analogInByImage','analogInByCategory','channelUnitNames', ...
+      'stimTiming', 'picCategories', 'onsetsByImage', 'onsetsByCategory')
   end
 end
 if nargin == 0 || (nargin == 2 && strcmp(varargin{1},'paramBuilder')) || (nargin == 2 && strcmp(varargin{1},'preprocessed'))
   runAnalyses( analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign,...
     categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming, picCategories, onsetsByImage, onsetsByCategory);
+    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, analogInByImage, analogInByCategory, channelUnitNames, ...
+    stimTiming, picCategories, onsetsByImage, onsetsByCategory);
 else
   feval(varargin{end},analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign,...
     categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, channelUnitNames, stimTiming, picCategories, onsetsByImage, onsetsByCategory);
+    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, analogInByImage, analogInByCategory, channelUnitNames, ...
+    stimTiming, picCategories, onsetsByImage, onsetsByCategory);
 end
 end
 

@@ -19,7 +19,7 @@ for item_i = 1:length(alignPointsByItem)
         lfpArray(1,ch_i,trial_i,:) = lfpArray(1,ch_i,trial_i,:) - mean(lfpArray(1,ch_i,trial_i,DCSUB_SAM(1,1):DCSUB_SAM(1,2)),4); %set the first 20ms mean equal across trials and stimuli
       end
     else
-      lfpByItem{item_i} = lfpArray;
+      %lfpByItem{item_i} = lfpArray;
       continue
     end
     if any(DCSUB_SAM(2,:)) 
