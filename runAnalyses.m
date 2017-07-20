@@ -1848,8 +1848,10 @@ for calc_i = 1:length(calcSwitches)
                 disp('requested time-domain spike autocorrelation analysis. STA lfp not yet implemented.');
                 continue
               else
+                correlParams.useSmoothing = [1 1];
                 [Cgram, C, shiftList, confCgram, confC] = correlogram(spikesByItemBinned{itemNum}{channel_i}{unit_i},...
                   spikesByItemBinned{itemNum}{channel_i}{unit_i}, correlParams);
+                correlParams.useSmoothing = [0 0];
               end
               Cgram = Cgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
               confCgram = confCgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
@@ -2320,8 +2322,10 @@ for calc_i = 1:length(tfCalcSwitches)
                   disp('requested time-domain spike-field analysis. STA lfp not yet implemented.');
                   continue
                 else
+                  correlParams.useSmoothing = [0 1];
                   [Cgram, C, shiftList, confCgram, confC] = correlogram(squeeze(lfpByItem{itemNum}(1,channel_i,:,:)),...
                     spikesByItemBinned{itemNum}{channel2_i}{unit_i}, correlParams);
+                  correlParams.useSmoothing = [0 0];
                 end
                 Cgram = Cgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
                 confCgram = confCgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
@@ -2375,7 +2379,7 @@ for calc_i = 1:length(tfCalcSwitches)
       end
     end
     
-    %spike -- field, within and across channel
+    %spike -- field coherency, within and across channel, frequency domain
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
       group = analysisGroups.coherenceByCategory.groups{group_i};
       groupName = analysisGroups.coherenceByCategory.names{group_i};
@@ -2472,12 +2476,16 @@ for calc_i = 1:length(tfCalcSwitches)
                   if isfield(catInds,group{item_i})
                     lfpByItem = lfpByCategory;
                     spikesByItemBinned = spikesByCategoryBinned;
-                    allSpikesByItemForTF = allSpikesByCategoryForTF;
+                    if calcSwitch.spikeTimes
+                      allSpikesByItemForTF = allSpikesByCategoryForTF;
+                    end
                     itemNum = catInds.(group{item_i});
                   else
                     lfpByItem = lfpByImage;
                     spikesByItemBinned = spikesByImageBinned;
-                    allSpikesByItemForTF = allSpikesByImageForTF;
+                    if calcSwitch.spikeTimes
+                      allSpikesByItemForTF = allSpikesByImageForTF;
+                    end
                     itemNum = imInds.(group{item_i});
                   end
                   if calcSwitch.spikeTimes
@@ -2725,8 +2733,76 @@ for calc_i = 1:length(tfCalcSwitches)
       end
     end
     
-    
-   % field -- field coherency 
+   % field -- field time domain coupling
+    for group_i = 1:length(analysisGroups.coherenceByCategory.groups) %todo: make own analysis group
+      group = analysisGroups.coherenceByCategory.groups{group_i};
+      groupName = analysisGroups.coherenceByCategory.names{group_i};
+      for channel_i = 1:length(channelNames)
+        for channel2_i = channel_i:length(lfpChannels) %these two lines make sure we only calculate once for each pair
+          if channel2_i > channel_i                    %avoids figuring out matlab behavior when channel_i == length(lfpChannels)
+            for item_i = 1:length(group)
+              if isfield(catInds,group{item_i})
+                lfpByItem = lfpByCategory;
+                itemNum = catInds.(group{item_i});
+              else
+                lfpByItem = lfpByImage;
+                itemNum = imInds.(group{item_i});
+              end
+              [Cgram, C, shiftList, confCgram, confC] = correlogram(squeeze(lfpByItem{itemNum}(1,channel_i,:,:)),...
+                squeeze(lfpByItem{itemNum}(1,channel2_i,:,:)), correlParams);
+              Cgram = Cgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
+              confCgram = confCgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
+              if item_i == 1
+                spectra = zeros(length(group),length(C));
+                specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
+                shifts =  zeros(length(group),length(C));
+              end
+              spectra(item_i,:) = C';
+              specErrs(item_i,:,:) = confC;  
+              shifts(item_i,:) = shiftList';
+              t = -psthPre:psthImDur+psthPost;
+              fh = figure(); 
+              imagesc(t,t,Cgram'); axis xy
+              xlabel(sprintf('Time, %s field (ms)', channelNames{channel_i})); 
+              ylabel(sprintf('Time, %s field (ms)', channelNames{channel2_i}));
+              c = colorbar();
+              ylabel(c,'Correlation');
+              hold on
+              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
+              line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
+              title(sprintf('%s field - %s field correlation, %s%s',channelNames{channel_i},channelNames{channel2_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+              clear figData
+              figData.x = t;
+              figData.y = 1;
+              figData.z = Cgram';
+              drawnow;
+              saveFigure(outDir,sprintf('correl_TF_%s_LFP-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelNames{channel2_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              close(fh);
+            end
+            fh = figure();
+            lineProps.width = 3;
+            lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+            mseb(shifts,spectra,specErrs,lineProps);
+            legend(group);
+            xlabel('time (ms)');
+            ylabel('correlation');
+            title(sprintf('%s field - %s field correlation %s',channelNames{channel_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+            clear figData
+            figData.x = shifts; 
+            figData.y = spectra;
+            figData.e = specErrs;
+            drawnow;
+            saveFigure(outDir,sprintf('correl_%s_LFP_%s_LFP_%s%s_Run%s',channelNames{channel_i},channelNames{channel2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+            close(fh);
+          end
+        end
+      end
+    end
+   
+   
+   % field -- field coherency, frequency domain 
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
       group = analysisGroups.coherenceByCategory.groups{group_i};
       groupName = analysisGroups.coherenceByCategory.names{group_i};
@@ -2855,6 +2931,7 @@ for calc_i = 1:length(tfCalcSwitches)
         end
       end
     end
+    
     % time-frequency field --field coherency
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
       group = analysisGroups.coherenceByCategory.groups{group_i};
@@ -3007,8 +3084,96 @@ for calc_i = 1:length(tfCalcSwitches)
       end
     end
     
-
-    % spike --spike coherency
+    %spike -- spike time-domain coupling
+    for group_i = 1:length(analysisGroups.coherenceByCategory.groups) %todo: make own analysis group
+      group = analysisGroups.coherenceByCategory.groups{group_i};
+      groupName = analysisGroups.coherenceByCategory.names{group_i};
+      for channel_i = 1:length(channelNames)
+        for channel2_i = channel_i:length(lfpChannels) %make sure we only calculate once for each pair
+          for unit_i = 1:length(channelUnitNames{channel_i})
+            if length(channelUnitNames{channel_i}) == 1 && unit_i == 1 %skip unsorted if no isolated unit
+              continue
+            end
+            for unit2_i = 1:length(channelUnitNames{channel2_i})
+              if length(channelUnitNames{channel2_i}) == 1 && unit2_i == 1 %skip unsorted if no isolated unit
+                continue
+              end
+              %if intrachannel, check that pair is unique and non-self
+              if channel_i == channel2_i && unit_i >= unit2_i 
+                continue
+              end
+              for item_i = 1:length(group)
+                if isfield(catInds,group{item_i})
+                  spikesByItemBinned = spikesByCategoryBinned;
+                  %spikesByItemForTF = spikesByCategoryForTF;
+                  itemNum = catInds.(group{item_i});
+                else
+                  spikesByItemBinned = spikesByImageBinned;
+                  %spikesByItemForTF = spikesByImageForTF;
+                  itemNum = imInds.(group{item_i});
+                end
+                if calcSwitch.spikeTimes
+                  disp('requested time-domain spike-field analysis. STA lfp not yet implemented.');
+                  continue
+                else
+                  correlParams.useSmoothing = [1 1];
+                  [Cgram, C, shiftList, confCgram, confC] = correlogram(spikesByItemBinned{itemNum}{channel_i}{unit_i},...
+                    spikesByItemBinned{itemNum}{channel2_i}{unit2_i}, correlParams);
+                  correlParams.useSmoothing = [0 0];
+                end
+                Cgram = Cgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
+                confCgram = confCgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
+                if item_i == 1
+                  spectra = zeros(length(group),length(C));
+                  specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
+                  shifts =  zeros(length(group),length(C));
+                end
+                spectra(item_i,:) = C';
+                specErrs(item_i,:,:) = confC;  
+                shifts(item_i,:) = shiftList';
+                t = -psthPre:psthImDur+psthPost;
+                fh = figure(); 
+                imagesc(t,t,Cgram'); axis xy
+                xlabel(sprintf('Time, %s %s (ms)', channelNames{channel_i},channelUnitNames{channel_i}{unit_i})); 
+                ylabel(sprintf('Time, %s %s (ms)', channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i}));
+                c = colorbar();
+                ylabel(c,'Correlation');
+                hold on
+                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
+                line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
+                title(sprintf('%s %s - %s %s correlation, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                clear figData
+                figData.x = t;
+                figData.y = 1;
+                figData.z = Cgram';
+                drawnow;
+                saveFigure(outDir,sprintf('correl_TF_%s_%s_-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                close(fh);
+              end
+              fh = figure();
+              lineProps.width = 3;
+              lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+              mseb(shifts,spectra,specErrs,lineProps);
+              legend(group);
+              xlabel('time (ms)');
+              ylabel('correlation');
+              title(sprintf('%s %s - %s %s correlation %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+              clear figData
+              figData.x = shifts; 
+              figData.y = spectra;
+              figData.e = specErrs;
+              drawnow;
+              saveFigure(outDir,sprintf('correl_%s_%s_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              close(fh);
+            end
+          end
+        end
+      end
+    end
+    
+    % spike --spike coherency, frequency domain
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
       group = analysisGroups.coherenceByCategory.groups{group_i};
       groupName = analysisGroups.coherenceByCategory.names{group_i};
@@ -3095,11 +3260,15 @@ for calc_i = 1:length(tfCalcSwitches)
                 for item_i = 1:length(group)
                   if isfield(catInds,group{item_i})
                     spikesByItemBinned = spikesByCategoryBinned;
-                    allSpikesByItemForTF = allSpikesByCategoryForTF;
+                    if calcSwitch.spikeTimes
+                      allSpikesByItemForTF = allSpikesByCategoryForTF;
+                    end
                     itemNum = catInds.(group{item_i});
                   else
                     spikesByItemBinned = spikesByImageBinned;
-                    allSpikesByItemForTF = allSpikesByImageForTF;
+                    if calcSwitch.spikeTimes
+                      allSpikesByItemForTF = allSpikesByImageForTF;
+                    end
                     itemNum = imInds.(group{item_i});
                   end
                   if calcSwitch.spikeTimes

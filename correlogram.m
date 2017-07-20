@@ -87,7 +87,23 @@ if isfield(params, 'usePercentileConf') && ~isempty(params.usePercentileConf)
 else
   usePercentileConf = 0;
 end
+if isfield(params, 'useSmoothing') && ~isempty(params.useSmoothing)
+  useSmoothing = params.useSmoothing;
+else
+  useSmoothing = [0, 0];
+end
+if isfield(params, 'smoothingFilter') && ~isempty(params.smoothingFilter)
+  smoothingFilter = params.smoothingFilter;
+else
+  usePercentileConf = 0;
+end
 assert(all(size(data1) == size(data2)),'input arrays must be the same size');
+if useSmoothing(1)
+  data1 = convn(data1,smoothingFilter,'same');
+end
+if useSmoothing(2)
+  data2 = convn(data2,smoothingFilter,'same');
+end
 Cgram = zeros(size(data1,2));
 CgramErr = zeros(size(data1,2));
 confCgram = zeros(size(data1,2),size(data1,2),2);

@@ -122,12 +122,16 @@ correlParams.useJacknife = 0;
 correlParams.jacknifeDraws = 100;
 switch machine
   case 'laptop'
-    correlParams.jacknifeParallelWorkers = 0;    %#ok
+    correlParams.jacknifeParallelWorkers = 0;    
   case 'hopper'
-    correlParams.jacknifeParallelWorkers = 0;   %#ok
+    correlParams.jacknifeParallelWorkers = 0;   
   case 'turing'
-    corelParams.jacknifeParallelWorkers = 20;    %#ok
+    correlParams.jacknifeParallelWorkers = 20;    
 end
+spikeCorrelSmoothingWidth = 5; %ms
+filterPoints = -20*spikeCorrelSmoothingWidth:20*spikeCorrelSmoothingWidth;
+smoothingFilter = exp(-1*filterPoints.^2/(2*spikeCorrelSmoothingWidth^2));
+correlParams.smoothingFilter = smoothingFilter/sum(smoothingFilter); %#ok
 %
 lfpAlignParams.samPerMS = 1; % because this is after decimation
 lfpAlignParams.msPreAlign = psthParams.psthPre+tfParams.movingWin(1)/2; 
@@ -189,7 +193,7 @@ plotSwitch.lfpSpectraByCategory = 1;
 plotSwitch.spikeSpectraByCategory = 1;
 plotSwitch.SpikeSpectraTfByImage = 1;
 plotSwitch.lfpSpectraTfByImage = 1;
-plotSwitch.tfSpectraByCategory = 0;
+plotSwitch.tfSpectraByCategory = 1;
 plotSwitch.tfErrs = 1;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
