@@ -1,9 +1,6 @@
-function [  ] = runAnalyses( analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign, ...
-  categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-  spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, analogInByImage, analogInByCategory,channelUnitNames, ...
-  stimTiming, picCategories, onsetsByImage, OnsetsByCategory)
-%runAnalyses should be the main site for customization
-%   - ideally, function signature should remain constant
+function [  ] = runAnalyses( inputs )
+% runAnalyses should be the main site for customization
+% - inputs is a struct, which will be unpacked
 %  this version of runAnalyses does the following:
 %   - makes psth's and evoked potentials for (possibly overlapping)categories, 
 %     specified at stimParamsFilename
@@ -14,9 +11,37 @@ function [  ] = runAnalyses( analysisParamFilename, spikesByChannel, lfpData, an
 %     and spike-field, using Chronux
 %   - makes tuning curves for parameterized images or categories, as
 %     specified in the stim param file
-%   - todo: perform band-resolved Granger causality analysis across bands
 
 
+%%% unpack inputs
+analysisParamFilename = inputs.analysisParamFilename;
+spikesByChannel = inputs.spikesByChannel; 
+lfpData = inputs.lfpData; 
+analogInData = inputs.analogInData; 
+taskData = inputs.taskData;
+taskDataAll = inputs.taskDataAll; 
+psthImDur = inputs.psthImDur; 
+preAlign = inputs.preAlign; 
+postAlign = inputs.postAlign;
+categoryList = inputs.categoryList; 
+pictureLabels = inputs.pictureLabels; 
+jumpsByImage = inputs.jumpsByImage; 
+spikesByImage = inputs.spikesByImage; 
+psthEmptyByImage = inputs.psthEmptyByImage;  
+spikesByCategory = inputs.spikesByCategory; 
+psthEmptyByCategory = inputs.psthEmptyByCategory; 
+spikesByImageForTF = inputs.spikesByImageForTF;  
+spikesByCategoryForTF = inputs.spikesByCategoryForTF;  
+lfpByImage = inputs.lfpByImage;  
+lfpByCategory = inputs.lfpByCategory;  
+analogInByImage = inputs.analogInByImage; 
+analogInByCategory = inputs.analogInByCategory;  
+channelUnitNames = inputs.channelUnitNames;  
+stimTiming = inputs.stimTiming;  
+picCategories = inputs.picCategories;  
+onsetsByImage = inputs.onsetsByImage;  
+onsetsByCategory = inputs.onsetsByCategory; 
+%%% finished unpacking inputs
 load(analysisParamFilename);
 pictureLabelsTmp = pictureLabels; %note: hack to avoid overwriting list of not presented stimuli
 load(stimParamsFilename);
@@ -25,7 +50,7 @@ channelNames = ephysParams.channelNames;
 spikeChannels = ephysParams.spikeChannels;
 lfpChannels = ephysParams.lfpChannels;
 analogInChannels = analogInParams.analogInChannels;
-analogInChannelNames = analogInParams.analogInChannelNames;
+analogInChannelNames = analogInParams.channelNames;
 psthPre = psthParams.psthPre;
 psthPost = psthParams.psthPost;
 smoothingWidth = psthParams.smoothingWidth;
@@ -63,7 +88,6 @@ end
 for image_i = 1:length(pictureLabels)
   imInds.(pictureLabels{image_i}) = image_i;
 end
-
 
 if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
   spikesByCategoryBinned = cell(size(spikesByCategory));
@@ -768,6 +792,95 @@ for channel_i = 1:length(lfpChannels)
     end
   end
 end
+
+%evoked analog in potentials
+if plotSwitch.analogInByItem
+  for group_i = 1:length(analysisGroups.analogInPotentials.groups)
+    group = analysisGroups.analogInPotentials.groups{group_i};
+    groupChannels = analysisGroups.analogInPotentials.channels{group_i};
+    groupName = analysisGroups.analogInPotentials.names{group_i};
+    groupUnit = analysisGroups.analogInPotentials.units{group_i};
+    fh = figure();
+    responses = zeros(length(group),length(times));
+    responseErrs = zeros(length(group),length(times));
+    for item_i = 1:length(group)
+      if isfield(catInds,group{item_i})
+        responses(item_i,:) = squeeze(mean(sqrt(sum(analogInByCategory{catInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy).^2,2)),3))';
+        responseErrs(item_i,:) = squeeze(std(sqrt(sum(analogInByCategory{catInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy).^2,2)),[],3)/sqrt(size(analogInByCategory{catInds.(group{item_i})},3)))';
+      else
+        for channel_i = 1:length(groupChannels)
+        end
+        responses(item_i,:) = squeeze(mean(sqrt(sum(analogInByImage{imInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy).^2,2)),3))';
+        responseErrs(item_i,:) = squeeze(std(sqrt(sum(analogInByImage{imInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy).^2,2)),[],3)/sqrt(size(analogInByImage{imInds.(group{item_i})},3)))';
+      end
+    end
+    lineProps.width = 3;
+    lineProps.col = analysisGroups.analogInPotentials.colors{group_i};
+    hold on
+    mseb(repmat(times,length(group),1),responses,responseErrs,lineProps);
+    legend(group);
+    h = get(gca,'ylim');
+    plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+    xlim([min(times), max(times)]);
+    hold off
+    title(groupName, 'FontSize',18);
+    xlabel('time after stimulus (ms)', 'FontSize',18);
+    ylabel(groupUnit, 'FontSize',18);
+    set(gca,'fontsize',18);
+    clear figData
+    figData.y = responses;
+    figData.e = responseErrs;
+    figData.x = times;
+    drawnow;
+    saveFigure(outDir,sprintf('%s_Run%s',groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    close(fh);
+  end
+end
+
+%evoked analog in derivatives
+if plotSwitch.analogInDerivativesByItem
+  for group_i = 1:length(analysisGroups.analogInPotentials.groups)
+    group = analysisGroups.analogInDerivatives.groups{group_i};
+    groupChannels = analysisGroups.analogInDerivatives.channels{group_i};
+    groupName = analysisGroups.analogInDerivatives.names{group_i};
+    groupUnit = analysisGroups.analogInDerivatives.units{group_i};
+    fh = figure();
+    responses = zeros(length(group),length(times)-1);
+    responseErrs = zeros(length(group),length(times)-1);
+    for item_i = 1:length(group)
+      if isfield(catInds,group{item_i})
+        responses(item_i,:) = squeeze(mean(sqrt(sum(diff(analogInByCategory{catInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy),1,4).^2,2)),3))';
+        responseErrs(item_i,:) = squeeze(std(sqrt(sum(diff(analogInByCategory{catInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy),1,4).^2,2)),[],3)/sqrt(size(analogInByCategory{catInds.(group{item_i})},3)))';
+      else
+        for channel_i = 1:length(groupChannels)
+        end
+        responses(item_i,:) = squeeze(mean(sqrt(sum(diff(analogInByImage{imInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy),1,4).^2,2)),3))';
+        responseErrs(item_i,:) = squeeze(std(sqrt(sum(diff(analogInByImage{imInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy),1,4).^2,2)),[],3)/sqrt(size(analogInByImage{imInds.(group{item_i})},3)))';
+      end
+    end
+    lineProps.width = 3;
+    lineProps.col = analysisGroups.analogInDerivatives.colors{group_i};
+    hold on
+    mseb(repmat(times(1:end-1),length(group),1),responses,responseErrs,lineProps);
+    legend(group);
+    h = get(gca,'ylim');
+    plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+    xlim([min(times), max(times)]);
+    hold off
+    title(groupName, 'FontSize',18);
+    xlabel('time after stimulus (ms)', 'FontSize',18);
+    ylabel(groupUnit, 'FontSize',18);
+    set(gca,'fontsize',18);
+    clear figData
+    figData.y = responses;
+    figData.e = responseErrs;
+    figData.x = times;
+    drawnow;
+    saveFigure(outDir,sprintf('%s_Run%s',groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+    close(fh);
+  end
+end
+
 
 % lfp - (color) psth subplot
 for channel_i = 1:length(lfpChannels)  

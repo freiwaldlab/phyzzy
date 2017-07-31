@@ -1,11 +1,16 @@
 function [ spikesByImage, spikesByCategory, lfpByImage, lfpByCategory, categoryList, picFiles ] = processRun( varargin )
-%processRun is a top level function to analyze units, MUA, lfps, coupling, and RFs. 
+%processRun loads, preprocesses, and aligns task events, lfps, muas, units, and analog signals (eg eye, accelerometer,photodiodes)
 %   - handles single-channel and multi-channel sessions
-%   - relies on raw visiko (.log) and blackrock (.ns5) files
-%   - aligns visiko events to blackrock clock (preprocessLogFile.m)
-%   - excludes trials with broken fixation, fix spot flash, or (optionally)
-%     juice delivery (via exludeStimuli)
+%   - relies only on raw task log and physiology fiels: currently visiko (.log) and blackrock (.ns5,.ns2)
+%   - aligns task events to ephys system clock (preprocessLogFile.m)
+%   - excludes trials with broken fixation, fix spot flash, and (optionally)
+%     juice delivery and high head acceleration(via exludeStimuli)
 %   - decimates and (optionally) filters raw lfp data (default, to 1 kHz)
+%   - calibrates eye signals (via preprocessEyeSignals)
+%   - calibrates accelerometer signals (via processAccelSignals)
+%   - calculates spike isolation measures (via preprocessSpikes)
+%   - shows task event summary (via excludeTrials)
+%   - optionally calls an analysis routine; default is runAnalyses.m
 %   Inputs:
 %   - varargin can have the following forms:
 %       - empty (default assignments: buildAnalysisParamFile, runAnalyses
@@ -40,6 +45,7 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   channelNames = ephysParams.channelNames;
   spikeChannels = ephysParams.spikeChannels;
   lfpChannels = ephysParams.lfpChannels;
+  analogInChannels = analogInParams.analogInChannels;
   psthPre = psthParams.psthPre;
   psthImDur = psthParams.psthImDur;
   psthPost = psthParams.psthPost;
@@ -62,7 +68,13 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   analogInData = preprocessAnalogIn(analogInFilename, analogInParams); 
   [spikesByChannel, taskTriggers, channelUnitNames] = preprocessSpikes(spikeFilename, ephysParams);
   lfpData = preprocessLFP(lfpFilename, ephysParams);
+  analogInData = preprocessPhotodiodeStrobe(analogInData, photodiodeParams);
   [ taskData, stimTiming ] = preprocessLogFile(taskFilename, taskTriggers, stimSyncParams); % load visual stimulus data and transform its timestamps to ephys clock reference
+  analogInData = preprocessEyeSignals(analogInData,taskData,eyeCalParams);
+  analogInData = preprocessAccelSignals(analogInData, accelParams); 
+  taskDataAll = taskData;
+  taskData = excludeTrials( taskData, excludeStimParams); %exclude trials for lost fixation etc. 
+  
   if stimTiming.shortest == stimTiming.longest
     psthParams.psthImDur = stimTiming.shortest;
     psthImDur = psthParams.psthImDur;
@@ -78,11 +90,6 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
     assert(psthImDur > 0, 'psthImDur = 0; nothing to analyze. Likely cause: unexpected variable stimulus length');
     fprintf('Variable stimulus length run. Excluding trials shorter than %d\n',psthImDur);
   end
-
-  [eyeX,eyeY,eyeD] = calibrateEyeSignals(analogInData(1,:),analogInData(2,:),analogInData(3,:),taskData,eyeCalParams);
-  return
-  taskDataAll = taskData;
-  taskData = excludeTrials( taskData, excludeStimParams); %exclude trials for lost fixation etc. 
 
   %sort trials by image and image category
   tmp = load(stimParamsFilename); %loads variables paramArray, categoryLabels,pictureLabels
@@ -153,8 +160,8 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   %  align LFP data  by trial, sort by image and category, and possibly remove DC and linear components
   lfpByImage = alignLFP(lfpData, onsetsByImage, lfpChannels, lfpAlignParams);
   lfpByCategory = alignLFP(lfpData, onsetsByCategory, lfpChannels, lfpAlignParams);
-  analogInByImage = alignAnalogIn(analogInData, onsetsByImage, analogInChannels, analogInParams);
-  analogInByCategory = alignAnalogIn(analogInData, onsetsByCategory, analogInChannels, analogInParams);
+  analogInByImage = alignAnalogIn(analogInData, onsetsByImage, analogInChannels, lfpAlignParams);
+  analogInByCategory = alignAnalogIn(analogInData, onsetsByCategory, analogInChannels, lfpAlignParams);
   
   for cat_i = 1:length(categoryList)
     Output.VERBOSE(categoryList{cat_i});
@@ -168,16 +175,41 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
       'stimTiming', 'picCategories', 'onsetsByImage', 'onsetsByCategory')
   end
 end
+
+runAnalysisInputs.analysisParamFilename = analysisParamFilename;
+runAnalysisInputs.spikesByChannel = spikesByChannel; 
+runAnalysisInputs.lfpData = lfpData; 
+runAnalysisInputs.analogInData = analogInData; 
+runAnalysisInputs.taskData = taskData;
+runAnalysisInputs.taskDataAll = taskDataAll; 
+runAnalysisInputs.psthImDur = psthImDur; 
+runAnalysisInputs.preAlign = preAlign; 
+runAnalysisInputs.postAlign = postAlign;
+runAnalysisInputs.categoryList = categoryList; 
+runAnalysisInputs.pictureLabels = pictureLabels; 
+runAnalysisInputs.jumpsByImage = jumpsByImage; 
+runAnalysisInputs.spikesByImage = spikesByImage; 
+runAnalysisInputs.psthEmptyByImage = psthEmptyByImage;  
+runAnalysisInputs.spikesByCategory = spikesByCategory; 
+runAnalysisInputs.psthEmptyByCategory = psthEmptyByCategory; 
+runAnalysisInputs.spikesByImageForTF = spikesByImageForTF;  
+runAnalysisInputs.spikesByCategoryForTF = spikesByCategoryForTF;  
+runAnalysisInputs.lfpByImage = lfpByImage;  
+runAnalysisInputs.lfpByCategory = lfpByCategory;  
+runAnalysisInputs.analogInByImage = analogInByImage; 
+runAnalysisInputs.analogInByCategory = analogInByCategory;  
+runAnalysisInputs.channelUnitNames = channelUnitNames;  
+runAnalysisInputs.stimTiming = stimTiming;  
+runAnalysisInputs.picCategories = picCategories;  
+runAnalysisInputs.onsetsByImage = onsetsByImage;  
+runAnalysisInputs.onsetsByCategory = onsetsByCategory;
+
+
+
 if nargin == 0 || (nargin == 2 && strcmp(varargin{1},'paramBuilder')) || (nargin == 2 && strcmp(varargin{1},'preprocessed'))
-  runAnalyses( analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign,...
-    categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, analogInByImage, analogInByCategory, channelUnitNames, ...
-    stimTiming, picCategories, onsetsByImage, onsetsByCategory);
+  runAnalyses(runAnalysisInputs);
 else
-  feval(varargin{end},analysisParamFilename, spikesByChannel, lfpData, analogInData, taskData, taskDataAll, psthImDur, preAlign, postAlign,...
-    categoryList, pictureLabels, jumpsByImage, spikesByImage, psthEmptyByImage, spikesByCategory, psthEmptyByCategory,...
-    spikesByImageForTF, spikesByCategoryForTF, lfpByImage, lfpByCategory, analogInByImage, analogInByCategory, channelUnitNames, ...
-    stimTiming, picCategories, onsetsByImage, onsetsByCategory);
+  feval(varargin{end},runAnalysisInputs);
 end
 end
 

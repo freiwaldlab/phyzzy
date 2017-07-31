@@ -58,8 +58,8 @@ ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should 
 %note: use Blackrock indexing for unitsToUnsort and unitsToDiscard, so unsorted is 0, first defined unit is 1, etc.
 ephysParams.unitsToUnsort = {[],[],[]}; %these units will be re-grouped with u0
 ephysParams.unitsToDiscard = {[],[],[]}; %these units will be considered noise and discarded
-ephysParams.spikeWaveformPca = 0;
-ephysParams.plotSpikeWaveforms = 0; %0, 1 to build then close, 2 to build and leave open
+ephysParams.spikeWaveformPca = 1;
+ephysParams.plotSpikeWaveforms = 2; %0, 1 to build then close, 2 to build and leave open
 ephysParams.shiftSpikeWaveforms = 0;
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
 hp1Hz = designfilt('highpassiir', 'FilterOrder',8,'PassbandFrequency',1, ...
@@ -75,7 +75,7 @@ ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a
 analogInParams.needAnalogIn = 1;
 analogInParams.analogInChannels = [138,139,140]; 
 analogInParams.channelNames = {'eyeX','eyeY','eyeD'};
-analogInParams.analogInChannelScaleBy = [1 1 1]; %converts raw values to microvolts
+analogInParams.analogInChannelScaleBy = [5/32764 5/32764 5/32764]; %converts raw values to volts
 analogInParams.decimateFactorPass1 = 1; %note: product of the two decimate factors should be 30, if 1 khz samples desired
 analogInParams.decimateFactorPass2 = 1;
 analogInParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to analogIn (should be raw rate/productOfDecimateFactors)
@@ -85,24 +85,41 @@ butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 120, 'StopbandFre
 analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
 analogInParams.plotFilteredSignal = 1; %#ok
 
+photodiodeParams.needPhotodiode = 0;
+photodiodeParams.channels = [1;2]; %#ok
+
 % parameters preprocessLogFile, see function for details
 stimSyncParams.usePhotodiode = 0;        %#ok
 %
-eyeCalParams.method = 'auto';
+eyeCalParams.needEyeCal = 1;
+eyeCalParams.method = 'zeroEachFixation';
+eyeCalParams.makePlots = 0;
+eyeCalParams.eyeXChannelInd = 1;
+eyeCalParams.eyeYChannelInd = 2;
+eyeCalParams.eyeDChannelInd = 3;
 eyeCalParams.gainX = 112;
 eyeCalParams.gainY = 107;
 eyeCalParams.flipX = 1;
-eyeCalParams.flipY = 1; %#ok
+eyeCalParams.flipY = 1; 
+eyeCalParams.offsetX = -6.4;
+eyeCalParams.offsetY = -5.6; 
+eyeCalParams.minFixZeroTime = 1000; %#ok
+
+accelParams.needAccelCal = 0;
+accelParams.accelChannels = {[4;5;6]};
+accelParams.channelGains = {[1/.666 1/.666 1/.666]};
+accelParams.calMethods = {'hardcode'}; %other option is 'calFile'; calibration method
+accelParams.calFiles = {''}; %if method is 'calFile', an ns2 filename
+
 % parameters for excludeStimuli, see function for details
-excludeStimParams.fixPre = 0; %ms
-excludeStimParams.fixPost = 0; %ms
+excludeStimParams.fixPre = 100; %ms
+excludeStimParams.fixPost = 100; %ms
 excludeStimParams.flashPre = 0;  %ms
 excludeStimParams.flashPost = 0; %ms
 excludeStimParams.juicePre = 0; % optional, ms
 excludeStimParams.juicePost = 0; % optional, ms
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
-
 
 psthParams.psthPre = 100; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 0;  % only need to set this for variable length stim runs; else, comes from log file
@@ -188,7 +205,9 @@ plotSwitch.tuningCurvesLate = 0;
 plotSwitch.calcLatencyRF = 0;
 plotSwitch.calcEvokedPowerRF = 0;
 plotSwitch.evokedPsthMuaMultiCh = 0;
-plotSwitch.evokedByCategory = 0;
+plotSwitch.evokedByCategory = 1;
+plotSwitch.analogInByItem = 1;
+plotSwitch.analogInDerivativesByItem = 1;
 plotSwitch.colorPsthEvoked = 0;
 plotSwitch.linePsthEvoked = 0;
 plotSwitch.runSummary = 0;
@@ -205,8 +224,8 @@ plotSwitch.lfpSpectraByCategory = 1;
 plotSwitch.spikeSpectraByCategory = 1;
 plotSwitch.SpikeSpectraTfByImage = 1;
 plotSwitch.lfpSpectraTfByImage = 1;
-plotSwitch.tfSpectraByCategory = 1;
-plotSwitch.tfErrs = 1;           %#ok
+plotSwitch.tfSpectraByCategory = 0;
+plotSwitch.tfErrs = 0;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 analysisGroups.selectivityIndex.groups = {{'face';'nonface'},{'face';'object'},{'face';'body'}};
@@ -222,6 +241,18 @@ analysisGroups.stimulusLabelGroups.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
 analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
 analysisGroups.evokedPotentials.names = {'fobPlus'};
 analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+%
+analysisGroups.analogInPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.analogInPotentials.channels = {[1; 2]};
+analysisGroups.analogInPotentials.names = {'eyePositions,fobPlus'};
+analysisGroups.analogInPotentials.units = {'degrees visual angle'};
+analysisGroups.analogInPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+%
+analysisGroups.analogInDerivatives.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.analogInDerivatives.channels = {[1; 2]};
+analysisGroups.analogInDerivatives.names = {'eyeVelocity,fobPlus'};
+analysisGroups.analogInDerivatives.units = {'degrees visual angle/sec'};
+analysisGroups.analogInDerivatives.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
 %
 analysisGroups.colorPsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
 analysisGroups.colorPsthEvoked.names = {'fobPlus'};
@@ -261,11 +292,11 @@ calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
 calcSwitch.evokedSpectra = 1;
-calcSwitch.inducedSpectra = 0;
+calcSwitch.inducedSpectra = 1;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
 calcSwitch.evokedCatTF = 1;
-calcSwitch.inducedCatTF = 0;
+calcSwitch.inducedCatTF = 1;
 calcSwitch.meanEvokedTF = 1;
 calcSwitch.trialMeanSpectra = 0;
 calcSwitch.coherenceByCategory = 1;
