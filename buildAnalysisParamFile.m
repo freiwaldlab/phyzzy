@@ -265,6 +265,12 @@ analysisGroups.linePsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
 analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'}};
 analysisGroups.evokedPsthOnePane.names = {'faceVnon'};
 %
+analysisGroups.tuningCurves.groups = {{'humanFaceL90','humanFaceL45','humanFaceFront','humanFaceR45','humanFaceR90'},...
+  {'monkeyFaceL90','monkeyFaceL45','monkeyFaceFront','monkeyFaceR45','monkeyFaceR90'}}; %can be images or categories
+analysisGroups.tuningCurves.paramValues = {[-90 -45 0 45 90], [-90 -45 0 45 90]};
+analysisGroups.tuningCurves.paramLabels = {'viewing angle (degrees)','viewing angle (degrees)'};
+analysisGroups.tuningCurves.names = {'Human face view','Monkey face view'};
+%
 analysisGroups.spectraByCategory.groups = {{'face';'nonface'}};  %todo: add spectra diff?
 analysisGroups.spectraByCategory.names = {'faceVnon'};
 analysisGroups.spectraByCategory.colors = {{'r';'b'}};

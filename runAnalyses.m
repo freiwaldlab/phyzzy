@@ -504,23 +504,22 @@ if ~taskData.RFmap
     imFrErr = firingRateErrsByCategoryByEpoch{calc_i};
     frCalcOn = frEpochs(calc_i,1);
     frCalcOff = frEpochs(calc_i,2);
-    for param_i = 1:length(tuningCurveParamLabels)
-      assert(strcmp(tuningCurveItemType{param_i},'category') || strcmp(tuningCurveItemType{param_i},'image'),'Invalid tuning curve type: must be category or image');
+    for group_i = 1:length(analysisGroups.tuningCurves.groups)
+      group = analysisGroups.tuningCurves.groups{group_i};
+      groupName = analysisGroups.tuningCurves.naems{group_i};
       muaTcFig = figure();
       for channel_i = 1:length(channelNames)
         channelTcFig = figure();
         for unit_i = 1:length(channelUnitNames{channel_i})
-          tcFrs = zeros(length(tuningCurveItems{param_i}),1);
-          tcFrErrs = zeros(length(tuningCurveItems{param_i}),1);
-          if strcmp(tuningCurveItemType{param_i},'category')
-            for item_i = 1:length(tuningCurveItems{param_i})
-              tcFrs(item_i) = catFr{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
-              tcFrErrs(item_i) = catFrErr{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
-            end
-          else
-            for item_i = 1:length(tuningCurveItems{param_i})
-              tcFrs(item_i) = imFr{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
-              tcFrErrs(item_i) = imFrErr{channel_i}(unit_i,strcmp(categoryList,tuningCurveItems{param_i}{item_i}));
+          tcFrs = zeros(length(group),1);
+          tcFrErrs = zeros(length(group),1);
+          for item_i = 1:length(group)
+            if isfield(catInds,group{item_i})
+              tcFrs(item_i) = catFr{channel_i}(unit_i,catInds.(group{item_i}));
+              tcFrErrs(item_i) = catFrErr{channel_i}(unit_i,catInds.(group{item_i}));
+            else
+              tcFrs(item_i) = imFr{channel_i}(unit_i,imInds.(group{item_i}));
+              tcFrErrs(item_i) = imFrErr{channel_i}(unit_i,imInds.(group{item_i}));
             end
           end
           if length(channelUnitNames{channel_i}) == 2  % don't make the single-channel plot if no unit defined
@@ -528,23 +527,23 @@ if ~taskData.RFmap
             break
           end
           subplot(1,length(channelUnitNames{channel_i}),unit_i);
-          errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
-          xlabel(tuningCurveParamLabels{param_i}); 
+          errorbar(analysisGroups.tuningCurves.paramValues{group_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
+          xlabel(analysisGroups.tuningCurves.paramLabels{group_i}); 
           ylabel('firing rate (Hz)');
           title(channelUnitNames{channel_i}{unit_i});
         end
-        suptitle(sprintf('%s, %s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, channelNames{channel_i}, frCalcOn, frCalcOff));
-        saveFigure(outDir, sprintf('%s_%s__%dms-%dms_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),channelNames{channel_i},frCalcOn,frCalcOff,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        suptitle(sprintf('%s, %s, %dms - %d ms post-onset',groupName, channelNames{channel_i}, frCalcOn, frCalcOff));
+        saveFigure(outDir, sprintf('%s_%s__%dms-%dms_Run%s',regexprep(groupName,' ',''),channelNames{channel_i},frCalcOn,frCalcOff,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
 
         figure(muaTcFig);
         subplot(1,length(channelNames),channel_i);
-        errorbar(tuningCurveParamValues{param_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
-        xlabel(tuningCurveParamLabels{param_i}); 
+        errorbar(analysisGroups.tuningCurves.paramValues{group_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
+        xlabel(analysisGroups.tuningCurves.paramLabels{group_i}); 
         ylabel('firing rate (Hz)');
         title(sprintf('%s MUA',channelNames{channel_i}));
       end
-      suptitle(sprintf('%s, %dms - %d ms post-onset',tuningCurveTitles{param_i}, frCalcOn, frCalcOff));
-      saveFigure(outDir, sprintf('%s_%dms-%dms_Run%s',regexprep(tuningCurveTitles{param_i},' ',''),frCalcOn,frCalcOff,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      suptitle(sprintf('%s, %dms - %d ms post-onset',groupName, frCalcOn, frCalcOff));
+      saveFigure(outDir, sprintf('%s_%dms-%dms_Run%s',regexprep(groupName,' ',''),frCalcOn,frCalcOff,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
   end
 end

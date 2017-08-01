@@ -31,14 +31,8 @@ wildcardCategories = {'Humanhead*_1.','Humanhead*_07.','Humanhead*_11.','Humanhe
   'Monkeyhead*_1.','Monkeyhead*_2.','Monkeyhead*_3.','Monkeyhead*_4.','Monkeyhead*_5.','Monkeyhead*_6.','Monkeyhead*_7.','Monkeyhead*_8.'};
 wildcardCategoryLabels = {'human01','human07','human11','human12','human14','human19','human25','human26',...
   'monkey01','monkey02','monkey03','monkey04','monkey05','monkey06','monkey07','monkey08'};
-% metaCategories = {{'techno','fruit'}};
-% metaCategoryLabels = {'objects'};
-tuningCurveParamLabels = {'viewing angle (degrees)','viewing angle (degrees)'};
-tuningCurveItems = {{'humanFaceL90','humanFaceL45','humanFaceFront','humanFaceR45','humanFaceR90'},...
-  {'monkeyFaceL90','monkeyFaceL45','monkeyFaceFront','monkeyFaceR45','monkeyFaceR90'}}; %can be images or categories
-tuningCurveItemType = {'category','category'}; % category or image
-tuningCurveParamValues = {[-90 -45 0 45 90], [-90 -45 0 45 90]};
-tuningCurveTitles = {'Human face view','Monkey face view'};
+
+
 paramArray = {};
 for i = 1:length(pictureFilenames)
   tmp = regexp(pictureFilenames{i},'\','split');
