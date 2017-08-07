@@ -58,8 +58,8 @@ ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should 
 %note: use Blackrock indexing for unitsToUnsort and unitsToDiscard, so unsorted is 0, first defined unit is 1, etc.
 ephysParams.unitsToUnsort = {[],[],[]}; %these units will be re-grouped with u0
 ephysParams.unitsToDiscard = {[],[],[]}; %these units will be considered noise and discarded
-ephysParams.spikeWaveformPca = 1;
-ephysParams.plotSpikeWaveforms = 2; %0, 1 to build then close, 2 to build and leave open
+ephysParams.spikeWaveformPca = 0;
+ephysParams.plotSpikeWaveforms = 0; %0, 1 to build then close, 2 to build and leave open
 ephysParams.shiftSpikeWaveforms = 0;
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
 hp1Hz = designfilt('highpassiir', 'FilterOrder',8,'PassbandFrequency',1, ...
@@ -222,8 +222,11 @@ plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 0;
 plotSwitch.lfpSpectraByCategory = 1;
 plotSwitch.spikeSpectraByCategory = 1;
-plotSwitch.SpikeSpectraTfByImage = 1;
-plotSwitch.lfpSpectraTfByImage = 1;
+plotSwitch.SpikeSpectraTfByImage = 0;
+plotSwitch.lfpSpectraTfByImage = 0;
+plotSwitch.couplingPhasesUnwrapped = 1;
+plotSwitch.couplingPhasesAsOffsets = 1;
+plotSwitch.couplingPhasesPolar = 1;
 plotSwitch.tfSpectraByCategory = 0;
 plotSwitch.tfErrs = 0;           %#ok
 
@@ -291,19 +294,19 @@ analysisGroups.byImage = {};      %#ok
 analysisGroupColors.byImage = {}; %#ok
 %%%%%
 
-calcSwitch.categoryPSTH = 1;
-calcSwitch.imagePSTH = 1;
+calcSwitch.categoryPSTH = 0;
+calcSwitch.imagePSTH = 0;
 calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 1;
-calcSwitch.inducedSpectra = 1;
+calcSwitch.evokedSpectra = 0;
+calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
 calcSwitch.evokedCatTF = 1;
-calcSwitch.inducedCatTF = 1;
-calcSwitch.meanEvokedTF = 1;
+calcSwitch.inducedCatTF = 0;
+calcSwitch.meanEvokedTF = 0;
 calcSwitch.trialMeanSpectra = 0;
 calcSwitch.coherenceByCategory = 1;
 calcSwitch.spikeTimes = 0;

@@ -2585,7 +2585,66 @@ for calc_i = 1:length(tfCalcSwitches)
               drawnow;
               saveFigure(outDir,sprintf('phase_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
               close(fh);
-
+              
+              if plotSwitch.couplingPhasesUnwrapped
+                %replot the phases with the implicit mod pi operation undone (so easy to see slope across frequencies
+                fh = figure();
+                lineProps.width = 3;
+                lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+                [unwrappedPhases,piMultiples] = unwrapPhases(phases);
+                mseb(freqs,unwrappedPhases,phaseErrs,lineProps);
+                xlabel('frequency (Hz)');
+                ylabel('phase');
+                hold on
+                lineHandles = findobj(gca,'Type','line');  %note: these two lines exclude the pi multiples from legend
+                legendHandles = lineHandles(1:size(phases,1));
+                plot(xlim(),repmat(pi*piMultiples,2,1),'color','k');
+                legend(legendHandles,group);
+                title(sprintf('%s %s - %s field phase%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                drawnow;
+                saveFigure(outDir,sprintf('phase_unwrapped_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                close(fh);
+              end
+              
+              if plotSwitch.couplingPhasesAsOffsets
+                %replot the unwrapped phases as latency differences
+                fh = figure();
+                lineProps.width = 3;
+                lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+                [unwrappedPhases,piMultiples] = unwrapPhases(phases);
+                mseb(freqs,1000*(1/(2*pi))*unwrappedPhases./freqs,1000*(1/(2*pi))*phaseErrs./freqs,lineProps);
+                xlabel('frequency (Hz)');
+                ylabel('offset (ms)');
+                hold on
+                lineHandles = findobj(gca,'Type','line');  %note: these two lines exclude the pi multiples from legend
+                legendHandles = lineHandles(1:size(phases,1));
+                plot(freqs(1,:),1000*(1/(2*pi))*kron(piMultiples',1./freqs(1,:)),'color','k');
+                legend(legendHandles,group);
+                title(sprintf('%s %s - %s field offset%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                drawnow;
+                saveFigure(outDir,sprintf('phase_unwrapped_latency_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                close(fh);
+              end
+              
+             if plotSwitch.couplingPhasesPolar
+                %replot the unwrapped phases as latency differences
+                fh = figure();
+                [unwrappedPhases,~] = unwrapPhases(phases);
+                legendHandles = gobjects(length(group),1);
+                for item_i = 1:length(group)
+                  ah = polarplot(unwrappedPhases(item_i,:),freqs(item_i,:),'color',analysisGroups.coherenceByCategory.colors{group_i}{item_i},'linewidth',3);
+                  hold on
+                  polarplot(unwrappedPhases(item_i,:)+phaseErrs(item_i,:),freqs(item_i,:),'color',analysisGroups.coherenceByCategory.colors{group_i}{item_i},'linewidth',1);
+                  polarplot(unwrappedPhases(item_i,:)-phaseErrs(item_i,:),freqs(item_i,:),'color',analysisGroups.coherenceByCategory.colors{group_i}{item_i},'linewidth',1);
+                  legendHandles(item_i) = ah;
+                end
+                legend(legendHandles,group);
+                title(sprintf('%s %s - %s field phases%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                drawnow;
+                saveFigure(outDir,sprintf('phase_unwrapped_polar_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                close(fh);
+              end
+              
               if calcSwitch.meanEvokedTF
                 for item_i = 1:length(group)
                   if isfield(catInds,group{item_i})
@@ -2660,12 +2719,50 @@ for calc_i = 1:length(tfCalcSwitches)
                 drawnow;
                 saveFigure(outDir,sprintf('phase_mean_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
                 close(fh);
+                
+                if plotSwitch.couplingPhasesUnwrapped
+                  %replot the phases with the implicit mod pi operation undone (so easy to see slope across frequencies
+                  fh = figure();
+                  lineProps.width = 3;
+                  lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+                  [unwrappedPhases,piMultipliers] = unwrapPhases(phases);
+                  mseb(freqs,unwrappedPhases,phaseErrs,lineProps);
+                  legend(group);
+                  xlabel('frequency (Hz)');
+                  ylabel('phase');
+                  hold on
+                  plot(repmat(xlim(),length(piMultipliers),1),repmat(piMultipliers,2,1),'color','k');
+                  title(sprintf('Trial mean %s %s - %s field phase%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                  drawnow;
+                  saveFigure(outDir,sprintf('phase_mean_unwrapped_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                  close(fh);
+                end
+                
+                if plotSwitch.couplingPhasesAsOffsets
+                  %replot the unwrapped phases as latency differences
+                  fh = figure();
+                  lineProps.width = 3;
+                  lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+                  [unwrappedPhases,piMultipliers] = unwrapPhases(phases);
+                  mseb(freqs,(1/(2*pi))*unwrappedPhases./freqs,phaseErrs,lineProps);
+                  legend(group);
+                  xlabel('frequency (Hz)');
+                  ylabel('offset (ms)');
+                  hold on
+                  plot(repmat(xlim(),length(piMultipliers),1),[(1/(2*pi))*piMultipliers'/freqs(1,1), (1/(2*pi))*piMultipliers'/freqs(1,end)],'color','k');
+                  title(sprintf('Trial mean %s %s - %s field offsets%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                  drawnow;
+                  saveFigure(outDir,sprintf('phase_mean_unwrapped_latency_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                  close(fh);
+                end
               end
             end
           end
         end
       end
     end
+    
+    return
     
     %time-frequency spike -- field coherency
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
