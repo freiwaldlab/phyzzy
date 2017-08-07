@@ -70,6 +70,7 @@ butter1Hz200Hz_v1 = designfilt('bandpassiir','DesignMethod','butter','PassbandFr
 [tmp1,tmp2] = butter(4,[1/500,200/500]);
 butter1Hz200Hz_v2 = [tmp1,tmp2];        %#ok
 ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter
+ephysParams.plotFilterResult = 0; %#ok
 
 % parameters preprocessAnalogIn, see function for details
 analogInParams.needAnalogIn = 1;
@@ -199,9 +200,9 @@ plotSwitch.imageTuningSorted = 0;
 plotSwitch.stimPrefBarPlot = 0;
 plotSwitch.stimPrefBarPlotEarly = 0;
 plotSwitch.stimPrefBarPlotLate = 0;
-plotSwitch.tuningCurves = 0;
-plotSwitch.tuningCurvesEarly = 0;
-plotSwitch.tuningCurvesLate = 0;
+plotSwitch.tuningCurves = 1;
+plotSwitch.tuningCurvesEarly = 1;
+plotSwitch.tuningCurvesLate = 1;
 plotSwitch.calcLatencyRF = 0;
 plotSwitch.calcEvokedPowerRF = 0;
 plotSwitch.evokedPsthMuaMultiCh = 0;
@@ -304,11 +305,11 @@ calcSwitch.evokedSpectra = 0;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatTF = 1;
+calcSwitch.evokedCatTF = 0;
 calcSwitch.inducedCatTF = 0;
 calcSwitch.meanEvokedTF = 0;
 calcSwitch.trialMeanSpectra = 0;
-calcSwitch.coherenceByCategory = 1;
+calcSwitch.coherenceByCategory = 0;
 calcSwitch.spikeTimes = 0;
 calcSwitch.useJacknife = 0;      
 

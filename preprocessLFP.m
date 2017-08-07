@@ -44,7 +44,7 @@ for i = 1:size(lfpData,1)
   lfpDataDecPadded(i,filterPad+1:end-filterPad) = lfpChannelScaleBy(i)*decimate(decimate(lfpData(i,:),decimateFactorPass1),decimateFactorPass2);
   %lfpDataDecPadded(i,1:filterPad) = lfpDataDecPadded(i,filterPad+1)*lfpDataDecPadded(i,1:filterPad);
   %lfpDataDecPadded(i,end-(filterPad-1):end) = lfpDataDecPadded(i,end-filterPad)*lfpDataDecPadded(i,end-(filterPad-1):end);
-  if i == 1
+  if i == 1 && params.plotFilterResult
     figure();
     plot(lfpDataDecPadded(1,filterPad+100000:filterPad+105000),'color','r');
     hold on
@@ -59,9 +59,11 @@ for i = 1:size(lfpData,1)
   end
 end
 lfpData = lfpDataDecPadded(:,filterPad+1:end-filterPad);
-plot(lfpData(1,100000:105000),'color','b');
-legend({'raw','filtered'});
-drawnow;
+if params.plotFilterResult
+  plot(lfpData(1,100000:105000),'color','b');
+  legend({'raw','filtered'});
+  drawnow;
+end
 disp(mean(lfpData(1,:)));
 
 Output.VERBOSE('done decimating, scaling, and filtering LFP');

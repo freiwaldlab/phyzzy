@@ -484,15 +484,7 @@ if ~taskData.RFmap
     end
   end
 
-
   % tuning curves
-  %%% variables to work with are:
-  % tuningCurveParams = {'humanHeadView','monkeyHeadView'};
-  % tuningCurveItems = {{'humanFaceL90','humanFaceL45','humanFaceFront','humanFaceR45','humanFaceR90'},...
-  %   {'monkeyFaceL90','monkeyFaceL45','monkeyFaceFront','monkeyFaceR45','monkeyFaceR90'}}; %can be images or categories
-  % tuningCurveItemType = {'category','category'}; % category or image
-  % tuningCurveParamValues = {[-90 -45 0 45 90], [-90 -45 0 45 90]};
-
   calcSwitches = [plotSwitch.tuningCurves, plotSwitch.tuningCurvesEarly, plotSwitch.tuningCurvesLate];  
   for calc_i = 1:length(calcSwitches)
     if ~calcSwitches(calc_i)
@@ -506,7 +498,7 @@ if ~taskData.RFmap
     frCalcOff = frEpochs(calc_i,2);
     for group_i = 1:length(analysisGroups.tuningCurves.groups)
       group = analysisGroups.tuningCurves.groups{group_i};
-      groupName = analysisGroups.tuningCurves.naems{group_i};
+      groupName = analysisGroups.tuningCurves.names{group_i};
       muaTcFig = figure();
       for channel_i = 1:length(channelNames)
         channelTcFig = figure();
@@ -532,9 +524,15 @@ if ~taskData.RFmap
           ylabel('firing rate (Hz)');
           title(channelUnitNames{channel_i}{unit_i});
         end
-        suptitle(sprintf('%s, %s, %dms - %d ms post-onset',groupName, channelNames{channel_i}, frCalcOn, frCalcOff));
-        saveFigure(outDir, sprintf('%s_%s__%dms-%dms_Run%s',regexprep(groupName,' ',''),channelNames{channel_i},frCalcOn,frCalcOff,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-
+        if length(channelUnitNames{channel_i}) > 2
+          suptitle(sprintf('%s, %s, %dms - %d ms post-onset',groupName, channelNames{channel_i}, frCalcOn, frCalcOff));
+          clear figData
+          figData.x = analysisGroups.tuningCurves.paramValues{group_i};
+          figData.y = tcFrs;
+          figData.e = tcFrErrs;
+          drawnow;
+          saveFigure(outDir, sprintf('%s_%s_%dms-%dms_Run%s',regexprep(groupName,' ',''),channelNames{channel_i},frCalcOn,frCalcOff,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        end
         figure(muaTcFig);
         subplot(1,length(channelNames),channel_i);
         errorbar(analysisGroups.tuningCurves.paramValues{group_i},tcFrs,tcFrErrs,'linestyle','-','linewidth',4);
@@ -543,6 +541,7 @@ if ~taskData.RFmap
         title(sprintf('%s MUA',channelNames{channel_i}));
       end
       suptitle(sprintf('%s, %dms - %d ms post-onset',groupName, frCalcOn, frCalcOff));
+      drawnow;
       saveFigure(outDir, sprintf('%s_%dms-%dms_Run%s',regexprep(groupName,' ',''),frCalcOn,frCalcOff,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
     end
   end
@@ -2762,7 +2761,6 @@ for calc_i = 1:length(tfCalcSwitches)
       end
     end
     
-    return
     
     %time-frequency spike -- field coherency
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
