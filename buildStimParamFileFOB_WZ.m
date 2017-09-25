@@ -1,8 +1,8 @@
-function [ ] = buildStimParamFileFOB( )
+function [ ] = buildStimParamFileFOB_WZ( )
 %
 %
-logFilename = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko/160922ALAN/160922ALAN0001.log';
-outFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.txt';
+logFilename = '/Users/stephenserene/Desktop/Freiwald/YOGI_DATA/Y170828/Y1708280008.log';
+outFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB_WZ.txt';
 outFile = fopen(outFilename, 'w');
 logStruct = xml2struct(logFilename);
 pictureFilenames = {};
@@ -21,16 +21,13 @@ for i = 1:length(pictureFilenames)
   pictureLabels = vertcat(pictureLabels, regexprep(tmp2{1},'\.|_','')); %remove '.' and '_' characters
 end
 disp(pictureLabels);
-categories = {'Humanhead','HumanheadoriA','HumanheadoriB','HumanheadoriC','HumanheadoriD','HumanheadoriE','Monkeyhead',...
-  'MonkeyheadoriA','MonkeyheadoriB','MonkeyheadoriC','MonkeyheadoriD','MonkeyheadoriE','fruit','hand','humanbody','monkeybody',...
-  'monkeybodypart','monkeybodywhole','place','techno', 'head','headoriA','headoriB','headoriC','headoriD','headoriE'};
-categoryLabels = {'humanFace','humanFaceL90','humanFaceL45','humanFaceFront','humanFaceR45','humanFaceR90','monkeyFace',...
-  'monkeyFaceL90','monkeyFaceL45','monkeyFaceFront','monkeyFaceR45','monkeyFaceR90','fruit','hand','humanBody','monkeyBody',...
-  'monkeyBodyPart','monkeyBodyWhole','place','techno', 'face','faceL90','faceL45','faceFront','faceR45','faceR90'};
-wildcardCategories = {'Humanhead*_1.','Humanhead*_07.','Humanhead*_11.','Humanhead*_12.','Humanhead*_14.','Humanhead*_19.','Humanhead*_25.','Humanhead*_26.',...
-  'Monkeyhead*_1.','Monkeyhead*_2.','Monkeyhead*_3.','Monkeyhead*_4.','Monkeyhead*_5.','Monkeyhead*_6.','Monkeyhead*_7.','Monkeyhead*_8.'};
-wildcardCategoryLabels = {'human01','human07','human11','human12','human14','human19','human25','human26',...
-  'monkey01','monkey02','monkey03','monkey04','monkey05','monkey06','monkey07','monkey08'};
+
+categories = {'facem','apple','btfly','mushr','fribbl','facem01','facem02','facem03','facem04','facem05','facem06','facem07','facem08',...
+  'left90','left45','front00','right45','right90','neutral','threat','feargrin','lipsmack'};
+categoryLabels = {'face','apple','btfly','mushr','fribbl','facem01','facem02','facem03','facem04','facem05','facem06','facem07','facem08',...
+  'left90','left45','front00','right45','right90','neutral','threat','feargrin','lipsmack'};
+wildcardCategories = {};  %'Humanhead*_1.'
+wildcardCategoryLabels = {};
 
 
 paramArray = {};
@@ -51,15 +48,16 @@ for i = 1:length(pictureFilenames)
       paramCell = horzcat(paramCell, wildcardCategoryLabels{j});
     end 
   end
-  if isempty(regexp(paramString,'face','ONCE')) && isempty(regexp(paramString,'grayback.bmp','ONCE'))
+  if isempty(regexp(paramString,'face','ONCE')) && isempty(regexp(paramString,'grayblank.bmp','ONCE')) && ...
+      isempty(regexp(paramString,'outlinem.bmp','ONCE')) && isempty(regexp(paramString,'pinknoise.bmp','ONCE'))
     paramString = strcat(paramString,'\t','nonface');
     paramCell = horzcat(paramCell, 'nonface');
   end
-  if ~isempty(regexp(paramString,'fruit','ONCE')) || ~isempty(regexp(paramString,'techno','ONCE'))
+  if ~isempty(regexp(paramString,'mushr','ONCE')) || ~isempty(regexp(paramString,'btfly','ONCE')) || ~isempty(regexp(paramString,'apple','ONCE'))
     paramString = strcat(paramString,'\t','object');
     paramCell = horzcat(paramCell, 'object');
   end
-  if ~isempty(regexp(paramString,'hand','ONCE')) || ~isempty(regexp(paramString,'Body','ONCE'))
+  if ~isempty(regexp(paramString,'fribbl','ONCE'))
     paramString = strcat(paramString,'\t','body');
     paramCell = horzcat(paramCell, 'body');
   end
@@ -70,5 +68,5 @@ end
 % get image filenames without path, extension, or underscores
 fclose(outFile);
 categoryLabels = horzcat(categoryLabels,wildcardCategoryLabels,{'nonface','object','body'});
-save('StimParamsFullFOB3.mat','paramArray','categoryLabels','pictureLabels');
+save('StimParamsFullFOB3_WZ.mat','paramArray','categoryLabels','pictureLabels');
 end

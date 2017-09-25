@@ -95,8 +95,8 @@ for i = 1:length(taskData.stimFilenames)
   pictureValid(i) = 1;
 end
 %
-disp(strcat('Percent of stimuli excluded: ', num2str(100-round(100*sum(pictureValid)/length(pictureValid)))));
-disp(strcat('total remaining stimuli: ', num2str(sum(pictureValid))));
+disp(strcat('Percent of trials excluded: ', num2str(100-round(100*sum(pictureValid)/length(pictureValid)))));
+disp(strcat('total remaining trials: ', num2str(sum(pictureValid))));
 pictureValid = logical(pictureValid);
 taskDataValid = taskData;
 taskDataValid.stimFilenames = taskData.stimFilenames(pictureValid);

@@ -179,8 +179,8 @@ if taskData.RFmap
 %   gridSizeX = str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.jumpExtentHorizontal.Text); % in degrees
 %   gridSizeY = str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.jumpExtentVertical.Text); % in degrees
 %   gridSpacing = str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.jumpGridSize.Text); % in degrees
-  gridPointsPixX = unique(taskData.pictureJumps(:,1)); % in pixels; note unique() returns in low->high sorted order
-  gridPointsPixY = unique(taskData.pictureJumps(:,2)); % in pixels; note unique() returns in low->high sorted order
+  gridPointsPixX = unique(taskData.stimJumps(:,1)); % in pixels; note unique() returns in low->high sorted order
+  gridPointsPixY = unique(taskData.stimJumps(:,2)); % in pixels; note unique() returns in low->high sorted order
 %calculate screen diagonal length in pixels for pixel/degree conversion
   screenWidthPix = str2double(logStruct.VISIKOLOG.SESSIONDATA.DisplayMode.Width.Text);
   screenHeightPix = str2double(logStruct.VISIKOLOG.SESSIONDATA.DisplayMode.Height.Text);

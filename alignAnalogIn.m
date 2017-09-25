@@ -1,6 +1,11 @@
 function [ analogInByItem ] = alignAnalogIn( analogInData, alignPointsByItem, analogInChannels, alignParams  )
 %UNTITLED3 Summary of this function goes here
 %   Detailed explanation goes here
+if isempty(analogInData)
+  analogInByItem = [];
+  Output.VERBOSE('not aligning analog in data');
+  return
+end
 
 samPerMS = alignParams.samPerMS;
 samplesPreAlign = samPerMS*alignParams.msPreAlign;

@@ -32,7 +32,7 @@ end
 lfpChannelMap = lfpChannelMap(lfpChannelMap > 0);
 lfpData = lfpDataRaw(lfpChannelMap,:);
 clear lfpDataRaw
-filterPad = 0;
+filterPad = 50000;
 lfpDataDecPadded = zeros(size(lfpData,1),ceil(size(lfpData,2)/(decimateFactorPass1*decimateFactorPass2))+2*filterPad);
 % convert scaled units to microvolts, and decimate (note: decimation broken
 % into two steps, per matlab doc recommendation
@@ -42,8 +42,8 @@ for i = 1:size(lfpData,1)
 end
 for i = 1:size(lfpData,1)
   lfpDataDecPadded(i,filterPad+1:end-filterPad) = lfpChannelScaleBy(i)*decimate(decimate(lfpData(i,:),decimateFactorPass1),decimateFactorPass2);
-  %lfpDataDecPadded(i,1:filterPad) = lfpDataDecPadded(i,filterPad+1)*lfpDataDecPadded(i,1:filterPad);
-  %lfpDataDecPadded(i,end-(filterPad-1):end) = lfpDataDecPadded(i,end-filterPad)*lfpDataDecPadded(i,end-(filterPad-1):end);
+  lfpDataDecPadded(i,1:filterPad) = lfpDataDecPadded(i,filterPad+1)*lfpDataDecPadded(i,1:filterPad);
+  lfpDataDecPadded(i,end-(filterPad-1):end) = lfpDataDecPadded(i,end-filterPad)*lfpDataDecPadded(i,end-(filterPad-1):end);
   if i == 1 && params.plotFilterResult
     figure();
     plot(lfpDataDecPadded(1,filterPad+100000:filterPad+105000),'color','r');

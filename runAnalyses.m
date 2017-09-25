@@ -97,7 +97,7 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
     for channel_i = 1:length(channelNames)
       spikesByCategoryBinned{cat_i}{channel_i} = cell(length(channelUnitNames{channel_i}));
       for unit_i = 1:length(channelUnitNames{channel_i})
-          spikesByCategoryBinned{cat_i}{channel_i}{unit_i} = binspikes(spikesByCategory{cat_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+psthPost+movingWin(1)/2])';
+        spikesByCategoryBinned{cat_i}{channel_i}{unit_i} = binspikes(spikesByCategory{cat_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+psthPost+movingWin(1)/2])';
       end
     end
   end
@@ -119,13 +119,19 @@ calcSwitches = [calcSwitch.imagePSTH, calcSwitch.categoryPSTH];
 for calc_i = 1:length(calcSwitches)
   if calcSwitches(calc_i)
     if calc_i == 1
-      spikesByItem = spikesByImage;
-      spikesByItemBinned = spikesByImageBinned;
+      if calcSwitch.spikeTimes
+        spikesByItem = spikesByImage;
+      else
+        spikesByItemBinned = spikesByImageBinned;
+      end
       psthEmptyByItem = psthEmptyByImage;
       numItems = length(pictureLabels);
     else
-      spikesByItem = spikesByCategory;
-      spikesByItemBinned = spikesByCategoryBinned;
+      if calcSwitch.spikeTimes
+        spikesByItem = spikesByCategory;
+      else
+        spikesByItemBinned = spikesByCategoryBinned;
+      end
       psthEmptyByItem = psthEmptyByCategory;
       numItems = length(categoryList);
     end
@@ -145,11 +151,11 @@ for calc_i = 1:length(calcSwitches)
         for item_i = 1:numItems
           if ~psthEmptyByItem{item_i}{channel_i}{unit_i}            
             if calcSwitch.spikeTimes
-              [paddedPsth,~,paddedPsthErr] = psth(spikesByItem{item_i_i}{channel_i}{unit_i},smoothingWidth,'n',[-preAlign postAlign],min(psthErrorType,2),-preAlign:postAlign);
+              [paddedPsth,~,paddedPsthErr] = psth(spikesByItem{item_i}{channel_i}{unit_i},smoothingWidth,'n',[-preAlign postAlign],min(psthErrorType,2),-preAlign:postAlign);
               paddedPsth = 1000*paddedPsth;
               paddedPsthErr = 1000*paddedPsthErr;
-              unitItemPsth(item_i_i,:) = paddedPsth(3*smoothingWidth+1:end-3*smoothingWidth);
-              unitItemPsthErr(item_i_i,:) = paddedPsthErr(3*smoothingWidth+1:end-3*smoothingWidth)*psthErrorRangeZ/2; %note: psth returns +/- 2 stderr; thus the factor of 0.5
+              unitItemPsth(item_i,:) = paddedPsth(3*smoothingWidth+1:end-3*smoothingWidth);
+              unitItemPsthErr(item_i,:) = paddedPsthErr(3*smoothingWidth+1:end-3*smoothingWidth)*psthErrorRangeZ/2; %note: psth returns +/- 2 stderr; thus the factor of 0.5
             else %use spike bins
               paddedPsth = 1000*conv(mean(spikesByItemBinned{item_i}{channel_i}{unit_i},1),smoothingFilter,'same');
               if psthErrorType == 1 || size(spikesByItemBinned{item_i}{channel_i}{unit_i},1) == 1  % if only one trial, can't use bootstrap  
@@ -555,60 +561,73 @@ if taskData.RFmap
   % these are the x and y values at which to interpolate RF values
   xi = linspace(min(rfGrid(:,1)),max(rfGrid(:,1)),200);
   yi = linspace(min(rfGrid(:,2)),max(rfGrid(:,2)),200);
-  for channel_i = 1:length(spikesByImage{1})
-    for unit_i = 1:length(spikesByImage{1}{channel_i}) %TODO: BUG! if no spikes on first stimulus, can skip unit entirely (12/12/16: still true?)
-      meanRF = zeros(length(rfGrid),1);
-      for image_i = 1:length(pictureLabels)
-        imageRF = zeros(length(rfGrid),1);
-        spikeLatencyRF = zeros(length(rfGrid),1);
-        %also calc evoked peak time? power-weighted latency? peak of mean evoked correlogram?
-        evokedPowerRF = zeros(length(rfGrid),1);
-        for grid_i = 1:length(rfGrid)
-          gridPointTrials = ismember(jumpsByImage{image_i},rfGrid(grid_i,:),'rows');
-          if sum(gridPointTrials) == 0 
-            imageRF(grid_i) = 0;
-            disp('no data for this image and location');
-            continue;
+  calcSwitches = [plotSwitch.RF, plotSwitch.rfEarly, plotSwitch.rfLate];  
+  for calc_i = 1:length(calcSwitches)
+    if ~calcSwitches(calc_i)
+      continue
+    end
+    frCalcOn = frEpochs(calc_i,1);
+    frCalcOff = frEpochs(calc_i,2);
+    for channel_i = 1:length(channelNames)
+      for unit_i = 1:length(channelUnitNames{channel_i})
+        if length(channelUnitNames{channel_i}) == 2  %skip to MUA if no isolated unit
+          if unit_i == 1
+            continue
           end
-          trialSpikes = spikesByImage{image_i}{channel_i}{unit_i}(gridPointTrials);
-          totalSpikes = 0;
-          spikeLatency = 0;
-          evokedPotential = zeros(size(lfpByImage{image_i}(1,channel_i,1,samPerMS*(frCalcOn+psthPre):samPerMS*(frCalcOff+psthPre)))); 
-          gridPointTrialInds = 1:length(gridPointTrials);
-          gridPointTrialInds = gridPointTrialInds(gridPointTrials);
-          for trial_i = 1:length(trialSpikes)
-            totalSpikes = totalSpikes + sum(trialSpikes(trial_i).times > frCalcOn & trialSpikes(trial_i).times < frCalcOff);
-            % bad latency measure; try weighting spike times by 1/ISI
-            spikeLatency = spikeLatency + mean(trialSpikes(trial_i).times(trialSpikes(trial_i).times > frCalcOn & trialSpikes(trial_i).times < frCalcOff));
-            evokedPotential = evokedPotential + lfpByImage{image_i}(1,channel_i,gridPointTrialInds(trial_i),samPerMS*(frCalcOn+psthPre):samPerMS*(frCalcOff+psthPre));
+        end
+        meanRF = zeros(length(rfGrid),1);
+        for image_i = 1:length(pictureLabels)
+          imageRF = zeros(length(rfGrid),1);
+          spikeLatencyRF = zeros(length(rfGrid),1);
+          %also calc evoked peak time? power-weighted latency? peak of mean evoked correlogram?
+          evokedPowerRF = zeros(length(rfGrid),1);
+          for grid_i = 1:length(rfGrid)
+            gridPointTrials = ismember(jumpsByImage{image_i},rfGrid(grid_i,:),'rows');
+            if sum(gridPointTrials) == 0 
+              imageRF(grid_i) = 0;
+              disp('no data for this image and location');
+              continue;
+            end
+            trialSpikes = spikesByImage{image_i}{channel_i}{unit_i}(gridPointTrials);
+            totalSpikes = 0;
+            spikeLatency = 0;
+            evokedPotential = zeros(size(lfpByImage{image_i}(1,channel_i,1,samPerMS*(frCalcOn+psthPre):samPerMS*(frCalcOff+psthPre)))); 
+            gridPointTrialInds = 1:length(gridPointTrials);
+            gridPointTrialInds = gridPointTrialInds(gridPointTrials);
+            for trial_i = 1:length(trialSpikes)
+              totalSpikes = totalSpikes + sum(trialSpikes(trial_i).times > frCalcOn & trialSpikes(trial_i).times < frCalcOff);
+              % bad latency measure; try weighting spike times by 1/ISI
+              spikeLatency = spikeLatency + mean(trialSpikes(trial_i).times(trialSpikes(trial_i).times > frCalcOn & trialSpikes(trial_i).times < frCalcOff));
+              evokedPotential = evokedPotential + lfpByImage{image_i}(1,channel_i,gridPointTrialInds(trial_i),samPerMS*(frCalcOn+psthPre):samPerMS*(frCalcOff+psthPre));
+            end
+            imageRF(grid_i) = (1000/(frCalcOff-frCalcOn))*totalSpikes/length(trialSpikes);
+            spikeLatencyRF(grid_i) = 1/sum(gridPointTrials)*spikeLatency;
+            evokedPotential = 1/sum(gridPointTrials)*(evokedPotential - mean(evokedPotential));
+            evokedPowerRF(grid_i) = sum(evokedPotential.^2); %todo: move out of by-unit loop
           end
-          imageRF(grid_i) = (1000/(frCalcOff-frCalcOn))*totalSpikes/length(trialSpikes);
-          spikeLatencyRF(grid_i) = 1/sum(gridPointTrials)*spikeLatency;
-          evokedPotential = 1/sum(gridPointTrials)*(evokedPotential - mean(evokedPotential));
-          evokedPowerRF(grid_i) = sum(evokedPotential.^2); %todo: move out of by-unit loop
+          meanRF = meanRF + imageRF;
+          display_map(rfGrid(:,1),rfGrid(:,2),imageRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
+            [outDir sprintf('RF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
+          if plotSwitch.latencyRF
+            display_map(rfGrid(:,1),rfGrid(:,2),spikeLatencyRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Latency RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
+              [outDir sprintf('LatencyRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
+          end
+          if plotSwitch.evokedPowerRF
+            display_map(rfGrid(:,1),rfGrid(:,2),evokedPowerRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Evoked Power RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
+              [outDir sprintf('EvokedPowerRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
+          end
+          % todo: add background subtracted version
+          % todo: add subplots version
+          % todo: coherency RFs (cc, cpt, ptpt)
+          % todo: granger RF
+          % todo: bandpassed power RFs
+          % todo: stimulus decodability RF
         end
-        meanRF = meanRF + imageRF;
-        display_map(rfGrid(:,1),rfGrid(:,2),imageRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
-          [outDir sprintf('RF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
-        if plotSwitch.LatencyRF
-          display_map(rfGrid(:,1),rfGrid(:,2),spikeLatencyRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Latency RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
-            [outDir sprintf('LatencyRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
-        end
-        if plotSwtich.calcEvokedPowerRF
-          display_map(rfGrid(:,1),rfGrid(:,2),evokedPowerRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Evoked Power RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
-            [outDir sprintf('EvokedPowerRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
-        end
-        % todo: add background subtracted version
-        % todo: add subplots version
-        % todo: coherency RFs (cc, cpt, ptpt)
-        % todo: granger RF
-        % todo: bandpassed power RFs
-        % todo: stimulus decodability RF
+        display_map(rfGrid(:,1),rfGrid(:,2),meanRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, Mean RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}),...
+          [outDir sprintf('MeanRF_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum)]);
       end
     end
   end
-  display_map(rfGrid(:,1),rfGrid(:,2),meanRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('Channel %d, Unit %d, Mean RF',channel_i,unit_i),...
-    [outDir sprintf('MeanRF_%s_Unit%d_Run%s.png',channelNames{channel_i},unit_i,runNum)]);
   disp('Receptive field mapping run; returning before coupling analyses');
   return
 end
@@ -1947,73 +1966,70 @@ for calc_i = 1:length(calcSwitches)
               close(f);
             end
             
-            % time domain autocorrelation 
-            for item_i = 1:length(group)
-              if isfield(catInds,group{item_i})
-                spikesByItemBinned = spikesByCategoryBinned;
-                %spikesByItemForTF = spikesByCategoryForTF;
-                itemNum = catInds.(group{item_i});
-              else
-                spikesByItemBinned = spikesByImageBinned;
-                %spikesByItemForTF = spikesByImageForTF;
-                itemNum = imInds.(group{item_i});
-              end
-              if calcSwitch.spikeTimes
-                disp('requested time-domain spike autocorrelation analysis. STA lfp not yet implemented.');
-                continue
-              else
+             % time domain autocorrelation
+            if calcSwitch.spikeTimes
+              disp('Requested time-domain spike autocorrelation analysis for non-binned spikes. Not implemented. Skipping');
+            else
+              for item_i = 1:length(group)
+                if isfield(catInds,group{item_i})
+                  spikesByItemBinned = spikesByCategoryBinned;
+                  itemNum = catInds.(group{item_i});
+                else
+                  spikesByItemBinned = spikesByImageBinned;
+                  itemNum = imInds.(group{item_i});
+                end
                 correlParams.useSmoothing = [1 1];
                 [Cgram, C, shiftList, confCgram, confC] = correlogram(spikesByItemBinned{itemNum}{channel_i}{unit_i},...
                   spikesByItemBinned{itemNum}{channel_i}{unit_i}, correlParams);
                 correlParams.useSmoothing = [0 0];
-              end
-              Cgram = Cgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
-              confCgram = confCgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
-              if item_i == 1
-                spectra = zeros(length(group),length(C));
-                specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
-                shifts =  zeros(length(group),length(C));
-              end
-              spectra(item_i,:) = C';
-              specErrs(item_i,:,:) = confC;  
-              shifts(item_i,:) = shiftList';
-              t = -psthPre:psthImDur+psthPost;
+                Cgram = Cgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
+                confCgram = confCgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
+                if item_i == 1
+                  spectra = zeros(length(group),length(C));
+                  specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
+                  shifts =  zeros(length(group),length(C));
+                end
+                spectra(item_i,:) = C';
+                specErrs(item_i,:,:) = confC;  
+                shifts(item_i,:) = shiftList';
+                t = -psthPre:psthImDur+psthPost;
 
-              fh = figure(); 
-              imagesc(t,t,Cgram); axis xy
-              xlabel('Time (ms)'); 
-              ylabel('Time (ms)');
-              c = colorbar();
-              ylabel(c,'Correlation');
-              hold on
-              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
-              line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
-              title(sprintf('%s %s autocorrelation, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                fh = figure(); 
+                imagesc(t,t,Cgram); axis xy
+                xlabel('Time (ms)'); 
+                ylabel('Time (ms)');
+                c = colorbar();
+                ylabel(c,'Correlation');
+                hold on
+                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
+                line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
+                title(sprintf('%s %s autocorrelation, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                clear figData
+                figData.x = t;
+                figData.y = t;
+                figData.z = Cgram;
+                drawnow;
+                saveFigure(outDir,sprintf('autocorrel_TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                close(fh);
+              end
+              fh = figure();
+              lineProps.width = 3;
+              lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+              mseb(shifts,spectra,specErrs,lineProps);
+              legend(group);
+              xlabel('time (ms)');
+              ylabel('correlation');
+              title(sprintf('%s %s autocorrelation %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
               clear figData
-              figData.x = t;
-              figData.y = t;
-              figData.z = Cgram;
+              figData.x = shifts; 
+              figData.y = spectra;
+              figData.e = specErrs;
               drawnow;
-              saveFigure(outDir,sprintf('autocorrel_TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              saveFigure(outDir,sprintf('autocorrel_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
               close(fh);
             end
-            fh = figure();
-            lineProps.width = 3;
-            lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
-            mseb(shifts,spectra,specErrs,lineProps);
-            legend(group);
-            xlabel('time (ms)');
-            ylabel('correlation');
-            title(sprintf('%s %s autocorrelation %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-            clear figData
-            figData.x = shifts; 
-            figData.y = spectra;
-            figData.e = specErrs;
-            drawnow;
-            saveFigure(outDir,sprintf('autocorrel_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
           end
         end
       end

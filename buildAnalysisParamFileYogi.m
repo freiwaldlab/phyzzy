@@ -5,8 +5,8 @@ function [ analysisParamsFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '001';
-dateSubject = '170921ALAN'; 
+runNum = '008';
+dateSubject = 'Y170828'; 
 machine = 'laptop';
 
 switch machine
@@ -14,11 +14,11 @@ switch machine
     ephysVolume = '/Volumes/Users-1/User/Desktop';
     stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB_WZ.mat';   %#ok
   case 'laptop'
-    ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
-    stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
-    outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
+    ephysVolume = '/Users/stephenserene/Desktop/Freiwald/YOGI_DATA'; 
+    stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/YOGI_DATA';
+    outputVolume = '/Users/stephenserene/Desktop/Freiwald/YOGI_DATA/Analyzed';
     stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
   case 'hopper'
     ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
@@ -47,7 +47,7 @@ ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
 ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
 ephysParams.lfpChannels = [1]; 
-ephysParams.channelNames = {'ML'};
+ephysParams.channelNames = {'MF'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.common_ref = [0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
@@ -73,7 +73,7 @@ ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a
 ephysParams.plotFilterResult = 0; %#ok
 
 % parameters preprocessAnalogIn, see function for details
-analogInParams.needAnalogIn = 1;
+analogInParams.needAnalogIn = 0;
 analogInParams.analogInChannels = [138,139,140]; 
 analogInParams.channelNames = {'eyeX','eyeY','eyeD'};
 analogInParams.analogInChannelScaleBy = [5/32764 5/32764 5/32764]; %converts raw values to volts
@@ -179,9 +179,9 @@ else
 end
 % firing rate calculation epochs. Can provide either time (ms from stim onset),
 % or function handle, which will receive the minimum stimulus duration in the run as an input
-frEpochsCell = {{60, @(stimDur) stimDur+60};...
-                {60, 260}; ...
-                {260, @(stimDur) stimDur+60}}; %#ok
+frEpochsCell = {{50, @(stimDur) stimDur+250};...
+                {50, @(stimDur) stimDur+50}; ...
+                {@(stimDur) stimDur+50, @(stimDur) stimDur+250}}; %#ok
 
 
 % Boolean variables to specify which computations to perform; TODO: read
@@ -191,23 +191,20 @@ calcCoherenceRFcc = 0;   %#ok
 calcCoherenceRFptpt = 0; %#ok
 calcGrangerRF = 0;       %#ok 
 
-plotSwitch.imagePsth = 1;
-plotSwitch.categoryPsth = 1;
+plotSwitch.imagePsth = 0;
+plotSwitch.categoryPsth = 0;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-plotSwitch.imageTuningSorted = 1;
-plotSwitch.stimPrefBarPlot = 1;
-plotSwitch.stimPrefBarPlotEarly = 1;
-plotSwitch.stimPrefBarPlotLate = 1;
-plotSwitch.tuningCurves = 1;
-plotSwitch.tuningCurvesEarly = 1;
-plotSwitch.tuningCurvesLate = 1;
-plotSwitch.RF = 1;
-plotSwitch.rfEarly = 0;
-plotSwitch.rfLate = 0;
-plotSwitch.latencyRF = 0;
-plotSwitch.evokedPowerRF = 0;
+plotSwitch.imageTuningSorted = 0;
+plotSwitch.stimPrefBarPlot = 0;
+plotSwitch.stimPrefBarPlotEarly = 0;
+plotSwitch.stimPrefBarPlotLate = 0;
+plotSwitch.tuningCurves = 0;
+plotSwitch.tuningCurvesEarly = 0;
+plotSwitch.tuningCurvesLate = 0;
+plotSwitch.calcLatencyRF = 0;
+plotSwitch.calcEvokedPowerRF = 0;
 plotSwitch.evokedPsthMuaMultiCh = 0;
 plotSwitch.evokedByCategory = 1;
 plotSwitch.analogInByItem = 0;
@@ -223,60 +220,59 @@ plotSwitch.lfpLatencyMuaLatency = 0;
 plotSwitch.lfpPowerAcrossChannels = 0;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
-plotSwitch.singleTrialLfpByCategory = 1;
-plotSwitch.lfpSpectraByCategory = 1;
-plotSwitch.spikeSpectraByCategory = 1;
+plotSwitch.singleTrialLfpByCategory = 0;
+plotSwitch.lfpSpectraByCategory = 0;
+plotSwitch.spikeSpectraByCategory = 0;
 plotSwitch.SpikeSpectraTfByImage = 0;
 plotSwitch.lfpSpectraTfByImage = 0;
 plotSwitch.couplingPhasesUnwrapped = 0;
 plotSwitch.couplingPhasesAsOffsets = 0;
 plotSwitch.couplingPhasesPolar = 0;
 plotSwitch.tfSpectraByCategory = 0;
-plotSwitch.tfErrs = 0;           %#ok
+plotSwitch.tfErrs = 1;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 analysisGroups.selectivityIndex.groups = {{'face';'nonface'},{'face';'object'},{'face';'body'}};
 %
-analysisGroups.stimPrefBarPlot.groups = {{{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};{'face';'object';'body'}}};
-analysisGroups.stimPrefBarPlot.colors  = {{{'b';'c';'y';'g';'m';'r';'k'};{'b';'g';'r'}}};
-analysisGroups.stimPrefBarPlot.names = {'fobPlus'};
+analysisGroups.stimPrefBarPlot.groups = {{{'face';'object';'body'}}};
+analysisGroups.stimPrefBarPlot.colors  = {{{'b';'g';'r'}}};
+analysisGroups.stimPrefBarPlot.names = {'fob'};
 %
-analysisGroups.stimulusLabelGroups.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.stimulusLabelGroups.groups = {{'face';'apple';'mushr';'btfly';'fribbl'}};
 analysisGroups.stimulusLabelGroups.names = {'fobPlus'};
-analysisGroups.stimulusLabelGroups.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.stimulusLabelGroups.colors = {{'b';'c';'y';'g';'m';'r'}};
 %
-analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.evokedPotentials.groups = {{'face';'apple';'mushr';'btfly';'fribbl';'right45'}};
 analysisGroups.evokedPotentials.names = {'fobPlus'};
-analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r'}};
 %
-analysisGroups.analogInPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.analogInPotentials.channels = {[1; 2]};
-analysisGroups.analogInPotentials.names = {'eyePositions,fobPlus'};
-analysisGroups.analogInPotentials.units = {'degrees visual angle'};
-analysisGroups.analogInPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.analogInPotentials.groups = {}; %{{'face';'apple';'mushr';'btfly';'fribbl'}};
+analysisGroups.analogInPotentials.channels = {}; %{[1; 2]};
+analysisGroups.analogInPotentials.names = {}; %{'eyePositions,fobPlus'};
+analysisGroups.analogInPotentials.units = {}; %{'degrees visual angle'};
+analysisGroups.analogInPotentials.colors = {}; %{{'b';'c';'y';'g';'m';'r'}};
 %
-analysisGroups.analogInDerivatives.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.analogInDerivatives.channels = {[1; 2]};
-analysisGroups.analogInDerivatives.names = {'eyeVelocity,fobPlus'};
-analysisGroups.analogInDerivatives.units = {'degrees visual angle/sec'};
-analysisGroups.analogInDerivatives.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.analogInDerivatives.groups = {}; %{{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.analogInDerivatives.channels = {}; %{[1; 2]};
+analysisGroups.analogInDerivatives.names = {}; %{'eyeVelocity,fobPlus'};
+analysisGroups.analogInDerivatives.units = {}; %{'degrees visual angle/sec'};
+analysisGroups.analogInDerivatives.colors = {}; %{{'b';'c';'y';'g';'m';'r';'k'}};
 %
-analysisGroups.colorPsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.colorPsthEvoked.groups = {{'face';'apple';'mushr';'btfly';'fribbl';'right45'}};
 analysisGroups.colorPsthEvoked.names = {'fobPlus'};
 analysisGroups.colorPsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
 %
-analysisGroups.linePsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.linePsthEvoked.groups = {{'face';'apple';'mushr';'btfly';'fribbl';'right45'}};
 analysisGroups.linePsthEvoked.names = {'fobPlus'};
 analysisGroups.linePsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
 %
 analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'}};
 analysisGroups.evokedPsthOnePane.names = {'faceVnon'};
 %
-analysisGroups.tuningCurves.groups = {{'humanFaceL90','humanFaceL45','humanFaceFront','humanFaceR45','humanFaceR90'},...
-  {'monkeyFaceL90','monkeyFaceL45','monkeyFaceFront','monkeyFaceR45','monkeyFaceR90'}}; %can be images or categories
-analysisGroups.tuningCurves.paramValues = {[-90 -45 0 45 90], [-90 -45 0 45 90]};
-analysisGroups.tuningCurves.paramLabels = {'viewing angle (degrees)','viewing angle (degrees)'};
-analysisGroups.tuningCurves.names = {'Human face view','Monkey face view'};
+analysisGroups.tuningCurves.groups = {{'left90','left45','front00','right45','right90'}}; %can be images or categories
+analysisGroups.tuningCurves.paramValues = {[-90 -45 0 45 90]};
+analysisGroups.tuningCurves.paramLabels = {'viewing angle (degrees)'};
+analysisGroups.tuningCurves.names = {'Monkey face view'};
 %
 analysisGroups.spectraByCategory.groups = {{'face';'nonface'}};  %todo: add spectra diff?
 analysisGroups.spectraByCategory.names = {'faceVnon'};
@@ -300,11 +296,11 @@ analysisGroupColors.byImage = {}; %#ok
 
 calcSwitch.categoryPSTH = 1;
 calcSwitch.imagePSTH = 1;
-calcSwitch.faceSelectIndex = 1;
-calcSwitch.faceSelectIndexEarly = 1;
-calcSwitch.faceSelectIndexLate = 1;
+calcSwitch.faceSelectIndex = 0;
+calcSwitch.faceSelectIndexEarly = 0;
+calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 1;
+calcSwitch.evokedSpectra = 0;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
@@ -313,7 +309,7 @@ calcSwitch.inducedCatTF = 0;
 calcSwitch.meanEvokedTF = 0;
 calcSwitch.trialMeanSpectra = 0;
 calcSwitch.coherenceByCategory = 0;
-calcSwitch.spikeTimes = 1;
+calcSwitch.spikeTimes = 0;
 calcSwitch.useJacknife = 0;      
 
 if calcSwitch.useJacknife

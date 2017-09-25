@@ -7,7 +7,15 @@ nrows = size(psthArray,1);
 yrange= [1 nrows];
 title(psthTitle); 
 if strcmp(plotType,'color')
-  caxis([min(min(psthArray)),max(max(psthArray))]);
+  try
+    caxis([min(min(psthArray)),max(max(psthArray))]);
+  catch
+    disp('start error message');
+    disp(psthArray);
+    disp([min(min(psthArray)),max(max(psthArray))]);
+    assert(0,'failed in plotPSTH');
+    return
+  end
   if isempty(psthAxes)
     psthAxes = imagesc(xrange, yrange, psthArray);
   else

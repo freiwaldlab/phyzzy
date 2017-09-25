@@ -108,7 +108,7 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
     offsetsByImage{i} = taskData.stimEndTimes(strcmp(taskData.stimFilenames,picFiles{i}));
     picsNotPresented(i) = isempty(onsetsByImage{i});
   end
-  % todo: add similar defense for categories
+
   % todo: need defense against image with onset but no offset? 
   % todo: add similar defense for rf map locations here?
   if ~taskData.RFmap
@@ -120,9 +120,10 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   picFiles = picFiles(picsNotPresented == 0);
   pictureLabels = pictureLabels(picsNotPresented == 0);
   picCategories = picCategories(picsNotPresented == 0);
-
+  
   onsetsByCategory = cell(length(categoryList));
   offsetsByCategory = cell(length(categoryList));
+  catsNotPresented = zeros(length(categoryList),1);
   for cat_i = 1:length(categoryList)
     catOnsets = [];
     catOffsets = [];
@@ -134,9 +135,14 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
     end
     onsetsByCategory{cat_i} = catOnsets;
     offsetsByCategory{cat_i} = catOffsets;
+    catsNotPresented(cat_i) = isempty(onsetsByCategory{cat_i});
     Output.DEBUG('numel cat onsets');
     Output.DEBUG(numel(catOnsets));
   end
+  
+  onsetsByCategory = onsetsByCategory(catsNotPresented == 0);
+  offsetsByCategory = offsetsByCategory(catsNotPresented == 0);
+  categoryList = categoryList(catsNotPresented == 0);
 
   if taskData.RFmap
     jumpsByImage = cell(length(picFiles),1);
