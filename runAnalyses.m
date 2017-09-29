@@ -303,7 +303,9 @@ if ~taskData.RFmap
         raster(spikesByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
         title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-        close(fh);
+        if closeFig
+          close(fh);
+        end
       end
       % preferred images raster-evoked overlay
       if plotSwitch.prefImRasterEvokedOverlay
@@ -311,7 +313,9 @@ if ~taskData.RFmap
         rasterEvoked(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
         title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-        close(fh);
+        if closeFig
+          close(fh);
+        end
       end
       % preferred images raster-evoked overlay, with other channels
       if plotSwitch.prefImMultiChRasterEvokedOverlay
@@ -319,7 +323,9 @@ if ~taskData.RFmap
         rasterEvokedMultiCh(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
         title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster-LFP-MultiChannel_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-        close(fh);
+        if closeFig
+          close(fh);
+        end
       end
       % image preference barplot
       if plotSwitch.imageTuningSorted
@@ -334,7 +340,9 @@ if ~taskData.RFmap
           figData.y = imageSortedRates;
           figData.e = imFrErrSorted;
           saveFigure(outDir, sprintf('imageTuningSorted_%s_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-          close(fh);
+          if closeFig
+            close(fh);
+          end
         end
       end
     end
@@ -485,7 +493,9 @@ if ~taskData.RFmap
         end
         suptitle(sprintf('%s spikes category tuning, %dms-%dms post-onset',channelNames{channel_i},frCalcOn,frCalcOff));
         saveFigure(outDir, sprintf('catPrefBars_%s_%s_%dms-%dms_Run%s',groupName,channelNames{channel_i},frCalcOn,frCalcOff,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-        close(fh);
+        if closeFig
+          close(fh);
+        end
       end
     end
   end
@@ -764,7 +774,9 @@ if plotSwitch.evokedPsthMuaMultiCh
     end
     drawnow;
     saveFigure(outDir, sprintf('psthEvokedOverlay_%s_Run%s',groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    close(fh);
+    if closeFig
+      close(fh);
+    end
   end
 end
 
@@ -805,7 +817,9 @@ for channel_i = 1:length(lfpChannels)
       figData.x = times;
       drawnow;
       saveFigure(outDir,sprintf('Evoked_byCat_%s_%s_Run%s',channelNames{channel_i},groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-      close(fh);
+      if closeFig
+        close(fh);
+      end
     end
   end
 end
@@ -850,7 +864,9 @@ if plotSwitch.analogInByItem
     figData.x = times;
     drawnow;
     saveFigure(outDir,sprintf('%s_Run%s',groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    close(fh);
+    if closeFig
+      close(fh);
+    end
   end
 end
 
@@ -894,7 +910,9 @@ if plotSwitch.analogInDerivativesByItem
     figData.x = times;
     drawnow;
     saveFigure(outDir,sprintf('%s_Run%s',groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    close(fh);
+    if closeFig
+      close(fh);
+    end
   end
 end
 
@@ -962,7 +980,9 @@ for channel_i = 1:length(lfpChannels)
       figData.ax21.x = times;
       drawnow;
       saveFigure(outDir,sprintf('PSTH_(color)_Evoked_%s_%s_Run%s',channelNames{channel_i},groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-      close(fh);
+      if closeFig
+        close(fh);
+      end
     end
   end
 end
@@ -1048,7 +1068,9 @@ for channel_i = 1:length(lfpChannels)
       figData.ax21.x = times;
       drawnow;
       saveFigure(outDir,sprintf('PSTH_(line)_Evoked_%s_%s_Run%s',channelNames{channel_i},groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-      close(fh);
+      if closeFig
+        close(fh);
+      end
     end
   end
 end
@@ -1057,7 +1079,7 @@ end
 
 if plotSwitch.runSummary
   for channel_i = 1:length(channelNames)
-    f = figure();
+    fh = figure();
     numSubplots = length(imSpikeCounts{channel_i})-1+4;
     axisHandles = gobjects(numSubplots,1);
     axisNum = 1;
@@ -1138,13 +1160,15 @@ if plotSwitch.runSummary
     figData = 'none';
     drawnow;
     saveFigure(outDir,sprintf('runSummary_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    close(f);
+    if closeFig
+      close(fh);
+    end
   end
 end
   
 if plotSwitch.runSummaryImMeanSub
   for channel_i = 1:length(channelNames)
-    f = figure();
+    fh = figure();
     numSubplots = length(imSpikeCounts{channel_i})-1+4;
     axisHandles = gobjects(numSubplots,1);
     axisNum = 1;
@@ -1225,7 +1249,9 @@ if plotSwitch.runSummaryImMeanSub
     figData = 'none';
     drawnow;
     saveFigure(outDir,sprintf('runSummary_fluct_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    close(f);
+    if closeFig
+      close(fh);
+    end
   end
 end
   
@@ -1312,7 +1338,9 @@ if plotSwitch.runSummaryImMeanSubDiv
     figData = 'none';
     drawnow;
     saveFigure(outDir,sprintf('runSummary_fracfluct_%s_Run%s',channelNames{channel_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-    close(fh);
+    if closeFig
+      close(fh);
+    end
   end
 end
 
@@ -1350,7 +1378,9 @@ if plotSwitch.lfpPowerMuaScatter
           figData.x = [];
           figData.y = [];
           saveFigure(outDir,sprintf('scatter_lfpPwrVsFr_%s_%s_%s_%dms-%dms_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,frEpochs(epoch_i,1),frEpochs(epoch_i,2),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-          close(fh);
+          if closeFig
+            close(fh);
+          end
         end
       end
     end
@@ -1388,7 +1418,9 @@ if plotSwitch.lfpPeakToPeakMuaScatter
           figData.x = [];
           figData.y = [];
           saveFigure(outDir,sprintf('scatter_lfpP2PVsFr_%s_%s_%s_%dms-%dms_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,frEpochs(epoch_i,1),frEpochs(epoch_i,2),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-          close(fh);
+          if closeFig
+            close(fh);
+          end
         end
       end
     end
@@ -1435,7 +1467,9 @@ if plotSwitch.lfpPowerAcrossChannels && channel_i < length(lfpChannels)
           figData.x = [];
           figData.y = [];
           saveFigure(outDir,sprintf('scatter_lfpPwrVSlfpPwr_%s_%s_%s_%dms-%dms_Run%s',channelNames{channel_i},channelNames{channel2_i},groupName,frEpochs(epoch_i,1),frEpochs(epoch_i,2),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-          close(fh);
+          if closeFig
+            close(fh);
+          end
         end
       end
     end
@@ -1474,7 +1508,9 @@ if plotSwitch.lfpPeakToPeakAcrossChannels && channel_i < length(lfpChannels)
           figData.x = [];
           figData.y = [];
           saveFigure(outDir,sprintf('scatter_lfpP2PVSlfpP2P_%s_%s_%s_%dms-%dms_Run%s',channelNames{channel_i},channelNames{channel2_i},groupName,frEpochs(epoch_i,1),frEpochs(epoch_i,2),runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-          close(fh);
+          if closeFig
+            close(fh);
+          end
         end
       end
     end
@@ -1544,7 +1580,9 @@ if plotSwitch.lfpLatencyShiftAcrossChannels && channel_i < length(lfpChannels)
         figData.x = [];
         figData.y = [];
         saveFigure(outDir,sprintf('scatter_lfpShiftVSlfpShift_%s_%s__%s_Run%s',channelNames{channel_i},channelNames{channel2_i},groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-        close(fh);
+        if closeFig
+          close(fh);
+        end
       end
     end
   end
@@ -1553,7 +1591,6 @@ end
 % other to-do: one epoch for each peak of trial ave evoked potential, ideally set automatically
 % todo: across-peak latency within and across channels
 % todo: spike burstiness vs. lfp bumpiness; can do as p2p evoked/psth; or (low freq power)/(high freq power)
-close all
 calcSwitchNames = {'evoked', 'induced'};
 tfCalcSwitchTitleSuffixes = {'',', induced'}; % appended to titles
 tfCalcSwitchFnameSuffixes = {'','_induced'}; % appended to filenames
@@ -1578,7 +1615,7 @@ for calc_i = 1:length(calcSwitches)
         group = analysisGroups.lfpSingleTrialsByCategory.groups{group_i};
         groupName = analysisGroups.lfpSingleTrialsByCategory.names{group_i};
         for channel_i = 1:length(channelNames)
-          f = figure();
+          fh = figure();
           figData = cell(length(group),1);
           for item_i = 1:length(group)
             subplot(length(group),1,item_i)
@@ -1603,7 +1640,9 @@ for calc_i = 1:length(calcSwitches)
           end
           drawnow;
           saveFigure(outDir,sprintf('Evoked_singleTrials_%s_%s%s_Run%s',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-          close(f);
+          if closeFig
+            close(fh);
+          end
         end
       end
     end
@@ -1627,7 +1666,7 @@ for calc_i = 1:length(calcSwitches)
             errs(item_i,:,1) = E(1,:)'-S;
             errs(item_i,:,2) = S-E(2,:)';
           end
-          f = figure();
+          fh = figure();
           lineProps.width = 3;
           lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
           mseb(freqs,spectra,errs,lineProps);
@@ -1650,13 +1689,15 @@ for calc_i = 1:length(calcSwitches)
           figData.e = errs;
           drawnow;
           saveFigure(outDir,sprintf('spectrum_%s_%s_LFP%s_Run%s',groupName,channelNames{channel_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-          close(f);
+          if closeFig
+            close(fh);
+          end
           
           %loglog spectrum with power law fit
           specModel = fitlm(log(1000*mean(freqs(:,6:end),1)), log(mean(spectra(:,6:end),1)));
           m = specModel.Coefficients.Estimate(2);
           y0 = specModel.Coefficients.Estimate(1);
-          f = figure();
+          fh = figure();
           lineProps.width = 3;
           lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
           mseb(freqs,spectra,errs,lineProps);
@@ -1681,7 +1722,9 @@ for calc_i = 1:length(calcSwitches)
           figData.e = errs;
           drawnow;
           saveFigure(outDir,sprintf('spectrum_loglog_%s_%s_LFP%s_Run%s',groupName,channelNames{channel_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-          close(f);
+          if closeFig
+            close(fh);
+          end
           
           if calcSwitch.trialMeanSpectra
             for item_i = 1:length(group)
@@ -1696,7 +1739,7 @@ for calc_i = 1:length(calcSwitches)
               errs(item_i,:,1) = E(1,:)'-S;
               errs(item_i,:,2) = S-E(2,:)';
             end
-            f = figure();
+            fh = figure();
             lineProps.width = 3;
             lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
             mseb(freqs,spectra,errs,lineProps);
@@ -1719,9 +1762,11 @@ for calc_i = 1:length(calcSwitches)
             figData.e = errs;
             drawnow;
             saveFigure(outDir,sprintf('spectrum_mean_%s_%s_LFP%s_Run%s',groupName,channelNames{channel_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(f);
+            if closeFig
+              close(fh);
+            end
             
-            f = figure();
+            fh = figure();
             lineProps.width = 3;
             lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
             mseb(freqs,spectra,errs,lineProps);
@@ -1749,7 +1794,9 @@ for calc_i = 1:length(calcSwitches)
             figData.e = errs;
             drawnow;
             saveFigure(outDir,sprintf('spectrum__mean_loglog_%s_%s_LFP%s_Run%s',groupName,channelNames{channel_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(f);
+            if closeFig
+              close(fh);
+            end
           end
           % time domain autocorrelation 
           for item_i = 1:length(group)
@@ -1792,7 +1839,9 @@ for calc_i = 1:length(calcSwitches)
             figData.z = Cgram;
             drawnow;
             saveFigure(outDir,sprintf('autocorrel_TF_%s_LFP_%s%s_Run%s',channelNames{channel_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
+            if closeFig
+              close(fh);
+            end
           end
           fh = figure();
           lineProps.width = 3;
@@ -1808,7 +1857,9 @@ for calc_i = 1:length(calcSwitches)
           figData.e = specErrs;
           drawnow;
           saveFigure(outDir,sprintf('autocorrel_%s_LFP_%s%s_Run%s',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-          close(fh);
+          if closeFig
+            close(fh);
+          end
         end
       end
     end
@@ -1840,7 +1891,7 @@ for calc_i = 1:length(calcSwitches)
               errs(item_i,:,1) = E(1,:)'-S;
               errs(item_i,:,2) = S-E(2,:)';
             end
-            f = figure();
+            fh = figure();
             lineProps.width = 3;
             lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
             mseb(freqs,spectra,errs,lineProps);
@@ -1863,9 +1914,11 @@ for calc_i = 1:length(calcSwitches)
             figData.e = errs;
             drawnow;
             saveFigure(outDir,sprintf('spectrum_%s_%s_%s%s_Run%s',groupName,channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(f);
+            if closeFig
+              close(fh);
+            end
             
-            f = figure();
+            fh = figure();
             lineProps.width = 3;
             lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
             mseb(freqs,spectra,errs,lineProps);
@@ -1892,7 +1945,9 @@ for calc_i = 1:length(calcSwitches)
             figData.x = freqs;
             figData.e = errs;
             saveFigure(outDir,sprintf('spectrum_loglog_%s_%s_%s%s_Run%s',groupName,channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(f);
+            if closeFig
+              close(fh);
+            end
             
             if calcSwitch.trialMeanSpectra
               for item_i = 1:length(group)              
@@ -1911,7 +1966,7 @@ for calc_i = 1:length(calcSwitches)
                 errs(item_i,:,1) = E(1,:)'-S;
                 errs(item_i,:,2) = S-E(2,:)';
               end
-              f = figure();
+              fh = figure();
               lineProps.width = 3;
               lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
               mseb(freqs,spectra,errs,lineProps);
@@ -1934,9 +1989,11 @@ for calc_i = 1:length(calcSwitches)
               figData.e = errs;
               drawnow;
               saveFigure(outDir,sprintf('spectrum_mean_%s_%s_%s%s_Run%s',groupName,channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(f);
+              if closeFig
+                close(fh);
+              end
               
-              f = figure();
+              fh = figure();
               lineProps.width = 3;
               lineProps.col = analysisGroups.spectraByCategory.colors{group_i};
               mseb(freqs,spectra,errs,lineProps);
@@ -1963,7 +2020,9 @@ for calc_i = 1:length(calcSwitches)
               figData.x = freqs;
               figData.e = errs;
               saveFigure(outDir,sprintf('spectrum_mean_loglog_%s_%s_%s%s_Run%s',groupName,channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(f);
+              if closeFig
+                close(fh);
+              end
             end
             
              % time domain autocorrelation
@@ -2012,7 +2071,9 @@ for calc_i = 1:length(calcSwitches)
                 figData.z = Cgram;
                 drawnow;
                 saveFigure(outDir,sprintf('autocorrel_TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
               end
               fh = figure();
               lineProps.width = 3;
@@ -2028,7 +2089,9 @@ for calc_i = 1:length(calcSwitches)
               figData.e = specErrs;
               drawnow;
               saveFigure(outDir,sprintf('autocorrel_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
             end
           end
         end
@@ -2095,7 +2158,9 @@ for calc_i = 1:length(tfCalcSwitches)
             figData.z = S';
             drawnow;
             saveFigure(outDir,sprintf('TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
+            if closeFig
+              close(fh);
+            end
             
             if calcSwitch.trialMeanSpectra
               if calcSwitch.spikeTimes
@@ -2124,7 +2189,9 @@ for calc_i = 1:length(tfCalcSwitches)
               figData.z = S';
               drawnow;
               saveFigure(outDir,sprintf('TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
             end
           end
         end
@@ -2154,7 +2221,9 @@ for calc_i = 1:length(tfCalcSwitches)
         figData.z = S;
         drawnow;
         saveFigure(outDir,sprintf('TF_mean_LFP_%s_%s%s_Run%s',channelNames{channel_i},pictureLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-        close(fh);
+        if closeFig
+          close(fh);
+        end
       end
     end
     if strcmp(tfCalcSwitchNames{calc_i},'inducedImageTF')
@@ -2235,7 +2304,9 @@ for calc_i = 1:length(tfCalcSwitches)
               figData.z = S;
               drawnow;
               saveFigure(outDir,sprintf('TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},categoryList{catInds.(group{item_i})},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
 
               % contribute mua to shared figure
               if unit_i == length(channelUnitNames{channel_i})
@@ -2289,7 +2360,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 figData.z = S;
                 drawnow;
                 saveFigure(outDir,sprintf('TF_mean_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},categoryList{catInds.(group{item_i})},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
               end
             end
             % lfp
@@ -2326,7 +2399,9 @@ for calc_i = 1:length(tfCalcSwitches)
             figData.z = S';
             drawnow;
             saveFigure(outDir,sprintf('TF_%s_LFP_%s%s_Run%s',channelNames{channel_i},categoryList{catInds.(group{item_i})},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
+            if closeFig
+              close(fh);
+            end
             % contribute to shared figure
             figure(lfpTfFig);
             subplot(length(channelNames),length(group),length(group)*(channel_i-1)+item_i);
@@ -2373,7 +2448,9 @@ for calc_i = 1:length(tfCalcSwitches)
               figData.z = S';
               drawnow;
               saveFigure(outDir,sprintf('TF_mean_%s_LFP_%s%s_Run%s',channelNames{channel_i},categoryList{catInds.(group{item_i})},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
             end
           end
           drawnow;
@@ -2383,7 +2460,9 @@ for calc_i = 1:length(tfCalcSwitches)
             close(muaTfFig);
             figure(lfpTfFig);
             saveFigure(outDir,sprintf('TF_LFP_%s_%s%s.fig',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(lfpTfFig);
+            if closeFig
+              close(lfpTfFig);
+            end
           end
         end
       end
@@ -2486,7 +2565,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 figData.z = Cgram';
                 drawnow;
                 saveFigure(outDir,sprintf('correl_TF_%s_%s_-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
               end
               fh = figure();
               lineProps.width = 3;
@@ -2502,7 +2583,9 @@ for calc_i = 1:length(tfCalcSwitches)
               figData.e = specErrs;
               drawnow;
               saveFigure(outDir,sprintf('correl_%s_%s_%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
             end
           end
         end
@@ -2586,7 +2669,9 @@ for calc_i = 1:length(tfCalcSwitches)
               figData.e = specErrs;
               drawnow;
               saveFigure(outDir,sprintf('coh_%s_%s_%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
 
               %phases %todo: convert from std to sterr?
               fh = figure();
@@ -2599,7 +2684,9 @@ for calc_i = 1:length(tfCalcSwitches)
               title(sprintf('%s %s - %s field phase%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
               drawnow;
               saveFigure(outDir,sprintf('phase_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
               
               if plotSwitch.couplingPhasesUnwrapped
                 %replot the phases with the implicit mod pi operation undone (so easy to see slope across frequencies
@@ -2618,7 +2705,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 title(sprintf('%s %s - %s field phase%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 drawnow;
                 saveFigure(outDir,sprintf('phase_unwrapped_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
               end
               
               if plotSwitch.couplingPhasesAsOffsets
@@ -2638,7 +2727,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 title(sprintf('%s %s - %s field offset%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 drawnow;
                 saveFigure(outDir,sprintf('phase_unwrapped_latency_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
               end
               
              if plotSwitch.couplingPhasesPolar
@@ -2657,7 +2748,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 title(sprintf('%s %s - %s field phases%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 drawnow;
                 saveFigure(outDir,sprintf('phase_unwrapped_polar_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
               end
               
               if calcSwitch.meanEvokedTF
@@ -2720,7 +2813,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 figData.e = specErrs;
                 drawnow;
                 saveFigure(outDir,sprintf('coh_mean_%s_%s_%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
 
                 %phases %todo: convert from std to sterr?
                 fh = figure();
@@ -2733,7 +2828,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 title(sprintf('Trial mean %s %s - %s field phase%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 drawnow;
                 saveFigure(outDir,sprintf('phase_mean_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
                 
                 if plotSwitch.couplingPhasesUnwrapped
                   %replot the phases with the implicit mod pi operation undone (so easy to see slope across frequencies
@@ -2750,7 +2847,9 @@ for calc_i = 1:length(tfCalcSwitches)
                   title(sprintf('Trial mean %s %s - %s field phase%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                   drawnow;
                   saveFigure(outDir,sprintf('phase_mean_unwrapped_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                  close(fh);
+                  if closeFig
+                    close(fh);
+                  end
                 end
                 
                 if plotSwitch.couplingPhasesAsOffsets
@@ -2768,7 +2867,9 @@ for calc_i = 1:length(tfCalcSwitches)
                   title(sprintf('Trial mean %s %s - %s field offsets%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                   drawnow;
                   saveFigure(outDir,sprintf('phase_mean_unwrapped_latency_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                  close(fh);
+                  if closeFig
+                    close(fh);
+                  end
                 end
               end
             end
@@ -2850,7 +2951,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 figData.z = C';
                 drawnow;
                 saveFigure(outDir,sprintf('coh_TF_%s_%s_-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
 
                 fh = figure();
                 imagesc(t,f,phi'); axis xy
@@ -2869,7 +2972,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 figData.z = phi';
                 drawnow;
                 saveFigure(outDir,sprintf('phase_TF_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
 
 
                 if plotSwitch.tfErrs
@@ -2950,7 +3055,9 @@ for calc_i = 1:length(tfCalcSwitches)
                   title('phase, lower confidence bound','FontSize',18);
                   
                   saveFigure(outDir,sprintf('coh_TF_errs_%s_%s_-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                  close(fh);
+                  if closeFig
+                    close(fh);
+                  end
                 end
               end
             end
@@ -3005,7 +3112,9 @@ for calc_i = 1:length(tfCalcSwitches)
               figData.z = Cgram';
               drawnow;
               saveFigure(outDir,sprintf('correl_TF_%s_LFP-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelNames{channel2_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
             end
             fh = figure();
             lineProps.width = 3;
@@ -3021,7 +3130,9 @@ for calc_i = 1:length(tfCalcSwitches)
             figData.e = specErrs;
             drawnow;
             saveFigure(outDir,sprintf('correl_%s_LFP_%s_LFP_%s%s_Run%s',channelNames{channel_i},channelNames{channel2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
+            if closeFig
+              close(fh);
+            end
           end
         end
       end
@@ -3079,7 +3190,9 @@ for calc_i = 1:length(tfCalcSwitches)
             figData.e = specErrs;
             drawnow;
             saveFigure(outDir,sprintf('coh_%s_LFP_%s_LFP_%s%s_Run%s',channelNames{channel_i},channelNames{channel2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
+            if closeFig
+              close(fh);
+            end
 
             %phases %todo: convert from std to sterr?
             fh = figure();
@@ -3092,7 +3205,9 @@ for calc_i = 1:length(tfCalcSwitches)
             title(sprintf('%s field - %s field phase%s',channelNames{channel_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
             drawnow;
             saveFigure(outDir,sprintf('phase_%s_LFP-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelNames{channel2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(fh);
+            if closeFig
+              close(fh);
+            end
 
             if calcSwitch.meanEvokedTF
               for item_i = 1:length(group)
@@ -3138,7 +3253,9 @@ for calc_i = 1:length(tfCalcSwitches)
               figData.e = specErrs;
               drawnow;
               saveFigure(outDir,sprintf('coh_mean_%s_LFP-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelNames{channel2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
 
               %phases %todo: convert from std to sterr?
               fh = figure();
@@ -3151,7 +3268,9 @@ for calc_i = 1:length(tfCalcSwitches)
               title(sprintf('Trial mean %s field - %s field phase%s',channelNames{channel_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
               drawnow;
               saveFigure(outDir,sprintf('phase_mean_%s_LFP-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelNames{channel2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
             end
           end
         end
@@ -3202,7 +3321,9 @@ for calc_i = 1:length(tfCalcSwitches)
               figData.z = C';
               drawnow;
               saveFigure(outDir,sprintf('coh_TF_%s_LFP-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelNames{channel2_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
 
               fh = figure();
               imagesc(t,f,phi'); axis xy
@@ -3221,7 +3342,9 @@ for calc_i = 1:length(tfCalcSwitches)
               figData.z = phi';
               drawnow;
               saveFigure(outDir,sprintf('phase_TF_%s_LFP-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelNames{channel2_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
 
 
               if plotSwitch.tfErrs
@@ -3302,7 +3425,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 title('phase, lower confidence bound','FontSize',18);
 
                 saveFigure(outDir,sprintf('coh_TF_errs_%s_LFP-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelNames{channel2_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
               end
             end
           end
@@ -3376,7 +3501,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 figData.z = Cgram';
                 drawnow;
                 saveFigure(outDir,sprintf('correl_TF_%s_%s_-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
               end
               fh = figure();
               lineProps.width = 3;
@@ -3392,7 +3519,9 @@ for calc_i = 1:length(tfCalcSwitches)
               figData.e = specErrs;
               drawnow;
               saveFigure(outDir,sprintf('correl_%s_%s_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
             end
           end
         end
@@ -3467,7 +3596,9 @@ for calc_i = 1:length(tfCalcSwitches)
               figData.e = specErrs;
               drawnow;
               saveFigure(outDir,sprintf('coh_%s_%s_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
 
               %phases %todo: convert from std to sterr?
               fh = figure();
@@ -3480,7 +3611,9 @@ for calc_i = 1:length(tfCalcSwitches)
               title(sprintf('%s %s - %s %s phase%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
               drawnow;
               saveFigure(outDir,sprintf('phase_%s_%s-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              close(fh);
+              if closeFig
+                close(fh);
+              end
 
               if calcSwitch.meanEvokedTF
                 for item_i = 1:length(group)
@@ -3537,7 +3670,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 figData.e = specErrs;
                 drawnow;
                 saveFigure(outDir,sprintf('coh_mean_%s_%s_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
 
                 %phases %todo: convert from std to sterr?
                 fh = figure();
@@ -3550,7 +3685,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 title(sprintf('Trial mean %s %s - %s %s phase%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 drawnow;
                 saveFigure(outDir,sprintf('phase_mean_%s_%s-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
               end
             end
           end
@@ -3620,7 +3757,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 figData.z = C';
                 drawnow;
                 saveFigure(outDir,sprintf('coh_TF_%s_%s_-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
 
                 fh = figure();
                 imagesc(t,f,phi'); axis xy
@@ -3639,7 +3778,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 figData.z = phi';
                 drawnow;
                 saveFigure(outDir,sprintf('phase_TF_%s_%s-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                close(fh);
+                if closeFig
+                  close(fh);
+                end
 
 
                 if plotSwitch.tfErrs
@@ -3719,7 +3860,9 @@ for calc_i = 1:length(tfCalcSwitches)
                   draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   title('phase, lower confidence bound','FontSize',18);
                   saveFigure(outDir,sprintf('coh_TF_errs_%s_%s_-%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-                  close(fh);
+                  if closeFig
+                    close(fh);
+                  end
                 end
               end
             end

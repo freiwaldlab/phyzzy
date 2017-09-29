@@ -6,8 +6,8 @@ function [ analysisParamsFilename ] = buildAnalysisParamFile( )
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '001';
-dateSubject = '170921ALAN'; 
-machine = 'laptop';
+dateSubject = '170929ALAN'; 
+machine = 'rig';
 
 switch machine
   case 'rig'
@@ -36,6 +36,7 @@ analysisParamsFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 %categoryListSlim = {'humanFace','monkeyFace','place','fruit','humanBody','monkeyBody','techno'}; %minimal cat list for clean plots
 saveFig = 1;           %#ok
+closeFig = 0;          %#ok
 exportFig = 0;         %#ok
 saveFigData = 0;       %#ok
 savePreprocessed = 0;  %#ok
@@ -73,7 +74,7 @@ ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a
 ephysParams.plotFilterResult = 0; %#ok
 
 % parameters preprocessAnalogIn, see function for details
-analogInParams.needAnalogIn = 1;
+analogInParams.needAnalogIn = 0;
 analogInParams.analogInChannels = [138,139,140]; 
 analogInParams.channelNames = {'eyeX','eyeY','eyeD'};
 analogInParams.analogInChannelScaleBy = [5/32764 5/32764 5/32764]; %converts raw values to volts
@@ -198,11 +199,11 @@ plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
 plotSwitch.imageTuningSorted = 1;
 plotSwitch.stimPrefBarPlot = 1;
-plotSwitch.stimPrefBarPlotEarly = 1;
-plotSwitch.stimPrefBarPlotLate = 1;
+plotSwitch.stimPrefBarPlotEarly = 0;
+plotSwitch.stimPrefBarPlotLate = 0;
 plotSwitch.tuningCurves = 1;
-plotSwitch.tuningCurvesEarly = 1;
-plotSwitch.tuningCurvesLate = 1;
+plotSwitch.tuningCurvesEarly = 0;
+plotSwitch.tuningCurvesLate = 0;
 plotSwitch.RF = 1;
 plotSwitch.rfEarly = 0;
 plotSwitch.rfLate = 0;
@@ -224,8 +225,8 @@ plotSwitch.lfpPowerAcrossChannels = 0;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 1;
-plotSwitch.lfpSpectraByCategory = 1;
-plotSwitch.spikeSpectraByCategory = 1;
+plotSwitch.lfpSpectraByCategory = 0;
+plotSwitch.spikeSpectraByCategory = 0;
 plotSwitch.SpikeSpectraTfByImage = 0;
 plotSwitch.lfpSpectraTfByImage = 0;
 plotSwitch.couplingPhasesUnwrapped = 0;
@@ -304,7 +305,7 @@ calcSwitch.faceSelectIndex = 1;
 calcSwitch.faceSelectIndexEarly = 1;
 calcSwitch.faceSelectIndexLate = 1;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 1;
+calcSwitch.evokedSpectra = 0;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
@@ -313,7 +314,7 @@ calcSwitch.inducedCatTF = 0;
 calcSwitch.meanEvokedTF = 0;
 calcSwitch.trialMeanSpectra = 0;
 calcSwitch.coherenceByCategory = 0;
-calcSwitch.spikeTimes = 1;
+calcSwitch.spikeTimes = 0;
 calcSwitch.useJacknife = 0;      
 
 if calcSwitch.useJacknife
