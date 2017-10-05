@@ -633,6 +633,7 @@ if taskData.RFmap
           % todo: bandpassed power RFs
           % todo: stimulus decodability RF
         end
+        meanRF = meanRF/length(pictureLabels);
         display_map(rfGrid(:,1),rfGrid(:,2),meanRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, Mean RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}),...
           [outDir sprintf('MeanRF_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum)]);
       end
