@@ -18,6 +18,7 @@ samPerMS = params.samPerMS; %THIS IS AFTER DECIMATION, and applies to LFP (shoul
 lfpFilter = params.filter; %if filtering desired, lfpFilter is a digitalFilter object
 
 % load lfp data
+assert(logical(exist(lfpFilename,'file')),'The LFP file you requested does not exist.');
 tmp = openNSx(lfpFilename,'report','read');
 lfpHeader = tmp.MetaTags;
 assert(lfpHeader.SamplingFreq/(decimateFactorPass1*decimateFactorPass2) == 1000, 'error: expected lfp data to decimate to 1ks/sec');

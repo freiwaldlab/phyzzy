@@ -11,6 +11,7 @@ function [ spikesByChannel, taskTriggers, channelUnitNames ] = preprocessSpikes(
 %   - taskTriggers: nPackets x 1 array of structs; serial-digital IO port log
 %     
 Output.VERBOSE('loading blackrock event file');
+assert(logical(exist(spikeFilename,'file')),'The spike-event file you requested does not exist.');
 NEV = openNEV(spikeFilename,'read','nosave','noparse'); %note: add param 'report' for verbose
 Output.VERBOSE('parsing serial IO packets');
 taskTriggers = NEV.Data.SerialDigitalIO;

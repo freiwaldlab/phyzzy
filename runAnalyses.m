@@ -770,7 +770,9 @@ if plotSwitch.evokedPsthMuaMultiCh
         end
         h = get(gca,'ylim');
       end
-      plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3,'linestyle','-');
+      h = plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3,'linestyle','-');
+      %this turns off legend for this line. Source: https://www.mathworks.com/matlabcentral/answers/406-how-do-i-skip-items-in-a-legend
+      set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
       xlim([min(times), max(times)]);
     end
     drawnow;
@@ -805,7 +807,9 @@ for channel_i = 1:length(lfpChannels)
       mseb(repmat(times,length(group),1),responses,responseErrs,lineProps);
       legend(group);
       h = get(gca,'ylim');
-      plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+      h = plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+      %this turns off legend for this line. Source: https://www.mathworks.com/matlabcentral/answers/406-how-do-i-skip-items-in-a-legend
+      set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
       xlim([min(times), max(times)]);
       hold off
       title(sprintf('%s evoked potentials',channelNames{channel_i}), 'FontSize',18);
@@ -852,7 +856,9 @@ if plotSwitch.analogInByItem
     mseb(repmat(times,length(group),1),responses,responseErrs,lineProps);
     legend(group);
     h = get(gca,'ylim');
-    plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+    h = plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+    %this turns off legend for this line. Source: https://www.mathworks.com/matlabcentral/answers/406-how-do-i-skip-items-in-a-legend
+    set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
     xlim([min(times), max(times)]);
     hold off
     title(groupName, 'FontSize',18);
@@ -898,7 +904,9 @@ if plotSwitch.analogInDerivativesByItem
     mseb(repmat(times(1:end-1),length(group),1),responses,responseErrs,lineProps);
     legend(group);
     h = get(gca,'ylim');
-    plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+    h = plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+    %this turns off legend for this line. Source: https://www.mathworks.com/matlabcentral/answers/406-how-do-i-skip-items-in-a-legend
+    set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
     xlim([min(times), max(times)]);
     hold off
     title(groupName, 'FontSize',18);
@@ -955,7 +963,9 @@ for channel_i = 1:length(lfpChannels)
       mseb(repmat(times,length(group),1),lfpResponses,lfpResponseErrs,lineProps);
       legend(group,'Location','northeastoutside','FontSize',10);
       h = get(gca,'ylim');
-      plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+      h = plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+      %this turns off legend for this line. Source: https://www.mathworks.com/matlabcentral/answers/406-how-do-i-skip-items-in-a-legend
+      set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
       xlim([min(times), max(times)]);
       xlabel('time after stimulus (ms)', 'FontSize',14);
       ylabel('lfp (uV)', 'FontSize',14);
@@ -1051,7 +1061,9 @@ for channel_i = 1:length(lfpChannels)
       hold on
       mseb(repmat(times,length(group),1),lfpResponses,lfpResponseErrs,lineProps);
       h = get(gca,'ylim');
-      plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+      h = plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+      %this turns off legend for this line. Source: https://www.mathworks.com/matlabcentral/answers/406-how-do-i-skip-items-in-a-legend
+      set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
       xlim([min(times), max(times)]);
       xlabel('time after stimulus (ms)');
       ylabel('lfp (uV)');

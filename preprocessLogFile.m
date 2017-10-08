@@ -50,6 +50,7 @@ clear packetData;
 
 % parse log file
 disp('Loading visiko log file and converting to matlab structure');
+assert(logical(exist(logFilename,'file')),'The stimulus log file you requested does not exist.');
 logStruct = xml2struct(logFilename);
 assert(isfield(logStruct.VISIKOLOG,'EndStimulation'),'Error: stimulation end not included in log file');
 assert(strcmp(logStruct.VISIKOLOG.Attributes.tasktype,'Bitmap Continuous'),'Error: unknown Visiko task type. Must be Bitmap Continuous');

@@ -16,6 +16,7 @@ samPerMS = params.samPerMS; %THIS IS AFTER DECIMATION,
 analogInFilters = params.filters; %if filtering desired, analogInFilter is a digitalFilter object
 
 % load analogIn data
+assert(logical(exist(analogInFilename,'file')),'The analog input file you requested does not exist.');
 tmp = openNSx(analogInFilename,'report','read');
 analogInHeader = tmp.MetaTags;
 assert(analogInHeader.SamplingFreq/(decimateFactorPass1*decimateFactorPass2) == 1000, 'error: expected analogIn data to decimate to 1ks/sec');
