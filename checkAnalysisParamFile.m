@@ -1,79 +1,172 @@
-function [ analysisParamsFilename ] = buildAnalysisParamFile( )    
-%buildAnalysisParamFile saves a mat file of parameters, which control the
-%behavior of analyzeSession
-%   todo: option to load 'fixed' params from file, for ease accross days
+function [ output_args ] = checkAnalysisParamFile( analysisParamFilename )
+%UNTITLED3 Summary of this function goes here
+%   Detailed explanation goes here
+load(analysisParamFilename);
+logString = 'Assigned default values to: \n';
 
+% runNum
+assert(logical(exist('runNum','var')),'Invalid analysis parameter file: must specify a run number as runNum.');
+assert(ischar(runNum),'Invalid analysis parameter file: runNum must be a string'); 
 
-%%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '005';
-dateSubject = '171009ALAN'; 
-machine = 'rig';
+% dateSubject
+assert(logical(exist('dateSubject','var')),'Invalid analysis parameter file: must specify a date and subject as dateSubject.');
+assert(ischar(dateSubject),'Invalid analysis parameter file: dateSubject must be a string'); 
 
-switch machine
-  case 'rig'
-    ephysVolume = '/Volumes/Users-1/User/Desktop';
-    stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';
-    outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
-  case 'laptop'
-    ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
-    stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
-    outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
-  case 'hopper'
-    ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
-    stimulusLogVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Visiko';
-    outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
-  case 'turing'
-    ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
-    stimulusLogVolume = '/Freiwald/ephys/sserene/ALAN_DATA/Visiko';
-    outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+% ephysVolume
+assert(logical(exist('ephysVolume','var')),'Invalid analysis parameter file: must specify the ephys data folder as ephysVolume.');
+assert(ischar(ephysVolume),'Invalid analysis parameter file: ephysVolume must be a string'); 
+
+% stimulusLogVolume
+assert(logical(exist('stimulusLogVolume','var')),'Invalid analysis parameter file: must specify the stimulus log folder as stimulusLogVolume.');
+assert(ischar(stimulusLogVolume),'Invalid analysis parameter file: stimulusLogVolume must be a string');
+
+% outputVolume
+assert(logical(exist('runNum','var')),'Invalid analysis parameter file: must specify a run number as runNum.');
+assert(ischar(runNum),'Invalid analysis parameter file: runNum must be a string'); 
+
+% stimParamsFilename
+assert(logical(exist('outputVolume','var')),'Invalid analysis parameter file: must specify an output folder as outputVolume.');
+assert(ischar(outputVolume),'Invalid analysis parameter file: outputVolume must be a string');
+
+% stimParamsFilename
+assert(logical(exist('outputVolume','var')),'Invalid analysis parameter file: must specify an output folder as outputVolume.');
+assert(ischar(outputVolume),'Invalid analysis parameter file: outputVolume must be a string');
+
+%%% SAVE SWITCHES %%%
+% saveFig
+if ~logical(exist('saveFig','var')) || ~ismember(saveFig,[0 1])
+  saveFig = 1; %#ok
+  logString = strcat(logString,'saveFig\n');
 end
-analysisLabel = 'Basic';
-analysisParamsFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
-preprocessedDataFilenameStem = 'preprocessedData.mat';
-%categoryListSlim = {'humanFace','monkeyFace','place','fruit','humanBody','monkeyBody','techno'}; %minimal cat list for clean plots
-saveFig = 1;           %#ok
-closeFig = 0;          %#ok
-exportFig = 0;         %#ok
-saveFigData = 0;       %#ok
-savePreprocessed = 0;  %#ok
-verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 
+% closeFig
+if ~logical(exist('closeFig','var')) || ~ismember(closeFig,[0 1])
+  closeFig = 0; %#ok
+  logString = strcat(logString,'closeFig\n');
+end
 
-% parameters preprocessSpikes and preprocessLFP, see functions for details
-ephysParams.needLFP = 1;
-ephysParams.needSpikes = 1;
-ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-ephysParams.lfpChannels = [1]; 
-ephysParams.channelNames = {'ML'};
-ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
-ephysParams.common_ref = [0]; %not yet implemented; will allow software re-refrence across headstages
-ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
-ephysParams.cPtCal = 1/30; % conversion from spike sample indices to timestep of decimated LFP
-ephysParams.decimateFactorPass1 = 6; %note: product of the two decimate factors should be 30, if 1 khz samples desired
-ephysParams.decimateFactorPass2 = 5;
-ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should be raw rate/productOfDecimateFactors)
-%note: use Blackrock indexing for unitsToUnsort and unitsToDiscard, so unsorted is 0, first defined unit is 1, etc.
-ephysParams.unitsToUnsort = {[],[],[]}; %these units will be re-grouped with u0
-ephysParams.unitsToDiscard = {[],[],[]}; %these units will be considered noise and discarded
-ephysParams.spikeWaveformPca = 0;
-ephysParams.plotSpikeWaveforms = 0; %0, 1 to build then close, 2 to build and leave open
-ephysParams.shiftSpikeWaveforms = 0;
-% see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
-hp1Hz = designfilt('highpassiir', 'FilterOrder',8,'PassbandFrequency',1, ...
-  'StopbandAttenuation',100,'PassbandRipple',0.5,'SampleRate',1000);     %#ok
-% note: with these specifications, returns a 48th order butterworth filter
-butter1Hz200Hz_v1 = designfilt('bandpassiir','DesignMethod','butter','PassbandFrequency1',1,'PassbandFrequency2',200,...
-  'SampleRate',1000,'MatchExactly','passband','StopbandFrequency1',0.67,'StopbandFrequency2',250);
-[tmp1,tmp2] = butter(4,[1/500,200/500]);
-butter1Hz200Hz_v2 = [tmp1,tmp2];        %#ok
-ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter
-ephysParams.plotFilterResult = 0; %#ok
+% exportFig
+if ~logical(exist('exportFig','var')) || ~ismember(exportFig,[0 1])
+  exportFig = 0; %#ok
+  logString = strcat(logString,'exportFig\n');
+end
 
-% parameters preprocessAnalogIn, see function for details
+% saveFigData
+if ~logical(exist('saveFigData','var')) || ~ismember(saveFigData,[0 1])
+  saveFigData = 0; %#ok
+  logString = strcat(logString,'saveFigData\n');
+end
+
+% savePreprocessed
+if ~logical(exist('savePreprocessed','var')) || ~ismember(savePreprocessed,[0 1])
+  savePreprocessed = 0; %#ok
+  logString = strcat(logString,'savePreprocessed\n');
+end
+
+%%% VERBOSITY %%%
+if ~logical(exist('verbosity','var')) || ~ischar(verbostity) || ~ismember(verbosity,{'INFO','DEBUG','VERBOSE'})
+  verbosity = 'INFO'; %#ok
+  logString = strcat(logString,'verbosity\n');
+end
+
+%%% EPHYS PARAMS %%%
+if ~logical(exist('ephysParams','var')) || ~isstruct(ephysParams)
+  ephysParams.needLFP = 0;
+  ephysParams.needSpikes = 0;
+  logString = strcat(logString,'ephysParams\n');
+else
+  if ~isfield(ephysParams,'needLFP') || ~ismember(ephysParams.needLFP,[0 1])
+    ephysParams.needLFP = 0;
+    logString = strcat(logString,'ephysParams.needLFP\n');
+  end
+  if ~isfield(ephysParams,'needSpikes') || ~ismember(ephysParams.needSpikes,[0 1])
+    ephysParams.needSpikes = 0;
+    logString = strcat(logString,'ephysParams.needSpikes\n');
+  end
+  if ~isfield(ephysParams,'spikeChannels') || ~isnumeric(ephysParams.spikeChannels)
+    ephysParams.spikeChannels = [];
+    logString = strcat(logString,'ephysParams.spikeChannels\n');
+  end
+  if ~isfield(ephysParams,'lfpChannels') || ~isnumeric(ephysParams.lfpChannels)
+    ephysParams.lfpChannels = [];
+    logString = strcat(logString,'ephysParams.lfpChannels\n');
+  end
+  if ephysParams.needLFP && ephysParams.needSpikes
+    assert(length(ephysParams.spikeChannels) == length(ephysParams.lfpChannels),...
+      'Invalid analysis parameter file: spikeChannels and lfpChannels must be the same length if analyzing both');
+    assert(all(ephysParams.spikeChannels == ephysParams.lfpChannels),...
+      'Invalid analysis parameter file: spikeChannels and lfpChannels must be in the same order, if analyzing both');
+  end
+  % channelNames
+  if (ephysParams.needLFP || ephysParams.needSpikes)
+    numChannels = max(ephysParams.needLFP*length(ephysParams.lfpChannels),ephysParams.needSpikes*length(ephysParams.spikeChannels));
+    if isfield(ephysParams,'channelNames')
+      assert(length(channelNames) == numChannels,'Invalid analysis parameter file: channelNames length must match length of channels to analyze, or be zero.')
+    else
+      ephysParams.channelNames = cell(numChannels,1);
+      for channel_i = 1:numChannels
+        ephysParams.channelNames{channel_i} = sprintf('ch%d',channel_i);  
+      end
+      logString = strcat(logString,'ephysParams.channelNames\n');
+    end
+  end
+  % lfpChannelScaleBy
+  if ~isfield(ephysParams,'lfpChannelScaleBy') || ~isnumeric(ephysParams.lfpChannelScaleBy)
+    ephysParams.lfpChannelScaleBy = ones(size(ephysParams.lfpChannels));
+    logString = strcat(logString,'ephysParams.lfpChannelScaleBy (set to one)\n');
+  end
+  if length(ephysParams.lfpChannelScaleBy) == 1 && length(ephysParams.lfpChannels) > 1
+    ephysParams.lfpChannelScaleBy = ephysParams.lfpChannelScaleBy*ones(size(ephysParams.lfpChannels));
+    logString = strcat(logString,'ephysParams.lfpChannelScaleBy (applied single given value to all channels)\n');
+  end
+  assert(isfield(ephysParams,'cPtCal') && isnumeric(ephysParams.),'Invalid analysis parameter file: must specify conversion from spike time units to decimated LFP indices');
+  if ~isfield(ephysParams,'decimateFactorPass1') || ~isnumeric(ephysParams.decimateFactorPass1)
+    ephysParams.decimateFactorPass1 = 6;
+    logString = strcat(logString,'ephysParams.decimateFactorPass1\n');
+  end
+  if ~isfield(ephysParams,'decimateFactorPass2') || ~isnumeric(ephysParams.decimateFactorPass2)
+    ephysParams.decimateFactorPass2 = 5;
+    logString = strcat(logString,'ephysParams.decimateFactorPass2\n');
+  end
+  if ~isfield(ephysParams,'samPerMS') || ~isnumeric(ephysParams.samPerMS)
+    ephysParams.samPerMS = 1;
+    logString = strcat(logString,'ephysParams.samPerMS\n'); 
+  else
+    if ephysParams.samPerMS ~= 1
+      disp('Warning: lfp samples per ms ~= 1. In current implementation, this will lead to axes in samples incorrectly labeled as in ms');
+    end
+  end
+  if ~isfield(ephysParams,'unitsToUnsort') || ~iscell(ephysParams.unitsToUnsort) || ~length(ephysParams.unitsToUnsort) == length(ephysParams.spikeChannels)
+    ephysParams.unitsToUnsort = cell(length(ephysParams.spikeChannels));
+    logString = strcat(logString,'ephysParams.unitsToUnsort\n'); 
+  end
+  if ~isfield(ephysParams,'unitsToDiscard') || ~iscell(ephysParams.unitsToDiscard) || ~length(ephysParams.unitsToDiscard) == length(ephysParams.spikeChannels)
+    ephysParams.unitsToDiscard = cell(length(ephysParams.spikeChannels));
+    logString = strcat(logString,'ephysParams.unitsToDiscard\n'); 
+  end
+  if ~isfield(ephysParams,'spikeWaveformPca') || ~ismember(ephysParams.spikeWaveformPca,[0 1])
+    ephysParams.spikeWaveformPca = 0;
+    logString = strcat(logString,'ephysParams.spikeWaveformPca\n');
+  end
+  if ~isfield(ephysParams,'plotSpikeWaveforms') || ~ismember(ephysParams.plotSpikeWaveforms,[0 1])
+    ephysParams.needSpikes = 0;
+    logString = strcat(logString,'ephysParams.plotSpikeWaveforms\n');
+  end
+  if ~isfield(ephysParams,'shiftSpikeWaveforms') || ~ismember(ephysParams.shiftSpikeWaveforms,[0 1])
+    ephysParams.shiftSpikeWaveforms = 0;
+    logString = strcat(logString,'ephysParams.shiftSpikeWaveforms\n');
+  end
+  if ~isfield(ephysParams,'filter') %todo: add check for digitalFilter object type?
+    ephysParams.filter = '';
+    logString = strcat(logString,'ephysParams.filter\n');
+  end
+  if ~isfield(ephysParams,'plotFilterResult') || ~ismember(ephysParams.plotFilterResult,[0 1])
+    ephysParams.shiftSpikeWaveforms = 0;
+    logString = strcat(logString,'ephysParams.plotFilterResult\n');
+  end
+end
+
+%%% AnalogInParams %%%
 analogInParams.needAnalogIn = 0;
 analogInParams.analogInChannels = [138,139,140]; 
 analogInParams.channelNames = {'eyeX','eyeY','eyeD'};
@@ -192,48 +285,7 @@ calcCoherenceRFcc = 0;   %#ok
 calcCoherenceRFptpt = 0; %#ok
 calcGrangerRF = 0;       %#ok 
 
-plotSwitch.imagePsth = 1;
-plotSwitch.categoryPsth = 1;
-plotSwitch.prefImRaster = 0;
-plotSwitch.prefImRasterEvokedOverlay = 0;
-plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-plotSwitch.imageTuningSorted = 0;
-plotSwitch.stimPrefBarPlot = 1;
-plotSwitch.stimPrefBarPlotEarly = 0;
-plotSwitch.stimPrefBarPlotLate = 0;
-plotSwitch.tuningCurves = 0;
-plotSwitch.tuningCurvesEarly = 0;
-plotSwitch.tuningCurvesLate = 0;
-plotSwitch.RF = 1;
-plotSwitch.rfEarly = 0;
-plotSwitch.rfLate = 0;
-plotSwitch.latencyRF = 0;
-plotSwitch.evokedPowerRF = 0;
-plotSwitch.evokedPsthMuaMultiCh = 0;
-plotSwitch.evokedByCategory = 1;
-plotSwitch.analogInByItem = 0;
-plotSwitch.analogInDerivativesByItem = 0;
-plotSwitch.colorPsthEvoked = 0;
-plotSwitch.linePsthEvoked = 1;
-plotSwitch.runSummary = 0;
-plotSwitch.runSummaryImMeanSub = 0;
-plotSwitch.runSummaryImMeanSubDiv = 0;
-plotSwitch.lfpPowerMuaScatter = 0; 
-plotSwitch.lfpPeakToPeakMuaScatter = 0;
-plotSwitch.lfpLatencyMuaLatency = 0;
-plotSwitch.lfpPowerAcrossChannels = 0;
-plotSwitch.lfpPeakToPeakAcrossChannels = 0;
-plotSwitch.lfpLatencyShiftAcrossChannels = 0;
-plotSwitch.singleTrialLfpByCategory = 1;
-plotSwitch.lfpSpectraByCategory = 0;
-plotSwitch.spikeSpectraByCategory = 0;
-plotSwitch.SpikeSpectraTfByImage = 0;
-plotSwitch.lfpSpectraTfByImage = 0;
-plotSwitch.couplingPhasesUnwrapped = 0;
-plotSwitch.couplingPhasesAsOffsets = 0;
-plotSwitch.couplingPhasesPolar = 0;
-plotSwitch.tfSpectraByCategory = 0;
-plotSwitch.tfErrs = 0;           %#ok
+
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 analysisGroups.selectivityIndex.groups = {{'face';'nonface'},{'face';'object'},{'face';'body'}};
@@ -337,5 +389,6 @@ if ~exist(outDir,'dir')
   mkdir(outDir);
 end
 save(analysisParamsFilename);
+
 end
 

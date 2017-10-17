@@ -189,7 +189,7 @@ for calc_i = 1:length(calcSwitches)
   end
 end
 
-if plotSwitch.imagePsth
+if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
   for channel_i = 1:length(channelNames)
     for unit_i = 1:length(channelUnitNames{channel_i})
       if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
@@ -206,7 +206,7 @@ if plotSwitch.imagePsth
   end
 end
 
-if plotSwitch.categoryPsth
+if isfield(plotSwitch,'categoryPsth') && plotSwitch.categoryPsth
   for channel_i = 1:length(channelNames)
     for unit_i = 1:length(channelUnitNames{channel_i})
       if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
@@ -298,7 +298,7 @@ if ~taskData.RFmap
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{end-i},imageSortedRates(end-i), imFrErrSorted(end-i));
       end
       % preferred images raster plot
-      if plotSwitch.prefImRaster
+      if isfield(plotSwitch,'prefImRaster') && plotSwitch.prefImRaster
         fh = figure();
         raster(spikesByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
         title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
@@ -308,7 +308,7 @@ if ~taskData.RFmap
         end
       end
       % preferred images raster-evoked overlay
-      if plotSwitch.prefImRasterEvokedOverlay
+      if isfield(plotSwitch,'prefImRasterEvokedOverlay') && plotSwitch.prefImRasterEvokedOverlay
         fh = figure();
         rasterEvoked(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
         title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
@@ -318,7 +318,7 @@ if ~taskData.RFmap
         end
       end
       % preferred images raster-evoked overlay, with other channels
-      if plotSwitch.prefImMultiChRasterEvokedOverlay
+      if isfield(plotSwitch,'prefImMultiChRasterEvokedOverlay') && plotSwitch.prefImMultiChRasterEvokedOverlay
         fh = figure();
         rasterEvokedMultiCh(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
         title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
@@ -328,7 +328,7 @@ if ~taskData.RFmap
         end
       end
       % image preference barplot
-      if plotSwitch.imageTuningSorted
+      if isfield(plotSwitch,'imageTuningSorted') && plotSwitch.imageTuningSorted
         for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
           fh = figure();
           groupName = analysisGroups.stimulusLabelGroups.names{group_i};
@@ -433,7 +433,8 @@ if ~taskData.RFmap
   end
   
   % category preference bar plot
-  calcSwitches = [plotSwitch.stimPrefBarPlot, plotSwitch.stimPrefBarPlotEarly, plotSwitch.stimPrefBarPlotLate];
+  calcSwitches = [isfield(plotSwitch,'stimPrefBarPlot') && plotSwitch.stimPrefBarPlot, isfield(plotSwitch,'stimPrefBarPlotEarly') && plotSwitch.stimPrefBarPlotEarly,...
+    isfield(plotSwitch,'stimPrefBarPlotLate') && plotSwitch.stimPrefBarPlotLate];
   for calc_i = 1:length(calcSwitches)
     if ~calcSwitches(calc_i)
       continue
@@ -501,7 +502,8 @@ if ~taskData.RFmap
   end
 
   % tuning curves
-  calcSwitches = [plotSwitch.tuningCurves, plotSwitch.tuningCurvesEarly, plotSwitch.tuningCurvesLate];  
+  calcSwitches = [isfield(plotSwitch,'tuningCurves') && plotSwitch.tuningCurves, isfield(plotSwitch,'tuningCurvesEarly') && plotSwitch.tuningCurvesEarly, ...
+    isfield(plotSwitch,'tuningCurvesLate') && plotSwitch.tuningCurvesLate];  
   for calc_i = 1:length(calcSwitches)
     if ~calcSwitches(calc_i)
       continue
@@ -571,7 +573,8 @@ if taskData.RFmap
   % these are the x and y values at which to interpolate RF values
   xi = linspace(min(rfGrid(:,1)),max(rfGrid(:,1)),200);
   yi = linspace(min(rfGrid(:,2)),max(rfGrid(:,2)),200);
-  calcSwitches = [plotSwitch.RF, plotSwitch.rfEarly, plotSwitch.rfLate];  
+  calcSwitches = [isfield(plotSwitch,'RF') && plotSwitch.RF, isfield(plotSwitch,'rfEarly') && plotSwitch.rfEarly,...
+    isfield(plotSwitch,'rfLate') && plotSwitch.rfLate];  
   for calc_i = 1:length(calcSwitches)
     if ~calcSwitches(calc_i)
       continue
@@ -618,11 +621,11 @@ if taskData.RFmap
           meanRF = meanRF + imageRF;
           display_map(rfGrid(:,1),rfGrid(:,2),imageRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
             [outDir sprintf('RF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
-          if plotSwitch.latencyRF
+          if isfield(plotSwitch,'latencyRF') && plotSwitch.latencyRF
             display_map(rfGrid(:,1),rfGrid(:,2),spikeLatencyRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Latency RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
               [outDir sprintf('LatencyRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
           end
-          if plotSwitch.evokedPowerRF
+          if isfield(plotSwitch,'evokedPowerRF') && plotSwitch.evokedPowerRF
             display_map(rfGrid(:,1),rfGrid(:,2),evokedPowerRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Evoked Power RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
               [outDir sprintf('EvokedPowerRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
           end
@@ -718,7 +721,7 @@ if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF) && ~calcSwitch.spikeTi
 end
 
 %%%% evoked potential plots
-if plotSwitch.evokedPsthMuaMultiCh
+if isfield(plotSwitch,'evokedPsthMuaMultiCh') && plotSwitch.evokedPsthMuaMultiCh
   for group_i = 1:length(analysisGroups.evokedPsthOnePane.groups)
     group = analysisGroups.evokedPsthOnePane.groups{group_i};
     groupName = analysisGroups.evokedPsthOnePane.names{group_i};
@@ -785,7 +788,7 @@ end
 
 %evoked potentials
 for channel_i = 1:length(lfpChannels)
-  if plotSwitch.evokedByCategory
+  if isfield(plotSwitch,'evokedByCategory') && plotSwitch.evokedByCategory
     for group_i = 1:length(analysisGroups.evokedPotentials.groups)
       group = analysisGroups.evokedPotentials.groups{group_i};
       groupName = analysisGroups.evokedPotentials.names{group_i};
@@ -830,7 +833,7 @@ for channel_i = 1:length(lfpChannels)
 end
 
 %evoked analog in potentials
-if plotSwitch.analogInByItem
+if isfield(plotSwitch,'analogInByItem') && plotSwitch.analogInByItem
   for group_i = 1:length(analysisGroups.analogInPotentials.groups)
     group = analysisGroups.analogInPotentials.groups{group_i};
     groupChannels = analysisGroups.analogInPotentials.channels{group_i};
@@ -878,7 +881,7 @@ if plotSwitch.analogInByItem
 end
 
 %evoked analog in derivatives
-if plotSwitch.analogInDerivativesByItem
+if isfield(plotSwitch,'analogInDerivativesByItem') && plotSwitch.analogInDerivativesByItem
   for group_i = 1:length(analysisGroups.analogInPotentials.groups)
     group = analysisGroups.analogInDerivatives.groups{group_i};
     groupChannels = analysisGroups.analogInDerivatives.channels{group_i};
@@ -928,7 +931,7 @@ end
 
 % lfp - (color) psth subplot
 for channel_i = 1:length(lfpChannels)  
-  if plotSwitch.colorPsthEvoked
+  if isfield(plotSwitch,'colorPsthEvoked') && plotSwitch.colorPsthEvoked
     for group_i = 1:length(analysisGroups.colorPsthEvoked.groups)
       group = analysisGroups.colorPsthEvoked.groups{group_i};
       groupName = analysisGroups.colorPsthEvoked.names{group_i};
@@ -1005,7 +1008,7 @@ for channel_i = 1:length(lfpChannels)
   else
     numSubplots = length(channelUnitNames{channel_i}) + 1;
   end
-  if plotSwitch.linePsthEvoked
+  if isfield(plotSwitch,'linePsthEvoked') && plotSwitch.linePsthEvoked
     for group_i = 1:length(analysisGroups.colorPsthEvoked.groups)
       group = analysisGroups.colorPsthEvoked.groups{group_i};
       groupName = analysisGroups.colorPsthEvoked.names{group_i};
@@ -1090,7 +1093,7 @@ end
 
 
 
-if plotSwitch.runSummary
+if isfield(plotSwitch,'runSummary') && plotSwitch.runSummary
   for channel_i = 1:length(channelNames)
     fh = figure();
     numSubplots = length(imSpikeCounts{channel_i})-1+4;
@@ -1179,7 +1182,7 @@ if plotSwitch.runSummary
   end
 end
   
-if plotSwitch.runSummaryImMeanSub
+if isfield(plotSwitch,'runSummaryImMeanSub') && plotSwitch.runSummaryImMeanSub
   for channel_i = 1:length(channelNames)
     fh = figure();
     numSubplots = length(imSpikeCounts{channel_i})-1+4;
@@ -1268,7 +1271,7 @@ if plotSwitch.runSummaryImMeanSub
   end
 end
   
-if plotSwitch.runSummaryImMeanSubDiv
+if isfield(plotSwitch,'runSummaryImMeanSubDiv') && plotSwitch.runSummaryImMeanSubDiv
   for channel_i = 1:length(channelNames)
     fh = figure();
     numSubplots = length(imSpikeCounts{channel_i})-1+4;
@@ -1358,7 +1361,7 @@ if plotSwitch.runSummaryImMeanSubDiv
 end
 
 %%% scatter plots %%%
-if plotSwitch.lfpPowerMuaScatter
+if isfield(plotSwitch,'lfpPowerMuaScatter') && plotSwitch.lfpPowerMuaScatter
   for epoch_i = 1:size(frEpochs,1)
     for channel_i = 1:length(channelNames)
       for unit_i = 1:length(channelUnitNames{channel_i})
@@ -1400,7 +1403,7 @@ if plotSwitch.lfpPowerMuaScatter
   end
 end
   
-if plotSwitch.lfpPeakToPeakMuaScatter
+if isfield(plotSwitch,'lfpPeakToPeakMuaScatter') && plotSwitch.lfpPeakToPeakMuaScatter
   for epoch_i = 1:size(frEpochs,1)
     for channel_i = 1:length(channelNames)
       for unit_i = 1:length(channelUnitNames{channel_i})
@@ -1440,12 +1443,12 @@ if plotSwitch.lfpPeakToPeakMuaScatter
   end
 end 
   
-if plotSwitch.lfpLatencyMuaLatency
+if isfield(plotSwitch,'lfpLatencyMuaLatency') && plotSwitch.lfpLatencyMuaLatency
   for channel_i = 1:length(channelNames)
   end
 end
   
-if plotSwitch.lfpPowerAcrossChannels && channel_i < length(lfpChannels)
+if isfield(plotSwitch,'lfpPowerAcrossChannels') && plotSwitch.lfpPowerAcrossChannels && channel_i < length(lfpChannels)
   for epoch_i = 1:size(frEpochs,1)
     for channel_i = 1:length(channelNames)
       for channel2_i = channel_i+1:length(lfpChannels)
@@ -1490,7 +1493,7 @@ if plotSwitch.lfpPowerAcrossChannels && channel_i < length(lfpChannels)
 end
   
 % lfp p2p amplitude vs lfp p2p amplitude, across channels
-if plotSwitch.lfpPeakToPeakAcrossChannels && channel_i < length(lfpChannels)
+if isfield(plotSwitch,'lfpPeakToPeakAcrossChannels') && plotSwitch.lfpPeakToPeakAcrossChannels && channel_i < length(lfpChannels)
   for epoch_i = 1:size(frEpochs,1)
     for channel_i = 1:length(channelNames)
       for channel2_i = channel_i+1:length(lfpChannels)
@@ -1531,7 +1534,7 @@ if plotSwitch.lfpPeakToPeakAcrossChannels && channel_i < length(lfpChannels)
 end
   
 % lfp latency vs lfp latency, across channels, defined as max dot product with mean
-if plotSwitch.lfpLatencyShiftAcrossChannels && channel_i < length(lfpChannels)
+if isfield(plotSwitch,'lfpLatencyShiftAcrossChannels') && plotSwitch.lfpLatencyShiftAcrossChannels && channel_i < length(lfpChannels)
   for channel_i = 1:length(channelNames)
     for channel2_i = channel_i+1:length(lfpChannels)
       for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
@@ -1623,7 +1626,7 @@ for calc_i = 1:length(calcSwitches)
     end
     % single trial evoked lfps; better as multi-channel subplot?
     % todo: programatize on category
-    if plotSwitch.singleTrialLfpByCategory
+    if isfield(plotSwitch,'singleTrialLfpByCategory') && plotSwitch.singleTrialLfpByCategory
       for group_i = 1:length(analysisGroups.lfpSingleTrialsByCategory.groups)
         group = analysisGroups.lfpSingleTrialsByCategory.groups{group_i};
         groupName = analysisGroups.lfpSingleTrialsByCategory.names{group_i};
@@ -1661,7 +1664,7 @@ for calc_i = 1:length(calcSwitches)
     end
       
     
-    if plotSwitch.lfpSpectraByCategory
+    if isfield(plotSwitch,'lfpSpectraByCategory') && plotSwitch.lfpSpectraByCategory
       for group_i = 1:length(analysisGroups.spectraByCategory.groups)
         group = analysisGroups.spectraByCategory.groups{group_i};
         groupName = analysisGroups.spectraByCategory.names{group_i};
@@ -1878,7 +1881,7 @@ for calc_i = 1:length(calcSwitches)
     end
      
 
-    if plotSwitch.spikeSpectraByCategory
+    if isfield(plotSwitch,'spikeSpectraByCategory') && plotSwitch.spikeSpectraByCategory
       for group_i = 1:length(analysisGroups.spectraByCategory.groups)
         group = analysisGroups.spectraByCategory.groups{group_i};
         groupName = analysisGroups.spectraByCategory.names{group_i};
@@ -2137,7 +2140,7 @@ for calc_i = 1:length(tfCalcSwitches)
       lfpByImageEvokedTmp = lfpByImage;
       lfpByImage = lfpByImageInduced;
     end
-    if plotSwitch.spikeSpectraTfByImage
+    if isfield(plotSwitch,'spikeSpectraTfByImage') && plotSwitch.spikeSpectraTfByImage
       for channel_i = 1:length(channelNames)
         for image_i = 1:length(pictureLabels)
           % todo: put in dB conversion and specgramrowave option
@@ -2210,7 +2213,7 @@ for calc_i = 1:length(tfCalcSwitches)
         end
       end
     end
-    if plotSwitch.lfpSpectraTfByImage
+    if isfield(plotSwitch,'lfpSpectraTfByImage') && plotSwitch.lfpSpectraTfByImage
       for channel_i = 1:length(channelNames)
         %todo: add Serr plot, significance plot, effect size plot, or similar
         %todo: add support for image calc groups, incl 'pref' wildcard
@@ -2266,7 +2269,7 @@ for calc_i = 1:length(tfCalcSwitches)
       lfpByCategory = lfpByCategoryInduced;
     end
     
-    if plotSwitch.tfSpectraByCategory %plots spectra individually by category/channel, and as nChannels x nCategories in group subplot
+    if isfield(plotSwitch,'tfSpectraByCategory') && plotSwitch.tfSpectraByCategory %plots spectra individually by category/channel, and as nChannels x nCategories in group subplot
       for group_i = 1:length(analysisGroups.tfSpectraByCategory.groups)
         group = analysisGroups.tfSpectraByCategory.groups{group_i};
         groupName = analysisGroups.tfSpectraByCategory.names{group_i};
@@ -2701,7 +2704,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 close(fh);
               end
               
-              if plotSwitch.couplingPhasesUnwrapped
+              if isfield(plotSwitch,'couplingPhasesUnwrapped') && plotSwitch.couplingPhasesUnwrapped
                 %replot the phases with the implicit mod pi operation undone (so easy to see slope across frequencies
                 fh = figure();
                 lineProps.width = 3;
@@ -2723,7 +2726,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
               end
               
-              if plotSwitch.couplingPhasesAsOffsets
+              if isfield(plotSwitch,'couplingPhasesAsOffsets') && plotSwitch.couplingPhasesAsOffsets
                 %replot the unwrapped phases as latency differences
                 fh = figure();
                 lineProps.width = 3;
@@ -2745,7 +2748,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
               end
               
-             if plotSwitch.couplingPhasesPolar
+             if isfield(plotSwitch,'couplingPhasesPolar') && plotSwitch.couplingPhasesPolar
                 %replot the unwrapped phases as latency differences
                 fh = figure();
                 [unwrappedPhases,~] = unwrapPhases(phases);
@@ -2845,7 +2848,7 @@ for calc_i = 1:length(tfCalcSwitches)
                   close(fh);
                 end
                 
-                if plotSwitch.couplingPhasesUnwrapped
+                if isfield(plotSwitch,'couplingPhasesUnwrapped') && plotSwitch.couplingPhasesUnwrapped
                   %replot the phases with the implicit mod pi operation undone (so easy to see slope across frequencies
                   fh = figure();
                   lineProps.width = 3;
@@ -2865,7 +2868,7 @@ for calc_i = 1:length(tfCalcSwitches)
                   end
                 end
                 
-                if plotSwitch.couplingPhasesAsOffsets
+                if isfield(plotSwitch,'couplingPhasesAsOffsets') && plotSwitch.couplingPhasesAsOffsets
                   %replot the unwrapped phases as latency differences
                   fh = figure();
                   lineProps.width = 3;
@@ -2990,7 +2993,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
 
 
-                if plotSwitch.tfErrs
+                if isfield(plotSwitch,'tfErrs') && plotSwitch.tfErrs
                   fh = figure(); 
                   subplot(2,3,1);
                   imagesc(t,f,C'); axis xy
@@ -3360,7 +3363,7 @@ for calc_i = 1:length(tfCalcSwitches)
               end
 
 
-              if plotSwitch.tfErrs
+              if isfield(plotSwitch,'tfErrs') && plotSwitch.tfErrs
                 fh = figure(); 
                 subplot(2,3,1);
                 imagesc(t,f,C'); axis xy
@@ -3796,7 +3799,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
 
 
-                if plotSwitch.tfErrs
+                if isfield(plotSwitch,'tfErrs') && plotSwitch.tfErrs
                   fh = figure(); 
                   subplot(2,3,1);
                   imagesc(t,f,C'); axis xy

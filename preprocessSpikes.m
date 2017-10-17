@@ -15,6 +15,11 @@ assert(logical(exist(spikeFilename,'file')),'The spike-event file you requested 
 NEV = openNEV(spikeFilename,'read','nosave','noparse'); %note: add param 'report' for verbose
 Output.VERBOSE('parsing serial IO packets');
 taskTriggers = NEV.Data.SerialDigitalIO;
+if ~ephysParams.needSpikes
+  spikesByChannel = {};
+  channelUnitNames = {};
+  return
+end
 
 %%%%% remove spike data from non-spike channels (e.g. reference electrodes), unsort low quality units, and remove noise units
 spikesByChannel = repmat(struct('times',[],'units',[],'waveforms',[]),length(params.spikeChannels),1);
