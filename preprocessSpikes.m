@@ -15,7 +15,7 @@ assert(logical(exist(spikeFilename,'file')),'The spike-event file you requested 
 NEV = openNEV(spikeFilename,'read','nosave','noparse'); %note: add param 'report' for verbose
 Output.VERBOSE('parsing serial IO packets');
 taskTriggers = NEV.Data.SerialDigitalIO;
-if ~ephysParams.needSpikes
+if ~params.needSpikes
   spikesByChannel = {};
   channelUnitNames = {};
   return
