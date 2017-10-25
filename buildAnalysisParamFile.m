@@ -5,8 +5,8 @@ function [ analysisParamsFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '009';
-dateSubject = '171021ALAN'; 
+runNum = '010';
+dateSubject = '171024ALAN'; 
 machine = 'rig';
 
 switch machine
@@ -32,9 +32,8 @@ switch machine
     stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
 end
 analysisLabel = 'Basic';
-analysisParamsFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
+analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
-%categoryListSlim = {'humanFace','monkeyFace','place','fruit','humanBody','monkeyBody','techno'}; %minimal cat list for clean plots
 saveFig = 1;           %#ok
 closeFig = 0;          %#ok
 exportFig = 0;         %#ok
@@ -85,7 +84,7 @@ analogInParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to analogIn 
 butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 120, 'StopbandFrequency', 480, 'PassbandRipple', 1,...
   'StopbandAttenuation', 60, 'SampleRate', 1000, 'MatchExactly', 'passband');  %this returns a 3rd order iir filter
 analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
-analogInParams.plotFilteredSignal = 1; %#ok
+analogInParams.plotFilterResult = 1; %#ok
 
 photodiodeParams.needPhotodiode = 0;
 photodiodeParams.channels = [1;2]; %#ok
@@ -183,14 +182,6 @@ end
 frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {60, 260}; ...
                 {260, @(stimDur) stimDur+60}}; %#ok
-
-
-% Boolean variables to specify which computations to perform; TODO: read
-% from config file, eventually with conditional on log file info
-calcCoherenceRFcpt = 0;  %#ok
-calcCoherenceRFcc = 0;   %#ok
-calcCoherenceRFptpt = 0; %#ok
-calcGrangerRF = 0;       %#ok 
 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 1;
@@ -293,10 +284,7 @@ analysisGroups.coherenceByCategory.groups = {{'face';'nonface'}}; %{'face';'obje
 analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; %{'r';'g';'b'};{'b';'c';'y';'g';'m';'r';'k';'k'}
 analysisGroups.coherenceByCategory.names = {'faceVnon'}; %'fob';'slimCats'
 %
-analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'};{'object'};{'body'}};
-
-analysisGroups.byImage = {};      %#ok
-analysisGroupColors.byImage = {}; %#ok
+analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'};{'object'};{'body'}}; %#ok
 %%%%%
 
 calcSwitch.categoryPSTH = 1;
@@ -323,11 +311,12 @@ end
 
 %%% set paths and directories, EDIT RARELY %%%
 analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
-lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        %#ok
+lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        
 spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
 taskFilename = sprintf('%s/%s/%s0%s.log',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
+photodiodeFilename = lfpFilename;                                                           %#ok
 outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
-analysisParamsFilename = strcat(outDir,analysisParamsFilenameStem);
+analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
 preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
 %
 load('cocode2.mat');
@@ -336,6 +325,6 @@ psthColormap = map;  %#ok
 if ~exist(outDir,'dir')
   mkdir(outDir);
 end
-save(analysisParamsFilename);
+save(analysisParamFilename);
 end
 

@@ -68,7 +68,7 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   analogInData = preprocessAnalogIn(analogInFilename, analogInParams); 
   [spikesByChannel, taskTriggers, channelUnitNames] = preprocessSpikes(spikeFilename, ephysParams);
   lfpData = preprocessLFP(lfpFilename, ephysParams);
-  analogInData = preprocessPhotodiodeStrobe(analogInData, photodiodeParams);
+  photodiodeFrameTimes = preprocessPhotodiodeStrobe(photodiodeFilename, photodiodeParams);
   [ taskData, stimTiming ] = preprocessLogFile(taskFilename, taskTriggers, stimSyncParams); % load visual stimulus data and transform its timestamps to ephys clock reference
   analogInData = preprocessEyeSignals(analogInData,taskData,eyeCalParams);
   analogInData = preprocessAccelSignals(analogInData, accelParams); 

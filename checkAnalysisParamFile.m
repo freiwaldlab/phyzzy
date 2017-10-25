@@ -1,8 +1,10 @@
-function [ output_args ] = checkAnalysisParamFile( analysisParamFilename )
-%UNTITLED3 Summary of this function goes here
-%   Detailed explanation goes here
+function [ ] = checkAnalysisParamFile( analysisParamFilename )
+%checkAnalysisParamFile defines, checks, and applies the parameter file specification
+%   - For variables with a default value, applies the default if no or invalid value given
+%   - For variables with no default, throws informative error if no or invalid value given
+% 
 load(analysisParamFilename);
-logString = 'Assigned default values to: \n';
+logString = 'Function checkAnalysisParamFile assigned default values to: \n';
 
 % runNum
 assert(logical(exist('runNum','var')),'Invalid analysis parameter file: must specify a run number as runNum.');
@@ -12,25 +14,27 @@ assert(ischar(runNum),'Invalid analysis parameter file: runNum must be a string'
 assert(logical(exist('dateSubject','var')),'Invalid analysis parameter file: must specify a date and subject as dateSubject.');
 assert(ischar(dateSubject),'Invalid analysis parameter file: dateSubject must be a string'); 
 
-% ephysVolume
-assert(logical(exist('ephysVolume','var')),'Invalid analysis parameter file: must specify the ephys data folder as ephysVolume.');
-assert(ischar(ephysVolume),'Invalid analysis parameter file: ephysVolume must be a string'); 
+% lfpFilename
+assert(logical(exist('lfpFilename','var')),'Invalid analysis parameter file: must specify the lfp data file as lfpFilename.');
+assert(ischar(lfpFilename),'Invalid analysis parameter file: lfpFilename must be a string'); 
 
-% stimulusLogVolume
-assert(logical(exist('stimulusLogVolume','var')),'Invalid analysis parameter file: must specify the stimulus log folder as stimulusLogVolume.');
-assert(ischar(stimulusLogVolume),'Invalid analysis parameter file: stimulusLogVolume must be a string');
+% spikeFilename
+assert(logical(exist('spikeFilename','var')),'Invalid analysis parameter file: must specify the spike data file as spikeFilename.');
+assert(ischar(spikeFilename),'Invalid analysis parameter file: spikeFilename must be a string'); 
+
+% taskLogFilename
+assert(logical(exist('taskLogFilename','var')),'Invalid analysis parameter file: must specify the task log file as taskLogFilename.');
+assert(ischar(taskLogFilename),'Invalid analysis parameter file: taskLogFilename must be a string');
 
 % outputVolume
-assert(logical(exist('runNum','var')),'Invalid analysis parameter file: must specify a run number as runNum.');
-assert(ischar(runNum),'Invalid analysis parameter file: runNum must be a string'); 
+assert(logical(exist('outputVolume','var')),'Invalid analysis parameter file: must specify an output volume as outputVolume.');
+assert(ischar(outputVolume),'Invalid analysis parameter file: outputVolume must be a string'); 
 
 % stimParamsFilename
-assert(logical(exist('outputVolume','var')),'Invalid analysis parameter file: must specify an output folder as outputVolume.');
-assert(ischar(outputVolume),'Invalid analysis parameter file: outputVolume must be a string');
+assert(logical(exist('stimParamsFilename','var')),'Invalid analysis parameter file: must specify a stimulus/task log filename as stimParamsFilename.');
+assert(ischar(stimParamsFilename),'Invalid analysis parameter file: stimParamsFilename must be a string');
 
-% stimParamsFilename
-assert(logical(exist('outputVolume','var')),'Invalid analysis parameter file: must specify an output folder as outputVolume.');
-assert(ischar(outputVolume),'Invalid analysis parameter file: outputVolume must be a string');
+%todo: add check for preprocessed data filename? only relevant if saving...
 
 %%% SAVE SWITCHES %%%
 % saveFig
@@ -101,7 +105,7 @@ else
   if (ephysParams.needLFP || ephysParams.needSpikes)
     numChannels = max(ephysParams.needLFP*length(ephysParams.lfpChannels),ephysParams.needSpikes*length(ephysParams.spikeChannels));
     if isfield(ephysParams,'channelNames')
-      assert(length(channelNames) == numChannels,'Invalid analysis parameter file: channelNames length must match length of channels to analyze, or be zero.')
+      assert(length(ephysParams.channelNames) == numChannels,'Invalid analysis parameter file: channelNames length must match length of channels to analyze, or be zero.')
     else
       ephysParams.channelNames = cell(numChannels,1);
       for channel_i = 1:numChannels
@@ -161,234 +165,418 @@ else
     logString = strcat(logString,'ephysParams.filter\n');
   end
   if ~isfield(ephysParams,'plotFilterResult') || ~ismember(ephysParams.plotFilterResult,[0 1])
-    ephysParams.shiftSpikeWaveforms = 0;
+    ephysParams.plotFilterResult = 0;
     logString = strcat(logString,'ephysParams.plotFilterResult\n');
   end
 end
 
 %%% AnalogInParams %%%
-analogInParams.needAnalogIn = 0;
-analogInParams.analogInChannels = [138,139,140]; 
-analogInParams.channelNames = {'eyeX','eyeY','eyeD'};
-analogInParams.analogInChannelScaleBy = [5/32764 5/32764 5/32764]; %converts raw values to volts
-analogInParams.decimateFactorPass1 = 1; 
-analogInParams.decimateFactorPass2 = 1;
-analogInParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to analogIn (should be raw rate/productOfDecimateFactors)
-% see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
-butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 120, 'StopbandFrequency', 480, 'PassbandRipple', 1,...
-  'StopbandAttenuation', 60, 'SampleRate', 1000, 'MatchExactly', 'passband');  %this returns a 3rd order iir filter
-analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
-analogInParams.plotFilteredSignal = 1; %#ok
-
-photodiodeParams.needPhotodiode = 0;
-photodiodeParams.channels = [1;2]; %#ok
-
-% parameters preprocessLogFile, see function for details
-stimSyncParams.usePhotodiode = 0;        %#ok
-%
-eyeCalParams.needEyeCal = 0;
-eyeCalParams.method = 'zeroEachFixation';
-eyeCalParams.makePlots = 0;
-eyeCalParams.eyeXChannelInd = 1;
-eyeCalParams.eyeYChannelInd = 2;
-eyeCalParams.eyeDChannelInd = 3;
-eyeCalParams.gainX = 112;
-eyeCalParams.gainY = 107;
-eyeCalParams.flipX = 1;
-eyeCalParams.flipY = 1; 
-eyeCalParams.offsetX = -6.4;
-eyeCalParams.offsetY = -5.6; 
-eyeCalParams.minFixZeroTime = 1000; %#ok
-
-accelParams.needAccelCal = 0;
-accelParams.accelChannels = {[4;5;6]};
-accelParams.channelGains = {[1/.666 1/.666 1/.666]};
-accelParams.calMethods = {'hardcode'}; %other option is 'calFile'; calibration method
-accelParams.calFiles = {''}; %if method is 'calFile', an ns2 filename
-
-% parameters for excludeStimuli, see function for details
-excludeStimParams.fixPre = 100; %ms
-excludeStimParams.fixPost = 100; %ms
-excludeStimParams.flashPre = 0;  %ms
-excludeStimParams.flashPost = 0; %ms
-excludeStimParams.juicePre = 0; % optional, ms
-excludeStimParams.juicePost = 0; % optional, ms
-excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
-% additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
-
-psthParams.psthPre = 100; % if e.g. +200, then start psth 200ms before trial onset; 
-psthParams.psthImDur = 0;  % only need to set this for variable length stim runs; else, comes from log file
-psthParams.psthPost = 300;
-psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
-psthParams.errorType = 1; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
-psthParams.errorRangeZ = 1; %how many standard errors to show
-psthParams.bootstrapSamples = 100;
-psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
-
-
-% TW=3 with T=.2, then W = 15 Hz (5 tapers)
-% TW=1.5 with T=.1, then W = 15 Hz (2 tapers)
-% TW = 1.5 with T=.2, then W = 7.5 Hz (2 tapers)
-chronuxParams.tapers = [3 5]; %[3 5] is chronux default; 
-chronuxParams.pad = 1;
-chronuxParams.fs = 1;
-chronuxParams.trialave = 1;
-chronuxParams.err = [1 .05];  %note: first entry will be automatically switched to 2 if calcSwitch.useJacknife == 1
-chronuxParams.fpass = [0 .1]; 
-tfParams.movingWin = [200 5]; 
-tfParams.specgramRowAve = 0;
-
-correlParams.maxShift = []; % a number, or empty
-correlParams.matchTimeRanges = 1;
-correlParams.timeDifferenceBound = [0,200];
-correlParams.normalize = 1;
-correlParams.useJacknife = 0;
-correlParams.jacknifeDraws = 100;
-switch machine
-  case 'laptop'
-    correlParams.jacknifeParallelWorkers = 0;    
-  case 'hopper'
-    correlParams.jacknifeParallelWorkers = 0;   
-  case 'turing'
-    correlParams.jacknifeParallelWorkers = 20;    
-end
-spikeCorrelSmoothingWidth = 5; %ms
-filterPoints = -20*spikeCorrelSmoothingWidth:20*spikeCorrelSmoothingWidth;
-smoothingFilter = exp(-1*filterPoints.^2/(2*spikeCorrelSmoothingWidth^2));
-correlParams.smoothingFilter = smoothingFilter/sum(smoothingFilter); %#ok
-%
-lfpAlignParams.samPerMS = 1; % because this is after decimation
-lfpAlignParams.msPreAlign = psthParams.psthPre+tfParams.movingWin(1)/2; 
-lfpAlignParams.msPostAlign = psthParams.psthImDur+psthParams.psthPost+tfParams.movingWin(1)/2;
-%
-spikeAlignParams.preAlign = psthParams.psthPre+3*psthParams.smoothingWidth;
-spikeAlignParams.postAlign = psthParams.psthImDur+psthParams.psthPost+3*psthParams.smoothingWidth;   %#ok
-% for lfps, constrain first and (optional) last [n m] samples to 0 mean
-useDCSUB = 0;
-if useDCSUB
-  %lfpAlignParams.DCSUB_SAM = [lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10; 0, 0 ]; % 0-th order 
-  lfpAlignParams.DCSUB_SAM = [lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10;lfpAlignParams.msPreAlign, lfpAlignParams.msPreAlign+10 ]; % 1st order 
+if ~logical(exist('analogInParams','var')) || ~isstruct(analogInParams)
+  analogInParams.needAnalogIn = 0;
+  logString = strcat(logString,'analogInParams\n');
 else
-  lfpAlignParams.DCSUB_SAM = 0;   %#ok
-end
-% firing rate calculation epochs. Can provide either time (ms from stim onset),
-% or function handle, which will receive the minimum stimulus duration in the run as an input
-frEpochsCell = {{60, @(stimDur) stimDur+60};...
-                {60, 260}; ...
-                {260, @(stimDur) stimDur+60}}; %#ok
-
-
-% Boolean variables to specify which computations to perform; TODO: read
-% from config file, eventually with conditional on log file info
-calcCoherenceRFcpt = 0;  %#ok
-calcCoherenceRFcc = 0;   %#ok
-calcCoherenceRFptpt = 0; %#ok
-calcGrangerRF = 0;       %#ok 
-
-
-
-%%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
-analysisGroups.selectivityIndex.groups = {{'face';'nonface'},{'face';'object'},{'face';'body'}};
-%
-analysisGroups.stimPrefBarPlot.groups = {{{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};{'face';'object';'body'}}};
-analysisGroups.stimPrefBarPlot.colors  = {{{'b';'c';'y';'g';'m';'r';'k'};{'b';'g';'r'}}};
-analysisGroups.stimPrefBarPlot.names = {'fobPlus'};
-%
-analysisGroups.stimulusLabelGroups.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.stimulusLabelGroups.names = {'fobPlus'};
-analysisGroups.stimulusLabelGroups.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
-%
-analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.evokedPotentials.names = {'fobPlus'};
-analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
-%
-analysisGroups.analogInPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.analogInPotentials.channels = {[1; 2]};
-analysisGroups.analogInPotentials.names = {'eyePositions,fobPlus'};
-analysisGroups.analogInPotentials.units = {'degrees visual angle'};
-analysisGroups.analogInPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
-%
-analysisGroups.analogInDerivatives.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.analogInDerivatives.channels = {[1; 2]};
-analysisGroups.analogInDerivatives.names = {'eyeVelocity,fobPlus'};
-analysisGroups.analogInDerivatives.units = {'degrees visual angle/sec'};
-analysisGroups.analogInDerivatives.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
-%
-analysisGroups.colorPsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.colorPsthEvoked.names = {'fobPlus'};
-analysisGroups.colorPsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
-%
-analysisGroups.linePsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.linePsthEvoked.names = {'fobPlus'};
-analysisGroups.linePsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
-%
-analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'}};
-analysisGroups.evokedPsthOnePane.names = {'faceVnon'};
-%
-analysisGroups.tuningCurves.groups = {{'humanFaceL90','humanFaceL45','humanFaceFront','humanFaceR45','humanFaceR90'},...
-  {'monkeyFaceL90','monkeyFaceL45','monkeyFaceFront','monkeyFaceR45','monkeyFaceR90'}}; %can be images or categories
-analysisGroups.tuningCurves.paramValues = {[-90 -45 0 45 90], [-90 -45 0 45 90]};
-analysisGroups.tuningCurves.paramLabels = {'viewing angle (degrees)','viewing angle (degrees)'};
-analysisGroups.tuningCurves.names = {'Human face view','Monkey face view'};
-%
-analysisGroups.spectraByCategory.groups = {{'face';'nonface'}};  %todo: add spectra diff?
-analysisGroups.spectraByCategory.names = {'faceVnon'};
-analysisGroups.spectraByCategory.colors = {{'r';'b'}};
-%
-analysisGroups.tfSpectraByCategory.groups = {{'face'};{'nonface'}};%{'object'};{'body'}      %todo: add tf spectra diff?
-analysisGroups.tfSpectraByCategory.names = {'face','nonface'};%'nonface';'object';'body'
-%
-analysisGroups.lfpSingleTrialsByCategory.groups = {{'face';'nonface'}};
-analysisGroups.lfpSingleTrialsByCategory.names = {'faceVnon'};
-%
-analysisGroups.coherenceByCategory.groups = {{'face';'nonface'}}; %{'face';'object';'body'};{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'hand';'techno'}
-analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; %{'r';'g';'b'};{'b';'c';'y';'g';'m';'r';'k';'k'}
-analysisGroups.coherenceByCategory.names = {'faceVnon'}; %'fob';'slimCats'
-%
-analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'};{'object'};{'body'}};
-
-analysisGroups.byImage = {};      %#ok
-analysisGroupColors.byImage = {}; %#ok
-%%%%%
-
-calcSwitch.categoryPSTH = 1;
-calcSwitch.imagePSTH = 1;
-calcSwitch.faceSelectIndex = 1;
-calcSwitch.faceSelectIndexEarly = 1;
-calcSwitch.faceSelectIndexLate = 1;
-calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 0;
-calcSwitch.inducedSpectra = 0;
-calcSwitch.evokedImageTF = 0;
-calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatTF = 0;
-calcSwitch.inducedCatTF = 0;
-calcSwitch.meanEvokedTF = 0;
-calcSwitch.trialMeanSpectra = 0;
-calcSwitch.coherenceByCategory = 0;
-calcSwitch.spikeTimes = 0;
-calcSwitch.useJacknife = 0;      
-
-if calcSwitch.useJacknife
-  chronuxParams.err(1) = 2; %#ok
+  if ~isfield(analogInParams,'needAnalogIn') || ~ismember(analogInParams.needAnalogIn,[0 1])
+    analogInParams.needAnalogIn = 0;
+    logString = strcat(logString,'analogInParams.needAnalogIn\n');
+  end
+  if ~isfield(analogInParams,'analogInChannels') || ~isnumeric(analogInParams.analogInChannels)
+    analogInParams.analogInChannels = [];
+    logString = strcat(logString,'analogInParams.analogInChannels\n');
+  end
+  assert(isfield(analogInParams,'channelNames') && length(analogInParams.channelNames) == length(analogInParams.analogInChannels),...
+    'Invalid analysis parameter file: analogInParams.channelNames length must match length of analogIn channels to analyze.');
+  if ~isfield(analogInParams,'lfpChannelScaleBy') || ~isnumeric(analogInParams.analogInChannelScaleBy)
+    analogInParams.analogInChannelScaleBy = ones(size(analogInParams.analogInChannels));
+    logString = strcat(logString,'analogInParams.analogInChannelScaleBy (set to one)\n');
+  end
+  if ~isfield(analogInParams,'decimateFactorPass1') || ~isnumeric(analogInParams.decimateFactorPass1)
+    analogInParams.decimateFactorPass1 = 1;
+    logString = strcat(logString,'analogInParams.decimateFactorPass1\n');
+  end
+  if ~isfield(analogInParams,'decimateFactorPass2') || ~isnumeric(analogInParams.decimateFactorPass2)
+    analogInParams.decimateFactorPass2 = 1;
+    logString = strcat(logString,'analogInParams.decimateFactorPass2\n');
+  end
+  if ~isfield(analogInParams,'samPerMS') || ~isnumeric(analogInParams.samPerMS)
+    analogInParams.samPerMS = 1;
+    logString = strcat(logString,'analogInParams.samPerMS\n'); 
+  else
+    if analogInParams.samPerMS ~= 1
+      disp('Warning: analog input samples per ms ~= 1. In current implementation, this will lead to axes in samples incorrectly labeled as in ms');
+    end
+  end
+  if ~isfield(analogInParams,'filters') || ~(length(analogInParams.filters) == length(analogInParams.analogInChannels))  %todo: add check for digitalFilter object type?
+    analogInParams.filters = cell(length(analogInParams.analogInChannels),1);
+    logString = strcat(logString,'analogInParams.filters\n');
+  end
+  if ~isfield(analogInParams,'plotFilterResult') || ~ismember(analogInParams.plotFilterResult,[0 1])
+    analogInParams.plotFilterResult = 0;
+    logString = strcat(logString,'analogInParams.plotFilterResult\n');
+  end
 end
 
-%%% set paths and directories, EDIT RARELY %%%
-analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
-lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        %#ok
-spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
-taskFilename = sprintf('%s/%s/%s0%s.log',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
-outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
-analysisParamsFilename = strcat(outDir,analysisParamsFilenameStem);
-preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
-%
-load('cocode2.mat');
-psthColormap = map;  %#ok
-%
-if ~exist(outDir,'dir')
-  mkdir(outDir);
+%%% photodiodeParams %%%
+if ~logical(exist('photodiodeParams','var')) || ~isstruct(photodiodeParams)
+  photodiodeParams.needPhotodiode = 0;
+  logString = strcat(logString,'photodiodeParams\n');
+else
+  if ~isfield(photodiodeParams,'needPhotodiode') || ~ismember(photodiodeParams.needPhotodiode,[0 1])
+    photodiodeParams.needPhotodiode = 0;
+    logString = strcat(logString,'photodiodeParams.needPhotodiode\n');
+  end
+  if photodiodeParams.needPhotodiode
+    assert(logical(exist('photodiodeFilename','var')),'Invalid analysis parameter file: must specify an photodiode file as photodiodeFilename if photodiodeParams.needPhotodiode.');
+    assert(ischar(photodiodeFilename),'Invalid analysis parameter file: photodiodeFilename must be a string');
+  end
+  if photodiodeParams.needPhotodiode
+    assert(isnumeric(photodiodeParams.channels))
+  end
 end
-save(analysisParamsFilename);
 
+%%%
+if ~logical(exist('stimSyncParams','var')) || ~isstruct(stimSyncParams)
+  stimSyncParams.usePhotodiode = 0;
+  logString = strcat(logString,'stimSyncParams\n');
+else
+  if ~isfield(stimSyncParams,'usePhotodiode') || ~ismember(stimSyncParams.usePhotodiode,[0 1])
+    stimSyncParams.usePhotodiode = 0;
+    logString = strcat(logString,'stimSyncParams.usePhotodiode\n');
+  end
+end
+
+%%%
+if ~logical(exist('eyeCalParams','var')) || ~isstruct(eyeCalParams)
+  eyeCalParams.needEyeCal = 0;
+  logString = strcat(logString,'eyeCalParams\n');
+else
+  if ~isfield(eyeCalParams,'needEyeCal') || ~ismember(eyeCalParams.needEyeCal,[0 1])
+    eyeCalParams.needEyeCal = 0;
+    logString = strcat(logString,'eyeCalParams.needEyeCal\n');
+  end
+  if ~isfield(eyeCalParams,'method') || ~ischar(eyeCalParams.method) || ~ismember(eyeCalParams.method,{'autoZeroSingle','zeroEachFixation','hardcodeZero','ninePoint'})
+    eyeCalParams.method = 'autoZeroSingle';
+    logString = strcat(logString,'eyeCalParams.method\n');
+  end
+  if ~isfield(eyeCalParams,'makePlots') || ~ismember(eyeCalParams.needEyeCal,[0 1])
+    eyeCalParams.needEyeCal = 0;
+    logString = strcat(logString,'eyeCalParams.makePlots\n');
+  end
+  assert(isfield(eyeCalParams,'eyeXChannelInd'),'Invalid analysis parameter file: if needEyeCal, must supply eye X input channel index as eyeCalParams.eyeXChannelInd.')
+  assert(isnumeric(eyeCalParams.eyeXChannelInd),'Invalid analysis parameter file: eyeCalParams.eyeXChannelInd must be numeric')
+  assert(isfield(eyeCalParams,'eyeYChannelInd'),'Invalid analysis parameter file: if needEyeCal, must supply eye Y input channel index as eyeCalParams.eyeYChannelInd.')
+  assert(isnumeric(eyeCalParams.eyeYChannelInd),'Invalid analysis parameter file: eyeCalParams.eyeYChannelInd must be numeric')
+  % todo: make eyeD optional? Might not be supplied by all eye trackers...
+  assert(isfield(eyeCalParams,'eyeDChannelInd'),'Invalid analysis parameter file: if needEyeCal, must supply eye diameter input channel index as eyeCalParams.eyeDChannelInd.')
+  assert(isnumeric(eyeCalParams.eyeDChannelInd),'Invalid analysis parameter file: eyeCalParams.eyeDChannelInd must be numeric') %todo: implement flip with negative gain?
+  assert(isfield(eyeCalParams,'gainX'),'Invalid analysis parameter file: if needEyeCal, must supply X gain as eyeCalParams.gainX.')
+  assert(isnumeric(eyeCalParams.gainX),'Invalid analysis parameter file: eyeCalParams.gainX must be numeric')
+  assert(isfield(eyeCalParams,'gainY'),'Invalid analysis parameter file: if needEyeCal, must supply Y gain as eyeCalParams.gainY.')
+  assert(isnumeric(eyeCalParams.gainY),'Invalid analysis parameter file: eyeCalParams.gainY must be numeric')
+  if ~isfield(eyeCalParams,'flipX') || ~ismember(eyeCalParams.flipX,[0 1])
+    eyeCalParams.flipX = 0;
+    logString = strcat(logString,'eyeCalParams.flipX\n');
+  end
+  if ~isfield(eyeCalParams,'flipY') || ~ismember(eyeCalParams.flipY,[0 1])
+    eyeCalParams.flipY = 0;
+    logString = strcat(logString,'eyeCalParams.flipY\n');
+  end
+  if strcmp(eyeCalParams.method,'hardcodeZero')
+    assert(isfield(eyeCalParams,'offsetX'),'Invalid analysis parameter file: if needEyeCal and eye cal method is hardcodeZero, must supply X offset as eyeCalParams.offsetX.');
+    assert(isnumeric(eyeCalParams.offsetX),'Invalid analysis parameter file: eyeCalParams.offsetX must be numeric');
+    assert(isfield(eyeCalParams,'offsetY'),'Invalid analysis parameter file: if needEyeCal and eye cal method is hardcodeZero, must supply Y offset as eyeCalParams.offsetY.');
+    assert(isnumeric(eyeCalParams.offsetY),'Invalid analysis parameter file: eyeCalParams.offsetY must be numeric');
+  end
+  if strcmp(eyeCalParams.method,'zeroEachFixation')
+    assert(isfield(eyeCalParams,'minFixZeroTime'),...
+      'Invalid analysis parameter file: if needEyeCal and eye cal method is zeroEachFixation, must supply min fixation time for re-zero as eyeCalParams.minFixZeroTime.');
+    assert(isnumeric(eyeCalParams.minFixZeroTime),'Invalid analysis parameter file: eyeCalParams.minFixZeroTime must be numeric');
+  end
+end
+%%%
+if ~logical(exist('accelParams','var')) || ~isstruct(accelParams)
+  accelParams.needAccelCal = 0;
+  logString = strcat(logString,'accelParams\n');
+else
+  if ~isfield(accelParams,'needAccelCal') || ~ismember(accelParams.needAccelCal,[0 1])
+    accelParams.needAccelCal = 0;
+    logString = strcat(logString,'accelParams.needAccelCal\n');
+  end
+  if ~isfield(accelParams,'accelChannels') || ~iscell(accelParams.accelChannels)
+    accelParams.accelChannels = {};
+    logString = strcat(logString,'accelParams.accelChannels\n');
+  end
+  for accel_i = 1:length(accelParams.accelChannels)
+    assert(isfield(accelParams,'calMethod') && ismember(accelParams.calMethod,{'hardcode','calFile'}),...
+      'Invalid analysis parameter file: if needAccelCal, must specify a method as hardcode or calFile, for each accelerometer.');
+    if strcmp(accelParams.calMethod,'hardcode')
+      if isempty(accelParams.channelGains{accel_i})
+        accelParams.channelGains{accel_i} = ones(size(accelParams.accelChannels{accel_i}));
+        logString = strcat(logString,'accelParams.channelGains\n');
+      else
+        assert(length(accelParams.accelChannels{accel_i}) == length(accelParams.channelGains{accel_i}),...
+          'Invalid analysis parameter file: if supplying accelerometer gains, must provide one for each channel on a given accelerometer');
+      end
+    else
+      assert(isfield(accelParams,'calFiles') && length(accelParams.calFiles) == length(accelParams.accelChannels) && ischar(accelParams.calFiles{accel_i}),...
+        'Invalid analysis parameter file: if using a cal file for any accelerometer, must provide a cell array wtih entries for each accelerometer, and the cal filename must be a string.');
+    end
+  end
+end
+%%%
+if ~logical(exist('excludeStimParams','var')) || ~isstruct(excludeStimParams)
+  excludeStimParams.fixPre = 0; 
+  excludeStimParams.fixPost = 0; 
+  excludeStimParams.flashPre = 0;  
+  excludeStimParams.flashPost = 0; 
+  excludeStimParams.juicePre = 0; 
+  excludeStimParams.juicePost = 0; 
+  excludeStimParams.DEBUG = 0;
+  logString = strcat(logString,'excludeStimParams\n');
+else
+  if ~isfield(excludeStimParams,'fixPre') || ~isnumeric(excludeStimParams.fixPre)
+    excludeStimParams.fixPre = 0;
+    logString = strcat(logString,'excludeStimParams.fixPre\n');
+  end
+  if ~isfield(excludeStimParams,'fixPost') || ~isnumeric(excludeStimParams.fixPost)
+    excludeStimParams.fixPost = 0;
+    logString = strcat(logString,'excludeStimParams.fixPost\n');
+  end
+  if ~isfield(excludeStimParams,'flashPre') || ~isnumeric(excludeStimParams.flashPre)
+    excludeStimParams.flashPre = 0;
+    logString = strcat(logString,'excludeStimParams.flashPre\n');
+  end
+  if ~isfield(excludeStimParams,'flashPost') || ~isnumeric(excludeStimParams.flashPost)
+    excludeStimParams.flashPost = 0;
+    logString = strcat(logString,'excludeStimParams.flashPost\n');
+  end
+  if ~isfield(excludeStimParams,'DEBUG') || ~ismember(excludeStimParams.DEBUG,[0,1])
+    excludeStimParams.DEBUG = 0;
+    logString = strcat(logString,'excludeStimParams.DEBUG\n');
+  end
+end
+%%%
+if ~logical(exist('psthParams','var')) || ~isstruct(psthParams)
+  psthParams.psthPre = 100; % if e.g. +200, then start psth 200ms before trial onset; 
+  psthParams.psthImDur = 0;  % only need to set this for variable length stim runs; else, comes from log file
+  psthParams.psthPost = 300;
+  psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
+  psthParams.errorType = 1; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
+  psthParams.errorRangeZ = 1; %how many standard errors to show
+  psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
+  logString = strcat(logString,'psthParams\n');
+else
+  if ~isfield(psthParams,'psthPre') || ~isnumeric(psthParams.psthPre)
+    psthParams.psthPre = 100;
+    logString = strcat(logString,'psthParams.psthPre\n');
+  end
+  if ~isfield(psthParams,'psthImDur') || ~isnumeric(psthParams.psthImDur)
+    psthParams.psthImDur = 0; % only need to set this for variable length stim runs; else, comes from log file
+    logString = strcat(logString,'psthParams.psthImDur\n');
+  end
+  if ~isfield(psthParams,'psthPost') || ~isnumeric(psthParams.psthPost)
+    psthParams.psthPost = 100;
+    logString = strcat(logString,'psthParams.psthPost\n');
+  end
+  if ~isfield(psthParams,'psthSmoothingWidth') || ~isnumeric(psthParams.psthSmoothingWidth)
+    psthParams.psthSmoothingWidth = 10;
+    logString = strcat(logString,'psthParams.psthSmoothingWidth\n');
+  end
+  if ~isfield(psthParams,'errorType') || ~ismember(psthParams.errorType,[1,2,3])
+    psthParams.errorType = 1;
+    logString = strcat(logString,'psthParams.psthErrorType\n');
+  end
+  if ~isfield(psthParams,'psthErrorRangeZ') || ~isnumeric(psthParams.psthErrorRangeZ)
+    psthParams.psthErrorRangeZ = 1;
+    logString = strcat(logString,'psthParams.psthErrorRangeZ\n');
+  end
+  if (~isfield(psthParams,'bootstrapSamples') || ~isnumeric(psthParams.bootstrapSamples)) && psthParams.errorType > 1
+    psthParams.bootstrapSamples = 100;
+    logString = strcat(logString,'psthParams.bootstrapSamples\n');
+  end
+  if ~isfield(psthParams,'psthColormapFilename') || ~ischar(psthParams.psthColormapFilename)
+    psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
+    logString = strcat(logString,'psthParams.psthParams.psthColormapFilename\n');
+  end
+end
+%
+if ~exist('psthColormap','var')  % todo: integrate with psthParams
+  load(psthParams.psthColormapFilename);
+  psthColormap = map;
+end
+%
+%%%
+if ~logical(exist('chronuxParams','var')) || ~isstruct(chronuxParams)
+  % TW=3 with T=.2, then W = 15 Hz (5 tapers)
+  % TW=1.5 with T=.1, then W = 15 Hz (2 tapers)
+  % TW = 1.5 with T=.2, then W = 7.5 Hz (2 tapers)
+  chronuxParams.tapers = [3 5]; %[3 5] is chronux default; 
+  chronuxParams.pad = 1;
+  chronuxParams.fs = 1;
+  chronuxParams.trialave = 1;
+  chronuxParams.err = [1 .05];  %note: first entry will be automatically switched to 2 if calcSwitch.useJacknife == 1
+  chronuxParams.fpass = [0 .1]; 
+  tfParams.movingWin = [200 5]; 
+  tfParams.specgramRowAve = 0;
+  logString = strcat(logString,'chronuxParams\n');
+else
+  if ~isfield(chronuxParams,'tapers') || ~isnumeric(chronuxParams.tapers) || ~length(chronuxParams.tapers) == 2 
+    chronuxParams.tapers = [3 5];
+    logString = strcat(logString,'chronuxParams.tapers\n');
+  end
+  if ~isfield(chronuxParams,'pad') || ~isnumeric(chronuxParams.pad) || chronuxParams.pad < -1
+    chronuxParams.pad = 1;
+    logString = strcat(logString,'chronuxParams.pad\n');
+  end
+  if ~isfield(chronuxParams,'fs') || ~isnumeric(chronuxParams.fs)
+    chronuxParams.fs = 1;
+    logString = strcat(logString,'chronuxParams.fs\n');
+  end
+  if ~isfield(chronuxParams,'trialAve') || ~isnumeric(chronuxParams.trialAve)
+    chronuxParams.trialAve = 1;
+    logString = strcat(logString,'chronuxParams.trialAve\n');
+  end
+  if ~isfield(chronuxParams,'err') || ~isnumeric(chronuxParams.err) || ~length(chronuxParams.err) == 2 
+    chronuxParams.err = [1 .05];
+    logString = strcat(logString,'chronuxParams.err\n');
+  end
+  if ~isfield(chronuxParams,'fpass') || ~isnumeric(chronuxParams.fpass) || ~length(chronuxParams.fpass) == 2 
+    chronuxParams.fpass = [0 .1];
+    logString = strcat(logString,'chronuxParams.fpass\n');
+  end
+end
+%%%
+if~logical(exist('tfParams','var')) || ~isstruct(tfParams)
+  tfParams.movingWin = [200 5]; 
+  tfParams.specgramRowAve = 0;
+  logString = strcat(logString,'tfParams\n');
+else
+  if ~isfield(tfParams,'movingWin') || ~isnumeric(tfParams.movingWin) || ~length(tfParams.movingWin) == 2 
+    tfParams.movingWin = [200 5];
+    logString = strcat(logString,'tfParams.movingWin\n');
+  end
+  if ~isfield(tfParams,'movingWin') || ~ismember(tfParams.specgramRowAve,[0,1])
+    tfParams.specgramRowAve = 0;
+    logString = strcat(logString,'tfParams.specgramRowAve\n');
+  end
+end
+%%%
+if~logical(exist('correlParams','var')) || ~isstruct(correlParams)
+  correlParams.maxShift = []; % a number, or empty
+  correlParams.matchTimeRanges = 1;
+  correlParams.timeDifferenceBound = [0,200];
+  correlParams.normalize = 1;
+  correlParams.useJacknife = 0;
+  correlParams.jacknifeDraws = 100;
+  correlParams.jacknifeParallelWorkers = 0;   
+  logString = strcat(logString,'correlParams\n');
+else
+  if ~isfield(correlParams,'maxShift') || ~(isnumeric(correlParams.maxShift) || isempty(correlParams.maxShift)) 
+    correlParams.maxShift = [];
+    logString = strcat(logString,'correlParams.maxShift\n');
+  end
+  if ~isfield(correlParams,'matchTimeRanges') || ~ismember(correlParams.matchTimeRanges,[0,1])
+    correlParams.matchTimeRanges = 1;
+    logString = strcat(logString,'correlParams.matchTimeRanges\n');
+  end
+  if ~isfield(correlParams,'timeDifferenceBound') || ~isnumeric(correlParams.timeDifferenceBound) || ~length(timeDifferenceBound) == 2
+    correlParams.timeDifferenceBound = [0,200]; %todo choose better defaults
+    logString = strcat(logString,'correlParams.timeDifferenceBound\n');
+  end
+  if ~isfield(correlParams,'useJacknife') || ~ismember(correlParams.useJacknife,[0,1])
+    correlParams.useJacknife = 0;
+    logString = strcat(logString,'correlParams.useJacknife\n');
+  end
+  if ~isfield(correlParams,'jacknifeDraws') || ~isnumeric(correlParams.jacknifeDraws) 
+    correlParams.jacknifeDraws = 100;
+    logString = strcat(logString,'correlParams.jacknifeDraws\n');
+  end
+  if ~isfield(correlParams,'jacknifeParallelWorkers') || ~isnumeric(correlParams.jacknifeParallelWorkers) 
+    correlParams.jacknifeParallelWorkers = 0;
+    logString = strcat(logString,'correlParams.jacknifeParallelWorkers\n');
+  end
+  if ~isfield(correlParams,'smoothingFilter') || ~isnumeric(correlParams.smoothingFilter) 
+    spikeCorrelSmoothingWidth = 5; %ms
+    filterPoints = -20*spikeCorrelSmoothingWidth:20*spikeCorrelSmoothingWidth;
+    smoothingFilter = exp(-1*filterPoints.^2/(2*spikeCorrelSmoothingWidth^2));
+    correlParams.smoothingFilter = smoothingFilter/sum(smoothingFilter);
+    logString = strcat(logString,'correlParams.smoothingFilter\n');
+  end
+end
+%%%
+if~logical(exist('lfpAlignParams','var')) || ~isstruct(lfpAlignParams)
+  lfpAlignParams.samPerMS = 1; % because this is after decimation
+  lfpAlignParams.msPreAlign = psthParams.psthPre+tfParams.movingWin(1)/2; 
+  lfpAlignParams.msPostAlign = psthParams.psthImDur+psthParams.psthPost+tfParams.movingWin(1)/2;
+  lfpAlignParams.DCSUB_SAM = 0;
+  logString = strcat(logString,'lfpAlignParams\n');
+else
+  if ~isfield(lfpAlignParams,'samPerMS') || ~isnumeric(lfpAlignParams.samPerMS) 
+    lfpAlignParams.samPerMS = 1;
+    logString = strcat(logString,'lfpAlignParams.samPerMS\n');
+  end
+  if ~isfield(lfpAlignParams,'msPreAlign') || ~isnumeric(lfpAlignParams.msPreAlign) 
+    lfpAlignParams.msPreAlign = psthParams.psthPre+tfParams.movingWin(1)/2; ;
+    logString = strcat(logString,'lfpAlignParams.msPreAlign\n');
+  end
+  if ~isfield(lfpAlignParams,'msPostAlign') || ~isnumeric(lfpAlignParams.msPostAlign) 
+    lfpAlignParams.msPostAlign = psthParams.psthImDur+psthParams.psthPost+tfParams.movingWin(1)/2;;
+    logString = strcat(logString,'lfpAlignParams.msPostAlign\n');
+  end
+  if ~isfield(lfpAlignParams,'DCSUB_SAM') || ~isnumeric(lfpAlignParams.DCSUB_SAM) 
+    lfpAlignParams.DCSUB_SAM = 0;
+    logString = strcat(logString,'lfpAlignParams.DCSUB_SAM\n');
+  end
+  
+  
+end
+%%%
+if~logical(exist('spikeAlignParams','var')) || ~isstruct(spikeAlignParams)
+  spikeAlignParams.preAlign = psthParams.psthPre+3*psthParams.smoothingWidth;
+  spikeAlignParams.postAlign = psthParams.psthImDur+psthParams.psthPost+3*psthParams.smoothingWidth;
+  logString = strcat(logString,'spikeAlignParams\n');
+else
+  if ~isfield(spikeAlignParams,'preAlign') || ~isnumeric(spikeAlignParams.preAlign) 
+    spikeAlignParams.preAlign = psthParams.psthPre+3*psthParams.smoothingWidth;
+    logString = strcat(logString,'spikeAlignParams.preAlign\n');
+  end
+  if ~isfield(spikeAlignParams,'postAlign') || ~isnumeric(spikeAlignParams.postAlign) 
+    spikeAlignParams.postAlign = psthParams.psthImDur+psthParams.psthPost+3*psthParams.smoothingWidth;
+    logString = strcat(logString,'spikeAlignParams.postAlign\n');
+  end
+end
+%%%
+if~logical(exist('frEpochsCell','var')) || ~iscell(frEpochsCell)  %todo: improve variable name
+  % firing rate calculation epochs. Can provide either time (ms from stim onset),
+  % or function handle, which will receive the minimum stimulus duration in the run as an input
+  frEpochsCell = {{60, @(stimDur) stimDur+60}};
+  for epoch_i = 1:length(frEpochsCell)
+    assert(length(frEpochsCell{epoch_i}) == 2, 'Invalid analysis parameter file: frEpochsCell entries must have length 2.');
+  end
+end
+%%%
+% note: runAnalyses will likely use fields of an analysisGroups structure,
+% and will catch errors and define defaults internally
+if ~exist('analysisGroups','var') || ~isstruct(analysisGroups) 
+  analysisGroups.placeHolder = 0;
+  logString = strcat(logString,'analysisGroups\n');
+%%%
+% note: runAnalyses will likely have the option to use other fields of
+% calcSwitch, and will catch errors and define defaults internally
+if ~exist('calcSwitch','var') || ~isstruct(calcSwitch) 
+  calcSwitch.spikeTimes = 0;
+  logString = strcat(logString,'calcSwitch\n');
+else
+  if ~isfield(calcSwitch,'spikeTimes') || ~ismember(calcSwitch.spikeTimes,[0,1]) 
+    calcSwitch.spikeTimes = 0;
+    logString = strcat(logString,'calcSwitch.spikeTimes\n');
+  end
+end
+if ~strcmp(logString,'Function checkAnalysisParamFile assigned default values to: \n')
+  analysisParamFilenameParts = strsplit(analysisParamFilename, '.');
+  analysisParamFilenameStem = analysisParamFilenameParts{1};
+  movefile(analysisParamFilename, strcat(analysisParamFilenameStem,'Uncorrected.mat'));
+  save(analysisParamFilename);
+  fprintf(logString);
+end
 end
 

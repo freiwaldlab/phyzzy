@@ -82,6 +82,114 @@ end
 colors = ['b','c','y','g','m','r','k'];
 chColors = ['b','g','m'];
 
+% check calcSwitch definitions and set defaults as needed
+if ~isfield(calcSwitch,'categoryPSTH') || ~ismember(calcSwitch.categoryPSTH,[0,1])
+  calcSwitch.categoryPSTH = 0;
+end
+if ~isfield(calcSwitch,'imagePSTH') || ~ismember(calcSwitch.imagePSTH,[0,1])
+  calcSwitch.imagePSTH = 0;
+end
+if ~isfield(calcSwitch,'faceSelectIndex') || ~ismember(calcSwitch.faceSelectIndex,[0,1])
+  calcSwitch.faceSelectIndex = 0;
+end
+if ~isfield(calcSwitch,'faceSelectIndexEarly') || ~ismember(calcSwitch.faceSelectIndexEarly,[0,1])
+  calcSwitch.faceSelectIndexEarly = 0;
+end
+if ~isfield(calcSwitch,'faceSelectIndexLate') || ~ismember(calcSwitch.faceSelectIndexLate,[0,1])
+  calcSwitch.faceSelectIndexLate = 0;
+end
+if ~isfield(calcSwitch,'inducedTrialMagnitudeCorrection') || ~ismember(calcSwitch.inducedTrialMagnitudeCorrection,[0,1])
+  calcSwitch.inducedTrialMagnitudeCorrection = 0;
+end
+if ~isfield(calcSwitch,'evokedSpectra') || ~ismember(calcSwitch.evokedSpectra,[0,1])
+  calcSwitch.evokedSpectra = 0;
+end
+if ~isfield(calcSwitch,'inducedSpectra') || ~ismember(calcSwitch.inducedSpectra,[0,1])
+  calcSwitch.inducedSpectra = 0;
+end
+if ~isfield(calcSwitch,'evokedImageTF') || ~ismember(calcSwitch.evokedImageTF,[0,1])
+  calcSwitch.evokedImageTF = 0;
+end
+if ~isfield(calcSwitch,'inducedImageTF') || ~ismember(calcSwitch.inducedImageTF,[0,1])
+  calcSwitch.inducedImageTF = 0;
+end
+if ~isfield(calcSwitch,'evokedCatTF') || ~ismember(calcSwitch.evokedCatTF,[0,1])
+  calcSwitch.evokedCatTF = 0;
+end
+if ~isfield(calcSwitch,'inducedCatTF') || ~ismember(calcSwitch.inducedCatTF,[0,1])
+  calcSwitch.inducedCatTF = 0;
+end
+if ~isfield(calcSwitch,'meanEvokedTF') || ~ismember(calcSwitch.meanEvokedTF,[0,1])
+  calcSwitch.meanEvokedTF = 0;
+end
+if ~isfield(calcSwitch,'trialMeanSpectra') || ~ismember(calcSwitch.trialMeanSpectra,[0,1])
+  calcSwitch.trialMeanSpectra = 0;
+end
+if ~isfield(calcSwitch,'coherenceByCategory') || ~ismember(calcSwitch.coherenceByCategory,[0,1])
+  calcSwitch.coherenceByCategory = 0;
+end
+if ~isfield(calcSwitch,'useJacknife') || ~ismember(calcSwitch.useJacknife,[0,1]) 
+    calcSwitch.useJacknife = 0;
+end
+% end of calcSwitch check
+% check analysisGroups definitions and set defaults
+analysisGroupFields = {'selectivityIndex';'stimPrefBarPlot';'stimulusLabelGroups';'evokedPotentials';'analogInPotentials';'analogInDerivatives';'colorPsthEvoked';...
+  'linePsthEvoked';'evokedPsthOnePane';'tuningCurves';'spectraByCategory';'tfSpectraByCategory';'lfpSingleTrialsByCategory';'coherenceByCategory';'tfCouplingByCategory'};
+for field_i = 1:length(analysisGroupFields)
+  field = analysisGroupFields{field_i};
+  if ~isfield(analysisGroups,field) || ~isstruct(analysisGroups.(field)) || ~isfield(analysisGroups.(field),'groups')
+    analysisGroups.(field).groups = {};
+  end
+end
+% % remove images and categories not presented from analysis groups
+% tOn = tic();
+% analysisGroupFields = fieldnames(analysisGroups);
+% for field_i = 1:length(analysisGroupFields)
+%   if isempty(analysisGroups.(field).groups)
+%     continue
+%   end
+%   field = analysisGroupFields{field_i};
+%   subfields = fieldnames(analysisGroups.(field));
+%   itemDelimitedSubfields = cell(size(subfields));
+%   itemDelimitedSubfield_i = 0;
+%   for subfield_i = 1:length(itemDelimitedSubfields)
+%     subfield = subfields{subfield_i};
+%     if length(analysisGroups.(field).(subfield)) == length(analysisGroups.(field).groups) ...
+%         && length(analysisGroups.(field).(subfield){1}) == length(analysisGroups.(field).groups{1})...
+%         && (iscell(analysisGroups.(field).(subfield){1}) || isnumeric(analysisGroups.(field).(subfield){1}))
+%       itemDelimitedSubfield_i = itemDelimitedSubfield_i + 1;
+%       itemDelimitedSubfields{itemDelimitedSubfield_i} = subfield;
+%     end
+%   end
+%   itemDelimitedSubfields = itemDelimitedSubfields(1:itemDelimitedSubfield_i);
+%   for group_i = 1:length(analysisGroups.(field).groups)
+%     for subfield_i = 1:length(itemDelimitedSubfields)
+%       newStruct.(itemDelimitedSubfields{subfield_i}) = cell(size(analysisGroups.(field).groups{group_i}));
+%     end
+%     newItem_i = 0;
+%     for item_i = 1:length(analysisGroups.(field).groups{group_i})
+%       if ismember(analysisGroups.(field).groups{group_i}{item_i},categoryList) && ismember(analysisGroups.(field).groups{group_i}{item_i},pictureLabels)
+%         newItem_i = newItem_i + 1;
+%         for subfield_i = 1:length(itemDelimitedSubfields)
+%           newStruct.(itemDelimitedSubfields{subfield_i}){newItem_i} = analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i}{item_i};
+%         end
+%       end
+%     end
+%     for subfield_i = 1:length(itemDelimitedSubfields)
+%       tmp = newStruct.(itemDelimitedSubfields{subfield_i});
+%       analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i} = tmp(1:newItem_i);
+%     end
+%   end
+%   disp(field);
+%   disp(itemDelimitedSubfields);
+%   for subfield_i = 1:length(itemDelimitedSubfields)
+%     disp(analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i});
+%   end
+% end
+% disp(toc(tOn));
+% return
+
+% build category index map
 for cat_i = 1:length(categoryList)
   catInds.(categoryList{cat_i}) = cat_i;
 end

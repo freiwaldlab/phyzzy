@@ -1,4 +1,4 @@
-function [ analogInData ] = preprocessPhotodiodeStrobe( analogInData, params )
+function [ photodiodeFrameTimes ] = preprocessPhotodiodeStrobe( photodiodeFilename, params )
 %preprocessPhotodiodeStrobe extracts frame times from a photodiode signal 
 %   Inputs:
 %   - analogInData: data array returned by preprocessAnalogIn (channels x samples)
@@ -21,9 +21,10 @@ function [ analogInData ] = preprocessPhotodiodeStrobe( analogInData, params )
 %     - inputCalibrationFile (required only if hardcodeFromFile): (type: string)
 %     - outputCalibrationFile (required only if saveCalibFile): (type:string)
 if ~params.needPhotodiode
+  photodiodeFrameTimes = [];
   return
 end
-
+% todo: fix this to use photodiodeFilename
 diodeTrace = analogInData(params.analogInChannelInd,:); 
 diodeTrace = -1*(diodeTrace - mean(diodeTrace)); %this makes frames peaks
 centerCornerOffset = params.centerCornerOffset; 

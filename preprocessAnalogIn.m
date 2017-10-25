@@ -44,7 +44,7 @@ for i = 1:size(analogInData,1)
   %analogInDataDecPadded(i,1:filterPad) = analogInDataDecPadded(i,filterPad+1)*analogInDataDecPadded(i,1:filterPad);
   %analogInDataDecPadded(i,end-(filterPad-1):end) = analogInDataDecPadded(i,end-filterPad)*analogInDataDecPadded(i,end-(filterPad-1):end);
   analogInFilter = analogInFilters{i};
-  if params.plotFilteredSignal && (isa(analogInFilter,'digitalFilter') || length(analogInFilter) == 2)
+  if params.plotFilterResult && (isa(analogInFilter,'digitalFilter') || length(analogInFilter) == 2)
     figure();
     plot(analogInDataDecPadded(1,filterPad+100000:filterPad+105000),'color','r');
     hold on
