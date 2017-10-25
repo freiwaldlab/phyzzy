@@ -1,13 +1,13 @@
-function [ analysisParamsFilename ] = buildAnalysisParamFile( )    
+function [ analysisParamFilename ] = buildAnalysisParamFile( )    
 %buildAnalysisParamFile saves a mat file of parameters, which control the
 %behavior of analyzeSession
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '010';
-dateSubject = '171024ALAN'; 
-machine = 'rig';
+runNum = '009';
+dateSubject = '171021ALAN'; 
+machine = 'laptop';
 
 switch machine
   case 'rig'
@@ -232,6 +232,7 @@ analysisGroups.selectivityIndex.groups = {{'face';'nonface'},{'face';'object'},{
 analysisGroups.stimPrefBarPlot.groups = {{{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};{'face';'object';'body'}}};
 analysisGroups.stimPrefBarPlot.colors  = {{{'b';'c';'y';'g';'m';'r';'k'};{'b';'g';'r'}}};
 analysisGroups.stimPrefBarPlot.names = {'fobPlus'};
+analysisGroups.stimPrefBarPlot.groupDepth = 2;
 %
 analysisGroups.stimulusLabelGroups.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
 analysisGroups.stimulusLabelGroups.names = {'fobPlus'};

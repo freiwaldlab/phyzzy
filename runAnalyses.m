@@ -83,55 +83,15 @@ colors = ['b','c','y','g','m','r','k'];
 chColors = ['b','g','m'];
 
 % check calcSwitch definitions and set defaults as needed
-if ~isfield(calcSwitch,'categoryPSTH') || ~ismember(calcSwitch.categoryPSTH,[0,1])
-  calcSwitch.categoryPSTH = 0;
+calcSwitchFields = {'categoryPSTH';'imagePSTH';'faceSelectIndex';'faceSelectIndexEarly';'faceSelectIndexLate';'inducedTrialMagnitudeCorrection';...
+  'evokedSpectra';'inducedSpectra';'evokedImageTF';'inducedImageTF';'evokedCatTF';'inducedCatTF';'meanEvokedTF';'trialMeanSpectra';'coherenceByCategory';...
+  'useJacknife'};
+for field_i = 1:length(calcSwitchFields)
+  if ~isfield(calcSwitch,calcSwitchFields{field_i}) || ~ismember(calcSwitch.(calcSwitchFields{field_i}),[0,1])
+    calcSwitch.(calcSwitchFields{field_i}) = 0;
+  end
 end
-if ~isfield(calcSwitch,'imagePSTH') || ~ismember(calcSwitch.imagePSTH,[0,1])
-  calcSwitch.imagePSTH = 0;
-end
-if ~isfield(calcSwitch,'faceSelectIndex') || ~ismember(calcSwitch.faceSelectIndex,[0,1])
-  calcSwitch.faceSelectIndex = 0;
-end
-if ~isfield(calcSwitch,'faceSelectIndexEarly') || ~ismember(calcSwitch.faceSelectIndexEarly,[0,1])
-  calcSwitch.faceSelectIndexEarly = 0;
-end
-if ~isfield(calcSwitch,'faceSelectIndexLate') || ~ismember(calcSwitch.faceSelectIndexLate,[0,1])
-  calcSwitch.faceSelectIndexLate = 0;
-end
-if ~isfield(calcSwitch,'inducedTrialMagnitudeCorrection') || ~ismember(calcSwitch.inducedTrialMagnitudeCorrection,[0,1])
-  calcSwitch.inducedTrialMagnitudeCorrection = 0;
-end
-if ~isfield(calcSwitch,'evokedSpectra') || ~ismember(calcSwitch.evokedSpectra,[0,1])
-  calcSwitch.evokedSpectra = 0;
-end
-if ~isfield(calcSwitch,'inducedSpectra') || ~ismember(calcSwitch.inducedSpectra,[0,1])
-  calcSwitch.inducedSpectra = 0;
-end
-if ~isfield(calcSwitch,'evokedImageTF') || ~ismember(calcSwitch.evokedImageTF,[0,1])
-  calcSwitch.evokedImageTF = 0;
-end
-if ~isfield(calcSwitch,'inducedImageTF') || ~ismember(calcSwitch.inducedImageTF,[0,1])
-  calcSwitch.inducedImageTF = 0;
-end
-if ~isfield(calcSwitch,'evokedCatTF') || ~ismember(calcSwitch.evokedCatTF,[0,1])
-  calcSwitch.evokedCatTF = 0;
-end
-if ~isfield(calcSwitch,'inducedCatTF') || ~ismember(calcSwitch.inducedCatTF,[0,1])
-  calcSwitch.inducedCatTF = 0;
-end
-if ~isfield(calcSwitch,'meanEvokedTF') || ~ismember(calcSwitch.meanEvokedTF,[0,1])
-  calcSwitch.meanEvokedTF = 0;
-end
-if ~isfield(calcSwitch,'trialMeanSpectra') || ~ismember(calcSwitch.trialMeanSpectra,[0,1])
-  calcSwitch.trialMeanSpectra = 0;
-end
-if ~isfield(calcSwitch,'coherenceByCategory') || ~ismember(calcSwitch.coherenceByCategory,[0,1])
-  calcSwitch.coherenceByCategory = 0;
-end
-if ~isfield(calcSwitch,'useJacknife') || ~ismember(calcSwitch.useJacknife,[0,1]) 
-    calcSwitch.useJacknife = 0;
-end
-% end of calcSwitch check
+
 % check analysisGroups definitions and set defaults
 analysisGroupFields = {'selectivityIndex';'stimPrefBarPlot';'stimulusLabelGroups';'evokedPotentials';'analogInPotentials';'analogInDerivatives';'colorPsthEvoked';...
   'linePsthEvoked';'evokedPsthOnePane';'tuningCurves';'spectraByCategory';'tfSpectraByCategory';'lfpSingleTrialsByCategory';'coherenceByCategory';'tfCouplingByCategory'};
@@ -141,13 +101,74 @@ for field_i = 1:length(analysisGroupFields)
     analysisGroups.(field).groups = {};
   end
 end
-% % remove images and categories not presented from analysis groups
-% tOn = tic();
-% analysisGroupFields = fieldnames(analysisGroups);
-% for field_i = 1:length(analysisGroupFields)
-%   if isempty(analysisGroups.(field).groups)
-%     continue
-%   end
+% remove images and categories not presented from analysis groups
+analysisGroupFields = fieldnames(analysisGroups);
+for field_i = 1:length(analysisGroupFields)
+  field = analysisGroupFields{field_i};
+  if isempty(analysisGroups.(field).groups)
+    continue
+  end
+  if isfield(analysisGroups.(field),'groupDepth') && analysisGroups.(field).groupDepth > 1
+    continue
+  end
+  subfields = fieldnames(analysisGroups.(field));
+  itemDelimitedSubfields = cell(size(subfields));
+  itemDelimitedSubfield_i = 0;
+  for subfield_i = 1:length(itemDelimitedSubfields)
+    subfield = subfields{subfield_i};
+    if length(analysisGroups.(field).(subfield)) == length(analysisGroups.(field).groups) ...
+        && length(analysisGroups.(field).(subfield){1}) == length(analysisGroups.(field).groups{1})...
+        && ((iscell(analysisGroups.(field).(subfield){1}) || isnumeric(analysisGroups.(field).(subfield){1})))
+      itemDelimitedSubfield_i = itemDelimitedSubfield_i + 1;
+      itemDelimitedSubfields{itemDelimitedSubfield_i} = subfield;
+    end
+  end
+  itemDelimitedSubfields = itemDelimitedSubfields(1:itemDelimitedSubfield_i);
+  for group_i = 1:length(analysisGroups.(field).groups)
+    newStruct = struct();
+    for subfield_i = 1:length(itemDelimitedSubfields)
+      if iscell(analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i})
+        newStruct.(itemDelimitedSubfields{subfield_i}) = cell(size(analysisGroups.(field).groups{group_i}));
+      else
+        newStruct.(itemDelimitedSubfields{subfield_i}) = zeros(size(analysisGroups.(field).groups{group_i}));
+      end
+    end
+    newItem_i = 0;
+    for item_i = 1:length(analysisGroups.(field).groups{group_i})
+      if ismember(analysisGroups.(field).groups{group_i}{item_i},categoryList) || ismember(analysisGroups.(field).groups{group_i}{item_i},pictureLabels)
+        newItem_i = newItem_i + 1;
+        for subfield_i = 1:length(itemDelimitedSubfields)
+          if iscell(analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i})
+            newStruct.(itemDelimitedSubfields{subfield_i}){newItem_i} = analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i}{item_i};
+          else
+            newStruct.(itemDelimitedSubfields{subfield_i})(newItem_i) = analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i}(item_i);
+          end
+        end
+      end
+    end
+    for subfield_i = 1:length(itemDelimitedSubfields)
+      tmp = newStruct.(itemDelimitedSubfields{subfield_i});
+      analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i} = tmp(1:newItem_i);
+    end
+  end
+  disp(field);
+  disp(itemDelimitedSubfields);
+  for subfield_i = 1:length(itemDelimitedSubfields)
+    disp(analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i});
+  end
+end
+for field_i = 1:length(analysisGroupFields)
+  field = analysisGroupFields{field_i};
+  if isempty(analysisGroups.(field).groups)
+    continue
+  end
+  if (~isfield(analysisGroups.(field),'groupDepth')) || analysisGroups.(field).groupDepth == 1
+    continue
+  end
+  if analysisGroups.(field).groupDepth > 1  %todo: once the section below is fully implemented, change to '> 2'
+    analysisGroups.(field).groups = {};
+    continue
+  end
 %   field = analysisGroupFields{field_i};
 %   subfields = fieldnames(analysisGroups.(field));
 %   itemDelimitedSubfields = cell(size(subfields));
@@ -168,6 +189,12 @@ end
 %     end
 %     newItem_i = 0;
 %     for item_i = 1:length(analysisGroups.(field).groups{group_i})
+%       disp(field);
+%       disp(group_i);
+%       disp(item_i);
+%       disp(analysisGroups.(field).groups{group_i}{item_i});
+%       disp(ismember(analysisGroups.(field).groups{group_i}{item_i},categoryList));
+%       disp(ismember(analysisGroups.(field).groups{group_i}{item_i},pictureLabels));
 %       if ismember(analysisGroups.(field).groups{group_i}{item_i},categoryList) && ismember(analysisGroups.(field).groups{group_i}{item_i},pictureLabels)
 %         newItem_i = newItem_i + 1;
 %         for subfield_i = 1:length(itemDelimitedSubfields)
@@ -185,9 +212,7 @@ end
 %   for subfield_i = 1:length(itemDelimitedSubfields)
 %     disp(analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i});
 %   end
-% end
-% disp(toc(tOn));
-% return
+end
 
 % build category index map
 for cat_i = 1:length(categoryList)
@@ -521,7 +546,10 @@ if ~taskData.RFmap
           fprintf('\n\n%s %s Preference Indices, %dms - %d ms\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},frCalcOn,frCalcOff)
           for group_i = 1:length(analysisGroups.selectivityIndex.groups)
             group = analysisGroups.selectivityIndex.groups{group_i};
-            assert(length(group) == 2, sprintf('Selectivity index only implemented for item pairs. Group %s contains %s items.',group_i,length(group)));
+            if length(group) ~= 2
+              Output.INFO(sprintf('Selectivity index only implemented for item pairs. Group %s contains %d items. Skipping...',group_i,length(group)));
+              continue
+            end
             if isfield(catInds,group{1})
               response1 = catFr{channel_i}(unit_i,catInds.(group{1}));
             else
