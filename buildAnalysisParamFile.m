@@ -5,9 +5,9 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '001';
-dateSubject = '171025ALAN'; 
-machine = 'rig';
+runNum = '009';
+dateSubject = '171021ALAN'; 
+machine = 'laptop';
 
 switch machine
   case 'rig'
@@ -294,7 +294,7 @@ calcSwitch.faceSelectIndex = 1;
 calcSwitch.faceSelectIndexEarly = 1;
 calcSwitch.faceSelectIndexLate = 1;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 0;
+calcSwitch.evokedSpectra = 1;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;

@@ -102,6 +102,11 @@ for field_i = 1:length(analysisGroupFields)
   end
 end
 % remove images and categories not presented from analysis groups
+% assumes that either, (1) the groups field will contain a depth=1 cell array of
+% stimulus/category names, or (2) the field groupDepth will exist and give
+% the correct cell array depth of groups. Future version can check depth
+% automatically. Also, asumes all fields other than groupDepth are cell
+% arrays.
 analysisGroupFields = fieldnames(analysisGroups);
 for field_i = 1:length(analysisGroupFields)
   field = analysisGroupFields{field_i};
@@ -151,11 +156,6 @@ for field_i = 1:length(analysisGroupFields)
       analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i} = tmp(1:newItem_i);
     end
   end
-  disp(field);
-  disp(itemDelimitedSubfields);
-  for subfield_i = 1:length(itemDelimitedSubfields)
-    disp(analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i});
-  end
 end
 for field_i = 1:length(analysisGroupFields)
   field = analysisGroupFields{field_i};
@@ -165,53 +165,54 @@ for field_i = 1:length(analysisGroupFields)
   if (~isfield(analysisGroups.(field),'groupDepth')) || analysisGroups.(field).groupDepth == 1
     continue
   end
-  if analysisGroups.(field).groupDepth > 1  %todo: once the section below is fully implemented, change to '> 2'
+  if analysisGroups.(field).groupDepth > 2
     analysisGroups.(field).groups = {};
     continue
   end
-%   field = analysisGroupFields{field_i};
-%   subfields = fieldnames(analysisGroups.(field));
-%   itemDelimitedSubfields = cell(size(subfields));
-%   itemDelimitedSubfield_i = 0;
-%   for subfield_i = 1:length(itemDelimitedSubfields)
-%     subfield = subfields{subfield_i};
-%     if length(analysisGroups.(field).(subfield)) == length(analysisGroups.(field).groups) ...
-%         && length(analysisGroups.(field).(subfield){1}) == length(analysisGroups.(field).groups{1})...
-%         && (iscell(analysisGroups.(field).(subfield){1}) || isnumeric(analysisGroups.(field).(subfield){1}))
-%       itemDelimitedSubfield_i = itemDelimitedSubfield_i + 1;
-%       itemDelimitedSubfields{itemDelimitedSubfield_i} = subfield;
-%     end
-%   end
-%   itemDelimitedSubfields = itemDelimitedSubfields(1:itemDelimitedSubfield_i);
-%   for group_i = 1:length(analysisGroups.(field).groups)
-%     for subfield_i = 1:length(itemDelimitedSubfields)
-%       newStruct.(itemDelimitedSubfields{subfield_i}) = cell(size(analysisGroups.(field).groups{group_i}));
-%     end
-%     newItem_i = 0;
-%     for item_i = 1:length(analysisGroups.(field).groups{group_i})
-%       disp(field);
-%       disp(group_i);
-%       disp(item_i);
-%       disp(analysisGroups.(field).groups{group_i}{item_i});
-%       disp(ismember(analysisGroups.(field).groups{group_i}{item_i},categoryList));
-%       disp(ismember(analysisGroups.(field).groups{group_i}{item_i},pictureLabels));
-%       if ismember(analysisGroups.(field).groups{group_i}{item_i},categoryList) && ismember(analysisGroups.(field).groups{group_i}{item_i},pictureLabels)
-%         newItem_i = newItem_i + 1;
-%         for subfield_i = 1:length(itemDelimitedSubfields)
-%           newStruct.(itemDelimitedSubfields{subfield_i}){newItem_i} = analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i}{item_i};
-%         end
-%       end
-%     end
-%     for subfield_i = 1:length(itemDelimitedSubfields)
-%       tmp = newStruct.(itemDelimitedSubfields{subfield_i});
-%       analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i} = tmp(1:newItem_i);
-%     end
-%   end
-%   disp(field);
-%   disp(itemDelimitedSubfields);
-%   for subfield_i = 1:length(itemDelimitedSubfields)
-%     disp(analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i});
-%   end
+  subfields = fieldnames(analysisGroups.(field));
+  itemDelimitedSubfields = cell(size(subfields));
+  itemDelimitedSubfield_i = 0;
+  for subfield_i = 1:length(itemDelimitedSubfields)
+    subfield = subfields{subfield_i};
+    if strcmp(subfield, 'groupDepth')
+      continue
+    end
+    itemDelimited = 1;
+    for supergroup_i = 1:length(analysisGroups.(field).groups)
+      if ~(length(analysisGroups.(field).(subfield){supergroup_i}) == length(analysisGroups.(field).groups{supergroup_i}) ...
+          && iscell(analysisGroups.(field).(subfield){supergroup_i}) ...
+          && length(analysisGroups.(field).(subfield){supergroup_i}{1}) == length(analysisGroups.(field).groups{supergroup_i}{1})...
+          && (iscell(analysisGroups.(field).(subfield){supergroup_i}{1}) || isnumeric(analysisGroups.(field).(subfield){supergroup_i}{1})))
+        itemDelimited = 0;
+      end
+    end
+    if itemDelimited
+      itemDelimitedSubfield_i = itemDelimitedSubfield_i + 1;
+      itemDelimitedSubfields{itemDelimitedSubfield_i} = subfield;
+    end
+  end
+  itemDelimitedSubfields = itemDelimitedSubfields(1:itemDelimitedSubfield_i);
+  for supergroup_i = 1:length(analysisGroups.(field).groups)
+    for group_i = 1:length(analysisGroups.(field).groups{supergroup_i})
+      newStruct = struct();
+      for subfield_i = 1:length(itemDelimitedSubfields)
+        newStruct.(itemDelimitedSubfields{subfield_i}) = cell(size(analysisGroups.(field).groups{supergroup_i}{group_i}));
+      end
+      newItem_i = 0;
+      for item_i = 1:length(analysisGroups.(field).groups{supergroup_i}{group_i})
+        if ismember(analysisGroups.(field).groups{supergroup_i}{group_i}{item_i},categoryList) || ismember(analysisGroups.(field).groups{supergroup_i}{group_i}{item_i},pictureLabels)
+          newItem_i = newItem_i + 1;
+          for subfield_i = 1:length(itemDelimitedSubfields)
+            newStruct.(itemDelimitedSubfields{subfield_i}){newItem_i} = analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){supergroup_i}{group_i}{item_i};
+          end
+        end
+      end
+      for subfield_i = 1:length(itemDelimitedSubfields)
+        tmp = newStruct.(itemDelimitedSubfields{subfield_i});
+        analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){supergroup_i}{group_i} = tmp(1:newItem_i);
+      end
+    end
+  end
 end
 
 % build category index map
