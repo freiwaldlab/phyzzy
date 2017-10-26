@@ -10,7 +10,7 @@ if ~params.needLFP
 end
 lfpChannels = params.lfpChannels;
 lfpChannelScaleBy = params.lfpChannelScaleBy; %converts raw values to microvolts
-common_ref = params.common_ref; %not yet implemented; will allow software re-refrence across headstages
+common_ref = params.commonRef; %not yet implemented; will allow software re-refrence across headstages
 cPtCal = params.cPtCal; % conversion from spike sample indices to timestep of decimated LFP
 decimateFactorPass1 = params.decimateFactorPass1; %note: product of the two decimate factors should be 30, if 1 khz samples desired
 decimateFactorPass2 = params.decimateFactorPass2;

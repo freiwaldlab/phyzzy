@@ -2,6 +2,11 @@ function [ lfpByItem ] = alignLFP( lfpData, alignPointsByItem, lfpChannels, alig
 %UNTITLED3 Summary of this function goes here
 %   Detailed explanation goes here
 
+if isempty(lfpData)
+  lfpByItem = {};
+  return
+end
+
 samPerMS = alignParams.samPerMS;
 DCSUB_SAM = alignParams.DCSUB_SAM;
 samplesPreAlign = samPerMS*alignParams.msPreAlign;

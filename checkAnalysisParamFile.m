@@ -23,8 +23,8 @@ assert(logical(exist('spikeFilename','var')),'Invalid analysis parameter file: m
 assert(ischar(spikeFilename),'Invalid analysis parameter file: spikeFilename must be a string'); 
 
 % taskLogFilename
-assert(logical(exist('taskLogFilename','var')),'Invalid analysis parameter file: must specify the task log file as taskLogFilename.');
-assert(ischar(taskLogFilename),'Invalid analysis parameter file: taskLogFilename must be a string');
+assert(logical(exist('taskFilename','var')),'Invalid analysis parameter file: must specify the task log file as taskFilename.');
+assert(ischar(taskFilename),'Invalid analysis parameter file: taskFilename must be a string');
 
 % outputVolume
 assert(logical(exist('outputVolume','var')),'Invalid analysis parameter file: must specify an output volume as outputVolume.');
@@ -68,7 +68,7 @@ if ~logical(exist('savePreprocessed','var')) || ~ismember(savePreprocessed,[0 1]
 end
 
 %%% VERBOSITY %%%
-if ~logical(exist('verbosity','var')) || ~ischar(verbostity) || ~ismember(verbosity,{'INFO','DEBUG','VERBOSE'})
+if ~logical(exist('verbosity','var')) || ~ischar(verbosity) || ~ismember(verbosity,{'INFO','DEBUG','VERBOSE'})
   verbosity = 'INFO'; %#ok
   logString = strcat(logString,'verbosity\n');
 end
@@ -77,6 +77,9 @@ end
 if ~logical(exist('ephysParams','var')) || ~isstruct(ephysParams)
   ephysParams.needLFP = 0;
   ephysParams.needSpikes = 0;
+  ephysParams.spikeChannels = [];
+  ephysParams.lfpChannels = [];
+  ephysParams.channelNames = {};
   logString = strcat(logString,'ephysParams\n');
 else
   if ~isfield(ephysParams,'needLFP') || ~ismember(ephysParams.needLFP,[0 1])
@@ -94,6 +97,10 @@ else
   if ~isfield(ephysParams,'lfpChannels') || ~isnumeric(ephysParams.lfpChannels)
     ephysParams.lfpChannels = [];
     logString = strcat(logString,'ephysParams.lfpChannels\n');
+  end
+  if ~isfield(ephysParams,'commonRef') || ~isnumeric(ephysParams.commonRef)
+    ephysParams.commonRef = zeros(size(ephysParams.lfpChannels));
+    logString = strcat(logString,'ephysParams.commonRef\n');
   end
   if ephysParams.needLFP && ephysParams.needSpikes
     assert(length(ephysParams.spikeChannels) == length(ephysParams.lfpChannels),...
@@ -123,7 +130,7 @@ else
     ephysParams.lfpChannelScaleBy = ephysParams.lfpChannelScaleBy*ones(size(ephysParams.lfpChannels));
     logString = strcat(logString,'ephysParams.lfpChannelScaleBy (applied single given value to all channels)\n');
   end
-  assert(isfield(ephysParams,'cPtCal') && isnumeric(ephysParams.),'Invalid analysis parameter file: must specify conversion from spike time units to decimated LFP indices');
+  assert(isfield(ephysParams,'cPtCal') && isnumeric(ephysParams.cPtCal),'Invalid analysis parameter file: must specify conversion from spike time units to decimated LFP indices');
   if ~isfield(ephysParams,'decimateFactorPass1') || ~isnumeric(ephysParams.decimateFactorPass1)
     ephysParams.decimateFactorPass1 = 6;
     logString = strcat(logString,'ephysParams.decimateFactorPass1\n');
@@ -153,7 +160,7 @@ else
     logString = strcat(logString,'ephysParams.spikeWaveformPca\n');
   end
   if ~isfield(ephysParams,'plotSpikeWaveforms') || ~ismember(ephysParams.plotSpikeWaveforms,[0 1])
-    ephysParams.needSpikes = 0;
+    ephysParams.plotSpikeWaveforms = 0;
     logString = strcat(logString,'ephysParams.plotSpikeWaveforms\n');
   end
   if ~isfield(ephysParams,'shiftSpikeWaveforms') || ~ismember(ephysParams.shiftSpikeWaveforms,[0 1])
@@ -173,6 +180,8 @@ end
 %%% AnalogInParams %%%
 if ~logical(exist('analogInParams','var')) || ~isstruct(analogInParams)
   analogInParams.needAnalogIn = 0;
+  analogInParams.analogInChannels = [];
+  analogInParams.channelNames = {};
   logString = strcat(logString,'analogInParams\n');
 else
   if ~isfield(analogInParams,'needAnalogIn') || ~ismember(analogInParams.needAnalogIn,[0 1])
@@ -185,7 +194,7 @@ else
   end
   assert(isfield(analogInParams,'channelNames') && length(analogInParams.channelNames) == length(analogInParams.analogInChannels),...
     'Invalid analysis parameter file: analogInParams.channelNames length must match length of analogIn channels to analyze.');
-  if ~isfield(analogInParams,'lfpChannelScaleBy') || ~isnumeric(analogInParams.analogInChannelScaleBy)
+  if ~isfield(analogInParams,'analogInChannelScaleBy') || ~isnumeric(analogInParams.analogInChannelScaleBy)
     analogInParams.analogInChannelScaleBy = ones(size(analogInParams.analogInChannels));
     logString = strcat(logString,'analogInParams.analogInChannelScaleBy (set to one)\n');
   end
@@ -218,6 +227,7 @@ end
 %%% photodiodeParams %%%
 if ~logical(exist('photodiodeParams','var')) || ~isstruct(photodiodeParams)
   photodiodeParams.needPhotodiode = 0;
+  photodiodeFilename = '';
   logString = strcat(logString,'photodiodeParams\n');
 else
   if ~isfield(photodiodeParams,'needPhotodiode') || ~ismember(photodiodeParams.needPhotodiode,[0 1])
@@ -306,7 +316,10 @@ else
     logString = strcat(logString,'accelParams.accelChannels\n');
   end
   for accel_i = 1:length(accelParams.accelChannels)
-    assert(isfield(accelParams,'calMethod') && ismember(accelParams.calMethod,{'hardcode','calFile'}),...
+    if (~accelParams.needAccelCal) || isempty(accelParams.accelChannels)
+      break
+    end
+    assert(isfield(accelParams,'calMethods') && ismember(accelParams.calMethod,{'hardcode','calFile'}),...
       'Invalid analysis parameter file: if needAccelCal, must specify a method as hardcode or calFile, for each accelerometer.');
     if strcmp(accelParams.calMethod,'hardcode')
       if isempty(accelParams.channelGains{accel_i})
@@ -363,6 +376,7 @@ if ~logical(exist('psthParams','var')) || ~isstruct(psthParams)
   psthParams.errorType = 1; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
   psthParams.errorRangeZ = 1; %how many standard errors to show
   psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
+  psthParams.bootstrapSamples = 100;
   logString = strcat(logString,'psthParams\n');
 else
   if ~isfield(psthParams,'psthPre') || ~isnumeric(psthParams.psthPre)
@@ -377,17 +391,17 @@ else
     psthParams.psthPost = 100;
     logString = strcat(logString,'psthParams.psthPost\n');
   end
-  if ~isfield(psthParams,'psthSmoothingWidth') || ~isnumeric(psthParams.psthSmoothingWidth)
-    psthParams.psthSmoothingWidth = 10;
-    logString = strcat(logString,'psthParams.psthSmoothingWidth\n');
+  if ~isfield(psthParams,'smoothingWidth') || ~isnumeric(psthParams.smoothingWidth)
+    psthParams.smoothingWidth = 10;
+    logString = strcat(logString,'psthParams.smoothingWidth\n');
   end
   if ~isfield(psthParams,'errorType') || ~ismember(psthParams.errorType,[1,2,3])
     psthParams.errorType = 1;
     logString = strcat(logString,'psthParams.psthErrorType\n');
   end
-  if ~isfield(psthParams,'psthErrorRangeZ') || ~isnumeric(psthParams.psthErrorRangeZ)
-    psthParams.psthErrorRangeZ = 1;
-    logString = strcat(logString,'psthParams.psthErrorRangeZ\n');
+  if ~isfield(psthParams,'errorRangeZ') || ~isnumeric(psthParams.errorRangeZ)
+    psthParams.errorRangeZ = 1;
+    logString = strcat(logString,'psthParams.errorRangeZ\n');
   end
   if (~isfield(psthParams,'bootstrapSamples') || ~isnumeric(psthParams.bootstrapSamples)) && psthParams.errorType > 1
     psthParams.bootstrapSamples = 100;
@@ -431,9 +445,9 @@ else
     chronuxParams.fs = 1;
     logString = strcat(logString,'chronuxParams.fs\n');
   end
-  if ~isfield(chronuxParams,'trialAve') || ~isnumeric(chronuxParams.trialAve)
-    chronuxParams.trialAve = 1;
-    logString = strcat(logString,'chronuxParams.trialAve\n');
+  if ~isfield(chronuxParams,'trialave') || ~isnumeric(chronuxParams.trialave)  %note lower case 'a', to match chronux convention
+    chronuxParams.trialave = 1;
+    logString = strcat(logString,'chronuxParams.trialave\n');
   end
   if ~isfield(chronuxParams,'err') || ~isnumeric(chronuxParams.err) || ~length(chronuxParams.err) == 2 
     chronuxParams.err = [1 .05];
@@ -478,7 +492,7 @@ else
     correlParams.matchTimeRanges = 1;
     logString = strcat(logString,'correlParams.matchTimeRanges\n');
   end
-  if ~isfield(correlParams,'timeDifferenceBound') || ~isnumeric(correlParams.timeDifferenceBound) || ~length(timeDifferenceBound) == 2
+  if ~isfield(correlParams,'timeDifferenceBound') || ~isnumeric(correlParams.timeDifferenceBound) || ~length(correlParams.timeDifferenceBound) == 2
     correlParams.timeDifferenceBound = [0,200]; %todo choose better defaults
     logString = strcat(logString,'correlParams.timeDifferenceBound\n');
   end
@@ -557,8 +571,16 @@ end
 % note: runAnalyses will likely use fields of an analysisGroups structure,
 % and will catch errors and define defaults internally
 if ~exist('analysisGroups','var') || ~isstruct(analysisGroups) 
-  analysisGroups.placeHolder = 0;
+  analysisGroups = struct();
   logString = strcat(logString,'analysisGroups\n');
+end
+%%%
+% note: runAnalyses will likely have the option to use other fields of
+% plotSwitch, and will catch errors and define defaults internally
+if ~exist('plotSwitch','var') || ~isstruct(plotSwitch) 
+  plotSwitch = struct();
+  logString = strcat(logString,'plotSwitch\n');
+end
 %%%
 % note: runAnalyses will likely have the option to use other fields of
 % calcSwitch, and will catch errors and define defaults internally
@@ -571,7 +593,7 @@ else
     logString = strcat(logString,'calcSwitch.spikeTimes\n');
   end
 end
-if ~strcmp(logString,'Function checkAnalysisParamFile assigned default values to: \n')
+if ~strcmp(logString,'checkAnalysisParamFile assigned default values to: \n')
   analysisParamFilenameParts = strsplit(analysisParamFilename, '.');
   analysisParamFilenameStem = analysisParamFilenameParts{1};
   movefile(analysisParamFilename, strcat(analysisParamFilenameStem,'Uncorrected.mat'));

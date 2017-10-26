@@ -40,6 +40,7 @@ else
   end 
 end
 if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
+  checkAnalysisParamFile(analysisParamFilename);
   load(analysisParamFilename);
   % extract parameters needed in this function from structures
   channelNames = ephysParams.channelNames;

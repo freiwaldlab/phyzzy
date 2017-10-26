@@ -2,6 +2,12 @@ function [ spikesByItem, psthEmptyByItem ] = alignSpikes( spikesByChannel, align
 %UNTITLED2 Summary of this function goes here
 %   Detailed explanation goes here
 
+if isempty(spikesByChannel)
+  spikesByItem = {};
+  psthEmptyByItem = {};
+  return
+end
+
 preAlign = params.preAlign;
 postAlign = params.postAlign;
 refOffset = params.refOffset; % this value is subtracted from all times; so, to have all positive times, should be -msPreAlign
