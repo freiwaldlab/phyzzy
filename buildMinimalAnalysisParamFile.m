@@ -1,13 +1,13 @@
-function [ analysisParamFilename ] = buildAnalysisParamFile( )    
+function [ analysisParamFilename ] = buildMinimalAnalysisParamFile( )    
 %buildAnalysisParamFile saves a mat file of parameters, which control the
 %behavior of analyzeSession
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '009';
-dateSubject = '171021ALAN'; 
-machine = 'laptop';
+runNum = '001';
+dateSubject = '171026ALAN'; 
+machine = 'rig';
 
 switch machine
   case 'rig'
