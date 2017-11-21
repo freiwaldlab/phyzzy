@@ -10,6 +10,7 @@ function [ db ] = trialDatabaseSetField( fieldName, fieldValue, db, trialID, var
 %   - trialID: a string, returned by trialDatabaseAddTrial
 %   
 %   Todo: add sorted list option for double value types, to allow range lookup
+%         see https://www.mathworks.com/matlabcentral/answers/92533-how-do-i-perform-a-binary-search-of-a-presorted-array
 
 if ~isempty(varargin)
   dateSubj = varargin{1};

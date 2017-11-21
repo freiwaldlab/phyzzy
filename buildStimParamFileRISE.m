@@ -16,7 +16,8 @@ pictureLabels = {};
 for i = 1:length(pictureFilenames)
   tmp = regexp(pictureFilenames{i}, '\','split');
   tmp2 = regexp(tmp{end},'.bm','split');
-  pictureLabels = vertcat(pictureLabels, regexprep(tmp2{1},'_',''));
+  tmp3 = regexprep(tmp2{1},'_','');
+  pictureLabels = vertcat(pictureLabels, regexprep(tmp3,'-',''));
 end
 categories = {};
 categoryLabels = {};

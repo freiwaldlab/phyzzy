@@ -216,9 +216,11 @@ for field_i = 1:length(analysisGroupFields)
 end
 
 % build category index map
+catInds = struct();
 for cat_i = 1:length(categoryList)
   catInds.(categoryList{cat_i}) = cat_i;
 end
+imInds = struct();
 for image_i = 1:length(pictureLabels)
   imInds.(pictureLabels{image_i}) = image_i;
 end
@@ -422,7 +424,11 @@ if ~taskData.RFmap
       [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');
       imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
       sortedImageLabels = pictureLabels(imageSortOrder);
-      sortedGroupLabelColors = groupLabelColorsByImage(imageSortOrder,:,:);
+      if exist('groupLabelColorsByImage','var')
+        sortedGroupLabelColors = groupLabelColorsByImage(imageSortOrder,:,:);
+      else
+        sortedGroupLabelColors = ones(length(pictureLabels),3);
+      end
       fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
       for i = 1:min(10,length(pictureLabels))
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i),imFrErrSorted(i));
@@ -512,11 +518,11 @@ if ~taskData.RFmap
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMinNorm,2,'descend');
     sortedImageLabels = pictureLabels(imageSortOrder);
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Maximin\n\n');
-    for i = 1:10
+    for i = 1:min(10, length(sortedImageLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
     end
     fprintf('\n\nMulti-channel Least preferred Images, Channel-Normalized Maximin\n\n');
-    for i = 1:5
+    for i = 1:min(5, length(sortedImageLabels))
       fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
     end
 
@@ -1090,9 +1096,9 @@ for channel_i = 1:length(lfpChannels)
       ah1 = subplot(2,1,1);
       psthTitle = sprintf('%s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{end});
       plotPSTH(spkResponses, [], psthPre, psthPost, psthImDur, 'color', psthTitle, group, psthColormap );
-      yyaxis right
-      plot(times,mean(spkResponses,1),'Color',[0.8,0.8,0.9],'LineWidth',2); %todo: this mean should probably be weighted by number of images per category
-      ylabel('Mean PSTH (Hz)');
+%       yyaxis right
+%       plot(times,mean(spkResponses,1),'Color',[0.8,0.8,0.9],'LineWidth',2); %todo: this mean should probably be weighted by number of images per category
+%       ylabel('Mean PSTH (Hz)');
       xlim([min(times), max(times)]);
       hold off
       
@@ -1146,9 +1152,9 @@ for channel_i = 1:length(lfpChannels)
     numSubplots = length(channelUnitNames{channel_i}) + 1;
   end
   if isfield(plotSwitch,'linePsthEvoked') && plotSwitch.linePsthEvoked
-    for group_i = 1:length(analysisGroups.colorPsthEvoked.groups)
-      group = analysisGroups.colorPsthEvoked.groups{group_i};
-      groupName = analysisGroups.colorPsthEvoked.names{group_i};
+    for group_i = 1:length(analysisGroups.linePsthEvoked.groups)
+      group = analysisGroups.linePsthEvoked.groups{group_i};
+      groupName = analysisGroups.linePsthEvoked.names{group_i};
       fh = figure();
       subplotNum = 0;
       for unit_i = 1:length(channelUnitNames{channel_i})
@@ -1156,6 +1162,8 @@ for channel_i = 1:length(lfpChannels)
           continue
         end
         subplotNum = subplotNum + 1;
+        lfpResponses = zeros(length(group),length(times));
+        lfpResponseErrs = zeros(length(group),length(times));
         spkResponses = zeros(length(group),length(times));
         spkResponseErrs = zeros(length(group),length(times));
         for item_i = 1:length(group)
@@ -1169,7 +1177,7 @@ for channel_i = 1:length(lfpChannels)
         end
         subplot(numSubplots,1,subplotNum);
         lineProps.width = 3;
-        lineProps.col = analysisGroups.colorPsthEvoked.colors{group_i};
+        lineProps.col = analysisGroups.linePsthEvoked.colors{group_i};
         hold on
         mseb(repmat(times,length(group),1),spkResponses,cat(3,spkResponseErrs,min(spkResponseErrs,spkResponses)),lineProps);
         xlim([min(times), max(times)]);
@@ -1197,7 +1205,7 @@ for channel_i = 1:length(lfpChannels)
       end
       subplot(numSubplots,1,numSubplots);
       lineProps.width = 3;
-      lineProps.col = analysisGroups.colorPsthEvoked.colors{group_i};
+      lineProps.col = analysisGroups.linePsthEvoked.colors{group_i};
       hold on
       mseb(repmat(times,length(group),1),lfpResponses,lfpResponseErrs,lineProps);
       h = get(gca,'ylim');
@@ -1452,6 +1460,8 @@ if isfield(plotSwitch,'runSummaryImMeanSubDiv') && plotSwitch.runSummaryImMeanSu
       plot([taskDataAll.fixationInTimes(fix_i) fixationOutTimesTmp(fix_i)],[0 0]);
     end
     %spikes and lfp
+    frCalcOn = frEpochs(1,1);
+    frCalcOff = frEpochs(1,2);
     for image_i = 1:length(onsetsByImage)
       onsets = onsetsByImage{image_i};
       lfpByTrial = squeeze(lfpByImage{image_i}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
@@ -1774,9 +1784,16 @@ for calc_i = 1:length(calcSwitches)
             subplot(length(group),1,item_i)
             hold on
             ydata = zeros(50,length(times));
-            for i = 1:50
-              plot(times, squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy)));
-              ydata(i,:) = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy));
+            if isfield(catInds,group{item_i})
+              for i = 1:min(50,size(lfpByCategory{catInds.(group{item_i})},3))
+                plot(times, squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy)));
+                ydata(i,:) = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy));
+              end
+            else
+              for i = 1:min(50,size(lfpByImage{imInds.(group{item_i})},3))
+                plot(times, squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy)));
+                ydata(i,:) = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy));
+              end
             end
             h = get(gca,'ylim');
             plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
@@ -1789,7 +1806,7 @@ for calc_i = 1:length(calcSwitches)
             clear tmp
             tmp.y = ydata;
             tmp.x = times;
-            figData{cat_i} = tmp;
+            figData{item_i} = tmp;
           end
           drawnow;
           saveFigure(outDir,sprintf('Evoked_singleTrials_%s_%s%s_Run%s',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );

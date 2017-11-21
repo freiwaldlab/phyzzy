@@ -27,8 +27,13 @@ if strcmp(plotType,'color')
   ylimits= ylim();
   yRange = ylimits(2) - ylimits(1);  %todo: remove egregious use of this variable twice, but with different caps
   hold on
-  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+  if (psthPre+psthPost)/psthImDur > 20
+    stimDurLineWidth = 0.1;
+  else
+    stimDurLineWidth = 4;
+  end
+  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',stimDurLineWidth);
+  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',stimDurLineWidth);
   set(gca,'YTick',linspace(ylimits(1)+yRange/(2*nrows),ylimits(2)-yRange/(2*nrows),nrows),'YTicklabel',ylabels,...
     'box','off','TickDir','out','FontSize',14,'TickLength',[.012 .012],'LineWidth',1.3);
 else

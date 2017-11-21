@@ -1,6 +1,16 @@
 function [ trialIDs ] = trialDatabaseQuery( fieldName, fieldValue, db, varargin )
-%UNTITLED2 Summary of this function goes here
-%   Detailed explanation goes here
+%returns trialIDs of the trials matching a given name-value pair
+%   - fieldName: a string
+%   - fieldValue: a string, a double, or a 2 element array of doubles
+%   - db: a trial database struct
+%   - varargin: 
+%     - to specify dateSubj and runNum for possibly multi-run databases,
+%       varargin should be e.g.'dateSub','171030ALAN','runNum','012',
+%     - to automatically plot the trial summary of the identified trial(s),
+%       include 'plotTrialSummary' in varargin
+%     - to supress command prompt output, include 'silent' in varargin
+%
+%   todo: implement range lookup for numerical values
 
 if length(varargin) > 4 && strcmp(varargin{1},'dateSubj') && strcmp(varargin{3},'runNum')
   dateSubj = varargin{1};

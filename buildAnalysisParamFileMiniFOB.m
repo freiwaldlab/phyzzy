@@ -1,4 +1,4 @@
-function [ analysisParamFilename ] = buildAnalysisParamFile( )    
+function [ analysisParamFilename ] = buildAnalysisParamFileMiniFOB( )    
 %buildAnalysisParamFile saves a mat file of parameters, which control the
 %behavior of analyzeSession
 %   todo: option to load 'fixed' params from file, for ease accross days
@@ -56,7 +56,7 @@ ephysParams.decimateFactorPass1 = 6; %note: product of the two decimate factors 
 ephysParams.decimateFactorPass2 = 5;
 ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should be raw rate/productOfDecimateFactors)
 %note: use Blackrock indexing for unitsToUnsort and unitsToDiscard, so unsorted is 0, first defined unit is 1, etc.
-ephysParams.unitsToUnsort = {[],[],[]}; %these units will be re-grouped with u0
+ephysParams.unitsToUnsort = {[1,2,3],[1],[1]}; %these units will be re-grouped with u0
 ephysParams.unitsToDiscard = {[],[],[]}; %these units will be considered noise and discarded
 ephysParams.spikeWaveformPca = 0;
 ephysParams.plotSpikeWaveforms = 0; %0, 1 to build then close, 2 to build and leave open
@@ -183,8 +183,8 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {60, 260}; ...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
-plotSwitch.imagePsth = 1;
-plotSwitch.categoryPsth = 1;
+plotSwitch.imagePsth = 0;
+plotSwitch.categoryPsth = 0;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
@@ -201,21 +201,21 @@ plotSwitch.rfLate = 0;
 plotSwitch.latencyRF = 0;
 plotSwitch.evokedPowerRF = 0;
 plotSwitch.evokedPsthMuaMultiCh = 0;
-plotSwitch.evokedByCategory = 1;
+plotSwitch.evokedByCategory = 0;
 plotSwitch.analogInByItem = 0;
 plotSwitch.analogInDerivativesByItem = 0;
-plotSwitch.colorPsthEvoked = 1;
-plotSwitch.linePsthEvoked = 1;
+plotSwitch.colorPsthEvoked = 0;
+plotSwitch.linePsthEvoked = 0;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
-plotSwitch.runSummaryImMeanSubDiv = 1;
-plotSwitch.lfpPowerMuaScatter = 0; 
-plotSwitch.lfpPeakToPeakMuaScatter = 0;
+plotSwitch.runSummaryImMeanSubDiv = 0;
+plotSwitch.lfpPowerMuaScatter = 1; 
+plotSwitch.lfpPeakToPeakMuaScatter = 1;
 plotSwitch.lfpLatencyMuaLatency = 0;
-plotSwitch.lfpPowerAcrossChannels = 0;
-plotSwitch.lfpPeakToPeakAcrossChannels = 0;
-plotSwitch.lfpLatencyShiftAcrossChannels = 0;
-plotSwitch.singleTrialLfpByCategory = 0;
+plotSwitch.lfpPowerAcrossChannels = 1;
+plotSwitch.lfpPeakToPeakAcrossChannels = 1;
+plotSwitch.lfpLatencyShiftAcrossChannels = 1;
+plotSwitch.singleTrialLfpByCategory = 1;
 plotSwitch.lfpSpectraByCategory = 0;
 plotSwitch.spikeSpectraByCategory = 0;
 plotSwitch.SpikeSpectraTfByImage = 0;
@@ -242,9 +242,11 @@ analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fru
 analysisGroups.evokedPotentials.names = {'fobPlus'};
 analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
 %
-analysisGroups.analogInPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.analogInPotentials.groups = {{'HumanheadoriD25'};{'monkeybodypart7'};{'HumanheadoriB11'};{'HumanheadoriB12'};...
+  {'place8'};{'MonkeyheadoriB2'};{'humanbody4grayBG'};{'HumanheadoriE11'}};
 analysisGroups.analogInPotentials.channels = {[1; 2]};
-analysisGroups.analogInPotentials.names = {'eyePositions,fobPlus'};
+analysisGroups.analogInPotentials.names = {'eyePositions,HumanheadoriD25';'eyePositions,monkeybodypart7';'eyePositions,HumanheadoriB11';'eyePositions,HumanheadoriB12';...
+  'eyePositions,place8';'eyePositions,MonkeyheadoriB2';'eyePositions,humanbody4grayBG';'eyePositions,HumanheadoriE11'};
 analysisGroups.analogInPotentials.units = {'degrees visual angle'};
 analysisGroups.analogInPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
 %
@@ -260,12 +262,16 @@ analysisGroups.colorPsthEvoked.names = {'fobPlus'; 'fobp'};
 analysisGroups.colorPsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}; {'b';'r';'g';'k'}};
 %
 analysisGroups.linePsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};...
-  {'face';'object';'body';'place'}};
-analysisGroups.linePsthEvoked.names = {'fobPlus';'fobp'};
-analysisGroups.linePsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}; {'b';'r';'g';'k'}};
+  {'face';'object';'body';'place'};{'HumanheadoriD25'};{'monkeybodypart7'};{'HumanheadoriB11'};{'HumanheadoriB12'};...
+  {'place8'};{'MonkeyheadoriB2'};{'humanbody4grayBG'};{'HumanheadoriE11'}};
+analysisGroups.linePsthEvoked.names = {'fobPlus';'fobp';'HumanheadoriD25';'monkeybodypart7';'HumanheadoriB11';'HumanheadoriB12';...
+  'place8';'MonkeyheadoriB2';'humanbody4grayBG';'HumanheadoriE11'};
+analysisGroups.linePsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}; {'b';'r';'g';'k'};{'c'};{'r'};{'b'};{'b'};{'k'};{'c'};{'r'};{'b'}};
 %
-analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'}};
-analysisGroups.evokedPsthOnePane.names = {'faceVnon'};
+analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'};{'HumanheadoriD25'};{'monkeybodypart7'};{'HumanheadoriB11'};{'HumanheadoriB12'};...
+  {'place8'};{'MonkeyheadoriB2'};{'humanbody4grayBG'};{'HumanheadoriE11'}};
+analysisGroups.evokedPsthOnePane.names = {'faceVnon';'HumanheadoriD25';'monkeybodypart7';'HumanheadoriB11';'HumanheadoriB12';...
+  'place8';'MonkeyheadoriB2';'humanbody4grayBG';'HumanheadoriE11'};
 %
 analysisGroups.tuningCurves.groups = {{'humanFaceL90','humanFaceL45','humanFaceFront','humanFaceR45','humanFaceR90'},...
   {'monkeyFaceL90','monkeyFaceL45','monkeyFaceFront','monkeyFaceR45','monkeyFaceR90'}}; %can be images or categories
@@ -280,8 +286,18 @@ analysisGroups.spectraByCategory.colors = {{'r';'b'}};
 analysisGroups.tfSpectraByCategory.groups = {{'face'};{'nonface'}};%{'object'};{'body'}      %todo: add tf spectra diff?
 analysisGroups.tfSpectraByCategory.names = {'face','nonface'};%'nonface';'object';'body'
 %
-analysisGroups.lfpSingleTrialsByCategory.groups = {{'face';'nonface'}};
-analysisGroups.lfpSingleTrialsByCategory.names = {'faceVnon'};
+analysisGroups.lfpSingleTrialsByCategory.groups = {{'HumanheadoriD25'};{'monkeybodypart7'};{'HumanheadoriB11'};{'HumanheadoriB12'};...
+  {'place8'};{'MonkeyheadoriB2'};{'humanbody4grayBG'};{'HumanheadoriE11'}};
+analysisGroups.lfpSingleTrialsByCategory.names = {'HumanheadoriD25';'monkeybodypart7';'HumanheadoriB11';'HumanheadoriB12';...
+  'place8';'MonkeyheadoriB2';'humanbody4grayBG';'HumanheadoriE11'};
+%
+analysisGroups.analogInSingleTrialsByCategory.groups = {{'HumanheadoriD25'};{'monkeybodypart7'};{'HumanheadoriB11'};{'HumanheadoriB12'};...
+  {'place8'};{'MonkeyheadoriB2'};{'humanbody4grayBG'};{'HumanheadoriE11'}};
+analysisGroups.analogInSingleTrialsByCategory.names = {'HumanheadoriD25';'monkeybodypart7';'HumanheadoriB11';'HumanheadoriB12';...
+  'place8';'MonkeyheadoriB2';'humanbody4grayBG';'HumanheadoriE11'};
+analysisGroups.analogInSingleTrialsByCategory.channels = {[1;2];[1;2];[1;2];[1;2];[1;2];[1;2];[1;2];[1;2]};
+analysisGroups.analogInSingleTrialsByCategory.units = {'degrees visual angle';'degrees visual angle';'degrees visual angle';'degrees visual angle';...
+  'degrees visual angle';'degrees visual angle';'degrees visual angle';'degrees visual angle'};
 %
 analysisGroups.coherenceByCategory.groups = {{'face';'nonface'}}; %{'face';'object';'body'};{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'hand';'techno'}
 analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; %{'r';'g';'b'};{'b';'c';'y';'g';'m';'r';'k';'k'}
@@ -292,7 +308,7 @@ analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'};{'object'};{'
 
 calcSwitch.categoryPSTH = 1;
 calcSwitch.imagePSTH = 1;
-calcSwitch.faceSelectIndex = 1;
+calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
