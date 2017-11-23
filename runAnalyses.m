@@ -404,7 +404,7 @@ if ~isempty(spikesByCategory)
     end
     for image_i = 1:length(pictureLabels)
       for item_i = 1:length(group)
-        if any(strcmp(picCategories{image_i},group{item_i})) || strcmp(pictureLabels{image_i},group_i)
+        if any(strcmp(picCategories{image_i},group{item_i})) || strcmp(pictureLabels{image_i},group{item_i})
           groupLabelsByImage(image_i,group_i) = item_i;
           groupLabelColorsByImage(image_i,:,group_i) = groupColors(item_i,:);
           break
@@ -1750,7 +1750,55 @@ if isfield(plotSwitch,'lfpLatencyShiftAcrossChannels') && plotSwitch.lfpLatencyS
     end
   end
 end
-  
+
+% todo
+if isfield(plotSwitch,'singleTrialAnalogInByCategory') && plotSwitch.singleTrialAnalogInByCategory
+  for group_i = 1:length(analysisGroups.analogInSingleTrialsByCategory.groups)
+    group = analysisGroups.analogInSingleTrialsByCategory.groups{group_i};
+    groupName = analysisGroups.analogInSingleTrialsByCategory.names{group_i};
+    groupChannel = analysisGroups.analogInSingleTrialsByCategory.channels{group_i};
+    for channel_i = 1:length(channelNames)
+      fh = figure();
+      figData = cell(length(group),1);
+      for item_i = 1:length(group)
+        subplot(length(group),1,item_i)
+        hold on
+        ydata = zeros(50,length(times));
+        if isfield(catInds,group{item_i})
+          for i = 1:min(50,size(lfpByCategory{catInds.(group{item_i})},3))
+            plot(times, squeeze(analogInByCategory{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy)));
+            ydata(i,:) = squeeze(analogInByCategory{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy));
+          end
+        else
+          for i = 1:min(50,size(lfpByImage{imInds.(group{item_i})},3))
+            plot(times, squeeze(analogInByImage{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy)));
+            ydata(i,:) = squeeze(analogInByImage{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy));
+          end
+        end
+        h = get(gca,'ylim');
+        plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
+        hold off
+        title(sprintf('single trials, %s, %s%s', groupName), 'FontSize',18);
+        xlabel('time after stimulus (ms)', 'FontSize',18);
+        ylabel('voltage (uV)', 'FontSize',18);
+        set(gca,'fontsize',18);
+        xlim([min(times) max(times)]);
+        clear tmp
+        tmp.y = ydata;
+        tmp.x = times;
+        figData{item_i} = tmp;
+      end
+      drawnow;
+      saveFigure(outDir,sprintf('Evoked_singleTrials_%s_%s%s_Run%s',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      if closeFig
+        close(fh);
+      end
+    end
+  end
+end
+
+
+
 % other to-do: one epoch for each peak of trial ave evoked potential, ideally set automatically
 % todo: across-peak latency within and across channels
 % todo: spike burstiness vs. lfp bumpiness; can do as p2p evoked/psth; or (low freq power)/(high freq power)

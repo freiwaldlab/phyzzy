@@ -31,11 +31,11 @@ switch machine
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
     stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
 end
-analysisLabel = 'Basic';
+analysisLabel = 'Basic2';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;           %#ok
-closeFig = 0;          %#ok
+closeFig = 1;          %#ok
 exportFig = 0;         %#ok
 saveFigData = 0;       %#ok
 savePreprocessed = 0;  %#ok
@@ -115,8 +115,8 @@ accelParams.calFiles = {''}; %if method is 'calFile', an ns2 filename
 % parameters for excludeStimuli, see function for details
 excludeStimParams.fixPre = 100; %ms
 excludeStimParams.fixPost = 100; %ms
-excludeStimParams.flashPre = 0;  %ms
-excludeStimParams.flashPost = 0; %ms
+excludeStimParams.flashPre = 50;  %ms
+excludeStimParams.flashPost = 50; %ms
 excludeStimParams.juicePre = 0; % optional, ms
 excludeStimParams.juicePost = 0; % optional, ms
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
@@ -126,7 +126,7 @@ psthParams.psthPre = 100; % if e.g. +200, then start psth 200ms before trial ons
 psthParams.psthImDur = 0;  % only need to set this for variable length stim runs; else, comes from log file
 psthParams.psthPost = 100;
 psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
-psthParams.errorType = 1; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
+psthParams.errorType = 3; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;
 psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
@@ -183,8 +183,8 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {60, 260}; ...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
-plotSwitch.imagePsth = 0;
-plotSwitch.categoryPsth = 0;
+plotSwitch.imagePsth = 1;
+plotSwitch.categoryPsth = 1;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
@@ -216,15 +216,15 @@ plotSwitch.lfpPowerAcrossChannels = 1;
 plotSwitch.lfpPeakToPeakAcrossChannels = 1;
 plotSwitch.lfpLatencyShiftAcrossChannels = 1;
 plotSwitch.singleTrialLfpByCategory = 1;
-plotSwitch.lfpSpectraByCategory = 0;
-plotSwitch.spikeSpectraByCategory = 0;
-plotSwitch.SpikeSpectraTfByImage = 0;
-plotSwitch.lfpSpectraTfByImage = 0;
-plotSwitch.couplingPhasesUnwrapped = 0;
-plotSwitch.couplingPhasesAsOffsets = 0;
+plotSwitch.lfpSpectraByCategory = 1;
+plotSwitch.spikeSpectraByCategory = 1;
+plotSwitch.SpikeSpectraTfByImage = 1;
+plotSwitch.lfpSpectraTfByImage = 1;
+plotSwitch.couplingPhasesUnwrapped = 1;
+plotSwitch.couplingPhasesAsOffsets = 1;
 plotSwitch.couplingPhasesPolar = 0;
-plotSwitch.tfSpectraByCategory = 0;
-plotSwitch.tfErrs = 0;           %#ok
+plotSwitch.tfSpectraByCategory = 1;
+plotSwitch.tfErrs = 1;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 analysisGroups.selectivityIndex.groups = {{'face';'nonface'},{'face';'object'},{'face';'body'}};
@@ -234,9 +234,10 @@ analysisGroups.stimPrefBarPlot.colors  = {{{'b';'c';'y';'g';'m';'r';'k'};{'b';'g
 analysisGroups.stimPrefBarPlot.names = {'fobPlus'};
 analysisGroups.stimPrefBarPlot.groupDepth = 2;
 %
-analysisGroups.stimulusLabelGroups.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.stimulusLabelGroups.names = {'fobPlus'};
-analysisGroups.stimulusLabelGroups.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.stimulusLabelGroups.groups = {{'HumanheadoriD25';'monkeybodypart7';'HumanheadoriB11';'HumanheadoriB12';...
+  'place8';'MonkeyheadoriB2';'humanbody4grayBG';'HumanheadoriE11'}};
+analysisGroups.stimulusLabelGroups.names = {'singleImage'};
+analysisGroups.stimulusLabelGroups.colors = {{'b';'y';'c';'g';'y';'m';'r';'k'}};
 %
 analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
 analysisGroups.evokedPotentials.names = {'fobPlus'};
@@ -311,16 +312,16 @@ calcSwitch.imagePSTH = 1;
 calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
-calcSwitch.inducedTrialMagnitudeCorrection = 0;
+calcSwitch.inducedTrialMagnitudeCorrection = 1;
 calcSwitch.evokedSpectra = 1;
-calcSwitch.inducedSpectra = 0;
-calcSwitch.evokedImageTF = 0;
-calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatTF = 0;
-calcSwitch.inducedCatTF = 0;
-calcSwitch.meanEvokedTF = 0;
-calcSwitch.trialMeanSpectra = 0;
-calcSwitch.coherenceByCategory = 0;
+calcSwitch.inducedSpectra = 1;
+calcSwitch.evokedImageTF = 1;
+calcSwitch.inducedImageTF = 1;
+calcSwitch.evokedCatTF = 1;
+calcSwitch.inducedCatTF = 1;
+calcSwitch.meanEvokedTF = 1;
+calcSwitch.trialMeanSpectra = 1;
+calcSwitch.coherenceByCategory = 1;
 calcSwitch.spikeTimes = 0;
 calcSwitch.useJacknife = 0;      
 
