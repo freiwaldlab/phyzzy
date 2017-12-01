@@ -1,4 +1,4 @@
-function [ photodiodeFrameTimes, photodiodeHighFrameTimes, highStimStartTimes, lowStimStartTimes ] = preprocessPhotodiodeStrobe( photodiodeFilename, params )
+function [ diodeTriggers ] = preprocessPhotodiodeStrobe( photodiodeFilename, params )
 %preprocessPhotodiodeStrobe extracts frame times from a photodiode signal 
 %   Inputs:
 %   - analogInData: data array returned by preprocessAnalogIn (channels x samples)
@@ -435,6 +435,10 @@ if isempty(stimulusTriggerDiodeTrace)
   highStimStartTimes = [];
   lowStimStartTimes = [];
 end
+diodeTriggers.frameTimes = photodiodeFrameTimes; 
+diodeTriggers.highFrameTimes = photodiodeHighFrameTimes;
+diodeTriggers.highStimStartTimes = highStimStartTimes;
+diodeTriggers.lowStimStartTimes = lowStimStartTimes;
 if params.saveCalibFile %todo: add save for second diode's calib
   switch params.numLevels
     case 1

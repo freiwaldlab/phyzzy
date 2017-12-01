@@ -1,4 +1,4 @@
-function [ taskData, stimTiming ] = preprocessLogFile(logFilename,taskTriggers,params )
+function [ taskData, stimTiming ] = preprocessLogFile(logFilename, taskTriggers, diodeTriggers, params )
 %Sync log file's timestamps to blackrock clock, and store: 
 %  - in presentation order, stimulus filenames, start/end times and jump RF mapping positions
 %  - task event times: fixation in/out, fixspot flash start/end, juice delivery start/end 
@@ -138,27 +138,39 @@ if isfield(logStruct.VISIKOLOG,'FixspotFlash')
   end
 end
 
-% now, calculate visiko-to-blackrock conversion
-% first, if nev has one more start trigger than log, throw out final nev
-% trigger (this is a known visiko bug, according to Michael Borisov's code)
-assert(length(stimStartTimesBlk) - length(stimStartTimesLog) <= 1, 'Error: Start triggers missing from log file');
-stimStartTimesBlk = stimStartTimesBlk(1:length(stimStartTimesLog));
-%note: don't use first trigger in fit; sometimes off (known visiko bug)
-logVsBlkModel = fitlm(stimStartTimesBlk(2:end), stimStartTimesLog(2:end));
-disp(logVsBlkModel);
-m = logVsBlkModel.Coefficients.Estimate(2);
-y0 = logVsBlkModel.Coefficients.Estimate(1);
-% for debugging
-stimStartTimesFit = (1/m)*(stimStartTimesLog - y0);
-disp(strcat('Max magnitude fit residual, msec: ',num2str(max(abs(stimStartTimesBlk-stimStartTimesFit)))));
-% end for debugging
-stimEndTimesBlk = (1/m)*(stimEndTimesLog - y0);
-fixationInTimesBlk = (1/m)*(fixationInTimesLog - y0);
-fixationOutTimesBlk = (1/m)*(fixationOutTimesLog - y0);
-juiceOnTimesBlk = (1/m)*(juiceOnTimesLog - y0);
-juiceOffTimesBlk = (1/m)*(juiceOffTimesLog - y0);
-fixSpotFlashStartTimesBlk = (1/m)*(fixSpotFlashStartTimesLog - y0);
-fixSpotFlashEndTimesBlk = (1/m)*(fixSpotFlashEndTimesLog - y0);
+% now, calculate stimulation log to ephys clock conversion
+if ~isfield(params,'syncMethod') || any(params.syncMethod == {'digitalTrigger','digitalTriggerNearestFrame'})
+  % first, if nev has one more start trigger than log, throw out final nev
+  % trigger (this is a known visiko bug, according to Michael Borisov's code)
+  assert(length(stimStartTimesBlk) - length(stimStartTimesLog) <= 1, 'Error: Start triggers missing from log file');
+  stimStartTimesBlk = stimStartTimesBlk(1:length(stimStartTimesLog));
+  %note: don't use first trigger in fit; sometimes off (known visiko bug)
+  logVsBlkModel = fitlm(stimStartTimesBlk(2:end), stimStartTimesLog(2:end));
+  disp(logVsBlkModel);
+  m = logVsBlkModel.Coefficients.Estimate(2);
+  y0 = logVsBlkModel.Coefficients.Estimate(1);
+  % for debugging
+  stimStartTimesFit = (1/m)*(stimStartTimesLog - y0);
+  disp(strcat('Max magnitude fit residual, msec: ',num2str(max(abs(stimStartTimesBlk-stimStartTimesFit)))));
+  % end for debugging
+  stimEndTimesBlk = (1/m)*(stimEndTimesLog - y0);
+  fixationInTimesBlk = (1/m)*(fixationInTimesLog - y0);
+  fixationOutTimesBlk = (1/m)*(fixationOutTimesLog - y0);
+  juiceOnTimesBlk = (1/m)*(juiceOnTimesLog - y0);
+  juiceOffTimesBlk = (1/m)*(juiceOffTimesLog - y0);
+  fixSpotFlashStartTimesBlk = (1/m)*(fixSpotFlashStartTimesLog - y0);
+  fixSpotFlashEndTimesBlk = (1/m)*(fixSpotFlashEndTimesLog - y0);
+end
+if isfield(params,'syncMethod') && params.syncMethod == 'digitalTriggerNearestFrame'
+  assert(~isempty(diodeTriggers.frameTimes),'You requested nearest frame correction, but did not supply a preprocesed photodiode trace.');
+  for stim_i = 1:length(stimStartTimesBlk)
+    [~,i] = min(abs(diodeTriggers.frameTimes-stimStartTimes(stim_i))); %or should we force it to be > 0?
+    stimStartTimesBlk(stim_i) = frameTimes(i);
+  end
+end
+if isfield(params,'syncMethod') && params.syncMethod == 'highFrames'
+  error('highFrames sync method not yet implemented.');
+end
 
 % finally, build the output structure
 taskData.stimFilenames = stimFilenames;
