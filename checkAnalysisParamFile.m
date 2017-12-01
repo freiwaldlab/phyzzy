@@ -239,7 +239,8 @@ else
     assert(ischar(photodiodeFilename),'Invalid analysis parameter file: photodiodeFilename must be a string');
   end
   if photodiodeParams.needPhotodiode
-    assert(isnumeric(photodiodeParams.channels))
+    assert(isnumeric(photodiodeParams.frameTriggerChannel));
+    assert(isnumeric(photodiodeParams.stimulusTriggerChannel));
   end
 end
 

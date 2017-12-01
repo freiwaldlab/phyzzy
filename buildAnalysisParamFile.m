@@ -87,7 +87,9 @@ analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}
 analogInParams.plotFilterResult = 1; %#ok
 
 photodiodeParams.needPhotodiode = 0;
-photodiodeParams.channels = [1;2]; %#ok
+photodiodeParams.frameRate = 85;
+photodiodeParams.frameTriggerChannel = 1; 
+photodiodeParams.stimulusTriggerChannel = 2; %#ok
 
 % parameters preprocessLogFile, see function for details
 stimSyncParams.usePhotodiode = 0;        %#ok
