@@ -81,8 +81,9 @@ butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 120, 'StopbandFre
 analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
 analogInParams.plotFilteredSignal = 1; %#ok
 
-photodiodeParams.needPhotodiode = 1;
+photodiodeParams.needPhotodiode = 0;
 photodiodeParams.channels = [137]; %#ok
+photodiodeParams.frameTriggerChannel = 1;
 % parameters preprocessLogFile, see function for details
 stimSyncParams.usePhotodiode = 0;        %#ok
 
@@ -91,7 +92,7 @@ audioParams.needAudio = 1;
 audioParams.channels = 132;
 stimSyncParams.useAudio = 1;        %#ok
 
-eyeCalParams.needEyeCal = 1;
+eyeCalParams.needEyeCal = 0;
 eyeCalParams.method = 'zeroEachFixation'; %hardcodeZero %autoZeroSingle
 eyeCalParams.makePlots = 1;
 eyeCalParams.eyeXChannelInd = 1;

@@ -27,7 +27,7 @@ addpath(genpath('dependencies/genpath_exclude'));
 addpath(genpath_exclude('dependencies',{'*mvgc_v1.0'})); %note: use this to exclude libraries that overwrite matlab builtin namespaces, until they're needed
 % load analysis parameters
 if nargin == 0
-  analysisParamFilename = buildAnalysisParamFile();
+  analysisParamFilename = buildAnalysisParamFileSofiFamFacesVoices();
 else
   if strcmp(varargin{1},'preprocessed')
     load(varargin{2}); 
@@ -68,9 +68,16 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   %%%%%%%%%%%%%%%%%
   analogInData = preprocessAnalogIn(analogInFilename, analogInParams); 
   [spikesByChannel, taskTriggers, channelUnitNames] = preprocessSpikes(spikeFilename, ephysParams);
-  lfpData = preprocessLFP(lfpFilename, ephysParams);
+  %lfpData = preprocessLFP(lfpFilename, ephysParams);
+  [ lfpData, diodeTrace, audioTrace ] = preprocessNS5data( lfpFilename, ephysParams, photodiodeParams, audioParams );
   diodeTriggers = preprocessPhotodiodeStrobe(photodiodeFilename, photodiodeParams);
-  [ taskData, stimTiming ] = preprocessLogFile(taskFilename, taskTriggers, diodeTriggers, stimSyncParams); % load visual stimulus data and transform its timestamps to ephys clock reference
+  
+  if ~stimSyncParams.useAudio
+      [ taskData, stimTiming ] = preprocessLogFile(taskFilename, taskTriggers, diodeTriggers, stimSyncParams); % load visual stimulus data and transform its timestamps to ephys clock reference
+  else
+      [ taskData, stimTiming ] = preprocessLogFileAudio(taskFilename, audioTrace, stimSyncParams); % load visual stimulus data and transform its timestamps to ephys clock reference      
+  end
+  
   analogInData = preprocessEyeSignals(analogInData,taskData,eyeCalParams);
   analogInData = preprocessAccelSignals(analogInData, accelParams); 
   taskDataAll = taskData;

@@ -24,8 +24,9 @@ eyeD = analogInData(params.eyeDChannelInd,:);
 fixInInds = zeros(size(eyeX));
 transitionInInds = zeros(size(eyeX));
 transitionOutInds = zeros(size(eyeX));
-for fix_i = 1:length(taskData.fixationInTimes)
-  assert(all(taskData.fixationOutTimes > taskData.fixationInTimes));
+for fix_i = 1:length(taskData.fixationInTimes)  
+  assert(all(taskData.fixationOutTimes > taskData.fixationInTimes(1:length(taskData.fixationOutTimes)))); 
+    taskData.fixationInTimes=taskData.fixationInTimes(1:length(taskData.fixationOutTimes));
   fixInInds(ceil(taskData.fixationInTimes(fix_i)):(floor(taskData.fixationOutTimes(fix_i))-10)) = 1;
   transitionInInds(ceil(taskData.fixationInTimes(fix_i))) = 1;
   transitionOutInds(floor(taskData.fixationOutTimes(fix_i))-10) = 1;

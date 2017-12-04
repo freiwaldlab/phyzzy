@@ -1,4 +1,4 @@
-function [ lfpData, diodeTrace, audioTrace ] = preprocessNS5( lfpFilename, ephysParams, photodiodeParams, audioParams )
+function [ lfpData, diodeTrace, audioTrace ] = preprocessNS5data( lfpFilename, ephysParams, photodiodeParams, audioParams )
 % Load, decimate, and filter LFP, and index it by order in params. lfpChannels
 %    decimation and filtering are optional; specified in params
 
@@ -75,7 +75,7 @@ Output.DEBUG('channel id info'); Output.DEBUG(lfpHeader.ChannelID);
 Output.DEBUG('size LFP data'); Output.DEBUG(size(lfpData));
 
 if ~photodiodeParams.needPhotodiode
-  photodiodeFrameTimes = [];
+  diodeTrace = [];
   
 else
     diodeChannel = find(lfpHeader.ChannelID == photodiodeParams.channels);
