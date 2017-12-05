@@ -221,9 +221,12 @@ for cat_i = 1:length(categoryList)
   catInds.(categoryList{cat_i}) = cat_i;
 end
 imInds = struct();
-for image_i = 1:length(pictureLabels)
-  imInds.(pictureLabels{image_i}) = image_i;
-end
+    for image_i = 1:length(pictureLabels)
+        newStr = regexprep(pictureLabels{image_i},"_'","_");
+        newStr = regexprep(newStr,"-","");
+        %imInds.(pictureLabels{image_i}) = image_i;
+        imInds.(newStr) = image_i;
+    end
 
 if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
   spikesByCategoryBinned = cell(size(spikesByCategory));

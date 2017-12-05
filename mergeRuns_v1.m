@@ -1,9 +1,9 @@
 % Merge runs in which exactly the same task was run, with same timing
-% conditions and same preprocessing was done
+% conditions and same preprocessing was done, with same units defined
 
 clear all; close all
 inputDir='/Volumes/FreiwaldShares/slandi/ephys/tests_2017/Analyzed/171115Buster/Basic/';
-runs = {'014'; '015';'016'}; 
+runs = {'036';'037';'038'}; 
 name='';
 for i=1:numel(runs)
     dataRun{i}=load([inputDir runs{i} '/preprocessedData.mat']);    

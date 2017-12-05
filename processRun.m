@@ -17,7 +17,7 @@ function [ spikesByImage, spikesByCategory, lfpByImage, lfpByCategory, categoryL
 %       - 'paramBuilder', paramBuilderFilename
 %       - 'analyzer', analyzerFilename
 %       - 'paramBuilder', paramBuilderFilename, 'analyzer', analyzerFilename
-%   Notes:
+%   Notes:=
 %   Depends:
 %   - contents of 'dependencies' folder (details coming)
 %   - R2016a (or later) if joint psth-evoked potential plots desired
@@ -81,7 +81,7 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   analogInData = preprocessEyeSignals(analogInData,taskData,eyeCalParams);
   analogInData = preprocessAccelSignals(analogInData, accelParams); 
   taskDataAll = taskData;
-  taskData = excludeTrials( taskData, excludeStimParams); %exclude trials for lost fixation etc. 
+  %taskData = excludeTrials( taskData, excludeStimParams); %exclude trials for lost fixation etc. 
   
   if stimTiming.shortest == stimTiming.longest
     psthParams.psthImDur = stimTiming.shortest;
@@ -137,8 +137,8 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
     catOffsets = [];
     for image_i = 1:length(picFiles)
       if any(strcmp(picCategories{image_i},categoryList{cat_i}))
-        catOnsets = vertcat(catOnsets,onsetsByImage{image_i});
-        catOffsets = vertcat(catOffsets, offsetsByImage{image_i});
+        catOnsets = horzcat(catOnsets,onsetsByImage{image_i});
+        catOffsets = horzcat(catOffsets, offsetsByImage{image_i});
       end
     end
     onsetsByCategory{cat_i} = catOnsets;

@@ -5,7 +5,7 @@ function [ analysisParamsFilename ] = buildAnalysisParamFileSofiFamFacesVoices( 
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '004';
+runNum = '041';
 dateSubject = '171115Buster'; 
 machine = 'turing';
 
