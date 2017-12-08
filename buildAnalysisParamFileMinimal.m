@@ -1,4 +1,4 @@
-function [ analysisParamFilename ] = buildMinimalAnalysisParamFile( )    
+function [ analysisParamFilename ] = buildAnalysisParamFileMinimal( )    
 %buildAnalysisParamFile saves a mat file of parameters, which control the
 %behavior of analyzeSession
 %   todo: option to load 'fixed' params from file, for ease accross days
@@ -7,30 +7,10 @@ function [ analysisParamFilename ] = buildMinimalAnalysisParamFile( )
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '001';
 dateSubject = '171026ALAN'; 
-machine = 'rig';
-
-switch machine
-  case 'rig'
-    ephysVolume = '/Volumes/Users-1/User/Desktop';
-    stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';
-    outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
-  case 'laptop'
-    ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
-    stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
-    outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
-  case 'hopper'
-    ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
-    stimulusLogVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Visiko';
-    outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
-  case 'turing'
-    ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
-    stimulusLogVolume = '/Freiwald/ephys/sserene/ALAN_DATA/Visiko';
-    outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
-end
+ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
+stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
+outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
+stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
 analysisLabel = 'Minimal';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';

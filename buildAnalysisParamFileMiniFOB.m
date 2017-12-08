@@ -73,7 +73,7 @@ ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a
 ephysParams.plotFilterResult = 0; %#ok
 
 % parameters preprocessAnalogIn, see function for details
-analogInParams.needAnalogIn = 0;
+analogInParams.needAnalogIn = 1;
 analogInParams.analogInChannels = [138,139,140]; 
 analogInParams.channelNames = {'eyeX','eyeY','eyeD'};
 analogInParams.analogInChannelScaleBy = [5/32764 5/32764 5/32764]; %converts raw values to volts
@@ -92,9 +92,9 @@ photodiodeParams.channels = [1;2]; %#ok
 % parameters preprocessLogFile, see function for details
 stimSyncParams.usePhotodiode = 0;        %#ok
 %
-eyeCalParams.needEyeCal = 0;
+eyeCalParams.needEyeCal = 1;
 eyeCalParams.method = 'zeroEachFixation';
-eyeCalParams.makePlots = 0;
+eyeCalParams.makePlots = 1;
 eyeCalParams.eyeXChannelInd = 1;
 eyeCalParams.eyeYChannelInd = 2;
 eyeCalParams.eyeDChannelInd = 3;

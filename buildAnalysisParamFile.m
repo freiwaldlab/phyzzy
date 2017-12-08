@@ -5,7 +5,7 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '006';
+runNum = '002';
 dateSubject = '171119ALAN'; 
 machine = 'laptop';
 
@@ -31,7 +31,7 @@ switch machine
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
     stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
 end
-analysisLabel = 'Basic';
+analysisLabel = 'BasicTstIm2Event';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;           %#ok
@@ -96,7 +96,7 @@ stimSyncParams.usePhotodiode = 0;        %#ok
 %
 eyeCalParams.needEyeCal = 0;
 eyeCalParams.method = 'zeroEachFixation';
-eyeCalParams.makePlots = 0;
+eyeCalParams.makePlots = 1;
 eyeCalParams.eyeXChannelInd = 1;
 eyeCalParams.eyeYChannelInd = 2;
 eyeCalParams.eyeDChannelInd = 3;
@@ -106,6 +106,8 @@ eyeCalParams.flipX = 1;
 eyeCalParams.flipY = 1; 
 eyeCalParams.offsetX = -6.4;
 eyeCalParams.offsetY = -5.6; 
+eyeCalParams.calFile = ''; %note: needed only when method = fromFile
+eyeCalParams.fixOutLag = 10; 
 eyeCalParams.minFixZeroTime = 1000; %#ok
 
 accelParams.needAccelCal = 0;
@@ -210,7 +212,7 @@ plotSwitch.colorPsthEvoked = 1;
 plotSwitch.linePsthEvoked = 1;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
-plotSwitch.runSummaryImMeanSubDiv = 1;
+plotSwitch.runSummaryImMeanSubDiv = 0;
 plotSwitch.lfpPowerMuaScatter = 0; 
 plotSwitch.lfpPeakToPeakMuaScatter = 0;
 plotSwitch.lfpLatencyMuaLatency = 0;

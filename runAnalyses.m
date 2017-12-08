@@ -24,28 +24,28 @@ psthImDur = inputs.psthImDur;
 preAlign = inputs.preAlign; 
 postAlign = inputs.postAlign;
 categoryList = inputs.categoryList; 
-pictureLabels = inputs.pictureLabels; 
+eventLabels = inputs.eventLabels; 
 jumpsByImage = inputs.jumpsByImage; 
-spikesByImage = inputs.spikesByImage; 
-psthEmptyByImage = inputs.psthEmptyByImage;  
+spikesByEvent = inputs.spikesByEvent; 
+psthEmptyByEvent = inputs.psthEmptyByEvent;  
 spikesByCategory = inputs.spikesByCategory; 
 psthEmptyByCategory = inputs.psthEmptyByCategory; 
-spikesByImageForTF = inputs.spikesByImageForTF;  
+spikesByEventForTF = inputs.spikesByEventForTF;  
 spikesByCategoryForTF = inputs.spikesByCategoryForTF;  
-lfpByImage = inputs.lfpByImage;  
+lfpByEvent = inputs.lfpByEvent;  
 lfpByCategory = inputs.lfpByCategory;  
-analogInByImage = inputs.analogInByImage; 
+analogInByEvent = inputs.analogInByEvent; 
 analogInByCategory = inputs.analogInByCategory;  
 channelUnitNames = inputs.channelUnitNames;  
 stimTiming = inputs.stimTiming;  
-picCategories = inputs.picCategories;  
-onsetsByImage = inputs.onsetsByImage;  
+eventCategories = inputs.eventCategories;  
+onsetsByEvent = inputs.onsetsByEvent;  
 onsetsByCategory = inputs.onsetsByCategory; 
 %%% finished unpacking inputs
 load(analysisParamFilename);
-pictureLabelsTmp = pictureLabels; %note: hack to avoid overwriting list of not presented stimuli
+eventLabelsTmp = eventLabels; %note: hack to avoid overwriting list of not presented stimuli
 load(stimParamsFilename);
-pictureLabels = pictureLabelsTmp; % conclusion of hack
+eventLabels = eventLabelsTmp; % conclusion of hack
 channelNames = ephysParams.channelNames;
 spikeChannels = ephysParams.spikeChannels;
 lfpChannels = ephysParams.lfpChannels;
@@ -140,7 +140,7 @@ for field_i = 1:length(analysisGroupFields)
     end
     newItem_i = 0;
     for item_i = 1:length(analysisGroups.(field).groups{group_i})
-      if ismember(analysisGroups.(field).groups{group_i}{item_i},categoryList) || ismember(analysisGroups.(field).groups{group_i}{item_i},pictureLabels)
+      if ismember(analysisGroups.(field).groups{group_i}{item_i},categoryList) || ismember(analysisGroups.(field).groups{group_i}{item_i},eventLabels)
         newItem_i = newItem_i + 1;
         for subfield_i = 1:length(itemDelimitedSubfields)
           if iscell(analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i})
@@ -200,7 +200,7 @@ for field_i = 1:length(analysisGroupFields)
       end
       newItem_i = 0;
       for item_i = 1:length(analysisGroups.(field).groups{supergroup_i}{group_i})
-        if ismember(analysisGroups.(field).groups{supergroup_i}{group_i}{item_i},categoryList) || ismember(analysisGroups.(field).groups{supergroup_i}{group_i}{item_i},pictureLabels)
+        if ismember(analysisGroups.(field).groups{supergroup_i}{group_i}{item_i},categoryList) || ismember(analysisGroups.(field).groups{supergroup_i}{group_i}{item_i},eventLabels)
           newItem_i = newItem_i + 1;
           for subfield_i = 1:length(itemDelimitedSubfields)
             newStruct.(itemDelimitedSubfields{subfield_i}){newItem_i} = analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){supergroup_i}{group_i}{item_i};
@@ -221,8 +221,8 @@ for cat_i = 1:length(categoryList)
   catInds.(categoryList{cat_i}) = cat_i;
 end
 imInds = struct();
-for image_i = 1:length(pictureLabels)
-  imInds.(pictureLabels{image_i}) = image_i;
+for image_i = 1:length(eventLabels)
+  imInds.(eventLabels{image_i}) = image_i;
 end
 
 if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
@@ -237,13 +237,13 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
       end
     end
   end
-  spikesByImageBinned = cell(size(spikesByCategory));
-  for image_i = 1:length(spikesByImage)
-    spikesByImageBinned{image_i} = cell(length(channelNames));
+  spikesByEventBinned = cell(size(spikesByCategory));
+  for image_i = 1:length(spikesByEvent)
+    spikesByEventBinned{image_i} = cell(length(channelNames));
     for channel_i = 1:length(channelNames)
-      spikesByImageBinned{image_i}{channel_i} = cell(length(channelUnitNames{channel_i}));
+      spikesByEventBinned{image_i}{channel_i} = cell(length(channelUnitNames{channel_i}));
       for unit_i = 1:length(channelUnitNames{channel_i})
-          spikesByImageBinned{image_i}{channel_i}{unit_i} = binspikes(spikesByImage{image_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+psthPost+movingWin(1)/2])';
+          spikesByEventBinned{image_i}{channel_i}{unit_i} = binspikes(spikesByEvent{image_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+psthPost+movingWin(1)/2])';
       end
     end
   end
@@ -256,12 +256,12 @@ for calc_i = 1:length(calcSwitches)
   if calcSwitches(calc_i)
     if calc_i == 1
       if calcSwitch.spikeTimes
-        spikesByItem = spikesByImage;
+        spikesByItem = spikesByEvent;
       else
-        spikesByItemBinned = spikesByImageBinned;
+        spikesByItemBinned = spikesByEventBinned;
       end
-      psthEmptyByItem = psthEmptyByImage;
-      numItems = length(pictureLabels);
+      psthEmptyByItem = psthEmptyByEvent;
+      numItems = length(eventLabels);
     else
       if calcSwitch.spikeTimes
         spikesByItem = spikesByCategory;
@@ -333,7 +333,7 @@ if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
       end
       psthTitle = sprintf('%s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
       figure('Name',psthTitle,'NumberTitle','off');
-      plotPSTH(psthByImage{channel_i}{unit_i}, [], psthPre, psthPost, psthImDur, 'color', psthTitle, pictureLabels, psthColormap );
+      plotPSTH(psthByImage{channel_i}{unit_i}, [], psthPre, psthPost, psthImDur, 'color', psthTitle, eventLabels, psthColormap );
       clear figData
       figData.z = psthByImage{channel_i}{unit_i};
       figData.x = -psthPre:psthImDur+psthPost;
@@ -364,7 +364,7 @@ firingRatesByImageByEpoch = cell(size(frEpochs,1),1);
 firingRateErrsByImageByEpoch = cell(size(frEpochs,1),1);
 spikeCountsByImageByEpoch = cell(size(frEpochs,1),1);
 for epoch_i = 1:size(frEpochs,1)
-  [spikeCounts, fr, frErr] = spikeCounter(spikesByImage, frEpochs(epoch_i,1), frEpochs(epoch_i,2));
+  [spikeCounts, fr, frErr] = spikeCounter(spikesByEvent, frEpochs(epoch_i,1), frEpochs(epoch_i,2));
   firingRatesByImageByEpoch{epoch_i} = fr;
   firingRateErrsByImageByEpoch{epoch_i} = frErr;
   spikeCountsByImageByEpoch{epoch_i} = spikeCounts;
@@ -388,8 +388,8 @@ if ~isempty(spikesByCategory)
   catSpikeCounts = spikeCountsByCategoryByEpoch{1};
   
 
-  groupLabelsByImage = zeros(length(pictureLabels),length(analysisGroups.stimulusLabelGroups));
-  groupLabelColorsByImage = ones(length(pictureLabels),3,length(analysisGroups.stimulusLabelGroups));
+  groupLabelsByImage = zeros(length(eventLabels),length(analysisGroups.stimulusLabelGroups));
+  groupLabelColorsByImage = ones(length(eventLabels),3,length(analysisGroups.stimulusLabelGroups));
   for group_i = 1:1:length(analysisGroups.stimulusLabelGroups.groups)
     group = analysisGroups.stimulusLabelGroups.groups{group_i};
     groupColors = analysisGroups.stimulusLabelGroups.colors{group_i};
@@ -402,16 +402,16 @@ if ~isempty(spikesByCategory)
       groupColors = colorArray;
       analysisGroups.stimulusLabelGroups.colors{group_i} = groupColors;
     end
-    for image_i = 1:length(pictureLabels)
+    for image_i = 1:length(eventLabels)
       for item_i = 1:length(group)
-        if any(strcmp(picCategories{image_i},group{item_i})) || strcmp(pictureLabels{image_i},group{item_i})
+        if any(strcmp(eventCategories{image_i},group{item_i})) || strcmp(eventLabels{image_i},group{item_i})
           groupLabelsByImage(image_i,group_i) = item_i;
           groupLabelColorsByImage(image_i,:,group_i) = groupColors(item_i,:);
           break
         end
       end
       if groupLabelsByImage(image_i,group_i) == 0
-        Output.VERBOSE(sprintf('no slim category match found for %s\n',pictureLabels{image_i}));
+        Output.VERBOSE(sprintf('no slim category match found for %s\n',eventLabels{image_i}));
       end
     end
   end
@@ -423,24 +423,24 @@ if ~taskData.RFmap
     for unit_i = 1:length(channelUnitNames{channel_i})
       [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');
       imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
-      sortedImageLabels = pictureLabels(imageSortOrder);
+      sortedImageLabels = eventLabels(imageSortOrder);
       if exist('groupLabelColorsByImage','var')
         sortedGroupLabelColors = groupLabelColorsByImage(imageSortOrder,:,:);
       else
-        sortedGroupLabelColors = ones(length(pictureLabels),3);
+        sortedGroupLabelColors = ones(length(eventLabels),3);
       end
       fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
-      for i = 1:min(10,length(pictureLabels))
+      for i = 1:min(10,length(eventLabels))
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i),imFrErrSorted(i));
       end
       fprintf('\nLeast Preferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
-      for i = 1:min(5,length(pictureLabels))
+      for i = 1:min(5,length(eventLabels))
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{end-i},imageSortedRates(end-i), imFrErrSorted(end-i));
       end
       % preferred images raster plot
       if isfield(plotSwitch,'prefImRaster') && plotSwitch.prefImRaster
         fh = figure();
-        raster(spikesByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
+        raster(spikesByEvent(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
         title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         if closeFig
@@ -450,7 +450,7 @@ if ~taskData.RFmap
       % preferred images raster-evoked overlay
       if isfield(plotSwitch,'prefImRasterEvokedOverlay') && plotSwitch.prefImRasterEvokedOverlay
         fh = figure();
-        rasterEvoked(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
+        rasterEvoked(spikesByEvent(imageSortOrder(1:10)), lfpByEvent(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
         title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         if closeFig
@@ -460,7 +460,7 @@ if ~taskData.RFmap
       % preferred images raster-evoked overlay, with other channels
       if isfield(plotSwitch,'prefImMultiChRasterEvokedOverlay') && plotSwitch.prefImMultiChRasterEvokedOverlay
         fh = figure();
-        rasterEvokedMultiCh(spikesByImage(imageSortOrder(1:10)), lfpByImage(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
+        rasterEvokedMultiCh(spikesByEvent(imageSortOrder(1:10)), lfpByEvent(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
         title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster-LFP-MultiChannel_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         if closeFig
@@ -473,7 +473,7 @@ if ~taskData.RFmap
           fh = figure();
           groupName = analysisGroups.stimulusLabelGroups.names{group_i};
           superbar(imageSortedRates,'E',imFrErrSorted,'BarFaceColor',sortedGroupLabelColors(:,:,group_i));
-          set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(pictureLabels),'TickDir','out');
+          set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(eventLabels),'TickDir','out');
           ylabel('Firing rate, Hz');
           title(sprintf('Image tuning, sorted, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
           clear figData
@@ -491,11 +491,11 @@ if ~taskData.RFmap
 
   % multi-channel MUA image preference
   if length(channelNames) > 1
-    multiChSpikesMin = zeros(length(pictureLabels));
-    multiChSpikesMinNorm = zeros(length(pictureLabels));
-    multiChSpikesMeanNorm = zeros(length(pictureLabels));
-    multiChMua = zeros(length(spikeChannels),length(pictureLabels));
-    multiChMuaNorm = zeros(length(spikeChannels),length(pictureLabels));
+    multiChSpikesMin = zeros(length(eventLabels));
+    multiChSpikesMinNorm = zeros(length(eventLabels));
+    multiChSpikesMeanNorm = zeros(length(eventLabels));
+    multiChMua = zeros(length(spikeChannels),length(eventLabels));
+    multiChMuaNorm = zeros(length(spikeChannels),length(eventLabels));
     for channel_i = 1:length(spikeChannels)
       multiChMua(channel_i,:) = imFr{channel_i}(end,:);
       multiChMuaNorm(channel_i,:) = imFr{channel_i}(end,:)/max(imFr{channel_i}(end,:));
@@ -505,18 +505,18 @@ if ~taskData.RFmap
     multiChSpikesMeanNorm = mean(multiChMuaNorm);
     % multi-channel preferred images
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMin,2,'descend');
-    sortedImageLabels = pictureLabels(imageSortOrder);
+    sortedImageLabels = eventLabels(imageSortOrder);
     fprintf('\n\n\nMulti-channel Preferred Images, Maximin\n\n');
-    for i = 1:min(10,length(pictureLabels))
+    for i = 1:min(10,length(eventLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
     end
     fprintf('\n\nMulti-channel Least preferred Images, Maximin\n\n');
-    for i = 1:min(5,length(pictureLabels))
+    for i = 1:min(5,length(eventLabels))
       fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
     end
 
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMinNorm,2,'descend');
-    sortedImageLabels = pictureLabels(imageSortOrder);
+    sortedImageLabels = eventLabels(imageSortOrder);
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Maximin\n\n');
     for i = 1:min(10, length(sortedImageLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -527,13 +527,13 @@ if ~taskData.RFmap
     end
 
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMeanNorm,2,'descend');
-    sortedImageLabels = pictureLabels(imageSortOrder);
+    sortedImageLabels = eventLabels(imageSortOrder);
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Mean\n\n');
-    for i = 1:min(10,length(pictureLabels))
+    for i = 1:min(10,length(eventLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
     end
     fprintf('\n\nMulti-channel Least preferred Images, Channel-Normalized Mean\n\n');
-    for i = 1:min(5,length(pictureLabels))
+    for i = 1:min(5,length(eventLabels))
       fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
     end
   end
@@ -606,7 +606,7 @@ if ~taskData.RFmap
               itemTypes{item_i} = 'cat';
             else
               itemInds(item_i) = imInds.(group{subgroup_i}{item_i});
-              itemNames{item_i} = pictureLabels{itemInds(item_i)};
+              itemNames{item_i} = eventLabels{itemInds(item_i)};
               itemTypes{item_i} = 'im';
             end
           end
@@ -732,7 +732,7 @@ if taskData.RFmap
           end
         end
         meanRF = zeros(length(rfGrid),1);
-        for image_i = 1:length(pictureLabels)
+        for image_i = 1:length(eventLabels)
           imageRF = zeros(length(rfGrid),1);
           spikeLatencyRF = zeros(length(rfGrid),1);
           %also calc evoked peak time? power-weighted latency? peak of mean evoked correlogram?
@@ -744,17 +744,17 @@ if taskData.RFmap
               disp('no data for this image and location');
               continue;
             end
-            trialSpikes = spikesByImage{image_i}{channel_i}{unit_i}(gridPointTrials);
+            trialSpikes = spikesByEvent{image_i}{channel_i}{unit_i}(gridPointTrials);
             totalSpikes = 0;
             spikeLatency = 0;
-            evokedPotential = zeros(size(lfpByImage{image_i}(1,channel_i,1,samPerMS*(frCalcOn+psthPre):samPerMS*(frCalcOff+psthPre)))); 
+            evokedPotential = zeros(size(lfpByEvent{image_i}(1,channel_i,1,samPerMS*(frCalcOn+psthPre):samPerMS*(frCalcOff+psthPre)))); 
             gridPointTrialInds = 1:length(gridPointTrials);
             gridPointTrialInds = gridPointTrialInds(gridPointTrials);
             for trial_i = 1:length(trialSpikes)
               totalSpikes = totalSpikes + sum(trialSpikes(trial_i).times > frCalcOn & trialSpikes(trial_i).times < frCalcOff);
               % bad latency measure; try weighting spike times by 1/ISI
               spikeLatency = spikeLatency + mean(trialSpikes(trial_i).times(trialSpikes(trial_i).times > frCalcOn & trialSpikes(trial_i).times < frCalcOff));
-              evokedPotential = evokedPotential + lfpByImage{image_i}(1,channel_i,gridPointTrialInds(trial_i),samPerMS*(frCalcOn+psthPre):samPerMS*(frCalcOff+psthPre));
+              evokedPotential = evokedPotential + lfpByEvent{image_i}(1,channel_i,gridPointTrialInds(trial_i),samPerMS*(frCalcOn+psthPre):samPerMS*(frCalcOff+psthPre));
             end
             imageRF(grid_i) = (1000/(frCalcOff-frCalcOn))*totalSpikes/length(trialSpikes);
             spikeLatencyRF(grid_i) = 1/sum(gridPointTrials)*spikeLatency;
@@ -762,15 +762,15 @@ if taskData.RFmap
             evokedPowerRF(grid_i) = sum(evokedPotential.^2); %todo: move out of by-unit loop
           end
           meanRF = meanRF + imageRF;
-          display_map(rfGrid(:,1),rfGrid(:,2),imageRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
-            [outDir sprintf('RF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
+          display_map(rfGrid(:,1),rfGrid(:,2),imageRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i}),...
+            [outDir sprintf('RF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i},runNum)]);
           if isfield(plotSwitch,'latencyRF') && plotSwitch.latencyRF
-            display_map(rfGrid(:,1),rfGrid(:,2),spikeLatencyRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Latency RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
-              [outDir sprintf('LatencyRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
+            display_map(rfGrid(:,1),rfGrid(:,2),spikeLatencyRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Latency RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i}),...
+              [outDir sprintf('LatencyRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i},runNum)]);
           end
           if isfield(plotSwitch,'evokedPowerRF') && plotSwitch.evokedPowerRF
-            display_map(rfGrid(:,1),rfGrid(:,2),evokedPowerRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Evoked Power RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i}),...
-              [outDir sprintf('EvokedPowerRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},runNum)]);
+            display_map(rfGrid(:,1),rfGrid(:,2),evokedPowerRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Evoked Power RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i}),...
+              [outDir sprintf('EvokedPowerRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i},runNum)]);
           end
           % todo: add background subtracted version
           % todo: add subplots version
@@ -779,7 +779,7 @@ if taskData.RFmap
           % todo: bandpassed power RFs
           % todo: stimulus decodability RF
         end
-        meanRF = meanRF/length(pictureLabels);
+        meanRF = meanRF/length(eventLabels);
         display_map(rfGrid(:,1),rfGrid(:,2),meanRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, Mean RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}),...
           [outDir sprintf('MeanRF_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum)]);
       end
@@ -885,7 +885,7 @@ if isfield(plotSwitch,'evokedPsthMuaMultiCh') && plotSwitch.evokedPsthMuaMultiCh
         psthByItem = psthByCategory;
         itemNum = catInds.(group{item_i});
       else
-        lfpByItem = lfpByImage;
+        lfpByItem = lfpByEvent;
         psthByItem = psthByImage;
         itemNum = imInds.(group{item_i});
       end
@@ -943,8 +943,8 @@ for channel_i = 1:length(lfpChannels)
           responses(item_i,:) = squeeze(mean(lfpByCategory{catInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
           responseErrs(item_i,:) = squeeze(std(lfpByCategory{catInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),[],3)/sqrt(size(lfpByCategory{catInds.(group{item_i})},3)))';
         else
-          responses(item_i,:) = squeeze(mean(lfpByImage{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
-          responseErrs(item_i,:) = squeeze(std(lfpByImage{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),[],3)/sqrt(size(lfpByImage{imInds.(group{item_i})},3)))';
+          responses(item_i,:) = squeeze(mean(lfpByEvent{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
+          responseErrs(item_i,:) = squeeze(std(lfpByEvent{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),[],3)/sqrt(size(lfpByEvent{imInds.(group{item_i})},3)))';
         end
       end
       lineProps.width = 3;
@@ -992,8 +992,8 @@ if isfield(plotSwitch,'analogInByItem') && plotSwitch.analogInByItem
       else
         for channel_i = 1:length(groupChannels)
         end
-        responses(item_i,:) = squeeze(mean(sqrt(sum(analogInByImage{imInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy).^2,2)),3))';
-        responseErrs(item_i,:) = squeeze(std(sqrt(sum(analogInByImage{imInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy).^2,2)),[],3)/sqrt(size(analogInByImage{imInds.(group{item_i})},3)))';
+        responses(item_i,:) = squeeze(mean(sqrt(sum(analogInByEvent{imInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy).^2,2)),3))';
+        responseErrs(item_i,:) = squeeze(std(sqrt(sum(analogInByEvent{imInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy).^2,2)),[],3)/sqrt(size(analogInByEvent{imInds.(group{item_i})},3)))';
       end
     end
     lineProps.width = 3;
@@ -1040,8 +1040,8 @@ if isfield(plotSwitch,'analogInDerivativesByItem') && plotSwitch.analogInDerivat
       else
         for channel_i = 1:length(groupChannels)
         end
-        responses(item_i,:) = squeeze(mean(sqrt(sum(diff(analogInByImage{imInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy),1,4).^2,2)),3))';
-        responseErrs(item_i,:) = squeeze(std(sqrt(sum(diff(analogInByImage{imInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy),1,4).^2,2)),[],3)/sqrt(size(analogInByImage{imInds.(group{item_i})},3)))';
+        responses(item_i,:) = squeeze(mean(sqrt(sum(diff(analogInByEvent{imInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy),1,4).^2,2)),3))';
+        responseErrs(item_i,:) = squeeze(std(sqrt(sum(diff(analogInByEvent{imInds.(group{item_i})}(:,groupChannels,:,lfpPaddedBy+1:end-lfpPaddedBy),1,4).^2,2)),[],3)/sqrt(size(analogInByEvent{imInds.(group{item_i})},3)))';
       end
     end
     lineProps.width = 3;
@@ -1087,8 +1087,8 @@ for channel_i = 1:length(lfpChannels)
           lfpResponseErrs(item_i,:) = squeeze(std(lfpByCategory{catInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),[],3)/sqrt(size(lfpByCategory{catInds.(group{item_i})},3)))';
           spkResponses(item_i,:) = psthByCategory{channel_i}{end}(catInds.(group{item_i}),:);
         else
-          lfpResponses(item_i,:) = squeeze(mean(lfpByImage{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
-          lfpResponseErrs(item_i,:) = squeeze(std(lfpByImage{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),[],3)/sqrt(size(lfpByImage{imInds.(group{item_i})},3)))';
+          lfpResponses(item_i,:) = squeeze(mean(lfpByEvent{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
+          lfpResponseErrs(item_i,:) = squeeze(std(lfpByEvent{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),[],3)/sqrt(size(lfpByEvent{imInds.(group{item_i})},3)))';
           spkResponses(item_i,:) = psthByImage{channel_i}{end}(imInds.(group{item_i}),:);
         end
       end
@@ -1199,8 +1199,8 @@ for channel_i = 1:length(lfpChannels)
           lfpResponses(item_i,:) = squeeze(mean(lfpByCategory{catInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
           lfpResponseErrs(item_i,:) = squeeze(std(lfpByCategory{catInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),[],3)/sqrt(size(lfpByCategory{catInds.(group{item_i})},3)))';
         else
-          lfpResponses(item_i,:) = squeeze(mean(lfpByImage{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
-          lfpResponseErrs(item_i,:) = squeeze(std(lfpByImage{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),[],3)/sqrt(size(lfpByImage{imInds.(group{item_i})},3)))';
+          lfpResponses(item_i,:) = squeeze(mean(lfpByEvent{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
+          lfpResponseErrs(item_i,:) = squeeze(std(lfpByEvent{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),[],3)/sqrt(size(lfpByEvent{imInds.(group{item_i})},3)))';
         end
       end
       subplot(numSubplots,1,numSubplots);
@@ -1284,9 +1284,9 @@ if isfield(plotSwitch,'runSummary') && plotSwitch.runSummary
       plot([taskDataAll.fixationInTimes(fix_i) fixationOutTimesTmp(fix_i)],[0 0]);
     end
     %spikes and lfp
-    for image_i = 1:length(onsetsByImage)
-      onsets = onsetsByImage{image_i};
-      lfpByTrial = squeeze(lfpByImage{image_i}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+    for image_i = 1:length(onsetsByEvent)
+      onsets = onsetsByEvent{image_i};
+      lfpByTrial = squeeze(lfpByEvent{image_i}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
       lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
       lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
       
@@ -1371,9 +1371,9 @@ if isfield(plotSwitch,'runSummaryImMeanSub') && plotSwitch.runSummaryImMeanSub
       plot([taskDataAll.fixationInTimes(fix_i) fixationOutTimesTmp(fix_i)],[0 0]);
     end
     %spikes and lfp
-    for image_i = 1:length(onsetsByImage)
-      onsets = onsetsByImage{image_i};
-      lfpByTrial = squeeze(lfpByImage{image_i}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+    for image_i = 1:length(onsetsByEvent)
+      onsets = onsetsByEvent{image_i};
+      lfpByTrial = squeeze(lfpByEvent{image_i}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
       lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
       lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
       lfpPowerByTrialImMeanSub = lfpPowerByTrial - mean(lfpPowerByTrial);
@@ -1462,9 +1462,9 @@ if isfield(plotSwitch,'runSummaryImMeanSubDiv') && plotSwitch.runSummaryImMeanSu
     %spikes and lfp
     frCalcOn = frEpochs(1,1);
     frCalcOff = frEpochs(1,2);
-    for image_i = 1:length(onsetsByImage)
-      onsets = onsetsByImage{image_i};
-      lfpByTrial = squeeze(lfpByImage{image_i}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
+    for image_i = 1:length(onsetsByEvent)
+      onsets = onsetsByEvent{image_i};
+      lfpByTrial = squeeze(lfpByEvent{image_i}(1,channel_i,:,lfpPaddedBy+1+psthPre+frCalcOn:lfpPaddedBy+1+psthPre+frCalcOff));
       lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
       lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
       lfpPowerByTrialImMeanSubDiv = (lfpPowerByTrial - mean(lfpPowerByTrial))/mean(lfpPowerByTrial);
@@ -1524,7 +1524,7 @@ if isfield(plotSwitch,'lfpPowerMuaScatter') && plotSwitch.lfpPowerMuaScatter
               lfpByTrial = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
               spikeCountsByTrial = spikeCountsByCategoryByEpoch{epoch_i}{channel_i}{unit_i}{catInds.(group{item_i})}.counts;
             else
-              lfpByTrial = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              lfpByTrial = squeeze(lfpByEvent{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
               spikeCountsByTrial = spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}{imInds.(group{item_i})}.counts;
             end
             lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
@@ -1566,7 +1566,7 @@ if isfield(plotSwitch,'lfpPeakToPeakMuaScatter') && plotSwitch.lfpPeakToPeakMuaS
               lfpByTrial = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
               spikeCountsByTrial = spikeCountsByCategoryByEpoch{epoch_i}{channel_i}{unit_i}{catInds.(group{item_i})}.counts;
             else
-              lfpByTrial = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              lfpByTrial = squeeze(lfpByEvent{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
               spikeCountsByTrial = spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}{imInds.(group{item_i})}.counts;
             end
             h = scatter(max(lfpByTrial,[],2)-min(lfpByTrial,[],2),spikeCountsByTrial,36,groupColors(item_i,:),'filled');
@@ -1611,8 +1611,8 @@ if isfield(plotSwitch,'lfpPowerAcrossChannels') && plotSwitch.lfpPowerAcrossChan
               lfpByTrialCh1 = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
               lfpByTrialCh2 = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
             else
-              lfpByTrialCh1 = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
-              lfpByTrialCh2 = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              lfpByTrialCh1 = squeeze(lfpByEvent{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              lfpByTrialCh2 = squeeze(lfpByEvent{imInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
             end
             lfpMeanSubByTrialCh1 = lfpByTrialCh1 - mean(lfpByTrialCh1,2);
             lfpPowerByTrialCh1 = sqrt(sum(lfpMeanSubByTrialCh1.^2,2));
@@ -1656,8 +1656,8 @@ if isfield(plotSwitch,'lfpPeakToPeakAcrossChannels') && plotSwitch.lfpPeakToPeak
               lfpByTrialCh1 = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
               lfpByTrialCh2 = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
             else
-              lfpByTrialCh1 = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
-              lfpByTrialCh2 = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              lfpByTrialCh1 = squeeze(lfpByEvent{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+              lfpByTrialCh2 = squeeze(lfpByEvent{imInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
             end
             h = scatter(max(lfpByTrialCh1,[],2)-min(lfpByTrialCh1,[],2),max(lfpByTrialCh2,[],2)-min(lfpByTrialCh2,[],2),36,groupColors(item_i,:),'filled');
             handlesForLegend(item_i) = h;
@@ -1696,8 +1696,8 @@ if isfield(plotSwitch,'lfpLatencyShiftAcrossChannels') && plotSwitch.lfpLatencyS
             lfpByTrialCh1 = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
             lfpByTrialCh2 = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
           else
-            lfpByTrialCh1 = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
-            lfpByTrialCh2 = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+            lfpByTrialCh1 = squeeze(lfpByEvent{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
+            lfpByTrialCh2 = squeeze(lfpByEvent{imInds.(group{item_i})}(1,channel2_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
           end
           lfpMeanSubByTrialCh1 = lfpByTrialCh1 - mean(lfpByTrialCh1,2);
           lfpTrialAveCh1 = mean(lfpMeanSubByTrialCh1,1);
@@ -1770,9 +1770,9 @@ if isfield(plotSwitch,'singleTrialAnalogInByCategory') && plotSwitch.singleTrial
             ydata(i,:) = squeeze(analogInByCategory{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy));
           end
         else
-          for i = 1:min(50,size(lfpByImage{imInds.(group{item_i})},3))
-            plot(times, squeeze(analogInByImage{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy)));
-            ydata(i,:) = squeeze(analogInByImage{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy));
+          for i = 1:min(50,size(lfpByEvent{imInds.(group{item_i})},3))
+            plot(times, squeeze(analogInByEvent{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy)));
+            ydata(i,:) = squeeze(analogInByEvent{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy));
           end
         end
         h = get(gca,'ylim');
@@ -1838,9 +1838,9 @@ for calc_i = 1:length(calcSwitches)
                 ydata(i,:) = squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy));
               end
             else
-              for i = 1:min(50,size(lfpByImage{imInds.(group{item_i})},3))
-                plot(times, squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy)));
-                ydata(i,:) = squeeze(lfpByImage{imInds.(group{item_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy));
+              for i = 1:min(50,size(lfpByEvent{imInds.(group{item_i})},3))
+                plot(times, squeeze(lfpByEvent{imInds.(group{item_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy)));
+                ydata(i,:) = squeeze(lfpByEvent{imInds.(group{item_i})}(1,channel_i,i,lfpPaddedBy+1:end-lfpPaddedBy));
               end
             end
             h = get(gca,'ylim');
@@ -2022,7 +2022,7 @@ for calc_i = 1:length(calcSwitches)
               lfpByItem = lfpByCategory;
               itemNum = catInds.(group{item_i});
             else
-              lfpByItem = lfpByImage;
+              lfpByItem = lfpByEvent;
               itemNum = imInds.(group{item_i});
             end
             [Cgram, C, shiftList, confCgram, confC] = correlogram(squeeze(lfpByItem{itemNum}(1,channel_i,:,:)),...
@@ -2252,7 +2252,7 @@ for calc_i = 1:length(calcSwitches)
                   spikesByItemBinned = spikesByCategoryBinned;
                   itemNum = catInds.(group{item_i});
                 else
-                  spikesByItemBinned = spikesByImageBinned;
+                  spikesByItemBinned = spikesByEventBinned;
                   itemNum = imInds.(group{item_i});
                 end
                 correlParams.useSmoothing = [1 1];
@@ -2337,23 +2337,23 @@ for calc_i = 1:length(tfCalcSwitches)
         continue
       end
       disp('switching spikes and lfps to induced for imagewise tf computation');
-      spikesByImageBinnedEvokedTmp = spikesByImageBinned;
-      spikesByImageBinned = spikesByImageBinnedInduced;
-      lfpByImageEvokedTmp = lfpByImage;
-      lfpByImage = lfpByImageInduced;
+      spikesByEventBinnedEvokedTmp = spikesByEventBinned;
+      spikesByEventBinned = spikesByEventBinnedInduced;
+      lfpByEventEvokedTmp = lfpByEvent;
+      lfpByEvent = lfpByEventInduced;
     end
     if isfield(plotSwitch,'spikeSpectraTfByImage') && plotSwitch.spikeSpectraTfByImage
       for channel_i = 1:length(channelNames)
-        for image_i = 1:length(pictureLabels)
+        for image_i = 1:length(eventLabels)
           % todo: put in dB conversion and specgramrowave option
           for unit_i =1:length(channelUnitNames{channel_i})
             if length(channelUnitNames{channel_i}) == 1 && unit_i ==1 %if no isolated spike, don't separate unsorted and MUA
               continue
             end
             if calcSwitch.spikeTimes
-              [S,t,f,~,Serr]=mtspecgrampt(spikesByImageForTF{image_i}{channel_i}{unit_i},movingWin,chronuxParams); %last optional param not used: fscorr
+              [S,t,f,~,Serr]=mtspecgrampt(spikesByEventForTF{image_i}{channel_i}{unit_i},movingWin,chronuxParams); %last optional param not used: fscorr
             else
-              [S,t,f,~,Serr]=mtspecgrampb(spikesByImageBinned{image_i}{channel_i}{unit_i}',movingWin,chronuxParams); %last optional param not used: fscorr
+              [S,t,f,~,Serr]=mtspecgrampb(spikesByEventBinned{image_i}{channel_i}{unit_i}',movingWin,chronuxParams); %last optional param not used: fscorr
             end
             %todo: add Serr plot, significance plot, effect size plot, or similar
             %todo: add support for image calc groups, incl 'pref' wildcard
@@ -2369,13 +2369,13 @@ for calc_i = 1:length(tfCalcSwitches)
             hold on
             draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
             draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            title(sprintf('%s %s Time-Frequency, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
+            title(sprintf('%s %s Time-Frequency, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
             clear figData
             figData.x = t;
             figData.y = f;
             figData.z = S';
             drawnow;
-            saveFigure(outDir,sprintf('TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+            saveFigure(outDir,sprintf('TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
             if closeFig
               close(fh);
             end
@@ -2384,7 +2384,7 @@ for calc_i = 1:length(tfCalcSwitches)
               if calcSwitch.spikeTimes
                 [S,t,f,~,Serr]=mtspecgrampt(allSpikesByImageForTF{image_i}{channel_i}{unit_i},movingWin,chronuxParams); %last optional param not used: fscorr
               else
-                [S,t,f,~,Serr]=mtspecgrampb(mean(spikesByImageBinned{image_i}{channel_i}{unit_i},1)',movingWin,chronuxParams); %last optional param not used: fscorr
+                [S,t,f,~,Serr]=mtspecgrampb(mean(spikesByEventBinned{image_i}{channel_i}{unit_i},1)',movingWin,chronuxParams); %last optional param not used: fscorr
               end
               %todo: add Serr plot, significance plot, effect size plot, or similar
               %todo: add support for image calc groups, incl 'pref' wildcard
@@ -2400,13 +2400,13 @@ for calc_i = 1:length(tfCalcSwitches)
               hold on
               draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
               draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-              title(sprintf('%s %s Time-Frequency, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
+              title(sprintf('%s %s Time-Frequency, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
               clear figData
               figData.x = t;
               figData.y = f;
               figData.z = S';
               drawnow;
-              saveFigure(outDir,sprintf('TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},pictureLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              saveFigure(outDir,sprintf('TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
               if closeFig
                 close(fh);
               end
@@ -2419,7 +2419,7 @@ for calc_i = 1:length(tfCalcSwitches)
       for channel_i = 1:length(channelNames)
         %todo: add Serr plot, significance plot, effect size plot, or similar
         %todo: add support for image calc groups, incl 'pref' wildcard
-        [S,t,f,Serr]=mtspecgramc(squeeze(lfpByImage{image_i}(1,channel_i,:,:))',movingWin,chronuxParams);
+        [S,t,f,Serr]=mtspecgramc(squeeze(lfpByEvent{image_i}(1,channel_i,:,:))',movingWin,chronuxParams);
         t = t - lfpAlignParams.msPreAlign;
         f = 1000*f;
         fh = figure();
@@ -2432,21 +2432,21 @@ for calc_i = 1:length(tfCalcSwitches)
         hold on
         draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
         draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-        title(sprintf('%s mean LFP Time-Frequency, %s%s',channelNames{channel_i},pictureLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
+        title(sprintf('%s mean LFP Time-Frequency, %s%s',channelNames{channel_i},eventLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
         clear figData
         figData.x = t;
         figData.y = f;
         figData.z = S;
         drawnow;
-        saveFigure(outDir,sprintf('TF_mean_LFP_%s_%s%s_Run%s',channelNames{channel_i},pictureLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        saveFigure(outDir,sprintf('TF_mean_LFP_%s_%s%s_Run%s',channelNames{channel_i},eventLabels{image_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         if closeFig
           close(fh);
         end
       end
     end
     if strcmp(tfCalcSwitchNames{calc_i},'inducedImageTF')
-      spikesByImageBinned = spikesByImageBinnedEvokedTmp;
-      lfpByImage = lfpByImageEvokedTmp;
+      spikesByEventBinned = spikesByEventBinnedEvokedTmp;
+      lfpByEvent = lfpByEventEvokedTmp;
     end
   end
 end
@@ -2535,7 +2535,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 hold on
                 draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                title(sprintf('%s LFP Time-Frequency, %s%s',channelNames{channel_i},pictureLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
+                title(sprintf('%s LFP Time-Frequency, %s%s',channelNames{channel_i},eventLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
                 xlabel('Time (ms)'); 
                 ylabel('Frequency (Hz)');
                 title(forTitle);
@@ -2740,9 +2740,9 @@ for calc_i = 1:length(tfCalcSwitches)
                   %spikesByItemForTF = spikesByCategoryForTF;
                   itemNum = catInds.(group{item_i});
                 else
-                  lfpByItem = lfpByImage;
-                  spikesByItemBinned = spikesByImageBinned;
-                  %spikesByItemForTF = spikesByImageForTF;
+                  lfpByItem = lfpByEvent;
+                  spikesByItemBinned = spikesByEventBinned;
+                  %spikesByItemForTF = spikesByEventForTF;
                   itemNum = imInds.(group{item_i});
                 end
                 if calcSwitch.spikeTimes
@@ -2839,9 +2839,9 @@ for calc_i = 1:length(tfCalcSwitches)
                   spikesByItemForTF = spikesByCategoryForTF;
                   itemNum = catInds.(group{item_i});
                 else
-                  lfpByItem = lfpByImage;
-                  spikesByItemBinned = spikesByImageBinned;
-                  spikesByItemForTF = spikesByImageForTF;
+                  lfpByItem = lfpByEvent;
+                  spikesByItemBinned = spikesByEventBinned;
+                  spikesByItemForTF = spikesByEventForTF;
                   itemNum = imInds.(group{item_i});
                 end
                 if calcSwitch.spikeTimes
@@ -2981,8 +2981,8 @@ for calc_i = 1:length(tfCalcSwitches)
                     end
                     itemNum = catInds.(group{item_i});
                   else
-                    lfpByItem = lfpByImage;
-                    spikesByItemBinned = spikesByImageBinned;
+                    lfpByItem = lfpByEvent;
+                    spikesByItemBinned = spikesByEventBinned;
                     if calcSwitch.spikeTimes
                       allSpikesByItemForTF = allSpikesByImageForTF;
                     end
@@ -3126,9 +3126,9 @@ for calc_i = 1:length(tfCalcSwitches)
                   spikesByItemForTF = spikesByCategoryForTF;
                   itemNum = catInds.(group{item_i});
                 else
-                  lfpByItem = lfpByImage;
-                  spikesByItemBinned = spikesByImageBinned;
-                  spikesByItemForTF = spikesByImageForTF;
+                  lfpByItem = lfpByEvent;
+                  spikesByItemBinned = spikesByEventBinned;
+                  spikesByItemForTF = spikesByEventForTF;
                   itemNum = imInds.(group{item_i});
                 end
                 if calcSwitch.spikeTimes
@@ -3296,7 +3296,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 lfpByItem = lfpByCategory;
                 itemNum = catInds.(group{item_i});
               else
-                lfpByItem = lfpByImage;
+                lfpByItem = lfpByEvent;
                 itemNum = imInds.(group{item_i});
               end
               [Cgram, C, shiftList, confCgram, confC] = correlogram(squeeze(lfpByItem{itemNum}(1,channel_i,:,:)),...
@@ -3369,7 +3369,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 lfpByItem = lfpByCategory;
                 itemNum = catInds.(group{item_i});
               else
-                lfpByItem = lfpByImage;
+                lfpByItem = lfpByEvent;
                 itemNum = imInds.(group{item_i});
               end
               
@@ -3433,7 +3433,7 @@ for calc_i = 1:length(tfCalcSwitches)
                   lfpByItem = lfpByCategory;
                   itemNum = catInds.(group{item_i});
                 else
-                  lfpByItem = lfpByImage;
+                  lfpByItem = lfpByEvent;
                   itemNum = imInds.(group{item_i});
                 end
                 [C,phi,~,~,~,f,confC,phistd, Cerr] = callChronuxCoherency(@coherencyc,squeeze(mean(lfpByItem{itemNum}(1,channel_i,:,:),3)),...
@@ -3507,7 +3507,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 lfpByItem = lfpByCategory;
                 itemNum = catInds.(group{item_i});
               else
-                lfpByItem = lfpByImage;
+                lfpByItem = lfpByEvent;
                 itemNum = imInds.(group{item_i});
               end
               [C,phi,~,~,~,t,f,confC,phistd,Cerr]=callChronuxCoherency(@cohgramc,squeeze(lfpByItem{itemNum}(1,channel_i,:,:))',...
@@ -3677,8 +3677,8 @@ for calc_i = 1:length(tfCalcSwitches)
                   %spikesByItemForTF = spikesByCategoryForTF;
                   itemNum = catInds.(group{item_i});
                 else
-                  spikesByItemBinned = spikesByImageBinned;
-                  %spikesByItemForTF = spikesByImageForTF;
+                  spikesByItemBinned = spikesByEventBinned;
+                  %spikesByItemForTF = spikesByEventForTF;
                   itemNum = imInds.(group{item_i});
                 end
                 if calcSwitch.spikeTimes
@@ -3770,8 +3770,8 @@ for calc_i = 1:length(tfCalcSwitches)
                   spikesByItemForTF = spikesByCategoryForTF;
                   itemNum = catInds.(group{item_i});
                 else
-                  spikesByItemBinned = spikesByImageBinned;
-                  spikesByItemForTF = spikesByImageForTF;
+                  spikesByItemBinned = spikesByEventBinned;
+                  spikesByItemForTF = spikesByEventForTF;
                   itemNum = imInds.(group{item_i});
                 end
                 if calcSwitch.spikeTimes
@@ -3842,7 +3842,7 @@ for calc_i = 1:length(tfCalcSwitches)
                     end
                     itemNum = catInds.(group{item_i});
                   else
-                    spikesByItemBinned = spikesByImageBinned;
+                    spikesByItemBinned = spikesByEventBinned;
                     if calcSwitch.spikeTimes
                       allSpikesByItemForTF = allSpikesByImageForTF;
                     end
@@ -3937,8 +3937,8 @@ for calc_i = 1:length(tfCalcSwitches)
                   spikesByItemForTF = spikesByCategoryForTF;
                   itemNum = catInds.(group{item_i});
                 else
-                  spikesByItemBinned = spikesByImageBinned;
-                  spikesByItemForTF = spikesByImageForTF;
+                  spikesByItemBinned = spikesByEventBinned;
+                  spikesByItemForTF = spikesByEventForTF;
                   itemNum = imInds.(group{item_i});
                 end
                 if calcSwitch.spikeTimes 

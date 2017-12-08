@@ -11,9 +11,10 @@ function [ taskData, stimTiming ] = preprocessLogFile(logFilename, taskTriggers,
 %   - params: currently must be struct of form params.usePhotodiode = 0
 %   Outputs:
 %   - taskData: struct with fields:
-%       - stimFilenames: nTrials x 1 cell array of stimulus filenames
-%       - stimStartTimes: nTrials x 1 array of stimulus start times in ms
-%       - stimEndTimes: nTrials x 1 array of stimulus end times in ms
+%       - taskEventIDs: nTrials x 1 cell array of alignment point identifiers, e.g. stimulus filenames. 
+%         Used to retrieve information from stimulusParamFile.
+%       - taskEventStartTimes: nTrials x 1 array of task event (e.g. stimulus) start times in ms
+%       - taskEventEndTimes: nTrials x 1 array of task event (e.g. stimulus) end times in ms
 %       _ stimParams: struct containing information about stimulus size etc. Not currently used elsewhere, so may be left empty
 %       - RFmap: 1 for runs where stimulus position varies, else 0
 %       - stimJumps: if RFmap, nTrialsx2 array or stim x and y positions, in degrees of visual angle, else may be empty
@@ -22,12 +23,12 @@ function [ taskData, stimTiming ] = preprocessLogFile(logFilename, taskTriggers,
 %       - gridPointsDegY: if RFmap, 1xN array of unique stimulus jump Y locations, else may be empty
 %       - fields likely required for excludeStimuli and runSummary plots (may be left empty if not needed):
 %         - stimFramesLost: nTrials x 1, number of frames lost during trial
-%         - fixationInTimes: nTrials x 1, times in ms
-%         - fixationOutTimes: nTrials x 1, times in ms
-%         - juiceOnTimes: nTrials x 1, times in ms
-%         - juiceOffTimes: nTrials x 1,times in ms
-%         - fixSpotFlashStartTimes: nTrials x 1, times in ms
-%         - fixSpotFlashEndTimes: nTrials x 1, times in ms
+%         - fixationInTimes: nTrials x 1, times in ms when fixation epochs begin
+%         - fixationOutTimes: nTrials x 1, times in ms when fixation epochs end
+%         - juiceOnTimes: nTrials x 1, times in ms when juice delivery begins
+%         - juiceOffTimes: nTrials x 1,times in ms when juice delivery ends
+%         - fixSpotFlashStartTimes: nTrials x 1, times in ms when flash begins
+%         - fixSpotFlashEndTimes: nTrials x 1, times in ms when flash ends
 %   Dependencies:
 %   - Statistics and Machine Learning Toolbox (for synchronizaton)
 %   - xml2struct (from Matlab fileExchange)
@@ -43,9 +44,9 @@ packetData = dec2bin(taskTriggers.UnparsedData);
 stimBits = packetData(:,end);
 % note: the following two lines assume that the first packet is stimulus,
 % not fixation in
-stimStartTimesBlk = 1000*packetTimes(vertcat(1,diff(stimBits)) ~= 0);  %Blk affix signifies Blackrock reference frame
+taskEventStartTimesBlk = 1000*packetTimes(vertcat(1,diff(stimBits)) ~= 0);  %Blk affix signifies Blackrock reference frame
 disp('number of stim triggers received by blackrock');
-disp(length(stimStartTimesBlk));
+disp(length(taskEventStartTimesBlk));
 clear packetData; 
 
 % parse log file
@@ -65,15 +66,15 @@ stimTiming.shortest = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_B
 stimTiming.longest = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pictureTimeTo.Text);
 stimTiming.ISI = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pauseTime.Text);
 stimParams = logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT;
-stimFilenames = {};
+taskEventIDs = {};
 % note: 'Objects' in the log file are either 'Picture' fields, which we
 % want, or 'PictureCompleted' fields, which we don't care about. We
 % initialize arrays to length(Objects), then, since many are non-negative, 
 % we initialize to -1 then use >= 0 logical indexing to remove interlopers  
 stimFramesLost = -1*ones(length(logStruct.VISIKOLOG.Object),1);
 stimJumps = zeros(length(logStruct.VISIKOLOG.Object),2); %note: jumps can be negative, so we will use startTime for logical indexing
-stimStartTimesLog = -1*ones(length(logStruct.VISIKOLOG.Object),1); % Log affix signifies stimulation computer reference frame
-stimEndTimesLog = -1*ones(length(logStruct.VISIKOLOG.Object),1);
+taskEventStartTimesLog = -1*ones(length(logStruct.VISIKOLOG.Object),1); % Log affix signifies stimulation computer reference frame
+taskEventEndTimesLog = -1*ones(length(logStruct.VISIKOLOG.Object),1);
 fixationInTimesLog = -1*ones(length(logStruct.VISIKOLOG.Trigger),1);
 fixationOutTimesLog = -1*ones(length(logStruct.VISIKOLOG.Trigger),1);
 juiceOnTimesLog = -1*ones(length(logStruct.VISIKOLOG.Trigger),1);
@@ -92,17 +93,17 @@ for i = 1:length(logStruct.VISIKOLOG.Object)
     continue
   end
   tmp = regexp(stimulusStruct.Pictures.Picture.Filename.Text,'\','split');
-  stimFilenames = vertcat(stimFilenames, strtrim(tmp{end})); %note: for some reason, filenames have trailing whitespace; trim it off
+  taskEventIDs = vertcat(taskEventIDs, strtrim(tmp{end})); %note: for some reason, filenames have trailing whitespace; trim it off
   stimFramesLost(i) = str2double(stimulusStruct.Frameslost.Text);
   stimJumps(i,:) = [str2double(stimulusStruct.Pictures.Picture.Jump.x.Text), str2double(stimulusStruct.Pictures.Picture.Jump.y.Text)];
-  stimStartTimesLog(i) = str2double(stimulusStruct.Start.Text);
-  stimEndTimesLog(i) = str2double(stimulusStruct.End.Text);
+  taskEventStartTimesLog(i) = str2double(stimulusStruct.Start.Text);
+  taskEventEndTimesLog(i) = str2double(stimulusStruct.End.Text);
 end
-Output.VERBOSE(sprintf('number of stimulus trials: %s',length(stimFilenames)));
-stimJumps = stimJumps(stimStartTimesLog >= 0,:); %note: jumps can be negative, so use startTime for logical indexing
+Output.VERBOSE(sprintf('number of stimulus trials: %s',length(taskEventIDs)));
+stimJumps = stimJumps(taskEventStartTimesLog >= 0,:); %note: jumps can be negative, so use startTime for logical indexing
 stimFramesLost = stimFramesLost(stimFramesLost >= 0);
-stimStartTimesLog = stimStartTimesLog(stimStartTimesLog >= 0);
-stimEndTimesLog = stimEndTimesLog(stimEndTimesLog >= 0);
+taskEventStartTimesLog = taskEventStartTimesLog(taskEventStartTimesLog >= 0);
+taskEventEndTimesLog = taskEventEndTimesLog(taskEventEndTimesLog >= 0);
 
 for i = 1:length(logStruct.VISIKOLOG.Trigger)
   triggerStruct = logStruct.VISIKOLOG.Trigger{i};
@@ -142,18 +143,18 @@ end
 if ~isfield(params,'syncMethod') || any(params.syncMethod == {'digitalTrigger','digitalTriggerNearestFrame'})
   % first, if nev has one more start trigger than log, throw out final nev
   % trigger (this is a known visiko bug, according to Michael Borisov's code)
-  assert(length(stimStartTimesBlk) - length(stimStartTimesLog) <= 1, 'Error: Start triggers missing from log file');
-  stimStartTimesBlk = stimStartTimesBlk(1:length(stimStartTimesLog));
+  assert(length(taskEventStartTimesBlk) - length(taskEventStartTimesLog) <= 1, 'Error: Start triggers missing from log file');
+  taskEventStartTimesBlk = taskEventStartTimesBlk(1:length(taskEventStartTimesLog));
   %note: don't use first trigger in fit; sometimes off (known visiko bug)
-  logVsBlkModel = fitlm(stimStartTimesBlk(2:end), stimStartTimesLog(2:end));
+  logVsBlkModel = fitlm(taskEventStartTimesBlk(2:end), taskEventStartTimesLog(2:end));
   disp(logVsBlkModel);
   m = logVsBlkModel.Coefficients.Estimate(2);
   y0 = logVsBlkModel.Coefficients.Estimate(1);
   % for debugging
-  stimStartTimesFit = (1/m)*(stimStartTimesLog - y0);
-  disp(strcat('Max magnitude fit residual, msec: ',num2str(max(abs(stimStartTimesBlk-stimStartTimesFit)))));
+  taskEventStartTimesFit = (1/m)*(taskEventStartTimesLog - y0);
+  disp(strcat('Max magnitude fit residual, msec: ',num2str(max(abs(taskEventStartTimesBlk-taskEventStartTimesFit)))));
   % end for debugging
-  stimEndTimesBlk = (1/m)*(stimEndTimesLog - y0);
+  taskEventEndTimesBlk = (1/m)*(taskEventEndTimesLog - y0);
   fixationInTimesBlk = (1/m)*(fixationInTimesLog - y0);
   fixationOutTimesBlk = (1/m)*(fixationOutTimesLog - y0);
   juiceOnTimesBlk = (1/m)*(juiceOnTimesLog - y0);
@@ -163,9 +164,9 @@ if ~isfield(params,'syncMethod') || any(params.syncMethod == {'digitalTrigger','
 end
 if isfield(params,'syncMethod') && params.syncMethod == 'digitalTriggerNearestFrame'
   assert(~isempty(diodeTriggers.frameTimes),'You requested nearest frame correction, but did not supply a preprocesed photodiode trace.');
-  for stim_i = 1:length(stimStartTimesBlk)
-    [~,i] = min(abs(diodeTriggers.frameTimes-stimStartTimes(stim_i))); %or should we force it to be > 0?
-    stimStartTimesBlk(stim_i) = frameTimes(i);
+  for stim_i = 1:length(taskEventStartTimesBlk)
+    [~,i] = min(abs(diodeTriggers.frameTimes-taskEventStartTimes(stim_i))); %or should we force it to be > 0?
+    taskEventStartTimesBlk(stim_i) = frameTimes(i);
   end
 end
 if isfield(params,'syncMethod') && params.syncMethod == 'highFrames'
@@ -173,11 +174,11 @@ if isfield(params,'syncMethod') && params.syncMethod == 'highFrames'
 end
 
 % finally, build the output structure
-taskData.stimFilenames = stimFilenames;
+taskData.taskEventIDs = taskEventIDs;
 taskData.stimJumps = stimJumps;
 taskData.stimFramesLost = stimFramesLost;
-taskData.stimStartTimes = stimStartTimesBlk;
-taskData.stimEndTimes = stimEndTimesBlk;
+taskData.taskEventStartTimes = taskEventStartTimesBlk;
+taskData.taskEventEndTimes = taskEventEndTimesBlk;
 taskData.fixationInTimes = fixationInTimesBlk;
 taskData.fixationOutTimes = fixationOutTimesBlk;
 taskData.juiceOnTimes = juiceOnTimesBlk;

@@ -1,4 +1,4 @@
-function [ spikesByImage, spikesByCategory, lfpByImage, lfpByCategory, categoryList, picFiles ] = processRun( varargin )
+function [ spikesByEvent, spikesByCategory, lfpByEvent, lfpByCategory, categoryList, eventIDs ] = processRun( varargin )
 %processRun loads, preprocesses, and aligns task events, lfps, muas, units, and analog signals (eg eye, accelerometer,photodiodes)
 %   - handles single-channel and multi-channel sessions
 %   - relies only on raw task log and physiology fiels: currently visiko (.log) and blackrock (.ns5,.ns2)
@@ -93,81 +93,85 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   end
 
   %sort trials by image and image category
-  tmp = load(stimParamsFilename); %loads variables paramArray, categoryLabels,pictureLabels
-  picCategories = tmp.paramArray;
+  tmp = load(stimParamsFilename); %loads variables paramArray, categoryLabels,eventLabels
+  eventCategories = tmp.paramArray;
   categoryList = tmp.categoryLabels;
-  pictureLabels = tmp.pictureLabels;
-  picFiles = {};
-  for pic_i = 1:length(picCategories)
-    picFiles = vertcat(picFiles,picCategories{pic_i}{1}); 
+  try
+    eventLabels = tmp.eventLabels;
+  catch
+    eventLabels = tmp.pictureLabels; %implements back-compatibility with previous variable names
   end
-  onsetsByImage = cell(length(picFiles),1);
-  offsetsByImage = cell(length(picFiles),1);
-  picsNotPresented = zeros(length(picFiles),1);
-  for i = 1:length(picFiles)
-    onsetsByImage{i} = taskData.stimStartTimes(strcmp(taskData.stimFilenames,picFiles{i}));
-    offsetsByImage{i} = taskData.stimEndTimes(strcmp(taskData.stimFilenames,picFiles{i}));
-    picsNotPresented(i) = isempty(onsetsByImage{i});
+  eventIDs = cell(size(eventCategories,1),1);
+  for event_i = 1:length(eventCategories)
+    eventIDs{event_i} = eventCategories{event_i}{1}; %per the stimParamFile spec, this is the event ID
+  end
+  onsetsByEvent = cell(length(eventIDs),1);
+  offsetsByEvent = cell(length(eventIDs),1);
+  eventsNotObserved = zeros(length(eventIDs),1);
+  for event_i = 1:length(eventIDs)
+    onsetsByEvent{event_i} = taskData.taskEventStartTimes(strcmp(taskData.taskEventIDs,eventIDs{event_i}));
+    offsetsByEvent{event_i} = taskData.taskEventEndTimes(strcmp(taskData.taskEventIDs,eventIDs{event_i}));
+    eventsNotObserved(event_i) = isempty(onsetsByEvent{event_i});
   end
 
   % todo: need defense against image with onset but no offset? 
   % todo: add similar defense for rf map locations here?
   if ~taskData.RFmap
     disp('No presentations of the following images survived exclusion:');
-    disp(picFiles(picsNotPresented == 1));
+    disp(eventIDs(eventsNotObserved == 1));
   end
-  onsetsByImage = onsetsByImage(picsNotPresented == 0);
-  offsetsByImage = offsetsByImage(picsNotPresented == 0);
-  picFiles = picFiles(picsNotPresented == 0);
-  pictureLabels = pictureLabels(picsNotPresented == 0);
-  picCategories = picCategories(picsNotPresented == 0);
+  onsetsByEvent = onsetsByEvent(eventsNotObserved == 0);
+  offsetsByEvent = offsetsByEvent(eventsNotObserved == 0);
+  eventIDs = eventIDs(eventsNotObserved == 0);
+  eventLabels = eventLabels(eventsNotObserved == 0);
+  eventCategories = eventCategories(eventsNotObserved == 0);
   
-  onsetsByCategory = cell(length(categoryList));
-  offsetsByCategory = cell(length(categoryList));
-  catsNotPresented = zeros(length(categoryList),1);
+  onsetsByCategory = cell(length(categoryList),1);
+  offsetsByCategory = cell(length(categoryList),1);
+  catsNotObserved = zeros(length(categoryList),1);
   for cat_i = 1:length(categoryList)
     catOnsets = [];
     catOffsets = [];
-    for image_i = 1:length(picFiles)
-      if any(strcmp(picCategories{image_i},categoryList{cat_i}))
-        catOnsets = vertcat(catOnsets,onsetsByImage{image_i});
-        catOffsets = vertcat(catOffsets, offsetsByImage{image_i});
+    for event_i = 1:length(eventIDs)
+      if any(strcmp(eventCategories{event_i},categoryList{cat_i}))
+        catOnsets = vertcat(catOnsets,onsetsByEvent{event_i});
+        catOffsets = vertcat(catOffsets, offsetsByEvent{event_i});
       end
     end
     onsetsByCategory{cat_i} = catOnsets;
     offsetsByCategory{cat_i} = catOffsets;
-    catsNotPresented(cat_i) = isempty(onsetsByCategory{cat_i});
+    catsNotObserved(cat_i) = isempty(onsetsByCategory{cat_i});
     Output.DEBUG('numel cat onsets');
     Output.DEBUG(numel(catOnsets));
   end
   
-  onsetsByCategory = onsetsByCategory(catsNotPresented == 0);
-  offsetsByCategory = offsetsByCategory(catsNotPresented == 0);
-  categoryList = categoryList(catsNotPresented == 0);
+  onsetsByCategory = onsetsByCategory(catsNotObserved == 0);
+  offsetsByCategory = offsetsByCategory(catsNotObserved == 0);
+  categoryList = categoryList(catsNotObserved == 0);
 
   if taskData.RFmap
-    jumpsByImage = cell(length(picFiles),1);
-    for i = 1:length(picFiles)
-      jumpsByImage{i} = taskData.stimJumps(strcmp(taskData.stimFilenames,picFiles{i}),:);
+    jumpsByImage = cell(length(eventIDs),1);
+    for i = 1:length(eventIDs)
+      jumpsByImage{i} = taskData.stimJumps(strcmp(taskData.taskEventIDs,eventIDs{i}),:);
     end
   else
     jumpsByImage = [];
   end
   %align spikes by trial, and sort by image and category
   spikeAlignParams.refOffset = 0;
-  [spikesByImage, psthEmptyByImage] = alignSpikes( spikesByChannel, onsetsByImage, spikeChannels, spikeAlignParams );
+  [spikesByEvent, psthEmptyByEvent] = alignSpikes( spikesByChannel, onsetsByEvent, spikeChannels, spikeAlignParams );
   [spikesByCategory, psthEmptyByCategory] = alignSpikes( spikesByChannel, onsetsByCategory, spikeChannels, spikeAlignParams );
 
   % align spikes again, but this time reference time to lfp sample number (required for chronux TF, even spike-spike)
   spikeAlignParamsTF.preAlign = lfpAlignParams.msPreAlign;
   spikeAlignParamsTF.postAlign = lfpAlignParams.msPostAlign;
   spikeAlignParamsTF.refOffset = -lfpAlignParams.msPreAlign;
-  spikesByImageForTF = alignSpikes( spikesByChannel, onsetsByImage, spikeChannels, spikeAlignParamsTF );
+  spikesByEventForTF = alignSpikes( spikesByChannel, onsetsByEvent, spikeChannels, spikeAlignParamsTF );
   spikesByCategoryForTF = alignSpikes( spikesByChannel, onsetsByCategory, spikeChannels, spikeAlignParamsTF );
   %  align LFP data  by trial, sort by image and category, and possibly remove DC and linear components
-  lfpByImage = alignLFP(lfpData, onsetsByImage, lfpChannels, lfpAlignParams);
+  lfpByEvent = alignLFP(lfpData, onsetsByEvent, lfpChannels, lfpAlignParams);
   lfpByCategory = alignLFP(lfpData, onsetsByCategory, lfpChannels, lfpAlignParams);
-  analogInByImage = alignAnalogIn(analogInData, onsetsByImage, analogInChannels, lfpAlignParams);
+  analogInByEvent = alignAnalogIn(analogInData, onsetsByEvent, analogInChannels, lfpAlignParams);
   analogInByCategory = alignAnalogIn(analogInData, onsetsByCategory, analogInChannels, lfpAlignParams);
   
   for cat_i = 1:length(categoryList)
@@ -177,9 +181,9 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
 
   if savePreprocessed
     save(preprocessedDataFilename,'analysisParamFilename', 'spikesByChannel', 'lfpData', 'analogInData', 'taskData', 'taskDataAll', 'psthImDur', 'preAlign', 'postAlign',...
-      'categoryList', 'pictureLabels', 'jumpsByImage', 'spikesByImage', 'psthEmptyByImage', 'spikesByCategory', 'psthEmptyByCategory',...
-      'spikesByImageForTF', 'spikesByCategoryForTF', 'lfpByImage', 'lfpByCategory', 'analogInByImage','analogInByCategory','channelUnitNames', ...
-      'stimTiming', 'picCategories', 'onsetsByImage', 'onsetsByCategory')
+      'categoryList', 'eventLabels', 'jumpsByImage', 'spikesByEvent', 'psthEmptyByEvent', 'spikesByCategory', 'psthEmptyByCategory',...
+      'spikesByEventForTF', 'spikesByCategoryForTF', 'lfpByEvent', 'lfpByCategory', 'analogInByEvent','analogInByCategory','channelUnitNames', ...
+      'stimTiming', 'eventCategories', 'onsetsByEvent', 'onsetsByCategory');
   end
 end
 
@@ -193,22 +197,22 @@ runAnalysisInputs.psthImDur = psthImDur;
 runAnalysisInputs.preAlign = preAlign; 
 runAnalysisInputs.postAlign = postAlign;
 runAnalysisInputs.categoryList = categoryList; 
-runAnalysisInputs.pictureLabels = pictureLabels; 
+runAnalysisInputs.eventLabels = eventLabels; 
 runAnalysisInputs.jumpsByImage = jumpsByImage; 
-runAnalysisInputs.spikesByImage = spikesByImage; 
-runAnalysisInputs.psthEmptyByImage = psthEmptyByImage;  
+runAnalysisInputs.spikesByEvent = spikesByEvent; 
+runAnalysisInputs.psthEmptyByEvent = psthEmptyByEvent;  
 runAnalysisInputs.spikesByCategory = spikesByCategory; 
 runAnalysisInputs.psthEmptyByCategory = psthEmptyByCategory; 
-runAnalysisInputs.spikesByImageForTF = spikesByImageForTF;  
+runAnalysisInputs.spikesByEventForTF = spikesByEventForTF;  
 runAnalysisInputs.spikesByCategoryForTF = spikesByCategoryForTF;  
-runAnalysisInputs.lfpByImage = lfpByImage;  
+runAnalysisInputs.lfpByEvent = lfpByEvent;  
 runAnalysisInputs.lfpByCategory = lfpByCategory;  
-runAnalysisInputs.analogInByImage = analogInByImage; 
+runAnalysisInputs.analogInByEvent = analogInByEvent; 
 runAnalysisInputs.analogInByCategory = analogInByCategory;  
 runAnalysisInputs.channelUnitNames = channelUnitNames;  
 runAnalysisInputs.stimTiming = stimTiming;  
-runAnalysisInputs.picCategories = picCategories;  
-runAnalysisInputs.onsetsByImage = onsetsByImage;  
+runAnalysisInputs.eventCategories = eventCategories;  
+runAnalysisInputs.onsetsByEvent = onsetsByEvent;  
 runAnalysisInputs.onsetsByCategory = onsetsByCategory;
 
 

@@ -23,7 +23,7 @@ function [ diodeTriggers ] = preprocessPhotodiodeStrobe( photodiodeFilename, par
 %     - inputCalibrationFile (required only if hardcodeFromFile): (type: string)
 %     - outputCalibrationFile (required only if saveCalibFile): (type:string)
 if ~params.needPhotodiode
-  photodiodeFrameTimes = [];
+  diodeTriggers = [];
   return
 end
 

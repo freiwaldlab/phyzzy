@@ -31,21 +31,21 @@ if isfield(params,'minStimDur')
   minStimDur = params.minStimDur;
 end
 
-pictureValid = zeros(length(taskData.stimFilenames),1);
-for i = 1:length(taskData.stimFilenames)
-  if taskData.stimFramesLost(i) > 0
+trialValid = zeros(length(taskData.taskEventIDs),1);
+for trial_i = 1:length(taskData.taskEventIDs)
+  if taskData.stimFramesLost(trial_i) > 0
     continue
   end
-  lastFixIn = max(taskData.fixationInTimes(taskData.fixationInTimes < taskData.stimStartTimes(i) - fixPre));
-  lastFixOut = max(taskData.fixationOutTimes(taskData.fixationOutTimes < taskData.stimEndTimes(i) + fixPost));
+  lastFixIn = max(taskData.fixationInTimes(taskData.fixationInTimes < taskData.taskEventStartTimes(trial_i) - fixPre));
+  lastFixOut = max(taskData.fixationOutTimes(taskData.fixationOutTimes < taskData.taskEventEndTimes(trial_i) + fixPost));
   if isempty(lastFixIn)
     continue
   end
   if ~isempty(lastFixOut) && lastFixOut > lastFixIn %note: && short circuits, so won't throw error
     continue
   end
-  lastFlashEnd = max(taskData.fixSpotFlashEndTimes(taskData.fixSpotFlashEndTimes < taskData.stimStartTimes(i) - flashPre));
-  lastFlashStart = max(taskData.fixSpotFlashStartTimes(taskData.fixSpotFlashStartTimes < taskData.stimEndTimes(i) + flashPost));
+  lastFlashEnd = max(taskData.fixSpotFlashEndTimes(taskData.fixSpotFlashEndTimes < taskData.taskEventStartTimes(trial_i) - flashPre));
+  lastFlashStart = max(taskData.fixSpotFlashStartTimes(taskData.fixSpotFlashStartTimes < taskData.taskEventEndTimes(trial_i) + flashPost));
   if ~isempty(lastFlashStart) && isempty(lastFlashEnd)
     continue
   end
@@ -53,8 +53,8 @@ for i = 1:length(taskData.stimFilenames)
     continue
   end
   if exist('juicePre','var') && exist('juicePost','var')
-    lastJuiceOff = max(taskData.juiceOffTimes(taskData.juiceOffTimes < taskData.stimStartTimes(i) - juicePre));
-    lastJuiceOn = max(taskData.juiceOnTimes(taskData.juiceOnTimes < taskData.stimEndTimes(i) + juicePost));
+    lastJuiceOff = max(taskData.juiceOffTimes(taskData.juiceOffTimes < taskData.taskEventStartTimes(trial_i) - juicePre));
+    lastJuiceOn = max(taskData.juiceOnTimes(taskData.juiceOnTimes < taskData.taskEventEndTimes(trial_i) + juicePost));
     if ~isempty(lastJuiceOn) && isempty(lastJuiceOff)
       continue
     end
@@ -68,8 +68,8 @@ for i = 1:length(taskData.stimFilenames)
       shakeOn = vertcat(1,shakeOn);
     end
     shakeOff = find(diff(accel1.data > accel1.threshold) < 0);
-    lastShakeOff = max(shakeOff(shakeOff < taskData.stimStartTimes(i) - accel1.pre));
-    lastShakeOn = max(shakeOn(shakeOn < taskData.stimEndTimes(i) + accel1.post));
+    lastShakeOff = max(shakeOff(shakeOff < taskData.taskEventStartTimes(trial_i) - accel1.pre));
+    lastShakeOn = max(shakeOn(shakeOn < taskData.taskEventEndTimes(trial_i) + accel1.post));
     if ~isempty(lastShakeOn) && isempty(lastShakeOff)
       continue
     end
@@ -83,8 +83,8 @@ for i = 1:length(taskData.stimFilenames)
       shakeOn = vertcat(1,shakeOn);
     end
     shakeOff = find(diff(accel2.data > accel2.threshold) < 0);
-    lastShakeOff = max(shakeOff(shakeOff < taskData.stimStartTimes(i) - accel2.pre));
-    lastShakeOn = max(shakeOn(shakeOn < taskData.stimEndTimes(i) + accel2.post));
+    lastShakeOff = max(shakeOff(shakeOff < taskData.taskEventStartTimes(trial_i) - accel2.pre));
+    lastShakeOn = max(shakeOn(shakeOn < taskData.taskEventEndTimes(trial_i) + accel2.post));
     if ~isempty(lastShakeOn) && isempty(lastShakeOff)
       continue
     end
@@ -92,23 +92,23 @@ for i = 1:length(taskData.stimFilenames)
       continue
     end
   end
-  pictureValid(i) = 1;
+  trialValid(trial_i) = 1;
 end
 %
-disp(strcat('Percent of trials excluded: ', num2str(100-round(100*sum(pictureValid)/length(pictureValid)))));
-disp(strcat('total remaining trials: ', num2str(sum(pictureValid))));
-pictureValid = logical(pictureValid);
+disp(strcat('Percent of trials excluded: ', num2str(100-round(100*sum(trialValid)/length(trialValid)))));
+disp(strcat('total remaining trials: ', num2str(sum(trialValid))));
+trialValid = logical(trialValid);
 taskDataValid = taskData;
-taskDataValid.stimFilenames = taskData.stimFilenames(pictureValid);
-taskDataValid.stimJumps = taskData.stimJumps(pictureValid,:);
-taskDataValid.stimFramesLost = taskData.stimFramesLost(pictureValid);
-taskDataValid.stimStartTimes = taskData.stimStartTimes(pictureValid);
-taskDataValid.stimEndTimes = taskData.stimEndTimes(pictureValid);
+taskDataValid.taskEventIDs = taskData.taskEventIDs(trialValid);
+taskDataValid.stimJumps = taskData.stimJumps(trialValid,:);
+taskDataValid.stimFramesLost = taskData.stimFramesLost(trialValid);
+taskDataValid.taskEventStartTimes = taskData.taskEventStartTimes(trialValid);
+taskDataValid.taskEventEndTimes = taskData.taskEventEndTimes(trialValid);
 
 if params.DEBUG
   figure();
   hold on
-  plot(taskDataValid.stimStartTimes,ones(size(taskDataValid.stimStartTimes)),'color','red','marker','o', 'linestyle','none');
+  plot(taskDataValid.taskEventStartTimes,ones(size(taskDataValid.taskEventStartTimes)),'color','red','marker','o', 'linestyle','none');
   plot(taskData.fixationInTimes, 2*ones(size(taskData.fixationInTimes)),'color','green','marker','o','linestyle','none');
   plot(taskData.fixationOutTimes,2*ones(size(taskData.fixationOutTimes)),'color','red','marker','o', 'linestyle','none');
   plot(taskData.juiceOnTimes, 3*ones(size(taskData.juiceOnTimes)),'color','red','marker','o', 'linestyle','none');

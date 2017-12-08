@@ -264,7 +264,7 @@ else
     eyeCalParams.needEyeCal = 0;
     logString = strcat(logString,'eyeCalParams.needEyeCal\n');
   end
-  if ~isfield(eyeCalParams,'method') || ~ischar(eyeCalParams.method) || ~ismember(eyeCalParams.method,{'autoZeroSingle','zeroEachFixation','hardcodeZero','ninePoint'})
+  if ~isfield(eyeCalParams,'method') || ~ischar(eyeCalParams.method) || ~ismember(eyeCalParams.method,{'autoZeroSingle','zeroEachFixation','hardcodeZero','fromFile'})
     eyeCalParams.method = 'autoZeroSingle';
     logString = strcat(logString,'eyeCalParams.method\n');
   end
@@ -301,6 +301,10 @@ else
     assert(isfield(eyeCalParams,'minFixZeroTime'),...
       'Invalid analysis parameter file: if needEyeCal and eye cal method is zeroEachFixation, must supply min fixation time for re-zero as eyeCalParams.minFixZeroTime.');
     assert(isnumeric(eyeCalParams.minFixZeroTime),'Invalid analysis parameter file: eyeCalParams.minFixZeroTime must be numeric');
+  end
+  if strcmp(eyeCalParams.method,'fromFile')
+    assert(isfield(eyeCalParams,'calFile') && ~isempty(isfield(eyeCalParams.calFile)),...
+      'Invalid analysis parameter file: if needEyeCal and eye cal method is fromFile, must supply calibration file name as eyeCalParams.calFile.');
   end
 end
 %%%

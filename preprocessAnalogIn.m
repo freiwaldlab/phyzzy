@@ -56,7 +56,7 @@ for i = 1:size(analogInData,1)
     if length(analogInFilter) == 2
       analogInDataDecPadded(i,:) = filtfilt(analogInFilter(1),analogInFilter(2),analogInDataDecPadded(i,:));
     end
-  if params.plotFilteredSignal && (isa(analogInFilter,'digitalFilter') || length(analogInFilter) == 2)
+  if params.plotFilterResult && (isa(analogInFilter,'digitalFilter') || length(analogInFilter) == 2)
     plot(analogInData(i,filterPad+100000:filterPad+105000),'color','b');
     legend({'raw','filtered'});
     drawnow;
