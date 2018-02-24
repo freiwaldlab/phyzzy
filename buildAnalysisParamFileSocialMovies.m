@@ -1,35 +1,35 @@
-function [ analysisParamFilename ] = buildAnalysisParamFile( )    
+function [ analysisParamFilename ] = buildAnalysisParamFileSocialMovies( )    
 %buildAnalysisParamFile saves a mat file of parameters, which control the
 %behavior of analyzeSession
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '001';
-dateSubject = '180222ALAN'; 
-machine = 'rig';
+runNum = '010';
+dateSubject = '180221ALAN'; 
+machine = 'laptop';
 
 switch machine
   case 'rig'
     ephysVolume = '/Volumes/Users-1/User/Desktop';
     stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullSocialInt.mat';   %#ok
   case 'laptop'
     ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullSocialInt.mat';   %#ok
   case 'hopper'
     ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Visiko';
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullSocialInt.mat';   %#ok
   case 'turing'
     ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Freiwald/ephys/sserene/ALAN_DATA/Visiko';
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullSocialInt.mat';   %#ok
 end
 analysisLabel = 'Basic';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
@@ -96,6 +96,10 @@ photodiodeParams.frameTriggerChannel = 129;
 photodiodeParams.stimulusTriggerChannel = []; %#ok
 
 % parameters preprocessLogFile, see function for details
+stimSyncParams.logProcessor = @preprocessLogFileVisikoMovie;
+stimSyncParams.tryPreparsedLogFile = 1;
+stimSyncParams.keepTriggersAndSubTriggers = 0;
+stimSyncParams.subTriggerArrayFilenames = {'socialSceneConcatSubTriggers.mat'};
 stimSyncParams.usePhotodiode = 0;        %#ok
 %
 eyeCalParams.needEyeCal = 0;
@@ -121,6 +125,7 @@ accelParams.calMethods = {'hardcode'}; %other option is 'calFile'; calibration m
 accelParams.calFiles = {''}; %if method is 'calFile', an ns2 filename
 
 % parameters for excludeStimuli, see function for details
+excludeStimParams.needExcludeTrials = 0;
 excludeStimParams.fixPre = 100; %ms
 excludeStimParams.fixPost = 100; %ms
 excludeStimParams.flashPre = 0;  %ms
@@ -130,9 +135,9 @@ excludeStimParams.juicePost = 0; % optional, ms
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
 
-psthParams.psthPre = 100; % if e.g. +200, then start psth 200ms before trial onset; 
-psthParams.psthImDur = 0;  % only need to set this for variable length stim runs; else, comes from log file
-psthParams.psthPost = 100;
+psthParams.psthPre = 300; % if e.g. +200, then start psth 200ms before trial onset; 
+psthParams.psthImDur = 2480;  % only need to set this for variable length stim runs; else, comes from log file
+psthParams.psthPost = 300;
 psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
 psthParams.errorType = 1; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
@@ -213,7 +218,7 @@ plotSwitch.evokedByCategory = 1;
 plotSwitch.analogInByItem = 0;
 plotSwitch.analogInDerivativesByItem = 0;
 plotSwitch.colorPsthEvoked = 1;
-plotSwitch.linePsthEvoked = 1;
+plotSwitch.linePsthEvoked = 0;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
 plotSwitch.runSummaryImMeanSubDiv = 0;
@@ -246,9 +251,9 @@ analysisGroups.stimulusLabelGroups.groups = {{'humanFace';'monkeyFace';'place';'
 analysisGroups.stimulusLabelGroups.names = {'fobPlus'};
 analysisGroups.stimulusLabelGroups.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
 %
-analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.evokedPotentials.names = {'fobPlus'};
-analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.evokedPotentials.groups = {{'socialInteraction';'objects';'fighting'}};
+analysisGroups.evokedPotentials.names = {'socVobj'};
+analysisGroups.evokedPotentials.colors = {{'b';'g';'c'}};
 %
 analysisGroups.analogInPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
 analysisGroups.analogInPotentials.channels = {[1; 2]};
@@ -262,15 +267,13 @@ analysisGroups.analogInDerivatives.names = {'eyeVelocity,fobPlus'};
 analysisGroups.analogInDerivatives.units = {'degrees visual angle/sec'};
 analysisGroups.analogInDerivatives.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
 %
-analysisGroups.colorPsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};...
-  {'face';'object';'body';'place'}};
-analysisGroups.colorPsthEvoked.names = {'fobPlus'; 'fobp'};
-analysisGroups.colorPsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}; {'b';'r';'g';'k'}};
+analysisGroups.colorPsthEvoked.groups = {{'socialInteraction';'objects';'fighting'}};
+analysisGroups.colorPsthEvoked.names = {'socVobj'};
+analysisGroups.colorPsthEvoked.colors = {{'b';'g';'c'}};
 %
-analysisGroups.linePsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};...
-  {'face';'object';'body';'place'}};
-analysisGroups.linePsthEvoked.names = {'fobPlus';'fobp'};
-analysisGroups.linePsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}; {'b';'r';'g';'k'}};
+analysisGroups.linePsthEvoked.groups = {{'socialInteraction';'objects'}};
+analysisGroups.linePsthEvoked.names = {'socVobj'};
+analysisGroups.linePsthEvoked.colors = {{'b';'g'}};
 %
 analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'}};
 analysisGroups.evokedPsthOnePane.names = {'faceVnon'};

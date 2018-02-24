@@ -17,6 +17,10 @@ fixPre = params.fixPre;
 fixPost = params.fixPost; 
 flashPre = params.flashPre;  
 flashPost = params.flashPost;
+if isfield(params,'needExcludeTrials') && ~params.needExcludeTrials
+  taskDataValid = taskData;
+  return
+end
 if isfield(params, 'juicePre') && isfield(params, 'juicePost')
   juicePre = params.juicePre;
   juicePost = params.juicePost;

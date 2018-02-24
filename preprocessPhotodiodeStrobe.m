@@ -4,7 +4,9 @@ function [ diodeTriggers ] = preprocessPhotodiodeStrobe( photodiodeFilename, par
 %   - analogInData: data array returned by preprocessAnalogIn (channels x samples)
 %   - params: struct with the fields
 %     - needPhotodiode: return immediately if 0 (type: logical)
-%     - analogInChannelInd: this is the index of the photodiode channel in the list of analog in
+%     - frameTriggerChannel: this is the index of the frame trigger photodiode channel in the list of analog in
+%                           channels specified in the paramFile (type: int)
+%     - stimulusTriggerChannel: this is the index of the stimulus trigger photodiode channel in the list of analog in
 %                           channels specified in the paramFile (type: int)
 %     - centerCornerOffset: this is the offset, in ms, of the photodiode
 %                           trigger from the screen-center frame time
@@ -32,10 +34,12 @@ assert(logical(exist(photodiodeFilename,'file')),'The photodiode data file you r
 tmp = openNSx(photodiodeFilename,'report','read');
 photodiodeHeader = tmp.MetaTags;
 sampleRate = photodiodeHeader.SamplingFreq;
+params.frameTriggerChannel = find(photodiodeHeader.ChannelID == params.frameTriggerChannel);
 frameTriggerDiodeTrace = tmp.Data(params.frameTriggerChannel,:);
 stimulusTriggerDiodeTrace = [];
 if ~isempty(params.stimulusTriggerChannel)
-  stimulusTriggerDiodeTrace = tmp.Data(stimulusTriggerChannel,:);
+  params.stimulusTriggerChannel = find(photodiodeHeader.ChannelID == params.stimulusTriggerChannel);
+  stimulusTriggerDiodeTrace = tmp.Data(params.stimulusTriggerChannel,:);
 end
 clear tmp
 
@@ -118,12 +122,16 @@ for diode_i = 1:2
       end
     end
   end
-
+  
+  if params.numLevels == 1
+    frameSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > highThreshold);
+    highPeakSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > highThreshold);
+  end
   % if two levels, check that frames alternate appropriately
   if params.numLevels == 2
     frameSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > lowThreshold);
     highPeakSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > highThreshold);
-    lowPeakSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > lowThreshold && diodeTrace(rawPeaks.loc) < highThreshold);
+    lowPeakSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > lowThreshold & diodeTrace(rawPeaks.loc) < highThreshold);
     frameCountDiff = length(highPeakSampleInds) - length(lowPeakSampleInds);
     % with correct alternation, smallest interval between subsequent high peaks must tbe greater than longest frame; same for low peaks 
     frameAlternationError = (min(min(diff(highPeakSampleInds)),min(diff(lowPeakSampleInds))) > max(diff(frameSampleInds)));
@@ -147,7 +155,8 @@ for diode_i = 1:2
     figure();
     subplot(1,2,1);
     framesToPlot = 10;  %magic number; should move to top
-    sampleRange = ceil(frameSampleInds(1) - 5*params.sampleRate/params.frameRate):ceil(frameSampleInds(1) + framesToPlot*params.sampleRate/params.frameRate);
+    sampleRange = ceil(frameSampleInds(1) - 5*sampleRate/params.frameRate):ceil(frameSampleInds(1) + framesToPlot*sampleRate/params.frameRate);
+    sampleRange = sampleRange(sampleRange > 0);
     plot(sampleRange,diodeTrace(sampleRange));
     hold on
     h = get(gca,'xlim');
@@ -259,7 +268,7 @@ for diode_i = 1:2
   if params.numLevels == 2
     frameSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > lowThreshold);
     highPeakSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > highThreshold);
-    lowPeakSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > lowThreshold && diodeTrace(rawPeaks.loc) < highThreshold);
+    lowPeakSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > lowThreshold & diodeTrace(rawPeaks.loc) < highThreshold);
     frameCountDiff = length(highPeakSampleInds) - length(lowPeakSampleInds);
     % with correct alternation, smallest interval between subsequent high peaks must tbe greater than longest frame; same for low peaks 
     frameAlternationError = (min(min(diff(highPeakSampleInds)),min(diff(lowPeakSampleInds))) > max(diff(frameSampleInds)));
@@ -273,7 +282,7 @@ for diode_i = 1:2
         tmp = input(sprintf('Found light-dark frame alternation error. Press ENTER to start manual check, or q to quit.'));
       end
       while ~strcmp('tmp',{'','q'})
-        tmp = imput('Invalid input. Press ENTER to re-start manual check, or q to quit.');
+        tmp = input('Invalid input. Press ENTER to re-start manual check, or q to quit.');
       end
       if isempty(tmp)
         notValid = 1;
@@ -291,7 +300,7 @@ for diode_i = 1:2
       figure();
       subplot(1,2,1);
       framesToPlot = 10;  %magic number; should move to top
-      sampleRange = ceil(length(diodeTrace)/2 - (framesToPlot/2)*params.sampleRate/params.frameRate):ceil(length(diodeTrace)/2 - (framesToPlot/2)*params.sampleRate/params.frameRate);
+      sampleRange = ceil(length(diodeTrace)/2 - (framesToPlot/2)*sampleRate/params.frameRate):ceil(length(diodeTrace)/2 - (framesToPlot/2)*sampleRate/params.frameRate);
       plot(sampleRange,diodeTrace(sampleRange));
       forLegend121 = {'raw trace'};
       legend(forLegend121);
@@ -365,7 +374,7 @@ for diode_i = 1:2
       if params.numLevels == 2
         frameSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > lowThreshold);
         highPeakSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > highThreshold);
-        lowPeakSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > lowThreshold && diodeTrace(rawPeaks.loc) < highThreshold);
+        lowPeakSampleInds = rawPeaks.loc(diodeTrace(rawPeaks.loc) > lowThreshold & diodeTrace(rawPeaks.loc) < highThreshold);
         frameCountDiff = length(highPeakSampleInds) - length(lowPeakSampleInds);
         % with correct alternation, smallest interval between subsequent high peaks must tbe greater than longest frame; same for low peaks 
         frameAlternationError = (min(min(diff(highPeakSampleInds)),min(diff(lowPeakSampleInds))) > max(diff(frameSampleInds)));
@@ -379,7 +388,7 @@ for diode_i = 1:2
             tmp = input(sprintf('Found light-dark frame alternation error. Press ENTER to re-start manual check, or q to quit.'));
           end
           while ~strcmp('tmp',{'','q'})
-            tmp = imput('Invalid input. Press ENTER to re-start manual check, or q to quit.');
+            tmp = input('Invalid input. Press ENTER to re-start manual check, or q to quit.');
           end
           if isempty(tmp)
             continue

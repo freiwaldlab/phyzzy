@@ -1,4 +1,5 @@
-function [ taskData, stimTiming ] = preprocessLogFile(logFilename, taskTriggers, diodeTriggers, params )
+function [ taskData, stimTiming ] = preprocessLogFileVisikoMovie(logFilename, taskTriggers, diodeTriggers, params )
+%Special preprocessor for Visiko movie log files. 
 %Sync log file's timestamps to blackrock clock, and store: 
 %  - in presentation order, stimulus filenames, start/end times and jump RF mapping positions
 %  - task event times: fixation in/out, fixspot flash start/end, juice delivery start/end 
@@ -33,13 +34,6 @@ function [ taskData, stimTiming ] = preprocessLogFile(logFilename, taskTriggers,
 %   - Statistics and Machine Learning Toolbox (for synchronizaton)
 %   - xml2struct (from Matlab fileExchange)
 
-disp(logFilename);
-
-if isfield(params,'logProcessor')
-  [taskData, stimTiming] = params.logProcessor(logFilename, taskTriggers, diodeTriggers, params);
-  return
-end
-
 if params.usePhotodiode
   error('photodiode synchronization not enabled');
 end
@@ -47,11 +41,15 @@ end
 disp('parsing serial IO packets');
 packetTimes = taskTriggers.TimeStampSec;
 packetData = dec2bin(taskTriggers.UnparsedData);
-% note: bit (end-5) is 1 when fixating; bit (end) toggles on each stimulus start
-stimBits = packetData(:,end);
-% note: the following two lines assume that the first packet is stimulus,
-% not fixation in
-taskEventStartTimesBlk = 1000*packetTimes(vertcat(1,diff(stimBits)) ~= 0);  %Blk affix signifies Blackrock reference frame
+% note: bit (end-5) is 1 when fixating; changes in the last three bits
+% (possibly more, haven't tested) signify the start of a new video
+
+% note: the following assumes that the first trigger is not the start of a
+% stimulation object: todo: make conditional, or include in params, or
+% check log file
+objectChangeIndexing = (abs(diff(packetData(:,end-2))) |  abs(diff(packetData(:,end-1))) | abs(diff(packetData(:,end))));
+taskEventStartTimesBlk = 1000*packetTimes(vertcat(false,objectChangeIndexing) ~= 0);  %Blk affix signifies Blackrock reference frame
+taskEventStartTimesBlk = taskEventStartTimesBlk(1:end-2); %the last one is an 'end of stim' trigger; exclude the final, incomplete movie as well (thus, end-2)
 disp('number of stim triggers received by blackrock');
 disp(length(taskEventStartTimesBlk));
 clear packetData; 
@@ -59,7 +57,15 @@ clear packetData;
 % parse log file
 disp('Loading visiko log file and converting to matlab structure');
 assert(logical(exist(logFilename,'file')),'The stimulus log file you requested does not exist.');
-logStruct = xml2struct(logFilename);
+if isfield(params,'tryPreparsedLogFile')
+  try
+    load(strcat(logFilename,'.mat'));
+  catch
+    logStruct = xml2struct(logFilename);
+  end
+else
+  logStruct = xml2struct(logFilename);
+end
 assert(isfield(logStruct.VISIKOLOG,'EndStimulation'),'Error: stimulation end not included in log file');
 assert(strcmp(logStruct.VISIKOLOG.Attributes.tasktype,'Bitmap Continuous'),'Error: unknown Visiko task type. Must be Bitmap Continuous');
 if isa(logStruct.VISIKOLOG.DOCDATA,'cell')
@@ -69,10 +75,8 @@ if isa(logStruct.VISIKOLOG.DOCDATA,'cell')
   end
   logStruct.VISIKOLOG.DOCDATA = logStruct.VISIKOLOG.DOCDATA{str2double(s)};
 end
-stimTiming.shortest = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pictureTimeFrom.Text); 
-stimTiming.longest = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pictureTimeTo.Text);
-stimTiming.ISI = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pauseTime.Text);
-stimParams = logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT;
+
+%stimParams = logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT;
 taskEventIDs = {};
 % note: 'Objects' in the log file are either 'Picture' fields, which we
 % want, or 'PictureCompleted' fields, which we don't care about. We
@@ -94,17 +98,16 @@ else
   fixSpotFlashEndTimesLog = 0;
 end
 
-for i = 1:length(logStruct.VISIKOLOG.Object)
+assert(length(logStruct.VISIKOLOG.Object) == length(taskEventStartTimesBlk)+1,'Inconsistent number of object starts in blackrock vs. Visiko');
+for i = 1:length(logStruct.VISIKOLOG.Object)-1
   stimulusStruct = logStruct.VISIKOLOG.Object{i};
-  if isfield(stimulusStruct,'PictureCompleted')
-    continue
-  end
-  tmp = regexp(stimulusStruct.Pictures.Picture.Filename.Text,'\','split');
+  tmp = regexp(stimulusStruct.Video.Filename.Text,'\','split');
   taskEventIDs = vertcat(taskEventIDs, strtrim(tmp{end})); %note: for some reason, filenames have trailing whitespace; trim it off
   stimFramesLost(i) = str2double(stimulusStruct.Frameslost.Text);
-  stimJumps(i,:) = [str2double(stimulusStruct.Pictures.Picture.Jump.x.Text), str2double(stimulusStruct.Pictures.Picture.Jump.y.Text)];
+  stimJumps(i,:) = [0 0]; %stimJumps not implemented for videos; leave here for now in case expected somewhere else in code
   taskEventStartTimesLog(i) = str2double(stimulusStruct.Start.Text);
   taskEventEndTimesLog(i) = str2double(stimulusStruct.End.Text);
+  % note: video struct also has fields FrameRate and FramePresentationTiming, if we want to be fancy
 end
 Output.VERBOSE(sprintf('number of stimulus trials: %s',length(taskEventIDs)));
 stimJumps = stimJumps(taskEventStartTimesLog >= 0,:); %note: jumps can be negative, so use startTime for logical indexing
@@ -150,7 +153,7 @@ end
 if ~isfield(params,'syncMethod') || any(params.syncMethod == {'digitalTrigger','digitalTriggerNearestFrame'})
   % first, if nev has one more start trigger than log, throw out final nev
   % trigger (this is a known visiko bug, according to Michael Borisov's code)
-  assert(length(taskEventStartTimesBlk) - length(taskEventStartTimesLog) <= 1, 'Error: Start triggers missing from log file');
+  assert(length(taskEventStartTimesBlk) - length(taskEventStartTimesLog) <= 1, 'Error: Start triggers missing from log file'); %note: redundant, since we already checked they're equal
   taskEventStartTimesBlk = taskEventStartTimesBlk(1:length(taskEventStartTimesLog));
   %note: don't use first trigger in fit; sometimes off (known visiko bug)
   logVsBlkModel = fitlm(taskEventStartTimesBlk(2:end), taskEventStartTimesLog(2:end));
@@ -180,6 +183,56 @@ if isfield(params,'syncMethod') && params.syncMethod == 'highFrames'
   error('highFrames sync method not yet implemented.');
 end
 
+% now, find within-video triggers
+if isfield(params,'subTriggerArrayFilenames')
+  subTriggerArrayFilenames = params.subTriggerArrayFilenames;
+  for subTrigArray_i = 1:length(params.subTriggerArrayFilenames)
+    tmp = load(subTriggerArrayFilenames{subTrigArray_i},'subTriggerArray');
+    subTriggerArray = tmp.subTriggerArray;
+    if params.keepTriggersAndSubTriggers
+      warning('Trigger list will not be sorted by time; that will be implemetent in the future');
+      newTaskEventIDs = taskEventIDs;
+      newTaskEventStartTimesBlk = taskEventStartTimesBlk;
+      newTaskEventEndTimesBlk = taskEventEndTimesBlk;
+      newStimFramesLost = stimFramesLost;
+    else
+      newTaskEventIDs = {};
+      newTaskEventStartTimesBlk = [];
+      newTaskEventEndTimesBlk = [];
+      newStimFramesLost = [];
+    end
+    for presentedVideo_i = 1:length(taskEventIDs)
+      for trigArrayVideo_i = 1:length(subTriggerArray)
+        if strcmp(taskEventIDs{presentedVideo_i},subTriggerArray{trigArrayVideo_i}{1})
+          for subTrigger_i = 2:length(subTriggerArray{trigArrayVideo_i})
+            newTaskEventIDs = vertcat(newTaskEventIDs,{subTriggerArray{trigArrayVideo_i}{subTrigger_i}{1}});
+            newTaskEventStartTimesBlk = vertcat(newTaskEventStartTimesBlk,taskEventStartTimesBlk(presentedVideo_i) + subTriggerArray{trigArrayVideo_i}{subTrigger_i}{2});
+            newStimFramesLost = vertcat(newStimFramesLost,stimFramesLost(presentedVideo_i));
+            if length(subTriggerArray{trigArrayVideo_i}{subTrigger_i}) > 2
+              newTaskEventEndTimesBlk = vertcat(newTaskEventEndTimesBlk,newTaskEventStartTimesBlk(end)+subTriggerArray{trigArrayVideo_i}{subTrigger_i}{3});
+            else
+              newTaskEventEndTimesBlk = vertcat(newTaskEventEndTimesBlk,newTaskEventStartTimesBlk(end)+1); %duration = 1 ms if no end time supplied
+            end
+          end
+        end
+      end
+    end
+    taskEventIDs = newTaskEventIDs;
+    taskEventStartTimesBlk = newTaskEventStartTimesBlk;
+    taskEventEndTimesBlk = newTaskEventEndTimesBlk;
+    stimFramesLost = newStimFramesLost;
+  end
+end
+
+%todo: re-sort task events for case where keepTriggersAndSubtriggers == 1
+stimTiming.shortest = 1000*min(diff(sort(taskEventEndTimesBlk - taskEventStartTimesBlk, 'ascend'))); 
+stimTiming.longest = 1000*max(diff(sort(taskEventEndTimesBlk - taskEventStartTimesBlk, 'ascend'))); 
+if length(taskEventStartTimesBlk) > 1
+  stimTiming.ISI = 1000*min(diff(sort(taskEventStartTimesBlk(2:end) - taskEventEndTimesBlk(1:end-1), 'ascend')));
+else
+  stimTiming.ISI = 0;
+end
+
 % finally, build the output structure
 taskData.taskEventIDs = taskEventIDs;
 taskData.stimJumps = stimJumps;
@@ -192,27 +245,10 @@ taskData.juiceOnTimes = juiceOnTimesBlk;
 taskData.juiceOffTimes = juiceOffTimesBlk;
 taskData.fixSpotFlashStartTimes = fixSpotFlashStartTimesBlk;
 taskData.fixSpotFlashEndTimes = fixSpotFlashEndTimesBlk;
-taskData.stimParams = stimParams;
-taskData.RFmap = str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.activateJumping.Text);
-% if RF mapping task, convert the picture positions to x-y degrees from fovea
-if taskData.RFmap
-  % in case these become useful sometime...
-%   gridSizeX = str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.jumpExtentHorizontal.Text); % in degrees
-%   gridSizeY = str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.jumpExtentVertical.Text); % in degrees
-%   gridSpacing = str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.jumpGridSize.Text); % in degrees
-  gridPointsPixX = unique(taskData.stimJumps(:,1)); % in pixels; note unique() returns in low->high sorted order
-  gridPointsPixY = unique(taskData.stimJumps(:,2)); % in pixels; note unique() returns in low->high sorted order
-%calculate screen diagonal length in pixels for pixel/degree conversion
-  screenWidthPix = str2double(logStruct.VISIKOLOG.SESSIONDATA.DisplayMode.Width.Text);
-  screenHeightPix = str2double(logStruct.VISIKOLOG.SESSIONDATA.DisplayMode.Height.Text);
-  screenDpix = sqrt(screenWidthPix^2 + screenHeightPix^2);
-  screenDcm = str2double(logStruct.VISIKOLOG.SESSIONDATA.Monitor.DiagonalSize.Text);
-  screenEyeDistance = str2double(logStruct.VISIKOLOG.SESSIONDATA.Monitor.Distance.Text);
-  pixelConversionCoef = screenDcm/(screenDpix*screenEyeDistance);
-  taskData.gridPointsDegX = atan(gridPointsPixX*pixelConversionCoef)*180/pi; %pix to cm, then rad to deg
-  taskData.gridPointsDegY = atan(gridPointsPixY*pixelConversionCoef)*180/pi; %pix to cm, then rad to deg
-  % now, convert each picture jump entry
-  taskData.stimJumps = atan(taskData.stimJumps*pixelConversionCoef)*180/pi;
-end
+taskData.stimParams = 0;
+taskData.RFmap = 0;
+
+%disp(taskEventIDs);
+
 end
 %

@@ -13,7 +13,7 @@ function [ spikesByEvent, spikesByCategory, lfpByEvent, lfpByCategory, categoryL
 %   - optionally calls an analysis routine; default is runAnalyses.m
 %   Inputs:
 %   - varargin can have the following forms:
-%       - empty (default assignments: buildAnalysisParamFile, runAnalyses
+%       - empty (default assignments: buildAnalysisParamFile, runAnalyses)
 %       - 'paramBuilder', paramBuilderFilename
 %       - 'analyzer', analyzerFilename
 %       - 'paramBuilder', paramBuilderFilename, 'analyzer', analyzerFilename
