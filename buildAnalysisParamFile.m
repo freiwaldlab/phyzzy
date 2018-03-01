@@ -6,7 +6,7 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( )
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '001';
-dateSubject = '180222ALAN'; 
+dateSubject = '180227ALAN'; 
 machine = 'rig';
 
 switch machine
@@ -45,9 +45,9 @@ verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
-ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-ephysParams.lfpChannels = [1]; 
-ephysParams.channelNames = {'ML'};
+ephysParams.spikeChannels = [1,33,35]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+ephysParams.lfpChannels = [1,33,35]; 
+ephysParams.channelNames = {'ML','AL','AM'};
 ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764, 8191/32764]; %converts raw values to microvolts
 ephysParams.commonRef = [0 0 0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage

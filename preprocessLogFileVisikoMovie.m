@@ -49,8 +49,7 @@ packetData = dec2bin(taskTriggers.UnparsedData);
 % check log file
 objectChangeIndexing = (abs(diff(packetData(:,end-2))) |  abs(diff(packetData(:,end-1))) | abs(diff(packetData(:,end))));
 taskEventStartTimesBlk = 1000*packetTimes(vertcat(false,objectChangeIndexing) ~= 0);  %Blk affix signifies Blackrock reference frame
-taskEventStartTimesBlk = taskEventStartTimesBlk(1:end-2); %the last one is an 'end of stim' trigger; exclude the final, incomplete movie as well (thus, end-2)
-disp('number of stim triggers received by blackrock');
+disp('number of stim and task-end triggers received by blackrock');
 disp(length(taskEventStartTimesBlk));
 clear packetData; 
 
@@ -98,7 +97,6 @@ else
   fixSpotFlashEndTimesLog = 0;
 end
 
-assert(length(logStruct.VISIKOLOG.Object) == length(taskEventStartTimesBlk)+1,'Inconsistent number of object starts in blackrock vs. Visiko');
 for i = 1:length(logStruct.VISIKOLOG.Object)-1
   stimulusStruct = logStruct.VISIKOLOG.Object{i};
   tmp = regexp(stimulusStruct.Video.Filename.Text,'\','split');
@@ -110,6 +108,13 @@ for i = 1:length(logStruct.VISIKOLOG.Object)-1
   % note: video struct also has fields FrameRate and FramePresentationTiming, if we want to be fancy
 end
 Output.VERBOSE(sprintf('number of stimulus trials: %s',length(taskEventIDs)));
+% the following two commands account for two effects: first, we ignored the
+% final, incomplete video above. Second, blackrock sometimes, but not
+% always, receives a stimulation-end trigger from visiko, in which case we
+% need to trim that trigger as well as the final video-start triger
+assert(length(taskEventIDs) == length(taskEventStartTimesBlk)-1 || ...
+  length(taskEventIDs) == length(taskEventStartTimesBlk)-2 ,'Inconsistent number of object starts in blackrock vs. Visiko');
+taskEventStartTimesBlk = taskEventStartTimesBlk(1:length(taskEventIDs));
 stimJumps = stimJumps(taskEventStartTimesLog >= 0,:); %note: jumps can be negative, so use startTime for logical indexing
 stimFramesLost = stimFramesLost(stimFramesLost >= 0);
 taskEventStartTimesLog = taskEventStartTimesLog(taskEventStartTimesLog >= 0);
