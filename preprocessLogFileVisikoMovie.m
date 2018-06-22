@@ -230,10 +230,10 @@ if isfield(params,'subTriggerArrayFilenames')
 end
 
 %todo: re-sort task events for case where keepTriggersAndSubtriggers == 1
-stimTiming.shortest = 1000*min(diff(sort(taskEventEndTimesBlk - taskEventStartTimesBlk, 'ascend'))); 
-stimTiming.longest = 1000*max(diff(sort(taskEventEndTimesBlk - taskEventStartTimesBlk, 'ascend'))); 
+stimTiming.shortest = *min(diff(sort(taskEventEndTimesBlk - taskEventStartTimesBlk, 'ascend'))); 
+stimTiming.longest = max(diff(sort(taskEventEndTimesBlk - taskEventStartTimesBlk, 'ascend'))); 
 if length(taskEventStartTimesBlk) > 1
-  stimTiming.ISI = 1000*min(diff(sort(taskEventStartTimesBlk(2:end) - taskEventEndTimesBlk(1:end-1), 'ascend')));
+  stimTiming.ISI = min(diff(sort(taskEventStartTimesBlk(2:end) - taskEventEndTimesBlk(1:end-1), 'ascend')));
 else
   stimTiming.ISI = 0;
 end

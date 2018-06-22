@@ -5,9 +5,9 @@ function [ analysisParamFilename ] = buildAnalysisParamFileSocialMovies( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '004';
-dateSubject = '180227ALAN'; 
-machine = 'rig';
+runNum = '010';
+dateSubject = '180221ALAN'; 
+machine = 'laptop';
 
 switch machine
   case 'rig'
@@ -36,7 +36,7 @@ analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;           %#ok
 closeFig = 0;          %#ok
-exportFig = 0;         %#ok
+exportFig = 1;         %#ok
 saveFigData = 0;       %#ok
 savePreprocessed = 0;  %#ok
 verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
@@ -45,9 +45,9 @@ verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
-ephysParams.spikeChannels = [1,33,35]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-ephysParams.lfpChannels = [1,33,35]; 
-ephysParams.channelNames = {'ML','AL','AM'};
+ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+ephysParams.lfpChannels = [1]; 
+ephysParams.channelNames = {'ML'};
 ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764, 8191/32764]; %converts raw values to microvolts
 ephysParams.commonRef = [0 0 0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
@@ -138,7 +138,7 @@ excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 psthParams.psthPre = 300; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 2480;  % only need to set this for variable length stim runs; else, comes from log file
 psthParams.psthPost = 300;
-psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
+psthParams.smoothingWidth = 100;  %psth smoothing width, in ms
 psthParams.errorType = 1; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;
@@ -154,7 +154,7 @@ chronuxParams.fs = 1;
 chronuxParams.trialave = 1;
 chronuxParams.err = [1 .05];  %note: first entry will be automatically switched to 2 if calcSwitch.useJacknife == 1
 chronuxParams.fpass = [0 .1]; 
-tfParams.movingWin = [200 5]; 
+tfParams.movingWin = [650 5]; %was [200 5]; 
 tfParams.specgramRowAve = 0;
 
 correlParams.maxShift = []; % a number, or empty
@@ -196,8 +196,8 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {60, 260}; ...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
-plotSwitch.imagePsth = 1;
-plotSwitch.categoryPsth = 1;
+plotSwitch.imagePsth = 0;
+plotSwitch.categoryPsth = 0;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
@@ -214,11 +214,12 @@ plotSwitch.rfLate = 0;
 plotSwitch.latencyRF = 0;
 plotSwitch.evokedPowerRF = 0;
 plotSwitch.evokedPsthMuaMultiCh = 0;
-plotSwitch.evokedByCategory = 1;
+plotSwitch.evokedByCategory = 0;
 plotSwitch.analogInByItem = 0;
 plotSwitch.analogInDerivativesByItem = 0;
 plotSwitch.colorPsthEvoked = 1;
 plotSwitch.linePsthEvoked = 0;
+plotSwitch.colorPsthItemMarginals = 1;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
 plotSwitch.runSummaryImMeanSubDiv = 0;
@@ -274,6 +275,9 @@ analysisGroups.colorPsthEvoked.colors = {{'b';'g';'c'}};
 analysisGroups.linePsthEvoked.groups = {{'socialInteraction';'objects'}};
 analysisGroups.linePsthEvoked.names = {'socVobj'};
 analysisGroups.linePsthEvoked.colors = {{'b';'g'}};
+%
+analysisGroups.colorPsthItemMarginals.groups = {{'fighting';'mounting';'grooming';'chasing';'objects';'scramble'}};
+analysisGroups.colorPsthItemMarginals.names = {'socVids'};
 %
 analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'}};
 analysisGroups.evokedPsthOnePane.names = {'faceVnon'};

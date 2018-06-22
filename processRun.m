@@ -14,9 +14,10 @@ function [ spikesByEvent, spikesByCategory, lfpByEvent, lfpByCategory, categoryL
 %   Inputs:
 %   - varargin can have the following forms:
 %       - empty (default assignments: buildAnalysisParamFile, runAnalyses)
-%       - 'paramBuilder', paramBuilderFilename
-%       - 'analyzer', analyzerFilename
-%       - 'paramBuilder', paramBuilderFilename, 'analyzer', analyzerFilename
+%       - 'paramBuilder', paramBuilderFunctionName
+%       - 'analyzer', analyzerFunctionName
+%       - 'paramBuilder', paramBuilderFunctionName, 'analyzer', analyzerFunctionName
+%       Note: functionNames are strings, and do not include the trailing '.m'; see 'feval' docs
 %   Notes:
 %   Depends:
 %   - contents of 'dependencies' folder (details coming)
@@ -69,7 +70,8 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   analogInData = preprocessAnalogIn(analogInFilename, analogInParams); 
   [spikesByChannel, taskTriggers, channelUnitNames] = preprocessSpikes(spikeFilename, ephysParams);
   lfpData = preprocessLFP(lfpFilename, ephysParams);
-  diodeTriggers = preprocessPhotodiodeStrobe(photodiodeFilename, photodiodeParams);
+  diodeTriggers = preprocessStrobe(photodiodeFilename, photodiodeParams);
+  %lineNoiseTriggers = preprocessStrobe(lineNoiseTriggerFilename, lineNoiseTriggerParams);
   [ taskData, stimTiming ] = preprocessLogFile(taskFilename, taskTriggers, diodeTriggers, stimSyncParams); % load visual stimulus data and transform its timestamps to ephys clock reference
   analogInData = preprocessEyeSignals(analogInData,taskData,eyeCalParams);
   analogInData = preprocessAccelSignals(analogInData, accelParams); 
@@ -214,7 +216,6 @@ runAnalysisInputs.stimTiming = stimTiming;
 runAnalysisInputs.eventCategories = eventCategories;  
 runAnalysisInputs.onsetsByEvent = onsetsByEvent;  
 runAnalysisInputs.onsetsByCategory = onsetsByCategory;
-
 
 
 if nargin == 0 || (nargin == 2 && strcmp(varargin{1},'paramBuilder')) || (nargin == 2 && strcmp(varargin{1},'preprocessed'))

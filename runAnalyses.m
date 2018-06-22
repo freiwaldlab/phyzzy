@@ -708,6 +708,7 @@ if ~taskData.RFmap
   end
 end
 
+
 % firing rate RF color plot
 if taskData.RFmap
   rfGrid  = unique(taskData.stimJumps,'rows');
@@ -1236,7 +1237,33 @@ for channel_i = 1:length(lfpChannels)
   end
 end
 
-
+if isfield(plotSwitch,'colorPsthItemMarginals') && plotSwitch.colorPsthItemMarginals
+  for channel_i = 1:length(channelUnitNames) 
+    for unit_i = 1:length(channelUnitNames{channel_i})
+      for group_i = 1:length(analysisGroups.colorPsthItemMarginals.groups)
+        group = analysisGroups.colorPsthItemMarginals.groups{group_i};
+        groupName = analysisGroups.colorPsthItemMarginals.names{group_i};
+        spkResponses = zeros(length(group),length(times));
+        for item_i = 1:length(group)
+          if isfield(catInds,group{item_i})
+            spkResponses(item_i,:) = psthByCategory{channel_i}{unit_i}(catInds.(group{item_i}),:);
+          else
+            spkResponses(item_i,:) = psthByImage{channel_i}{unit_i}(imInds.(group{item_i}),:);
+          end
+        end
+        fh = figure();
+        psthTitle = '';%suptitle(sprintf('%s PSTH and Evoked Potentials',channelNames{channel_i}));
+        plotPsthMarginal(spkResponses, psthPre, psthPost, psthImDur,[frCalcOn,frCalcOff], psthTitle, group, psthColormap );
+        drawnow;
+        figData = spkResponses;
+        saveFigure(outDir,sprintf('PSTH_itemMarginals_%s_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,runNum), figData, saveFig, exportFig, saveFigData,'');
+        if closeFig
+          close(fh);
+        end
+      end
+    end
+  end
+end
 
 if isfield(plotSwitch,'runSummary') && plotSwitch.runSummary
   for channel_i = 1:length(channelNames)

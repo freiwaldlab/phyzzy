@@ -6,8 +6,8 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( )
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '001';
-dateSubject = '180227ALAN'; 
-machine = 'rig';
+dateSubject = '180518ALAN'; 
+machine = 'laptop';
 
 switch machine
   case 'rig'
@@ -86,14 +86,27 @@ butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 120, 'StopbandFre
 analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
 analogInParams.plotFilterResult = 1; %#ok
 
-photodiodeParams.needPhotodiode = 0;
-photodiodeParams.frameRate = 85;
+% parameters for photodiode strobe preprocessing calibration
+photodiodeParams.needStrobe = 1;
 photodiodeParams.levelCalibType = 'autoAndCheck';
+photodiodeParams.peaksToPlot = 100;
+photodiodeParams.cleanPeaks = 1;
 photodiodeParams.numLevels = 1;
-photodiodeParams.saveCalibFile = 0;
-photodiodeParams.centerCornerOffset = 5.3;
-photodiodeParams.frameTriggerChannel = 129; 
-photodiodeParams.stimulusTriggerChannel = []; %#ok
+photodiodeParams.inputDataType = 'blackrockFilename';
+photodiodeParams.peakFreq = 100;
+photodiodeParams.minPeakNumInLevel = 5;
+photodiodeParams.saveFigures = 1;
+photodiodeParams.displayStats = 1;
+photodiodeParams.saveCalibFile = 1;
+photodiodeParams.peakTimeOffset = 5.3;
+photodiodeParams.checkHighLowAlternation = 0;
+photodiodeParams.outDir = strcat(outputVolume,'/');
+photodiodeParams.runNum = runNum;
+photodiodeParams.dateSubject = dateSubject;
+photodiodeParams.calibFigFname = 'phDiodeCalib';
+photodiodeParams.triggersFigFname = 'phDiodeTriggers';
+photodiodeParams.dataChannel = 129;
+photodiodeParams.outputCalibrationFile = 'phDiodeCalib'; %#ok
 
 % parameters preprocessLogFile, see function for details
 stimSyncParams.usePhotodiode = 0;        %#ok
@@ -213,7 +226,7 @@ plotSwitch.evokedByCategory = 1;
 plotSwitch.analogInByItem = 0;
 plotSwitch.analogInDerivativesByItem = 0;
 plotSwitch.colorPsthEvoked = 1;
-plotSwitch.linePsthEvoked = 1;
+plotSwitch.linePsthEvoked = 0;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
 plotSwitch.runSummaryImMeanSubDiv = 0;
