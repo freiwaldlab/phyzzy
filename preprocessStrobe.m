@@ -16,6 +16,7 @@ function [ strobeTriggers ] = preprocessStrobe( inputDataSource, params )
 %                       (note: will be subtracted, so should be > 0 if
 %                           peak follows event)
 %                           (type: numeric)
+%     - strobeTroughs: set to 1 if strobe causes troughs, 0 else (type: logical)
 %     - levelCalibType: (type: string) options are:
 %       - 'hardcode'
 %       - 'hardcodeAndPlot'
@@ -26,6 +27,9 @@ function [ strobeTriggers ] = preprocessStrobe( inputDataSource, params )
 %       - 'manual'
 %     - cleanPeaks: if true, keep peaks only if the signal dropped below the low-peak threshold between them;
 %                   for a series of peaks without a sub-threshold trough, keep only the highest (type: logical)
+%     - useRisingEdge: define threshold using peaks, then use rising edge
+%       threshold crossing for trigger times; optional, default 0 (type: logical)
+%     for trigger times
 %     - checkHighLowAlternation: (optional, default zero, only used if numLevels == 2)
 %     - numLevels: (type: int)
 %     - minPeakNumInLevel: min number of peaks required to define a level (type: int)
@@ -74,6 +78,7 @@ minPeakNumInLevel = params.minPeakNumInLevel;
 saveFigures = params.saveFigures;
 displayStats = params.displayStats;
 saveCalibFile = params.saveCalibFile;
+strobeTroughs = params.strobeTroughs;
 if isfield(params, 'peakTimeOffset')
   peakTimeOffset = params.peakTimeOffset;
 else
@@ -102,6 +107,17 @@ end
 if params.saveCalibFile
   outputCalibrationFile = params.outputCalibrationFile;
 end
+if isfield(params,'noisePeaksAtPeak')
+  noisePeaksAtPeak = params.noisePeaksAtPeak;
+else
+  noisePeaksAtPeak = 0;
+end
+if isfield(params,'useRisingEdge')
+  useRisingEdge = params.useRisingEdge;
+else
+  useRisingEdge = 0;
+end
+
 % end unpack params
 
 % load photodiode data, if needed
@@ -119,7 +135,7 @@ else
   dataTrace = inputDataSource;
 end
 
-frameNumCeiling = 2*ceil(length(dataTrace)*peakFreq/samplingFreq); %~2x expected number of frames; keep some non-frame peaks for numLevels=1 auto calib 
+frameNumCeiling = 2*(noisePeaksAtPeak+1)*ceil(length(dataTrace)*peakFreq/samplingFreq); %keep some non-frame peaks for numLevels=1 auto calib 
 
         
 % Preprocessing logic:
@@ -127,9 +143,14 @@ frameNumCeiling = 2*ceil(length(dataTrace)*peakFreq/samplingFreq); %~2x expected
 %    even on black pixels. However, additional small-prominence peaks occur due to noise
 % 2) Sort peaks by their height: since both the the signal and its
 %    second derivative are high at true peaks, they should be the largest
-dataTrace = -1*(dataTrace - mean(dataTrace)); %this makes frames peaks
+if strobeTroughs
+  dataTrace = -1*(dataTrace - mean(dataTrace)); %this makes frames peaks
+else
+  dataTrace = dataTrace - mean(dataTrace);
+end
 rawPeaks = findpeaks(dataTrace);
 rawPeaks.loc = rawPeaks.loc(rawPeaks.loc > 1); % don't count the first sample as a peak
+rawPeaks.loc = rawPeaks.loc(rawPeaks.loc < length(dataTrace)); % don't count the last sample as a peak
 rawPeaksSorted = sort(dataTrace(rawPeaks.loc),'descend');
 rawPeaksSorted = rawPeaksSorted(1:frameNumCeiling);
 
@@ -310,7 +331,7 @@ if ~strcmp(levelCalibType,'manual')  %todo: fix plottng, make alternation check 
 
     % show thresholds on ranked peaks plot
     subplot(1,2,2);
-    plot(rawPeaksSorted);
+    plot(rawPeaksSorted, 'marker','o');
     hold on
     h = get(gca,'xlim');
     plot([h(1) h(2)], [lowThreshold lowThreshold]);
@@ -442,7 +463,7 @@ if strcmp(levelCalibType,'manual') || (notValid && checkHighLowAlternation)
     forLegend121 = {'raw trace'};
     legend(forLegend121,'Location','NorthOutside');
     subplot(1,2,2);
-    plot(rawPeaksSorted);
+    plot(rawPeaksSorted, 'marker','o');
     hold on
     forLegend122 = {'peak levels'};
     legend(forLegend122,'Location','NorthOutside');
@@ -570,6 +591,10 @@ if cleanPeaks
   peakSampleInds = peakSampleIndsClean(peakSampleIndsClean > 0);
 end
 
+if useRisingEdge
+  peakSampleInds = find(diff(dataTrace > lowThreshold) == 1);
+end
+
 if numLevels == 2
   highPeakSampleInds = peakSampleInds(dataTrace(peakSampleInds) > highThreshold);
   lowPeakSampleInds = peakSampleInds(dataTrace(peakSampleInds) > lowThreshold & dataTrace(peakSampleInds) < highThreshold);
@@ -631,12 +656,12 @@ hold on
 handlesForLegend = h;
 labelsForLegend = {'all'};
 if numLevels == 2
-  h = plot(strobeTriggers.high,4*ones(size(strobeTriggers.high)),'linestyle','none','marker','o','color','b');
+  h = plot(strobeTriggers.high,4*ones(size(strobeTriggers.high)),'linestyle','none','marker','*','color','b');
   if ~isempty(strobeTriggers.high)
     handlesForLegend = horzcat(handlesForLegend,h);
     labelsForLegend = horzcat(labelsForLegend,'high');
   end
-  h = plot(strobeTriggers.low,3*ones(size(strobeTriggers.low)),'linestyle','none','marker','o','color','b');
+  h = plot(strobeTriggers.low,3*ones(size(strobeTriggers.low)),'linestyle','none','marker','x','color','b');
   if ~isempty(strobeTriggers.low)
     handlesForLegend = horzcat(handlesForLegend,h);
     labelsForLegend = horzcat(labelsForLegend,'low');
@@ -654,17 +679,17 @@ if numLevels == 2
   legend(handlesForLegend, labelsForLegend);
 end
 if numLevels == 3
-  h = plot(strobeTriggers.high,5*ones(size(strobeTriggers.high)),'linestyle','none','marker','o','color','b');
+  h = plot(strobeTriggers.high,5*ones(size(strobeTriggers.high)),'linestyle','none','marker','*','color','b');
   if ~isempty(strobeTriggers.high)
     handlesForLegend = horzcat(handlesForLegend,h);
     labelsForLegend = horzcat(labelsForLegend,'high');
   end
-  h = plot(strobeTriggers.mid,4*ones(size(strobeTriggers.mid)),'linestyle','none','marker','o','color','b');
+  h = plot(strobeTriggers.mid,4*ones(size(strobeTriggers.mid)),'linestyle','none','marker','s','color','b');
   if ~isempty(strobeTriggers.mid)
     handlesForLegend = horzcat(handlesForLegend,h);
     labelsForLegend = horzcat(labelsForLegend,'mid');
   end
-  h = plot(strobeTriggers.low,3*ones(size(strobeTriggers.low)),'linestyle','none','marker','o','color','b');
+  h = plot(strobeTriggers.low,3*ones(size(strobeTriggers.low)),'linestyle','none','marker','x','color','b');
   if ~isempty(strobeTriggers.low)
     handlesForLegend = horzcat(handlesForLegend,h);
     labelsForLegend = horzcat(labelsForLegend,'low');

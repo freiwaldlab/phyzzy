@@ -5,7 +5,7 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '001';
+runNum = '010';
 dateSubject = '180518ALAN'; 
 machine = 'laptop';
 
@@ -86,19 +86,20 @@ butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 120, 'StopbandFre
 analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
 analogInParams.plotFilterResult = 1; %#ok
 
-% parameters for photodiode strobe preprocessing calibration
+% parameters for photodiode strobe preprocessing
 photodiodeParams.needStrobe = 1;
 photodiodeParams.levelCalibType = 'autoAndCheck';
 photodiodeParams.peaksToPlot = 100;
 photodiodeParams.cleanPeaks = 1;
 photodiodeParams.numLevels = 1;
+photodiodeParams.strobeTroughs = 1;
 photodiodeParams.inputDataType = 'blackrockFilename';
 photodiodeParams.peakFreq = 100;
 photodiodeParams.minPeakNumInLevel = 5;
 photodiodeParams.saveFigures = 1;
 photodiodeParams.displayStats = 1;
 photodiodeParams.saveCalibFile = 1;
-photodiodeParams.peakTimeOffset = 5.3;
+photodiodeParams.peakTimeOffset = 5.0;
 photodiodeParams.checkHighLowAlternation = 0;
 photodiodeParams.outDir = strcat(outputVolume,'/');
 photodiodeParams.runNum = runNum;
@@ -108,7 +109,34 @@ photodiodeParams.triggersFigFname = 'phDiodeTriggers';
 photodiodeParams.dataChannel = 129;
 photodiodeParams.outputCalibrationFile = 'phDiodeCalib'; %#ok
 
+% parameters for 60Hz strobe preprocessing
+lineNoiseTriggerParams.needStrobe = 1;
+lineNoiseTriggerParams.levelCalibType = 'autoAndCheck';
+lineNoiseTriggerParams.peaksToPlot = 100;
+lineNoiseTriggerParams.cleanPeaks = 0;
+lineNoiseTriggerParams.useRisingEdge = 1;
+lineNoiseTriggerParams.numLevels = 1;
+lineNoiseTriggerParams.strobeTroughs = 0;
+lineNoiseTriggerParams.inputDataType = 'blackrockFilename';
+lineNoiseTriggerParams.peakFreq = 60;
+lineNoiseTriggerParams.noisePeaksAtPeak = 10;
+lineNoiseTriggerParams.minPeakNumInLevel = 5;
+lineNoiseTriggerParams.saveFigures = 1;
+lineNoiseTriggerParams.displayStats = 1;
+lineNoiseTriggerParams.saveCalibFile = 1;
+lineNoiseTriggerParams.peakTimeOffset = 0;
+lineNoiseTriggerParams.checkHighLowAlternation = 0;
+lineNoiseTriggerParams.outDir = strcat(outputVolume,'/');
+lineNoiseTriggerParams.runNum = runNum;
+lineNoiseTriggerParams.dateSubject = dateSubject;
+lineNoiseTriggerParams.calibFigFname = 'lineNoiseTriggerCalib';
+lineNoiseTriggerParams.triggersFigFname = 'lineNoiseTriggers';
+lineNoiseTriggerParams.dataChannel = 130;
+lineNoiseTriggerParams.outputCalibrationFile = 'lineNoiseTriggerCalib'; %#ok
+
 % parameters preprocessLogFile, see function for details
+stimSyncParams.syncMethod = 'digitalTriggerNearestFrame';
+stimSyncParams.showSyncQuality = 1;
 stimSyncParams.usePhotodiode = 0;        %#ok
 %
 eyeCalParams.needEyeCal = 0;
@@ -140,6 +168,7 @@ excludeStimParams.flashPre = 0;  %ms
 excludeStimParams.flashPost = 0; %ms
 excludeStimParams.juicePre = 0; % optional, ms
 excludeStimParams.juicePost = 0; % optional, ms
+excludeStimParams.maxDiodeSyncAdjustmentDeviation = 1; %ms
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
 
@@ -339,6 +368,7 @@ lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNu
 spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
 taskFilename = sprintf('%s/%s/%s0%s.log',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
 photodiodeFilename = lfpFilename;                                                           %#ok
+lineNoiseTriggerFilename = lfpFilename;                                                     %#ok
 outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
 analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
 preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok

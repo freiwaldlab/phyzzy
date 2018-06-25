@@ -1,6 +1,9 @@
-function [ lfpData ] = preprocessLFP( lfpFilename, params )
+function [ lfpData, extraChannels ] = preprocessLFP( lfpFilename, params )
 % Load, decimate, and filter LFP, and index it by order in params. lfpChannels
 %    decimation and filtering are optional; specified in params
+%
+%    Also return extraChannels sampled at the LFP sampling frequency, as
+%    struct with fields ChannelID and Data, with matching indexing
 
 % unpack params fields
 if ~params.needLFP
@@ -32,6 +35,18 @@ for i = 1:length(lfpChannels)
 end
 lfpChannelMap = lfpChannelMap(lfpChannelMap > 0);
 lfpData = lfpDataRaw(lfpChannelMap,:);
+extraChannels.ChannelID = zeros(size(lfpHeader.ChannelID));
+extraChannelInds = zeros(size(lfpHeader.ChannelID));
+extraChannel_i = 1;
+for channel_i = 1:length(lfpHeader.ChannelID)
+  if ~any(lfpHeader.ChannelID(channel_i) == lfpChannels)
+    extraChannels.ChannelID(extraChannel_i) = lfpHeader.ChannelID(channel_i);
+    extraChannelInds(channel_i) = 1;
+    extraChannel_i = extraChannel_i + 1;
+  end
+end
+extraChannels.ChannelID = extraChannels.ChannelID(extraChannels.ChannelID > 0);
+extraChannels.Data = lfpDataRaw(logical(extraChannelInds),:);
 clear lfpDataRaw
 filterPad = 50000;
 lfpDataDecPadded = zeros(size(lfpData,1),ceil(size(lfpData,2)/(decimateFactorPass1*decimateFactorPass2))+2*filterPad);

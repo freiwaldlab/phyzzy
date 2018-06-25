@@ -4,12 +4,15 @@ function [ taskDataValid ] = excludeTrials( taskData, params )
 %   - broken fixation within fixPre before or fixPost after (msec)
 %   - juice delivery within juicePre before or juicePost after (msec)
 %   - acceleration above thresh. within accelPre before or accelPost after
+%   - photodiode vs. digital trigger alignment worse than threshold (worse
+%     defined as difference from median value)
 %
 %   params has fields: 
 %   - fixPre, fixPost, flashPre, flashPost (in ms)
 %   and optional fields:
 %   - juicePre, juicePost (in ms)
 %   - accel1, accel2 (structs with fields data (1d timeseries, 1 ks/sec) and threshold);
+%   - maxDiodeSyncAdjustmentDeviation (in ms)
 %   - minStimDuration (ms)
 %   todo: exclude stimuli shorter than minStimDuration (for arrythmic runs)
 
@@ -33,6 +36,10 @@ if isfield(params, 'accel2')
 end
 if isfield(params,'minStimDur')
   minStimDur = params.minStimDur;
+end
+if isfield(params, 'maxDiodeSyncAdjustmentDeviation') && isfield(taskData,'photodiodeSyncAdjustments')
+  maxDiodeSyncAdjustmentDeviation = params.maxDiodeSyncAdjustmentDeviation;
+  diodeSyncAdjustmentDeviations = abs(taskData.photodiodeSyncAdjustments - median(taskData.photodiodeSyncAdjustments));
 end
 
 trialValid = zeros(length(taskData.taskEventIDs),1);
@@ -63,6 +70,11 @@ for trial_i = 1:length(taskData.taskEventIDs)
       continue
     end
     if ~isempty(lastJuiceOn) && lastJuiceOn > lastJuiceOff %note: short circuit
+      continue
+    end
+  end
+  if exist('maxDiodeSyncAdjustmentDeviation','var') && exist('diodeSyncAdjustmentDeviations','var')
+    if diodeSyncAdjustmentDeviations(trial_i) > maxDiodeSyncAdjustmentDeviation
       continue
     end
   end
