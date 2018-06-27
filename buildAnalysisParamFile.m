@@ -5,7 +5,7 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '010';
+runNum = '011';
 dateSubject = '180518ALAN'; 
 machine = 'laptop';
 
@@ -38,7 +38,7 @@ saveFig = 1;           %#ok
 closeFig = 0;          %#ok
 exportFig = 0;         %#ok
 saveFigData = 0;       %#ok
-savePreprocessed = 0;  %#ok
+savePreprocessed = 1;  %#ok
 verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 
 
@@ -87,7 +87,7 @@ analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}
 analogInParams.plotFilterResult = 1; %#ok
 
 % parameters for photodiode strobe preprocessing
-photodiodeParams.needStrobe = 1;
+photodiodeParams.needStrobe = 0;
 photodiodeParams.levelCalibType = 'autoAndCheck';
 photodiodeParams.peaksToPlot = 100;
 photodiodeParams.cleanPeaks = 1;
@@ -110,7 +110,7 @@ photodiodeParams.dataChannel = 129;
 photodiodeParams.outputCalibrationFile = 'phDiodeCalib'; %#ok
 
 % parameters for 60Hz strobe preprocessing
-lineNoiseTriggerParams.needStrobe = 1;
+lineNoiseTriggerParams.needStrobe = 0;
 lineNoiseTriggerParams.levelCalibType = 'autoAndCheck';
 lineNoiseTriggerParams.peaksToPlot = 100;
 lineNoiseTriggerParams.cleanPeaks = 0;
@@ -135,7 +135,7 @@ lineNoiseTriggerParams.dataChannel = 130;
 lineNoiseTriggerParams.outputCalibrationFile = 'lineNoiseTriggerCalib'; %#ok
 
 % parameters preprocessLogFile, see function for details
-stimSyncParams.syncMethod = 'digitalTriggerNearestFrame';
+stimSyncParams.syncMethod = 'digitalTrigger';%'digitalTriggerNearestFrame';
 stimSyncParams.showSyncQuality = 1;
 stimSyncParams.usePhotodiode = 0;        %#ok
 %

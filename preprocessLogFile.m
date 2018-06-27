@@ -205,7 +205,11 @@ taskData.stimJumps = stimJumps;
 taskData.stimFramesLost = stimFramesLost;
 taskData.taskEventStartTimes = taskEventStartTimesBlk;
 taskData.taskEventEndTimes = taskEventEndTimesBlk;
-taskData.photodiodeSyncAdjustments = diodeAdjustments;
+if exist('diodeAdjustments','var')
+  taskData.photodiodeSyncAdjustments = diodeAdjustments;
+else
+  taskData.photodiodeSyncAdjustments = zeros(size(taskEventStartTimesBlk));
+end
 taskData.fixationInTimes = fixationInTimesBlk;
 taskData.fixationOutTimes = fixationOutTimesBlk;
 taskData.juiceOnTimes = juiceOnTimesBlk;

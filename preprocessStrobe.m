@@ -11,7 +11,8 @@ function [ strobeTriggers ] = preprocessStrobe( inputDataSource, params )
 %     - inputDataType: options are 'array','blackrockFilename', or
 %                      'otherFilename' (type: string)
 %     - dataChannel: this is the channel number of the data to preprocess, if inputDataType is blackrockFilename or a custom handle (type: int)
-%     - dataLoader: handle to function with signature [dataTrace,samplingFreq] = f(inputDataSource, params); params passed unabridged
+%     - dataLoader: handle to function with signature dataTrace,samplingFreq] = f(inputDataSource, params); params passed
+%                   unabridged (required only if inputDataSource is otherFilename)
 %     - peakTimeOffset: this is the offset, in ms, of the peak from the event it's coupled to
 %                       (note: will be subtracted, so should be > 0 if
 %                           peak follows event)
@@ -37,7 +38,9 @@ function [ strobeTriggers ] = preprocessStrobe( inputDataSource, params )
 %                     a custom handle that sets sampling freq (numeric)
 %     - peaksToPlot: number of peaks to show in calibration plots; suggested value > 10 (int)
 %     - peakFreq: approximate number of peaks per second
+%     - noisePeaksAtPeak: number of peaks above threshold per strobe flash; default 0 (type: int)
 %     - hardcodeFromFile: (type: logical) (only needed for hardcode calib types)
+%     - displayStats: print info on strobe rate and variability. Optional, default 1. (type: logical)
 %     - saveCalibFile: (type: logical)
 %     - inputCalibrationFile: filename ending in .mat, contains field lowThreshold (numeric)
 %                             if numLevels >= 2, also contains field highThreshold (numeric)
@@ -76,7 +79,6 @@ inputDataType = params.inputDataType;
 peakFreq = params.peakFreq;
 minPeakNumInLevel = params.minPeakNumInLevel;
 saveFigures = params.saveFigures;
-displayStats = params.displayStats;
 saveCalibFile = params.saveCalibFile;
 strobeTroughs = params.strobeTroughs;
 if isfield(params, 'peakTimeOffset')
@@ -117,6 +119,12 @@ if isfield(params,'useRisingEdge')
 else
   useRisingEdge = 0;
 end
+if isfield(params,'displayStats')
+  displayStats = params.displayStats;
+else
+  displayStats = 1;
+end
+
 
 % end unpack params
 

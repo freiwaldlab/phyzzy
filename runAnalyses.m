@@ -711,6 +711,7 @@ end
 
 % firing rate RF color plot
 if taskData.RFmap
+  load AkinoriColormap.mat;
   rfGrid  = unique(taskData.stimJumps,'rows');
   gridX = unique(rfGrid(:,1));
   gridsize = 2*mean(gridX(2:end,1)-gridX(1:end-1,1));
@@ -733,8 +734,10 @@ if taskData.RFmap
           end
         end
         meanRF = zeros(length(rfGrid),1);
+        allTrialSpikeCounts = cell(size(meanRF));
         for image_i = 1:length(eventLabels)
           imageRF = zeros(length(rfGrid),1);
+          imageRFerrs = zeros(length(rfGrid),1);
           spikeLatencyRF = zeros(length(rfGrid),1);
           %also calc evoked peak time? power-weighted latency? peak of mean evoked correlogram?
           evokedPowerRF = zeros(length(rfGrid),1);
@@ -746,25 +749,44 @@ if taskData.RFmap
               continue;
             end
             trialSpikes = spikesByEvent{image_i}{channel_i}{unit_i}(gridPointTrials);
+            trialSpikeCounts = zeros(size(trialSpikes,1),1);
             totalSpikes = 0;
             spikeLatency = 0;
             evokedPotential = zeros(size(lfpByEvent{image_i}(1,channel_i,1,samPerMS*(frCalcOn+psthPre):samPerMS*(frCalcOff+psthPre)))); 
             gridPointTrialInds = 1:length(gridPointTrials);
             gridPointTrialInds = gridPointTrialInds(gridPointTrials);
             for trial_i = 1:length(trialSpikes)
-              totalSpikes = totalSpikes + sum(trialSpikes(trial_i).times > frCalcOn & trialSpikes(trial_i).times < frCalcOff);
+              numSpikes = sum(trialSpikes(trial_i).times > frCalcOn & trialSpikes(trial_i).times < frCalcOff);
+              trialSpikeCounts(trial_i) = numSpikes;
+              totalSpikes = totalSpikes + numSpikes;
               % bad latency measure; try weighting spike times by 1/ISI
               spikeLatency = spikeLatency + mean(trialSpikes(trial_i).times(trialSpikes(trial_i).times > frCalcOn & trialSpikes(trial_i).times < frCalcOff));
               evokedPotential = evokedPotential + lfpByEvent{image_i}(1,channel_i,gridPointTrialInds(trial_i),samPerMS*(frCalcOn+psthPre):samPerMS*(frCalcOff+psthPre));
             end
             imageRF(grid_i) = (1000/(frCalcOff-frCalcOn))*totalSpikes/length(trialSpikes);
+            imageRFerrs(grid_i) = (1000/(frCalcOff-frCalcOn))*std(trialSpikeCounts)/sqrt(length(trialSpikeCounts));
             spikeLatencyRF(grid_i) = 1/sum(gridPointTrials)*spikeLatency;
-            evokedPotential = 1/sum(gridPointTrials)*(evokedPotential - mean(evokedPotential));
-            evokedPowerRF(grid_i) = sum(evokedPotential.^2); %todo: move out of by-unit loop
+            if unit_i == length(channelUnitNames{channel_i})
+              evokedPotential = 1/sum(gridPointTrials)*(evokedPotential - mean(evokedPotential));
+              evokedPowerRF(grid_i) = sum(evokedPotential.^2);
+            end
+            if isempty(allTrialSpikeCounts{grid_i})
+              allTrialSpikeCounts{grid_i} = trialSpikeCounts;
+            else
+              allTrialSpikeCounts{grid_i} = vertcat(allTrialSpikeCounts{grid_i},trialSpikeCounts);
+            end
           end
           meanRF = meanRF + imageRF;
           display_map(rfGrid(:,1),rfGrid(:,2),imageRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i}),...
             [outDir sprintf('RF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i},runNum)]);
+          
+          fh = plotRF(rfGrid, imageRF, imageRFerrs, 'heat', AkinoriColormap);
+          drawnow;
+%           saveFigure(outDir, sprintf('psthEvokedOverlay_%s_Run%s',groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+          if closeFig
+            close(fh);
+          end          
+          
           if isfield(plotSwitch,'latencyRF') && plotSwitch.latencyRF
             display_map(rfGrid(:,1),rfGrid(:,2),spikeLatencyRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, %s Latency RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i}),...
               [outDir sprintf('LatencyRF_%s_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},eventLabels{image_i},runNum)]);
@@ -783,6 +805,17 @@ if taskData.RFmap
         meanRF = meanRF/length(eventLabels);
         display_map(rfGrid(:,1),rfGrid(:,2),meanRF,xi,yi,2.2857*gridsize,0,saveFig,sprintf('%s %s, Mean RF',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}),...
           [outDir sprintf('MeanRF_%s_%s_Run%s.png',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum)]);
+        
+        meanRFerrs = zeros(length(rfGrid),1);
+        for grid_i = 1:length(rfGrid)
+          meanRFerrs(grid_i) = std(allTrialSpikeCounts{grid_i})/sqrt(length(allTrialSpikeCounts{grid_i}));
+        end
+        fh = plotRF(rfGrid, meanRF, meanRFerrs, 'heat', AkinoriColormap);
+        drawnow;
+%           saveFigure(outDir, sprintf('psthEvokedOverlay_%s_Run%s',groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        if closeFig
+          close(fh);
+        end  
       end
     end
   end
