@@ -14,7 +14,9 @@ zi = reshape( ...
 figure();
 imagesc(xi,yi,zi);
 set(gca,'YDir','normal');
-
+set(gca,'DataAspectRatio',[1 1 1]);
+ylabel('vertical position (dva)');
+xlabel('horizontal position (dva)');
 hold on;
 plot(x,y,'wo');
 hold off;

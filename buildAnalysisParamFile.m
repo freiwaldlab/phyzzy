@@ -5,8 +5,8 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '011';
-dateSubject = '180518ALAN'; 
+runNum = '002';
+dateSubject = '180629TEST'; 
 machine = 'laptop';
 
 switch machine
@@ -16,8 +16,8 @@ switch machine
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
     stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
   case 'laptop'
-    ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
-    stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
+    ephysVolume = '/Users/stephenserene/Desktop/180629TEST/Blackrock';%'/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
+    stimulusLogVolume = '/Users/stephenserene/Desktop/180629TEST/Visiko';%'/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
     stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
   case 'hopper'
@@ -43,8 +43,8 @@ verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 
 
 % parameters preprocessSpikes and preprocessLFP, see functions for details
-ephysParams.needLFP = 1;
-ephysParams.needSpikes = 1;
+ephysParams.needLFP = 0;
+ephysParams.needSpikes = 0;
 ephysParams.spikeChannels = [1,33,35]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
 ephysParams.lfpChannels = [1,33,35]; 
 ephysParams.channelNames = {'ML','AL','AM'};
@@ -87,11 +87,11 @@ analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}
 analogInParams.plotFilterResult = 1; %#ok
 
 % parameters for photodiode strobe preprocessing
-photodiodeParams.needStrobe = 0;
+photodiodeParams.needStrobe = 1;
 photodiodeParams.levelCalibType = 'autoAndCheck';
 photodiodeParams.peaksToPlot = 100;
 photodiodeParams.cleanPeaks = 1;
-photodiodeParams.numLevels = 1;
+photodiodeParams.numLevels = 2;
 photodiodeParams.strobeTroughs = 1;
 photodiodeParams.inputDataType = 'blackrockFilename';
 photodiodeParams.peakFreq = 100;
@@ -135,7 +135,7 @@ lineNoiseTriggerParams.dataChannel = 130;
 lineNoiseTriggerParams.outputCalibrationFile = 'lineNoiseTriggerCalib'; %#ok
 
 % parameters preprocessLogFile, see function for details
-stimSyncParams.syncMethod = 'digitalTrigger';%'digitalTriggerNearestFrame';
+stimSyncParams.syncMethod = 'digitalTriggerNearestLowToHigh';%'digitalTrigger';%'digitalTriggerNearestFrame';
 stimSyncParams.showSyncQuality = 1;
 stimSyncParams.usePhotodiode = 0;        %#ok
 %

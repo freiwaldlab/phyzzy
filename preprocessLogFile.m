@@ -82,10 +82,17 @@ stimFramesLost = -1*ones(length(logStruct.VISIKOLOG.Object),1);
 stimJumps = zeros(length(logStruct.VISIKOLOG.Object),2); %note: jumps can be negative, so we will use startTime for logical indexing
 taskEventStartTimesLog = -1*ones(length(logStruct.VISIKOLOG.Object),1); % Log affix signifies stimulation computer reference frame
 taskEventEndTimesLog = -1*ones(length(logStruct.VISIKOLOG.Object),1);
-fixationInTimesLog = -1*ones(length(logStruct.VISIKOLOG.Trigger),1);
-fixationOutTimesLog = -1*ones(length(logStruct.VISIKOLOG.Trigger),1);
-juiceOnTimesLog = -1*ones(length(logStruct.VISIKOLOG.Trigger),1);
-juiceOffTimesLog = -1*ones(length(logStruct.VISIKOLOG.Trigger),1);
+if isfield(logStruct.VISIKOLOG,'Trigger')
+  fixationInTimesLog = -1*ones(length(logStruct.VISIKOLOG.Trigger),1);
+  fixationOutTimesLog = -1*ones(length(logStruct.VISIKOLOG.Trigger),1);
+  juiceOnTimesLog = -1*ones(length(logStruct.VISIKOLOG.Trigger),1);
+  juiceOffTimesLog = -1*ones(length(logStruct.VISIKOLOG.Trigger),1);
+else
+  fixationInTimesLog = [];
+  fixationOutTimesLog = [];
+  juiceOnTimesLog = [];
+  juiceOffTimesLog = [];
+end
 if isfield(logStruct.VISIKOLOG,'FixspotFlash') 
   fixSpotFlashStartTimesLog = zeros(length(logStruct.VISIKOLOG.FixspotFlash),1);
   fixSpotFlashEndTimesLog = zeros(length(logStruct.VISIKOLOG.FixspotFlash),1);
@@ -111,20 +118,21 @@ stimJumps = stimJumps(taskEventStartTimesLog >= 0,:); %note: jumps can be negati
 stimFramesLost = stimFramesLost(stimFramesLost >= 0);
 taskEventStartTimesLog = taskEventStartTimesLog(taskEventStartTimesLog >= 0);
 taskEventEndTimesLog = taskEventEndTimesLog(taskEventEndTimesLog >= 0);
-
-for i = 1:length(logStruct.VISIKOLOG.Trigger)
-  triggerStruct = logStruct.VISIKOLOG.Trigger{i};
-  switch triggerStruct.Name.Text
-    case 'Fixation_in'
-      fixationInTimesLog(i) = str2double(triggerStruct.Time.Text);
-    case 'Fixation_out'
-      fixationOutTimesLog(i) = str2double(triggerStruct.Time.Text);
-    case 'RewardOn'
-      juiceOnTimesLog(i)= str2double(triggerStruct.Time.Text);
-    case 'RewardOff'
-      juiceOffTimesLog(i)= str2double(triggerStruct.Time.Text);
-    otherwise
-      disp(strcat('unknown trigger name, ',TriggerStruct.Name.Text)); 
+if isfield(logStruct.VISIKOLOG,'Trigger')
+  for i = 1:length(logStruct.VISIKOLOG.Trigger)
+    triggerStruct = logStruct.VISIKOLOG.Trigger{i};
+    switch triggerStruct.Name.Text
+      case 'Fixation_in'
+        fixationInTimesLog(i) = str2double(triggerStruct.Time.Text);
+      case 'Fixation_out'
+        fixationOutTimesLog(i) = str2double(triggerStruct.Time.Text);
+      case 'RewardOn'
+        juiceOnTimesLog(i)= str2double(triggerStruct.Time.Text);
+      case 'RewardOff'
+        juiceOffTimesLog(i)= str2double(triggerStruct.Time.Text);
+      otherwise
+        disp(strcat('unknown trigger name, ',TriggerStruct.Name.Text)); 
+    end
   end
 end
 fixationInTimesLog = fixationInTimesLog(fixationInTimesLog >= 0);
@@ -147,7 +155,7 @@ if isfield(logStruct.VISIKOLOG,'FixspotFlash')
 end
 
 % now, calculate stimulation log to ephys clock conversion
-if ~isfield(params,'syncMethod') || any(strcmp(params.syncMethod,{'digitalTrigger','digitalTriggerNearestFrame'}))
+if ~isfield(params,'syncMethod') || any(strcmp(params.syncMethod,{'digitalTrigger','digitalTriggerNearestFrame','digitalTriggerNearestLowToHigh'}))
   % first, if nev has one more start trigger than log, throw out final nev
   % trigger (this is a known visiko bug, according to Michael Borisov's code)
   assert(length(taskEventStartTimesBlk) - length(taskEventStartTimesLog) <= 1, 'Error: Start triggers missing from log file');
@@ -181,6 +189,40 @@ if isfield(params,'syncMethod') && strcmp(params.syncMethod,'digitalTriggerNeare
   if isfield(params, 'showSyncQuality') && params.showSyncQuality
     figure();
     hist(diodeAdjustments);
+    title('Sync adjustments from photodiode');
+    xlabel('offset (adjusted - original) (ms)');
+    ylabel('count');
+    disp(median(diodeAdjustments));
+    [~,adjSortInds] = sort(abs(diodeAdjustments-median(diodeAdjustments)), 'descend');
+    disp('worst alignments, log file times');
+    disp(taskEventStartTimesLog(adjSortInds(1:min(5,length(adjSortInds)))));
+    disp('worst alignments, adjusted times');
+    disp(taskEventStartTimesBlk(adjSortInds(1:min(5,length(adjSortInds)))));
+    disp('worst alignments, adjustment values (ms)');
+    disp(diodeAdjustments(adjSortInds(1:min(5,length(adjSortInds)))));
+  end
+end
+
+if isfield(params,'syncMethod') && strcmp(params.syncMethod,'digitalTriggerNearestLowToHigh')
+  assert(~isempty(diodeTriggers) && isfield (diodeTriggers,'lowToHigh') && ~isempty(diodeTriggers.lowToHigh),'You requested low-to-high correction, but did not suppl valid preprocesed photodiode data.');
+  diodeAdjustments = zeros(size(taskEventStartTimesBlk));
+  % handle first stimulus separately: won't have a low-to-high transition
+  [offset,i] = min(abs(diodeTriggers.lowToHigh-taskEventStartTimesBlk(1)));
+  if offset > abs(diodeTriggers.all(1)-taskEventStartTimesBlk(1))
+    diodeAdjustments(1) = diodeTriggers.all(1) - taskEventStartTimesBlk(1);
+    taskEventStartTimesBlk(1) = diodeTriggers.all(1);
+  else
+    diodeAdjustments(1) = diodeTriggers.lowToHigh(i) - taskEventStartTimesBlk(1);
+    taskEventStartTimesBlk(1) = diodeTriggers.lowToHigh(i);
+  end
+  for stim_i = 2:length(taskEventStartTimesBlk)
+    [~,i] = min(abs(diodeTriggers.lowToHigh-taskEventStartTimesBlk(stim_i)));
+    diodeAdjustments(stim_i) = diodeTriggers.lowToHigh(i) - taskEventStartTimesBlk(stim_i);
+    taskEventStartTimesBlk(stim_i) = diodeTriggers.lowToHigh(i);
+  end
+  if isfield(params, 'showSyncQuality') && params.showSyncQuality
+    figure();
+    hist(diodeAdjustments,40);
     title('Sync adjustments from photodiode');
     xlabel('offset (adjusted - original) (ms)');
     ylabel('count');

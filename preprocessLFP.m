@@ -1,4 +1,4 @@
-function [ lfpData, extraChannels ] = preprocessLFP( lfpFilename, params )
+function [ lfpData, extraChannels ] = preprocessLFP( lfpFilename, params, varargin )
 % Load, decimate, and filter LFP, and index it by order in params. lfpChannels
 %    decimation and filtering are optional; specified in params
 %
@@ -19,6 +19,10 @@ decimateFactorPass1 = params.decimateFactorPass1; %note: product of the two deci
 decimateFactorPass2 = params.decimateFactorPass2;
 samPerMS = params.samPerMS; %THIS IS AFTER DECIMATION, and applies to LFP (should be raw rate/productOfDecimateFactors)  
 lfpFilter = params.filter; %if filtering desired, lfpFilter is a digitalFilter object
+if ~isempty(varargin)
+  lineNoiseTriggers = varargin{1};
+end
+
 
 % load lfp data
 assert(logical(exist(lfpFilename,'file')),'The LFP file you requested does not exist.');
