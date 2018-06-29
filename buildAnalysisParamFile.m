@@ -87,7 +87,7 @@ analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}
 analogInParams.plotFilterResult = 1; %#ok
 
 % parameters for photodiode strobe preprocessing
-photodiodeParams.needStrobe = 1;
+photodiodeParams.needStrobe = 0;
 photodiodeParams.levelCalibType = 'autoAndCheck';
 photodiodeParams.peaksToPlot = 100;
 photodiodeParams.cleanPeaks = 1;
@@ -135,7 +135,7 @@ lineNoiseTriggerParams.dataChannel = 130;
 lineNoiseTriggerParams.outputCalibrationFile = 'lineNoiseTriggerCalib'; %#ok
 
 % parameters preprocessLogFile, see function for details
-stimSyncParams.syncMethod = 'digitalTriggerNearestLowToHigh';%'digitalTrigger';%'digitalTriggerNearestFrame';
+stimSyncParams.syncMethod = 'digitalTrigger';
 stimSyncParams.showSyncQuality = 1;
 stimSyncParams.usePhotodiode = 0;        %#ok
 %
@@ -168,7 +168,7 @@ excludeStimParams.flashPre = 0;  %ms
 excludeStimParams.flashPost = 0; %ms
 excludeStimParams.juicePre = 0; % optional, ms
 excludeStimParams.juicePost = 0; % optional, ms
-excludeStimParams.maxDiodeSyncAdjustmentDeviation = 1; %ms
+excludeStimParams.maxEventTimeAdjustmentDeviation = 1; %ms
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
 

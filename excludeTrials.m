@@ -12,7 +12,7 @@ function [ taskDataValid ] = excludeTrials( taskData, params )
 %   and optional fields:
 %   - juicePre, juicePost (in ms)
 %   - accel1, accel2 (structs with fields data (1d timeseries, 1 ks/sec) and threshold);
-%   - maxDiodeSyncAdjustmentDeviation (in ms)
+%   - maxEventTimeAdjustmentDeviation (in ms)
 %   - minStimDuration (ms)
 %   todo: exclude stimuli shorter than minStimDuration (for arrythmic runs)
 
@@ -37,9 +37,9 @@ end
 if isfield(params,'minStimDur')
   minStimDur = params.minStimDur;
 end
-if isfield(params, 'maxDiodeSyncAdjustmentDeviation') && isfield(taskData,'photodiodeSyncAdjustments')
-  maxDiodeSyncAdjustmentDeviation = params.maxDiodeSyncAdjustmentDeviation;
-  diodeSyncAdjustmentDeviations = abs(taskData.photodiodeSyncAdjustments - median(taskData.photodiodeSyncAdjustments));
+if isfield(params, 'maxEventTimeAdjustmentDeviation') && isfield(taskData,'eventTimeAdjustments')
+  maxEventTimeAdjustmentDeviation = params.maxEventTimeAdjustmentDeviation;
+  eventTimeAdjustmentDeviations = abs(taskData.eventTimeAdjustments - median(taskData.eventTimeAdjustments));
 end
 
 trialValid = zeros(length(taskData.taskEventIDs),1);
@@ -73,8 +73,8 @@ for trial_i = 1:length(taskData.taskEventIDs)
       continue
     end
   end
-  if exist('maxDiodeSyncAdjustmentDeviation','var') && exist('diodeSyncAdjustmentDeviations','var')
-    if diodeSyncAdjustmentDeviations(trial_i) > maxDiodeSyncAdjustmentDeviation
+  if exist('maxEventTimeAdjustmentDeviation','var') && exist('eventTimeAdjustmentDeviations','var')
+    if eventTimeAdjustmentDeviations(trial_i) > maxEventTimeAdjustmentDeviation
       continue
     end
   end

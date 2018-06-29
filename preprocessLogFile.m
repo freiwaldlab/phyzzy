@@ -9,8 +9,9 @@ function [ taskData, stimTiming ] = preprocessLogFile(logFilename, taskTriggers,
 %     implementations, some other stimulation software)
 %   - taskTriggers: digital IO data from blackrock NEV file
 %   - params: a struct with *optional* fields
-%     - syncMethod: currently, only non-default option is digitalTriggerNearestFrame (type: string)
+%     - syncMethod: non-default options are digitalTriggerNearestFrame and 'digitalTriggerNearestLowToHigh' (type: string)
 %     - showSyncQuality: if true, show plots and info on diode-based sync refinement (type: logical)
+%     - syncOffset: subtracted from all stimulus start and end times (type: numeric)
 %   Outputs:
 %   - taskData: struct with fields:
 %       - taskEventIDs: nTrials x 1 cell array of alignment point identifiers, e.g. stimulus filenames. 
@@ -43,7 +44,12 @@ if isfield(params,'logProcessor')
   return
 end
 
-
+if ~isfield(params,'syncMethod')
+  params.syncMethod = 'digitalTrigger';
+end
+if ~isfield(params,'syncOffset')
+  params.syncOffset = 0;
+end
 disp('parsing serial IO packets');
 packetTimes = taskTriggers.TimeStampSec;
 packetData = dec2bin(taskTriggers.UnparsedData);
@@ -165,10 +171,11 @@ if ~isfield(params,'syncMethod') || any(strcmp(params.syncMethod,{'digitalTrigge
   disp(logVsBlkModel);
   m = logVsBlkModel.Coefficients.Estimate(2);
   y0 = logVsBlkModel.Coefficients.Estimate(1);
-  % for debugging
   taskEventStartTimesFit = (1/m)*(taskEventStartTimesLog - y0);
   disp(strcat('Max magnitude fit residual, msec: ',num2str(max(abs(taskEventStartTimesBlk-taskEventStartTimesFit)))));
-  % end for debugging
+  if strcmp(params.syncMethod,'digitalTrigger')
+     eventTimeAdjustments = taskEventStartTimesFit-taskEventStartTimesBlk;
+  end
   taskEventEndTimesBlk = (1/m)*(taskEventEndTimesLog - y0);
   fixationInTimesBlk = (1/m)*(fixationInTimesLog - y0);
   fixationOutTimesBlk = (1/m)*(fixationOutTimesLog - y0);
@@ -180,60 +187,30 @@ end
 
 if isfield(params,'syncMethod') && strcmp(params.syncMethod,'digitalTriggerNearestFrame')
   assert(~isempty(diodeTriggers) && isfield (diodeTriggers,'all') && ~isempty(diodeTriggers.all),'You requested nearest frame correction, but did not suppl valid preprocesed photodiode data.');
-  diodeAdjustments = zeros(size(taskEventStartTimesBlk));
+  eventTimeAdjustments = zeros(size(taskEventStartTimesBlk));
   for stim_i = 1:length(taskEventStartTimesBlk)
     [~,i] = min(abs(diodeTriggers.all-taskEventStartTimesBlk(stim_i)));
-    diodeAdjustments(stim_i) = diodeTriggers.all(i) - taskEventStartTimesBlk(stim_i);
+    eventTimeAdjustments(stim_i) = diodeTriggers.all(i) - taskEventStartTimesBlk(stim_i);
     taskEventStartTimesBlk(stim_i) = diodeTriggers.all(i);
-  end
-  if isfield(params, 'showSyncQuality') && params.showSyncQuality
-    figure();
-    hist(diodeAdjustments);
-    title('Sync adjustments from photodiode');
-    xlabel('offset (adjusted - original) (ms)');
-    ylabel('count');
-    disp(median(diodeAdjustments));
-    [~,adjSortInds] = sort(abs(diodeAdjustments-median(diodeAdjustments)), 'descend');
-    disp('worst alignments, log file times');
-    disp(taskEventStartTimesLog(adjSortInds(1:min(5,length(adjSortInds)))));
-    disp('worst alignments, adjusted times');
-    disp(taskEventStartTimesBlk(adjSortInds(1:min(5,length(adjSortInds)))));
-    disp('worst alignments, adjustment values (ms)');
-    disp(diodeAdjustments(adjSortInds(1:min(5,length(adjSortInds)))));
   end
 end
 
 if isfield(params,'syncMethod') && strcmp(params.syncMethod,'digitalTriggerNearestLowToHigh')
   assert(~isempty(diodeTriggers) && isfield (diodeTriggers,'lowToHigh') && ~isempty(diodeTriggers.lowToHigh),'You requested low-to-high correction, but did not suppl valid preprocesed photodiode data.');
-  diodeAdjustments = zeros(size(taskEventStartTimesBlk));
+  eventTimeAdjustments = zeros(size(taskEventStartTimesBlk));
   % handle first stimulus separately: won't have a low-to-high transition
   [offset,i] = min(abs(diodeTriggers.lowToHigh-taskEventStartTimesBlk(1)));
   if offset > abs(diodeTriggers.all(1)-taskEventStartTimesBlk(1))
-    diodeAdjustments(1) = diodeTriggers.all(1) - taskEventStartTimesBlk(1);
+    eventTimeAdjustments(1) = diodeTriggers.all(1) - taskEventStartTimesBlk(1);
     taskEventStartTimesBlk(1) = diodeTriggers.all(1);
   else
-    diodeAdjustments(1) = diodeTriggers.lowToHigh(i) - taskEventStartTimesBlk(1);
+    eventTimeAdjustments(1) = diodeTriggers.lowToHigh(i) - taskEventStartTimesBlk(1);
     taskEventStartTimesBlk(1) = diodeTriggers.lowToHigh(i);
   end
   for stim_i = 2:length(taskEventStartTimesBlk)
     [~,i] = min(abs(diodeTriggers.lowToHigh-taskEventStartTimesBlk(stim_i)));
-    diodeAdjustments(stim_i) = diodeTriggers.lowToHigh(i) - taskEventStartTimesBlk(stim_i);
+    eventTimeAdjustments(stim_i) = diodeTriggers.lowToHigh(i) - taskEventStartTimesBlk(stim_i);
     taskEventStartTimesBlk(stim_i) = diodeTriggers.lowToHigh(i);
-  end
-  if isfield(params, 'showSyncQuality') && params.showSyncQuality
-    figure();
-    hist(diodeAdjustments,40);
-    title('Sync adjustments from photodiode');
-    xlabel('offset (adjusted - original) (ms)');
-    ylabel('count');
-    disp(median(diodeAdjustments));
-    [~,adjSortInds] = sort(abs(diodeAdjustments-median(diodeAdjustments)), 'descend');
-    disp('worst alignments, log file times');
-    disp(taskEventStartTimesLog(adjSortInds(1:min(5,length(adjSortInds)))));
-    disp('worst alignments, adjusted times');
-    disp(taskEventStartTimesBlk(adjSortInds(1:min(5,length(adjSortInds)))));
-    disp('worst alignments, adjustment values (ms)');
-    disp(diodeAdjustments(adjSortInds(1:min(5,length(adjSortInds)))));
   end
 end
 
@@ -241,16 +218,31 @@ if isfield(params,'syncMethod') && strcmp(params.syncMethod, 'highFrames')
   error('highFrames sync method not yet implemented.');
 end
 
+if isfield(params, 'showSyncQuality') && params.showSyncQuality
+  figure();
+  hist(eventTimeAdjustments,40);
+  title('Sync adjustments from photodiode');
+  xlabel('offset (adjusted - original) (ms)');
+  ylabel('count');
+  disp(median(eventTimeAdjustments));
+  [~,adjSortInds] = sort(abs(eventTimeAdjustments-median(eventTimeAdjustments)), 'descend');
+  disp('worst alignments, log file times');
+  disp(taskEventStartTimesLog(adjSortInds(1:min(5,length(adjSortInds)))));
+  disp('worst alignments, adjusted times');
+  disp(taskEventStartTimesBlk(adjSortInds(1:min(5,length(adjSortInds)))));
+  disp('worst alignments, adjustment values (ms)');
+  disp(eventTimeAdjustments(adjSortInds(1:min(5,length(adjSortInds)))));
+end
 % finally, build the output structure
 taskData.taskEventIDs = taskEventIDs;
 taskData.stimJumps = stimJumps;
 taskData.stimFramesLost = stimFramesLost;
-taskData.taskEventStartTimes = taskEventStartTimesBlk;
-taskData.taskEventEndTimes = taskEventEndTimesBlk;
-if exist('diodeAdjustments','var')
-  taskData.photodiodeSyncAdjustments = diodeAdjustments;
+taskData.taskEventStartTimes = taskEventStartTimesBlk - params.syncOffset;
+taskData.taskEventEndTimes = taskEventEndTimesBlk - params.syncOffset;
+if exist('eventTimeAdjustments','var')
+  taskData.eventTimeAdjustments = eventTimeAdjustments;
 else
-  taskData.photodiodeSyncAdjustments = zeros(size(taskEventStartTimesBlk));
+  taskData.eventTimeAdjustments = zeros(size(taskEventStartTimesBlk));
 end
 taskData.fixationInTimes = fixationInTimesBlk;
 taskData.fixationOutTimes = fixationOutTimesBlk;
