@@ -243,7 +243,7 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
     for channel_i = 1:length(channelNames)
       spikesByEventBinned{image_i}{channel_i} = cell(length(channelUnitNames{channel_i}));
       for unit_i = 1:length(channelUnitNames{channel_i})
-          spikesByEventBinned{image_i}{channel_i}{unit_i} = binspikes(spikesByEvent{image_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+psthPost+movingWin(1)/2])';
+        spikesByEventBinned{image_i}{channel_i}{unit_i} = binspikes(spikesByEvent{image_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+psthPost+movingWin(1)/2])';
       end
     end
   end

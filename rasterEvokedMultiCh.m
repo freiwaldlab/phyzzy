@@ -59,8 +59,9 @@ end
 plot([0 0],ylim(),'b-');
 plot([imDur imDur],ylim(),'b-');
 xlimits = xlim();
+ylimits = ylim();
 if xlimits(2) < imDur + ISI
-  plot([iMDur+ISI imDur+ISI],[0 ylimits(2)],'b-');
+  plot([imDur+ISI imDur+ISI],[0 ylimits(2)],'b-');
 end
 xlabel('Time after stimulus onset (ms)');
 ylabel('evoked potential (au)');

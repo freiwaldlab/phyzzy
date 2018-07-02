@@ -20,10 +20,10 @@ for item_i = 1:length(spikesByItem)
   plot([imDur imDur],[yLevelStart yLevel],strcat(colors(mod(item_i,length(colors)) + 1),'-'));
 end
 xlimits = xlim();
-if xlimits(2) < imDur + ISI
-  plot([iMDur+ISI imDur+ISI],[0 ylimits(2)],'b-');
-end
 ylim([0,yLevel]);
+if xlimits(2) < imDur + ISI
+  plot([imDur+ISI imDur+ISI],[0 yLevel],'b-');
+end
 xlabel('Time after stimulus onset (ms)');
 ylabel('single trials');
 set(gca,'YTick',[]);

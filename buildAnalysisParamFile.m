@@ -5,8 +5,8 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '002';
-dateSubject = '180629TEST'; 
+runNum = '010';
+dateSubject = '180518ALAN'; 
 machine = 'laptop';
 
 switch machine
@@ -16,8 +16,8 @@ switch machine
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
     stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
   case 'laptop'
-    ephysVolume = '/Users/stephenserene/Desktop/180629TEST/Blackrock';%'/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
-    stimulusLogVolume = '/Users/stephenserene/Desktop/180629TEST/Visiko';%'/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
+    ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
+    stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
     stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
   case 'hopper'
@@ -43,8 +43,8 @@ verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 
 
 % parameters preprocessSpikes and preprocessLFP, see functions for details
-ephysParams.needLFP = 0;
-ephysParams.needSpikes = 0;
+ephysParams.needLFP = 1;
+ephysParams.needSpikes = 1;
 ephysParams.spikeChannels = [1,33,35]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
 ephysParams.lfpChannels = [1,33,35]; 
 ephysParams.channelNames = {'ML','AL','AM'};
@@ -136,7 +136,7 @@ lineNoiseTriggerParams.outputCalibrationFile = 'lineNoiseTriggerCalib'; %#ok
 
 % parameters preprocessLogFile, see function for details
 stimSyncParams.syncMethod = 'digitalTrigger';
-stimSyncParams.showSyncQuality = 1;
+stimSyncParams.showSyncQuality = 0;
 stimSyncParams.usePhotodiode = 0;        %#ok
 %
 eyeCalParams.needEyeCal = 0;
