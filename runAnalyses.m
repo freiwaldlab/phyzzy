@@ -233,7 +233,9 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
     for channel_i = 1:length(channelNames)
       spikesByCategoryBinned{cat_i}{channel_i} = cell(length(channelUnitNames{channel_i}));
       for unit_i = 1:length(channelUnitNames{channel_i})
-        spikesByCategoryBinned{cat_i}{channel_i}{unit_i} = binspikes(spikesByCategory{cat_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+psthPost+movingWin(1)/2])';
+        % this tmp variable fixes a Chronux bug that leads the last entry in the binned spike array to be zero when it shouldn't be
+        spikesTmp = binspikes(spikesByCategory{cat_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+psthPost+1+movingWin(1)/2])';
+        spikesByCategoryBinned{cat_i}{channel_i}{unit_i} = spikesTmp(:,1:end-1);
       end
     end
   end
@@ -243,7 +245,9 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
     for channel_i = 1:length(channelNames)
       spikesByEventBinned{image_i}{channel_i} = cell(length(channelUnitNames{channel_i}));
       for unit_i = 1:length(channelUnitNames{channel_i})
-        spikesByEventBinned{image_i}{channel_i}{unit_i} = binspikes(spikesByEvent{image_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+psthPost+movingWin(1)/2])';
+        % this tmp variable fixes a Chronux bug that leads the last entry in the binned spike array to be zero when it shouldn't be
+        spikesTmp = binspikes(spikesByEvent{image_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+1+psthPost+movingWin(1)/2])';
+        spikesByEventBinned{image_i}{channel_i}{unit_i} = spikesTmp(:,1:end-1);
       end
     end
   end

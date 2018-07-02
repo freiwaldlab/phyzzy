@@ -3,11 +3,8 @@ function [dN,t]=binspikes(data,Fs,t)
 % eg: 1ms accuracy use sampling = 1000
 % This function mimics the chronux 2.12 function of the same name, with a
 % bug fix to handle trials with no spikes. In chronux 2.12, spikeless
-% trials can lead to a fatal error (if the first trial has no spikes, and a
-% subsequent trial has spikes), or a logic error in coupling analyses
-% (trials with no spikes simply don't appear in the array returned by
-% binspikes, leading to mis-aligned trial indices across signals or
-% channels)
+% trials can lead to a fatal error (if some but not all trials have no
+% spikes, and the size of the empty times array is 0x0 rather than 0x1 or 1x0
 % Usage: [dN,t]=binspikes(data,Fs,t)
 % Inputs:
 % data   (data as a structure array of spike times; or as a single
@@ -60,7 +57,7 @@ if isstruct(data);
        eval(['dtmp=data(ch).' fnames{1} ';'])
        x=histc(dtmp,t);
        if ~isempty(x)
-         dN(:,ch)= x(:);
+           dN(:,ch)= x(:);
        end
    end
 else
