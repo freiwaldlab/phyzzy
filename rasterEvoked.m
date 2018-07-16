@@ -7,7 +7,7 @@ hold on;
 legendHandles = [];
 yMax = 0;
 spikeHeight = 0.075*max(max(squeeze(lfpByItem{1}(1,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy))));
-unitColors = {'r-','g-','b-','v-'};
+unitColors = {'r-','g-','b-','v-'}; %todo: fix hardcode!!!!!!!
 if ~firstOnTop
   for item_i = 1:length(spikesByItem)  
     yOffset = yMax - min(min(squeeze(lfpByItem{item_i}(1,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy))));

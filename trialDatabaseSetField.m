@@ -1,16 +1,14 @@
 function [ db ] = trialDatabaseSetField( fieldName, fieldValue, db, trialID, varargin )
 %trialDatabaseSetField adds a field-value pair to the trial database
-%   Places the key value pair into a dictionary for O(1) look-up
+%   Places the key value pair into a trial database
 %   - db: the trial database struct; initialize wtih trialDatabaseInit
-%   - fieldValue: acceptable types are string, double, 1x2 or 2x1 array of
-%     doubles, or Nx2 array of doubles. 
-%   - fieldName: a string
+%   - fieldValue: acceptable types are string, numeric array, cell array
+%   - fieldName: a string; must be valid struct field name
 %   - dateSubj: a string
 %   - runNum: a string
-%   - trialID: a string, returned by trialDatabaseAddTrial
+%   - trialID: a positive integer
 %   
-%   Todo: add sorted list option for double value types, to allow range lookup
-%         see https://www.mathworks.com/matlabcentral/answers/92533-how-do-i-perform-a-binary-search-of-a-presorted-array
+
 
 if ~isempty(varargin)
   dateSubj = varargin{1};
@@ -29,51 +27,43 @@ else
 end
 assert(isfield(db,runID),'database given does not contain data from the run requested');
 
-if ~isfield(db.(runID).fieldValuesToTrialIDs,fieldName)
-  db.(runID).fieldValuesToTrialIDs.(fieldName) = containers.Map();
-end
 switch class(fieldValue)
   case 'char'
-    fieldValueStr = fieldValue;
-    if iskey(db.(runID).fieldValuesToTrialIDs.(fieldName),fieldValueStr)
-      db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr) = [db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr);trialID];
-    else  
-      db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr) = {trialID};
+    if ~isfield(db.(runID).fieldValues,fieldName)
+      db.(runID).fieldValues.(fieldName) = cell(numTrials,1);
     end
-  case 'double'  %important: this line sets the query precision to 4 digits
+    db.(runID).fieldValues.(fieldName){trialID} = fieldValue;
+  case 'double'
+    if ~isfield(db.(runID).fieldValues,fieldName)
+      if numel(fieldValue) == 1
+        db.(runID).fieldValues.(fieldName) = NaN(numTrials,1);
+      elseif length(size(fieldValue)) == 2 && min(size(fieldValue)) == 1
+        db.(runID).fieldValues.(fieldName) = NaN(numTrials,length(fieldValue));
+      else
+        db.(runID).fieldValues.(fieldName) = NaN([numTrials,size(fieldValue)]);
+      end
+    end
+    
     if numel(fieldValue) == 1
-      fieldValueStr = num2str(fieldValue,4); %important: this line sets the query precision to 4 digits
-      if iskey(db.(runID).fieldValuesToTrialIDs.(fieldName),fieldValueStr)
-        db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr) = [db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr);trialID];
-      else
-        db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr) = {trialID};
-      end
+      db.(runID).fieldValues.(fieldName)(trialID) = fieldValue;
+    elseif length(size(fieldValue)) == 2 && min(size(fieldValue)) == 1
+      db.(runID).fieldValues.(fieldName)(trialID,:) = fieldValue;
     else
-      if numel == 2
-        fieldValueStr = sprintf('%s_%s',num2str(fieldValue(1),4),num2str(fieldValue(2),4));
-        if iskey(db.(runID).fieldValuesToTrialIDs.(fieldName),fieldValueStr)
-          db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr) = [db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr);trialID];
-        else
-          db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr) = {trialID};
-        end
-      else
-        if size(fieldValue,2) == 2
-          for pair_i = 1:length(fieldValue)
-            fieldValueStr = sprintf('%s_%s',num2str(fieldValue(1),4),num2str(fieldValue(2),4));
-            if iskey(db.(runID).fieldValuesToTrialIDs.(fieldName), fieldValueStr)
-              db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr) = [db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr);trialID];
-            else
-              db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr) = {trialID};
-            end
-          end
-        else
-          error('Database insertion not implemented for the data field shape given');
-        end
-      end
+      db.(runID).fieldValues.(fieldName)(trialID,:) = fieldValue(:);
     end
+  case 'cell'
+    if ~isfield(db.(runID).fieldValues,fieldName)
+      db.(runID).fieldValues.(fieldName) = cell(numTrials,1);
+    end
+    db.(runID).fieldValues.(fieldName){trialID} = fieldValue;
+  case 'struct'
+    assert(length(fieldnames(fieldValue)) == 1, 'Error: database insertion not implemented for multi-field structs');
+    if ~isfield(db.(runID).fieldValues,fieldName)
+      db.(runID).fieldValues.(fieldName) = repmat(struct(fieldnames(fieldValue),[]),numTrials,1);
+    end
+    db.(runID).fieldValues.(fieldName){trialID} = fieldValue;
   otherwise
     error('Database insertion not implemented for values of the type given');
 end
-db.(runID).trials.(trialID).(fieldName) = fieldValue;
 end
 

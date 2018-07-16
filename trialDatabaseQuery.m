@@ -1,20 +1,23 @@
 function [ trialIDs ] = trialDatabaseQuery( fieldName, fieldValue, db, varargin )
 %returns trialIDs of the trials matching a given name-value pair
 %   - fieldName: a string
-%   - fieldValue: a string, a double, or a 2 element array of doubles
+%   - fieldValue: string, number, numeric array, or function handle
+%                 - for string and number
+%                   - if field type is string or number, will check equality
+%                   - if field type is cell or struct, will check for any equality
+%                 - for other numeric array, will use fieldValue(1:end-1)
+%                   as index, and check equality against fieldValue(end)
+%                 - for function handle, handle is evaluated for each
+%                   trial's cell, struct, or subarray
 %   - db: a trial database struct
 %   - varargin: 
 %     - to specify dateSubj and runNum for possibly multi-run databases,
 %       varargin should be e.g.'dateSub','171030ALAN','runNum','012',
-%     - to automatically plot the trial summary of the identified trial(s),
-%       include 'plotTrialSummary' in varargin
-%     - to supress command prompt output, include 'silent' in varargin
-%
-%   todo: implement range lookup for numerical values
 
-if length(varargin) > 4 && strcmp(varargin{1},'dateSubj') && strcmp(varargin{3},'runNum')
+
+if ~isempty(varargin)
   dateSubj = varargin{1};
-  runNum = varargin{4};
+  runNum = varargin{2};
   runID = (sprintf('%srun%s',dateSubj,runNum));
 else
   fields = fieldnames(db);
@@ -28,43 +31,46 @@ else
   end
 end
 assert(isfield(db,runID),'database given does not contain data from the run requested');
-assert(isfield(db.(runID).fieldValuesToTrialIDs,fieldName),'invalid field');
+assert(isfield(db.(runID).fieldValues,fieldName),'invalid field');
 switch class(fieldValue)
   case 'char'
-    fieldValueStr = fieldValue;
-  case 'double'  %important: this line sets the query precision to 4 digits
-    if numel(fieldValue) == 1
-      fieldValueStr = num2str(fieldValue,4); %important: this line sets the query precision to 4 digits
+    if iscell(db.(runID).fieldValues.(fieldName))
+      trialIDs = find(cellfun(@ (x) any(strcmp(x,fieldValue),db.(runID).fieldValues.(fieldName))));
+    elseif isstruct(db.(runID).fieldValues.(fieldName))
+      subfieldNames = fieldnames(db.(runID).fieldValues.(fieldName));
+      subfieldName = subfieldNames{1};
+      trialIDs = find(structfun(@ (x) any(strcmp(x,fieldValue),db.(runID).fieldValues.(fieldName).(subfieldName))));
     else
-      if numel == 2
-        fieldValueStr = sprintf('%s_%s',num2str(fieldValue(1),4),num2str(fieldValue(2),4));
+      trialIDs = find(strcmp(db.(runID).fieldValues.(fieldName),fieldValue));
+    end
+  case 'double'  
+    if iscell(db.(runID).fieldValues.(fieldName))
+      trialIDs = find(cellfun(@ (x) any(isequal(x,fieldValue),db.(runID).fieldValues.(fieldName))));
+    elseif isstruct(db.(runID).fieldValues.(fieldName))
+      subfieldNames = fieldnames(db.(runID).fieldValues.(fieldName));
+      subfieldName = subfieldNames{1};
+      trialIDs = find(structfun(@ (x) any(isequal(x,fieldValue),db.(runID).fieldValues.(fieldName).(subfieldName))));
+    else
+      if numel(fieldValue) == 1
+        assert(size(db.(runID).fieldValues.(fieldName),2) == 1, 'error: invalid query shape for requested field shape');
+        trialIDs = find(db.(runID).fieldValues.(fieldName) == fieldValue);
       else
-        error('invalid field value type');
+        assert(numel(fieldValue) == size(db.(runID).fieldValues.(fieldName)), 'error: invalid query shape for requested field shape');
+        trialIDs = find(squeeze(db.(runID).fieldValues.(fieldName)(:,fieldValue(1:end-1))) == fieldValue(end));
       end
     end
+  case 'function_handle'
+    if iscell(db.(runID).fieldValues.(fieldName))
+      trialIDs = find(cellfun(@ (x) any(fieldValue(x),db.(runID).fieldValues.(fieldName))));
+    elseif isstruct(db.(runID).fieldValues.(fieldName))
+      subfieldNames = fieldnames(db.(runID).fieldValues.(fieldName));
+      subfieldName = subfieldNames{1};
+      trialIDs = find(structfun(@ (x) any(fieldValue(x),db.(runID).fieldValues.(fieldName).(subfieldName))));
+    else
+      trialIDs = find(squeeze(fieldValue(db.(runID).fieldValues.(fieldName))));
+    end
+  otherwise
+    trialIDs = [];
 end
-if iskey(db.(runID).fieldValuesToTrialIDs.(fieldName),fieldValueStr)
-  trialIDs = db.(runID).fieldValuesToTrialIDs.(fieldName)(fieldValueStr);
-  if length(trialIDs) == 1 && ~any(strcmp('silent',varargin))
-    sprintf('found a trial with the requested field-value pair: ID is %s\n',trialIDs{1});
-  end
-else  
-  disp('No trial found with the requested field-value pair');
-end
-
-if any(strcmp('plotTrialSummary',varargin))
-  for trial_i = 1:length(trialIDs)
-    plotTrialSummary(db,trialIDs{trial_i},runID)
-  end
-end
-
-if any(strcmp('plotGroupSummary',varargin))
-  % this will plot a summary of all trials that share a given property wtih
-  % the querried trial
-end
-
-if any(strcmp('highlightTrialOnFigure',varargin))
-end
-
 end
 

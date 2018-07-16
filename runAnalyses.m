@@ -40,7 +40,9 @@ channelUnitNames = inputs.channelUnitNames;
 stimTiming = inputs.stimTiming;  
 eventCategories = inputs.eventCategories;  
 onsetsByEvent = inputs.onsetsByEvent;  
-onsetsByCategory = inputs.onsetsByCategory; 
+trialIDsByEvent = inputs.trialIDsByEvent;
+onsetsByCategory = inputs.onsetsByCategory;
+trialIDsByCategory = inputs.trialIDsByCategory;
 %%% finished unpacking inputs
 load(analysisParamFilename);
 eventLabelsTmp = eventLabels; %note: hack to avoid overwriting list of not presented stimuli
@@ -635,6 +637,7 @@ if ~taskData.RFmap
             end
             superbar(ax, responses,'E',responseErrs,'BarFaceColor',analysisGroups.stimPrefBarPlot.colors{group_i}{subgroup_i});
             set(gca,'XTickLabel',itemNames,'XTickLabelRotation',45,'XTick',1:length(itemNames),'TickDir','out');
+            ylim([0, ylim(2)]);
             ylabel('Firing rate, Hz');
             title(channelUnitNames{channel_i}{unit_i});
           end

@@ -111,10 +111,12 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   onsetsByEvent = cell(length(eventIDs),1);
   offsetsByEvent = cell(length(eventIDs),1);
   eventsNotObserved = zeros(length(eventIDs),1);
+  trialIDsByEvent = cell(length(eventIDs),1);
   for event_i = 1:length(eventIDs)
     onsetsByEvent{event_i} = taskData.taskEventStartTimes(strcmp(taskData.taskEventIDs,eventIDs{event_i}));
     offsetsByEvent{event_i} = taskData.taskEventEndTimes(strcmp(taskData.taskEventIDs,eventIDs{event_i}));
     eventsNotObserved(event_i) = isempty(onsetsByEvent{event_i});
+    trialIDsByEvent{event_i} = find(strcmp(taskData.taskEventIDs,eventIDs{event_i}));
   end
 
   % todo: need defense against image with onset but no offset? 
@@ -125,6 +127,7 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   end
   onsetsByEvent = onsetsByEvent(eventsNotObserved == 0);
   offsetsByEvent = offsetsByEvent(eventsNotObserved == 0);
+  trialIDsByEvent = trialIDsByEvent(eventsNotObserved == 0);
   eventIDs = eventIDs(eventsNotObserved == 0);
   eventLabels = eventLabels(eventsNotObserved == 0);
   eventCategories = eventCategories(eventsNotObserved == 0);
@@ -132,18 +135,22 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   onsetsByCategory = cell(length(categoryList),1);
   offsetsByCategory = cell(length(categoryList),1);
   catsNotObserved = zeros(length(categoryList),1);
+  trialIDsByCategory = cell(length(categoryList),1);
   for cat_i = 1:length(categoryList)
     catOnsets = [];
     catOffsets = [];
+    catTrialIDs = [];
     for event_i = 1:length(eventIDs)
       if any(strcmp(eventCategories{event_i},categoryList{cat_i}))
         catOnsets = vertcat(catOnsets,onsetsByEvent{event_i});
-        catOffsets = vertcat(catOffsets, offsetsByEvent{event_i});
+        catOffsets = vertcat(catOffsets,offsetsByEvent{event_i});
+        catTrialIDs = vertcat(catTrialIDs,trialIDsByEvent{event_i});
       end
     end
     onsetsByCategory{cat_i} = catOnsets;
     offsetsByCategory{cat_i} = catOffsets;
     catsNotObserved(cat_i) = isempty(onsetsByCategory{cat_i});
+    trialIDsByCategory{cat_i} = catTrialIDs;
     Output.DEBUG('numel cat onsets');
     Output.DEBUG(numel(catOnsets));
   end
@@ -151,7 +158,8 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   onsetsByCategory = onsetsByCategory(catsNotObserved == 0);
   offsetsByCategory = offsetsByCategory(catsNotObserved == 0);
   categoryList = categoryList(catsNotObserved == 0);
-
+  trialIDsByCategory = trialIDsByCategory(catsNotObserved == 0);
+  
   if taskData.RFmap
     jumpsByImage = cell(length(eventIDs),1);
     for i = 1:length(eventIDs)
@@ -215,8 +223,10 @@ runAnalysisInputs.analogInByCategory = analogInByCategory;
 runAnalysisInputs.channelUnitNames = channelUnitNames;  
 runAnalysisInputs.stimTiming = stimTiming;  
 runAnalysisInputs.eventCategories = eventCategories;  
-runAnalysisInputs.onsetsByEvent = onsetsByEvent;  
+runAnalysisInputs.onsetsByEvent = onsetsByEvent; 
+runAnalysisInputs.trialIDsByEvent = trialIDsByEvent;
 runAnalysisInputs.onsetsByCategory = onsetsByCategory;
+runAnalysisInputs.trialIDsByCategory = trialIDsByCategory;
 
 
 if nargin == 0 || (nargin == 2 && strcmp(varargin{1},'paramBuilder')) || (nargin == 2 && strcmp(varargin{1},'preprocessed'))

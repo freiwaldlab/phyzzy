@@ -5,8 +5,8 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '010';
-dateSubject = '180518ALAN'; 
+runNum = '005';
+dateSubject = '180428ALAN'; 
 machine = 'laptop';
 
 switch machine
