@@ -637,7 +637,8 @@ if ~taskData.RFmap
             end
             superbar(ax, responses,'E',responseErrs,'BarFaceColor',analysisGroups.stimPrefBarPlot.colors{group_i}{subgroup_i});
             set(gca,'XTickLabel',itemNames,'XTickLabelRotation',45,'XTick',1:length(itemNames),'TickDir','out');
-            ylim([0, ylim(2)]);
+            tmp = ylim();
+            ylim([0, tmp(2)]);
             ylabel('Firing rate, Hz');
             title(channelUnitNames{channel_i}{unit_i});
           end
