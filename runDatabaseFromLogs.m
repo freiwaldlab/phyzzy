@@ -1,4 +1,4 @@
-function [  ] = run DatabaseFromLogs( dateSubjList, varargin )
+function [  ] = runDatabaseFromLogs( dateSubjList, varargin )
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 

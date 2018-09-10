@@ -5,8 +5,8 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '005';
-dateSubject = '180428ALAN'; 
+runNum = '006';
+dateSubject = '171119ALAN'; 
 machine = 'laptop';
 
 switch machine
@@ -31,11 +31,11 @@ switch machine
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
     stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
 end
-analysisLabel = 'Basic';
+analysisLabel = 'Basic180907';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;           %#ok
-closeFig = 0;          %#ok
+closeFig = 1;          %#ok
 exportFig = 0;         %#ok
 saveFigData = 0;       %#ok
 savePreprocessed = 1;  %#ok
@@ -234,7 +234,7 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
 plotSwitch.imagePsth = 1;
-plotSwitch.categoryPsth = 1;
+plotSwitch.categoryPsth = 0;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
@@ -262,18 +262,18 @@ plotSwitch.runSummaryImMeanSubDiv = 0;
 plotSwitch.lfpPowerMuaScatter = 0; 
 plotSwitch.lfpPeakToPeakMuaScatter = 0;
 plotSwitch.lfpLatencyMuaLatency = 0;
-plotSwitch.lfpPowerAcrossChannels = 0;
+plotSwitch.lfpPowerAcrossChannels = 1;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 0;
-plotSwitch.lfpSpectraByCategory = 0;
-plotSwitch.spikeSpectraByCategory = 0;
-plotSwitch.SpikeSpectraTfByImage = 0;
-plotSwitch.lfpSpectraTfByImage = 0;
+plotSwitch.lfpSpectraByCategory = 1;
+plotSwitch.spikeSpectraByCategory = 1;
+plotSwitch.SpikeSpectraTfByImage = 1;
+plotSwitch.lfpSpectraTfByImage = 1;
 plotSwitch.couplingPhasesUnwrapped = 0;
 plotSwitch.couplingPhasesAsOffsets = 0;
 plotSwitch.couplingPhasesPolar = 0;
-plotSwitch.tfSpectraByCategory = 0;
+plotSwitch.tfSpectraByCategory = 1;
 plotSwitch.tfErrs = 0;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
@@ -343,18 +343,18 @@ analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'};{'object'};{'
 calcSwitch.categoryPSTH = 1;
 calcSwitch.imagePSTH = 1;
 calcSwitch.faceSelectIndex = 1;
-calcSwitch.faceSelectIndexEarly = 0;
-calcSwitch.faceSelectIndexLate = 0;
+calcSwitch.faceSelectIndexEarly = 1;
+calcSwitch.faceSelectIndexLate = 1;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
 calcSwitch.evokedSpectra = 1;
-calcSwitch.inducedSpectra = 0;
-calcSwitch.evokedImageTF = 0;
-calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatTF = 0;
-calcSwitch.inducedCatTF = 0;
-calcSwitch.meanEvokedTF = 0;
-calcSwitch.trialMeanSpectra = 0;
-calcSwitch.coherenceByCategory = 0;
+calcSwitch.inducedSpectra = 1;
+calcSwitch.evokedImageTF = 1;
+calcSwitch.inducedImageTF = 1;
+calcSwitch.evokedCatTF = 1;
+calcSwitch.inducedCatTF = 1;
+calcSwitch.meanEvokedTF = 1;
+calcSwitch.trialMeanSpectra = 1;
+calcSwitch.coherenceByCategory = 1;
 calcSwitch.spikeTimes = 0;
 calcSwitch.useJacknife = 0;      
 
