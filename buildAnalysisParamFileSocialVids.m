@@ -4,8 +4,8 @@ function [ analysisParamFilename ] = buildAnalysisParamFileSocialVids( )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '003';
-dateSubject = '20180815Mo'; 
+runNum = '002';
+dateSubject = '20180814Mo';
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
 
@@ -13,18 +13,18 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = 'D:/Onedrive/Lab/BlackrockPC'; 
     stimulusLogVolume = 'D:/Onedrive/Lab/BlackrockPC';
-    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/phyzzy-master/Data/Analyzed';
-    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/phyzzy-master/StimParamFileSocialVids.mat';   %#ok    
+    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
+    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok    
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/BlackrockPC'; 
     stimulusLogVolume = 'C:/Users/aboha/Onedrive/Lab/BlackrockPC';
-    outputVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/phyzzy-master/Data/Analyzed';
-    stimParamsFilename = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/phyzzy-master/StimParamFileSocialVids.mat';   %#ok
+    outputVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
+    stimParamsFilename = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok
   case 'FA_Desktop_Home'
     ephysVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/phyzzy-master/Data/Blackrock'; 
     stimulusLogVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/phyzzy-master/Data/Monkeylogic';
-    outputVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/phyzzy-master/Data/Analyzed';
-    stimParamsFilename = 'E:/Onedrive/Lab/ESIN_Ephys_Files/phyzzy-master/StimParamFileSocialVids.mat';   %#ok
+    outputVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
+    stimParamsFilename = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok
 end
 analysisLabel = 'Basic';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
@@ -53,7 +53,7 @@ ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should 
 %note: use Blackrock indexing for unitsToUnsort and unitsToDiscard, so unsorted is 0, first defined unit is 1, etc.
 ephysParams.unitsToUnsort = {[]}; %these units will be re-grouped with u0
 ephysParams.unitsToDiscard = {[]}; %these units will be considered noise and discarded
-ephysParams.spikeWaveformPca = 0;
+ephysParams.spikeWaveformPca = 1;
 ephysParams.plotSpikeWaveforms = 0; %0, 1 to build then close, 2 to build and leave open
 ephysParams.shiftSpikeWaveforms = 0;
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
@@ -89,6 +89,8 @@ photodiodeParams.peakTimeOffset = 0; %this is the offset, in ms, of the peak fro
 photodiodeParams.strobeTroughs = 1; %Strobe causes troughs.
 photodiodeParams.peakFreq = 85; %approximate number of peaks per second
 photodiodeParams.levelCalibType = 'autoAndPlot';
+%'hardcode', 'hardcodeAndPlot', 'hardcodeAndCheck', 'auto', 'autoAndPlot',
+%'autoAndCheck', 'manual'
 photodiodeParams.numLevels = 1;
 photodiodeParams.saveCalibFile = 0;
 photodiodeParams.centerCornerOffset = 5.3;
