@@ -25,6 +25,26 @@ end
 spikesByChannel = repmat(struct('times',[],'units',[],'waveforms',[]),length(params.spikeChannels),1);
 unitNames = {'unsorted', 'unit 1','unit 2','unit 3','unit 4','unit 5'};
 channelUnitNames = cell(length(params.spikeChannels),1);
+
+%Checks for resorted spikes, overwrites NEV structure with new unit
+%assignments and time stamps.
+if isfield(params,'offlineSorted') && params.offlineSorted == 1
+    tmpString = split(spikeFilename,'/');
+    tmpFilename = strsplit(tmpString{end}, '.');
+    sortedFilename = [tmpFilename{1} 's.mat'];
+    tmpString{end} = sortedFilename;
+    spikeFilename = strjoin(tmpString,'/');
+    sortedStruct = load(spikeFilename);
+    tmpfield = fields(sortedStruct);
+    spikeStruct = eval(['sortedStruct.' tmpfield{1}]);
+    %Overwrite NEV fields
+    NEV.Data.Spikes.Timestamps = spikeStruct(:,1)*30e3; %Sampling Freq should likely be a variable pulled from elsewhere.
+    NEV.Data.Spikes.Electrode = spikeStruct(:,2);
+    NEV.Data.Spikes.Unit = spikeStruct(:,3);
+    NEV.Data.Spikes.Waveform = spikeStruct(:,4:end);
+end
+
+
 for channel_i = 1:length(params.spikeChannels)
   %change units from sample index to ms; type from int32 to double
   tmp.times = params.cPtCal*double(NEV.Data.Spikes.Timestamps(NEV.Data.Spikes.Electrode == params.spikeChannels(channel_i)));
@@ -69,6 +89,7 @@ if params.shiftSpikeWaveforms
       [~,bestShifts] = max(shiftQuality,[],2);
       figure();
       disp('opening figure');
+      title('Waveform shift (in samples)')
       hist(bestShifts - 6);
       for spike_i = 1:size(unitWaveforms,1)
         shift = shifts(bestShifts(spike_i));

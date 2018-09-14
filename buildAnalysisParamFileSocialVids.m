@@ -4,29 +4,29 @@ function [ analysisParamFilename ] = buildAnalysisParamFileSocialVids( )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '002';
+runNum = '003';
 dateSubject = '20180814Mo';
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
 
 switch machine
   case 'Alienware_FA'
-    ephysVolume = 'D:/Onedrive/Lab/BlackrockPC'; 
-    stimulusLogVolume = 'D:/Onedrive/Lab/BlackrockPC';
+    ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data'; 
+    stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok    
   case 'DESKTOP-MAT9KQ7'
-    ephysVolume = 'C:/Users/aboha/Onedrive/Lab/BlackrockPC'; 
-    stimulusLogVolume = 'C:/Users/aboha/Onedrive/Lab/BlackrockPC';
+    ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
+    stimulusLogVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     outputVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok
   case 'FA_Desktop_Home'
-    ephysVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/phyzzy-master/Data/Blackrock'; 
-    stimulusLogVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/phyzzy-master/Data/Monkeylogic';
+    ephysVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
+    stimulusLogVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     outputVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok
 end
-analysisLabel = 'Basic';
+analysisLabel = 'BasicSorted';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;                %#ok
@@ -44,6 +44,7 @@ ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be th
 ephysParams.lfpChannels = [1]; 
 ephysParams.channelNames = {'8Bm'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
+ephysParams.offlineSorted = 1; %Checks for a '*s.mat' Structure in the folder, with resorted spikes.
 ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
 ephysParams.cPtCal = 1/30; % conversion from spike sample indices to timestep of decimated LFP
@@ -53,7 +54,7 @@ ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should 
 %note: use Blackrock indexing for unitsToUnsort and unitsToDiscard, so unsorted is 0, first defined unit is 1, etc.
 ephysParams.unitsToUnsort = {[]}; %these units will be re-grouped with u0
 ephysParams.unitsToDiscard = {[]}; %these units will be considered noise and discarded
-ephysParams.spikeWaveformPca = 1;
+ephysParams.spikeWaveformPca = 0;
 ephysParams.plotSpikeWaveforms = 0; %0, 1 to build then close, 2 to build and leave open
 ephysParams.shiftSpikeWaveforms = 0;
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
