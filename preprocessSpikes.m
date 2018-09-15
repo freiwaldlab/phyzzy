@@ -31,17 +31,15 @@ channelUnitNames = cell(length(params.spikeChannels),1);
 if isfield(params,'offlineSorted') && params.offlineSorted == 1
     tmpString = split(spikeFilename,'/');
     tmpFilename = strsplit(tmpString{end}, '.');
-    sortedFilename = [tmpFilename{1} 's.mat'];
+    sortedFilename = [tmpFilename{1} '.xls'];
     tmpString{end} = sortedFilename;
     spikeFilename = strjoin(tmpString,'/');
-    sortedStruct = load(spikeFilename);
-    tmpfield = fields(sortedStruct);
-    spikeStruct = eval(['sortedStruct.' tmpfield{1}]);
+    spikeMat = xlsread(spikeFilename);
     %Overwrite NEV fields
-    NEV.Data.Spikes.Timestamps = spikeStruct(:,1)*30e3; %Sampling Freq should likely be a variable pulled from elsewhere.
-    NEV.Data.Spikes.Electrode = spikeStruct(:,2);
-    NEV.Data.Spikes.Unit = spikeStruct(:,3);
-    NEV.Data.Spikes.Waveform = spikeStruct(:,4:end);
+    NEV.Data.Spikes.Electrode = spikeMat(:,1);
+    NEV.Data.Spikes.Unit = spikeMat(:,2);
+    NEV.Data.Spikes.Timestamps = spikeMat(:,3)*30e3; %Sampling Freq should likely be a variable pulled from elsewhere.
+    NEV.Data.Spikes.Waveform = spikeMat(:,4:end);
 end
 
 

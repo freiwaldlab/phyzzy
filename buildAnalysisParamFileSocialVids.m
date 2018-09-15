@@ -5,7 +5,7 @@ function [ analysisParamFilename ] = buildAnalysisParamFileSocialVids( )
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '003';
-dateSubject = '20180814Mo';
+dateSubject = '20180828Mo';
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
 
