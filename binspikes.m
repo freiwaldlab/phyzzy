@@ -51,13 +51,13 @@ if isstruct(data);
 %        maxtimech=max(maxtimech);
 %        if maxtimech > max(t); t=[t maxtimech+dt]; end;
    end
-   t=linspace(mintime,maxtime+dt,2+(maxtime-mintime)/dt); %modified to fix chronux bug; sserene, 180702
+   t=linspace(mintime,maxtime+dt,2+(maxtime-mintime)/dt); %modified to fix chronux bug that made last bin always zero; sserene, 180702
    dN = zeros(length(t)-1,C);
    for ch=1:C;
        eval(['dtmp=data(ch).' fnames{1} ';'])
        x=histc(dtmp,t);
-       if ~isempty(x)
-           dN(:,ch)= x(1:end-1); %modified to fix chronux bug; sserene, 180702
+       if ~isempty(x)            %modified to fix chronux bug that led to fatal errors when s.times was 0x0 
+           dN(:,ch)= x(1:end-1); %modified to fix chronux bug that made last bin always zero; sserene, 180702
        end
    end
 else

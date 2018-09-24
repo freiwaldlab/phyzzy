@@ -26,6 +26,7 @@ function [ spikesByEvent, spikesByCategory, lfpByEvent, lfpByCategory, categoryL
 
 addpath(genpath('dependencies/genpath_exclude'));
 addpath(genpath_exclude('dependencies',{'*mvgc_v1.0'})); %note: use this to exclude libraries that overwrite matlab builtin namespaces, until they're needed
+addpath('buildAnalysisParamFileLib');
 % load analysis parameters
 if nargin == 0
   analysisParamFilename = buildAnalysisParamFile();
@@ -54,7 +55,6 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
   smoothingWidth = psthParams.smoothingWidth;
   preAlign = spikeAlignParams.preAlign;
   postAlign = spikeAlignParams.postAlign;
-  spikeAlignParams.preAlign;
   movingWin = tfParams.movingWin;
   specgramRowAve = tfParams.specgramRowAve;
   samPerMS = ephysParams.samPerMS;
@@ -169,9 +169,12 @@ if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
     jumpsByImage = [];
   end
   %align spikes by trial, and sort by image and category
+  spikeAlignParamsToCoverMovingWin.preAlign = lfpAlignParams.msPreAlign; % need to include spikes throughout the window chronux will use to calculate spectra
+  spikeAlignParamsToCoverMovingWin.postAlign = lfpAlignParams.msPostAlign;
+  spikeAlignParamsToCoverMovingWin.refOffset = 0;  
   spikeAlignParams.refOffset = 0;
-  [spikesByEvent, psthEmptyByEvent] = alignSpikes( spikesByChannel, onsetsByEvent, spikeChannels, spikeAlignParams );
-  [spikesByCategory, psthEmptyByCategory] = alignSpikes( spikesByChannel, onsetsByCategory, spikeChannels, spikeAlignParams );
+  [spikesByEvent, psthEmptyByEvent] = alignSpikes( spikesByChannel, onsetsByEvent, spikeChannels, spikeAlignParamsToCoverMovingWin);
+  [spikesByCategory, psthEmptyByCategory] = alignSpikes( spikesByChannel, onsetsByCategory, spikeChannels, spikeAlignParamsToCoverMovingWin);
 
   % align spikes again, but this time reference time to lfp sample number (required for chronux TF, even spike-spike)
   spikeAlignParamsTF.preAlign = lfpAlignParams.msPreAlign;
@@ -220,7 +223,7 @@ runAnalysisInputs.lfpByEvent = lfpByEvent;
 runAnalysisInputs.lfpByCategory = lfpByCategory;  
 runAnalysisInputs.analogInByEvent = analogInByEvent; 
 runAnalysisInputs.analogInByCategory = analogInByCategory;  
-runAnalysisInputs.channelUnitNames = channelUnitNames;  
+runAnalysisInputs.channelUnitNames = channelUnitNames;
 runAnalysisInputs.stimTiming = stimTiming;  
 runAnalysisInputs.eventCategories = eventCategories;  
 runAnalysisInputs.onsetsByEvent = onsetsByEvent; 

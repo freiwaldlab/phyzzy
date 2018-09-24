@@ -1,12 +1,12 @@
-function [ analysisParamFilename ] = buildAnalysisParamFile( )    
+function [ analysisParamFilename ] = buildAnalysisParamFileSocialStills( )    
 %buildAnalysisParamFile saves a mat file of parameters, which control the
 %behavior of analyzeSession
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '009';
-dateSubject = '180426ALAN'; 
+runNum = '005';
+dateSubject = '180225ALAN'; 
 machine = 'laptop';
 
 switch machine
@@ -14,24 +14,24 @@ switch machine
     ephysVolume = '/Volumes/Users-1/User/Desktop';
     stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamFileLib/StimParamsSocialStills.mat';   %#ok
   case 'laptop'
     ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamFileLib/StimParamsSocialStills.mat';   %#ok
   case 'hopper'
     ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Visiko';
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsSocialStills.mat';   %#ok
   case 'turing'
     ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Freiwald/ephys/sserene/ALAN_DATA/Visiko';
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsSocialStills.mat';   %#ok
 end
-analysisLabel = 'BasicWithSpikeAlignBug180924';
+analysisLabel = 'Basic';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;           %#ok
@@ -45,9 +45,9 @@ verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
-ephysParams.spikeChannels = [1,33,35]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-ephysParams.lfpChannels = [1,33,35]; 
-ephysParams.channelNames = {'ML','AL','AM'};
+ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+ephysParams.lfpChannels = [1]; 
+ephysParams.channelNames = {'ML'};
 ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764, 8191/32764]; %converts raw values to microvolts
 ephysParams.commonRef = [0 0 0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
@@ -73,10 +73,9 @@ ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a
 ephysParams.plotFilterResult = 0; %#ok
 
 % parameters preprocessAnalogIn, see function for details
-analogInParams.needAnalogIn = 1;
+analogInParams.needAnalogIn = 0;
 analogInParams.analogInChannels = [138,139,140]; 
 analogInParams.channelNames = {'eyeX','eyeY','eyeD'};
-analogInParams.channelUnits = {'dva','dva','au'};
 analogInParams.analogInChannelScaleBy = [5/32764 5/32764 5/32764]; %converts raw values to volts
 analogInParams.decimateFactorPass1 = 1; 
 analogInParams.decimateFactorPass2 = 1;
@@ -165,7 +164,7 @@ accelParams.calFiles = {''}; %if method is 'calFile', an ns2 filename
 % parameters for excludeStimuli, see function for details
 excludeStimParams.needExcludeTrials = 1;
 excludeStimParams.fixPre = 100; %ms
-excludeStimParams.fixPost = 400; %ms
+excludeStimParams.fixPost = 100; %ms
 excludeStimParams.flashPre = 0;  %ms
 excludeStimParams.flashPost = 0; %ms
 excludeStimParams.juicePre = 0; % optional, ms
@@ -176,7 +175,7 @@ excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 
 psthParams.psthPre = 100; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 0;  % only need to set this for variable length stim runs; else, comes from log file
-psthParams.psthPost = 400;
+psthParams.psthPost = 250;
 psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
 psthParams.errorType = 1; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
@@ -254,7 +253,7 @@ plotSwitch.latencyRF = 0;
 plotSwitch.evokedPowerRF = 0;
 plotSwitch.evokedPsthMuaMultiCh = 0;
 plotSwitch.evokedByCategory = 1;
-plotSwitch.analogInByItem = 1;
+plotSwitch.analogInByItem = 0;
 plotSwitch.analogInDerivativesByItem = 0;
 plotSwitch.colorPsthEvoked = 1;
 plotSwitch.linePsthEvoked = 0;
@@ -268,7 +267,6 @@ plotSwitch.lfpPowerAcrossChannels = 1;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 1;
-plotSwitch.singleTrialAnalogInByCategory = 1;
 plotSwitch.lfpSpectraByCategory = 1;
 plotSwitch.spikeSpectraByCategory = 1;
 plotSwitch.SpikeSpectraTfByImage = 0;
@@ -280,81 +278,73 @@ plotSwitch.tfSpectraByCategory = 0;
 plotSwitch.tfErrs = 0;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
-analysisGroups.selectivityIndex.groups = {{'face';'nonface'},{'face';'object'},{'face';'body'}};
+analysisGroups.selectivityIndex.groups = {};
 %
-analysisGroups.stimPrefBarPlot.groups = {{{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};{'face';'object';'body'}}};
-analysisGroups.stimPrefBarPlot.colors  = {{{'b';'c';'y';'g';'m';'r';'k'};{'b';'g';'r'}}};
-analysisGroups.stimPrefBarPlot.names = {'fobPlus'};
+analysisGroups.stimPrefBarPlot.groups = {};
+analysisGroups.stimPrefBarPlot.colors  = {};
+analysisGroups.stimPrefBarPlot.names = {};
 analysisGroups.stimPrefBarPlot.groupDepth = 2;
 %
-analysisGroups.stimulusLabelGroups.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.stimulusLabelGroups.names = {'fobPlus'};
-analysisGroups.stimulusLabelGroups.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.stimulusLabelGroups.groups = {{'all'}};
+analysisGroups.stimulusLabelGroups.names = {'all'};
+analysisGroups.stimulusLabelGroups.colors = {{'b'}};
 %
-analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.evokedPotentials.names = {'fobPlus'};
-analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.evokedPotentials.groups = {{'all';'oneNHP';'twoNHP';'oneFace';'twoFace';'obsFace'}};
+analysisGroups.evokedPotentials.names = {'stimNum'};
+analysisGroups.evokedPotentials.colors = {{'b';'r';'g';'k';'c';'m'}};
 %
-analysisGroups.analogInPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.analogInPotentials.channels = {[3]};
-analysisGroups.analogInPotentials.names = {'pupilDiameter,fobPlus'};
-analysisGroups.analogInPotentials.units = {'au'};
-analysisGroups.analogInPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.analogInPotentials.groups = {{'all'}};
+analysisGroups.analogInPotentials.channels = {[1; 2]};
+analysisGroups.analogInPotentials.names = {'eyePositions,all'};
+analysisGroups.analogInPotentials.units = {'degrees visual angle'};
+analysisGroups.analogInPotentials.colors = {{'b'}};
 %
-analysisGroups.analogInDerivatives.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.analogInDerivatives.groups = {{'all'}};
 analysisGroups.analogInDerivatives.channels = {[1; 2]};
-analysisGroups.analogInDerivatives.names = {'eyeVelocity,fobPlus'};
+analysisGroups.analogInDerivatives.names = {'eyeVelocity,all'};
 analysisGroups.analogInDerivatives.units = {'degrees visual angle/sec'};
-analysisGroups.analogInDerivatives.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.analogInDerivatives.colors = {{'b'}};
 %
-
-analysisGroups.analogInSingleTrialsByCategory.groups = {{'face';'nonface'}};
-analysisGroups.analogInSingleTrialsByCategory.names = {'faceVnon'};
-analysisGroups.analogInSingleTrialsByCategory.channels = {[1,2,3]};
+analysisGroups.colorPsthEvoked.groups = {{'all';'oneNHP';'twoNHP';'oneFace';'twoFace';'obsFace'}};
+analysisGroups.colorPsthEvoked.names = {'stimNum'};
+analysisGroups.colorPsthEvoked.colors = {{'b';'r';'g';'k';'c';'m'}};
 %
-analysisGroups.colorPsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};...
-  {'face';'object';'body';'place'}};
-analysisGroups.colorPsthEvoked.names = {'fobPlus'; 'fobp'};
-analysisGroups.colorPsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}; {'b';'r';'g';'k'}};
+analysisGroups.linePsthEvoked.groups = {{'all'}};
+analysisGroups.linePsthEvoked.names = {'all'};
+analysisGroups.linePsthEvoked.colors = {{'b'}};
 %
-analysisGroups.linePsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};...
-  {'face';'object';'body';'place'}};
-analysisGroups.linePsthEvoked.names = {'fobPlus';'fobp'};
-analysisGroups.linePsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}; {'b';'r';'g';'k'}};
+analysisGroups.evokedPsthOnePane.groups = {{'all'}};
+analysisGroups.evokedPsthOnePane.names = {'all'};
 %
-analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'}};
-analysisGroups.evokedPsthOnePane.names = {'faceVnon'};
+analysisGroups.tuningCurves.groups = {}; %can be images or categories
+analysisGroups.tuningCurves.paramValues = {};
+analysisGroups.tuningCurves.paramLabels = {};
+analysisGroups.tuningCurves.names = {};
 %
-analysisGroups.tuningCurves.groups = {{'humanFaceL90','humanFaceL45','humanFaceFront','humanFaceR45','humanFaceR90'},...
-  {'monkeyFaceL90','monkeyFaceL45','monkeyFaceFront','monkeyFaceR45','monkeyFaceR90'}}; %can be images or categories
-analysisGroups.tuningCurves.paramValues = {[-90 -45 0 45 90], [-90 -45 0 45 90]};
-analysisGroups.tuningCurves.paramLabels = {'viewing angle (degrees)','viewing angle (degrees)'};
-analysisGroups.tuningCurves.names = {'Human face view','Monkey face view'};
+analysisGroups.spectraByCategory.groups = {{'all';'oneNHP'}};  %todo: add spectra diff?
+analysisGroups.spectraByCategory.names = {'allVoneMonkey'};
+analysisGroups.spectraByCategory.colors = {{'b';'r'}};
 %
-analysisGroups.spectraByCategory.groups = {{'face';'nonface'}};  %todo: add spectra diff?
-analysisGroups.spectraByCategory.names = {'faceVnon'};
-analysisGroups.spectraByCategory.colors = {{'r';'b'}};
+analysisGroups.tfSpectraByCategory.groups = {{'all'}};%{'object'};{'body'}      %todo: add tf spectra diff?
+analysisGroups.tfSpectraByCategory.names = {'all'};%'nonface';'object';'body'
 %
-analysisGroups.tfSpectraByCategory.groups = {{'face'};{'nonface'}};%{'object'};{'body'}      %todo: add tf spectra diff?
-analysisGroups.tfSpectraByCategory.names = {'face','nonface'};%'nonface';'object';'body'
+analysisGroups.lfpSingleTrialsByCategory.groups = {{'all';'oneNHP'}};
+analysisGroups.lfpSingleTrialsByCategory.names = {'allVoneMonkey'};
 %
-analysisGroups.lfpSingleTrialsByCategory.groups = {{'face';'nonface'}};
-analysisGroups.lfpSingleTrialsByCategory.names = {'faceVnon'};
+analysisGroups.coherenceByCategory.groups = {{'all'}}; %{'face';'object';'body'};{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'hand';'techno'}
+analysisGroups.coherenceByCategory.colors = {{'b'}}; %{'r';'g';'b'};{'b';'c';'y';'g';'m';'r';'k';'k'}
+analysisGroups.coherenceByCategory.names = {'all'}; %'fob';'slimCats'
 %
-analysisGroups.coherenceByCategory.groups = {{'face';'nonface'}}; %{'face';'object';'body'};{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'hand';'techno'}
-analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; %{'r';'g';'b'};{'b';'c';'y';'g';'m';'r';'k';'k'}
-analysisGroups.coherenceByCategory.names = {'faceVnon'}; %'fob';'slimCats'
-%
-analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'};{'object'};{'body'}}; %#ok
+analysisGroups.tfCouplingByCategory.groups = {{'all'}}; %#ok
 %%%%%
 
 calcSwitch.categoryPSTH = 1;
 calcSwitch.imagePSTH = 1;
-calcSwitch.faceSelectIndex = 1;
+calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 1;
+calcSwitch.evokedSpectra = 0;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;

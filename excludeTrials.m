@@ -16,6 +16,10 @@ function [ taskDataValid ] = excludeTrials( taskData, params )
 %   - minStimDuration (ms)
 %   todo: exclude stimuli shorter than minStimDuration (for arrythmic runs)
 
+if isfield(params,'needExcludeTrials') && params.needExcludeTrials == 0
+  taskDataValid = taskData;
+  return
+end
 fixPre = params.fixPre;
 fixPost = params.fixPost; 
 flashPre = params.flashPre;  

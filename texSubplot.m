@@ -2,9 +2,13 @@ function [  ] = texSubplot( title, dir, fname, figures )
 %texSubplot uses the beamer class of LaTeX to make a subplot figure
 %   If same fig on sequential rows, fig spans those rows
 %   Params: 
-%   - title (possibly empty), dir, fname: strings 
-%   - figures, an array of figure handles, .fig filenames, or .png
-%     filenames (currently, only .png supported)
+%   - title, string (possibly empty), title for the new figure
+%   - dir, string, location at which to store tex file (omit trailing '/')
+%   - fname: string, name for the tex file (omit the .tex extension)
+%   - figures: cell array of cell arrays of figure handles, .fig filenames, or .png
+%              filenames (currently, only .png supported). The first cell
+%              array index gives the row index in the assembled figure; the second
+%              gives the column in the assembled final figure
 
 % preprocess the figure inputs, if not already png files
 for fig_i = 1:length(figures)
@@ -44,8 +48,8 @@ end
 fprintf(f,'\\end{columns}\n\\end{frame}\n\\end{document}');
 fclose(f);
 system(sprintf('mv %s/subplotTemplate.txt %s/%s.tex',dir,dir,fname));
-if isempty(regexp(getenv('PATH'),'texbin','ONCE'))
-  setenv('PATH',strcat(getenv('PATH'),':/usr/texbin'));
+if isempty(regexp(getenv('PATH'),'TeX/texbin','ONCE'))
+  setenv('PATH',strcat(getenv('PATH'),':/usr/texbin:/Library/TeX/texbin'));
 end
 wkdir = pwd();
 cd(dir);

@@ -75,6 +75,13 @@ if isa(logStruct.VISIKOLOG.DOCDATA,'cell')
   end
   logStruct.VISIKOLOG.DOCDATA = logStruct.VISIKOLOG.DOCDATA{str2double(s)};
 end
+if isa(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT,'cell')
+  s = input(sprintf('Task contains blocks of %d types. Enter the type-number to analyze, or n to quit: ',length(logStruct.VISIKOLOG.DOCDATA)),'s');
+  if strcmp(s,'n')
+    return;
+  end
+  logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT = logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT{str2double(s)};
+end
 stimTiming.shortest = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pictureTimeFrom.Text); 
 stimTiming.longest = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pictureTimeTo.Text);
 stimTiming.ISI = 1000*str2double(logStruct.VISIKOLOG.DOCDATA.OBJECTPARAMS_BCONT.pauseTime.Text);
@@ -165,6 +172,22 @@ if ~isfield(params,'syncMethod') || any(strcmp(params.syncMethod,{'digitalTrigge
   % first, if nev has one more start trigger than log, throw out final nev
   % trigger (this is a known visiko bug, according to Michael Borisov's code)
   assert(length(taskEventStartTimesBlk) - length(taskEventStartTimesLog) <= 1, 'Error: Start triggers missing from log file');
+  if length(taskEventStartTimesBlk) < length(taskEventStartTimesLog)
+    figure();
+    plot(taskEventStartTimesLog(1:length(taskEventStartTimesBlk)), taskEventStartTimesBlk);
+    xlabel('log time');
+    ylabel('blackrock time');
+    s = input(sprintf('More triggers (%d) in log file than recorded by ephys system (%d).To assume that ephys acquistion ended early and continue, enter y. To quit, enter q: ',...
+      length(taskEventStartTimesLog),length(taskEventStartTimesBlk)),'s');
+    if strcmp(s,'q')
+      return;
+    end
+    taskEventStartTimesLog = taskEventStartTimesLog(1:length(taskEventStartTimesBlk)-1);
+    taskEventIDs = taskEventIDs(1:length(taskEventStartTimesBlk)-1);
+    stimFramesLost = stimJumps(1:length(taskEventStartTimesBlk)-1);
+    stimJumps = stimJumps(1:length(taskEventStartTimesBlk)-1,:);
+    taskEventEndTimesLog = taskEventEndTimesLog(1:length(taskEventStartTimesBlk)-1);
+  end
   taskEventStartTimesBlk = taskEventStartTimesBlk(1:length(taskEventStartTimesLog));
   %note: don't use first trigger in fit; sometimes off (known visiko bug)
   logVsBlkModel = fitlm(taskEventStartTimesBlk(2:end), taskEventStartTimesLog(2:end));

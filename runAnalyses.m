@@ -36,7 +36,7 @@ lfpByEvent = inputs.lfpByEvent;
 lfpByCategory = inputs.lfpByCategory;  
 analogInByEvent = inputs.analogInByEvent; 
 analogInByCategory = inputs.analogInByCategory;  
-channelUnitNames = inputs.channelUnitNames;  
+channelUnitNames = inputs.channelUnitNames; 
 stimTiming = inputs.stimTiming;  
 eventCategories = inputs.eventCategories;  
 onsetsByEvent = inputs.onsetsByEvent;  
@@ -53,6 +53,7 @@ spikeChannels = ephysParams.spikeChannels;
 lfpChannels = ephysParams.lfpChannels;
 analogInChannels = analogInParams.analogInChannels;
 analogInChannelNames = analogInParams.channelNames;
+analogInChannelUnits = analogInParams.channelUnits;
 psthPre = psthParams.psthPre;
 psthPost = psthParams.psthPost;
 smoothingWidth = psthParams.smoothingWidth;
@@ -1824,8 +1825,9 @@ if isfield(plotSwitch,'singleTrialAnalogInByCategory') && plotSwitch.singleTrial
   for group_i = 1:length(analysisGroups.analogInSingleTrialsByCategory.groups)
     group = analysisGroups.analogInSingleTrialsByCategory.groups{group_i};
     groupName = analysisGroups.analogInSingleTrialsByCategory.names{group_i};
-    groupChannel = analysisGroups.analogInSingleTrialsByCategory.channels{group_i};
-    for channel_i = 1:length(channelNames)
+    groupChannels = analysisGroups.analogInSingleTrialsByCategory.channels{group_i};
+    for channel_i = 1:length(groupChannels)
+      channel = groupChannels(channel_i);
       fh = figure();
       figData = cell(length(group),1);
       for item_i = 1:length(group)
@@ -1833,22 +1835,22 @@ if isfield(plotSwitch,'singleTrialAnalogInByCategory') && plotSwitch.singleTrial
         hold on
         ydata = zeros(50,length(times));
         if isfield(catInds,group{item_i})
-          for i = 1:min(50,size(lfpByCategory{catInds.(group{item_i})},3))
-            plot(times, squeeze(analogInByCategory{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy)));
-            ydata(i,:) = squeeze(analogInByCategory{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy));
+          for i = 1:min(50,size(analogInByCategory{catInds.(group{item_i})},3))
+            plot(times, squeeze(analogInByCategory{catInds.(group{item_i})}(:,channel,i,lfpPaddedBy+1:end-lfpPaddedBy)));
+            ydata(i,:) = squeeze(analogInByCategory{catInds.(group{item_i})}(:,channel,i,lfpPaddedBy+1:end-lfpPaddedBy));
           end
         else
-          for i = 1:min(50,size(lfpByEvent{imInds.(group{item_i})},3))
-            plot(times, squeeze(analogInByEvent{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy)));
-            ydata(i,:) = squeeze(analogInByEvent{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy));
+          for i = 1:min(50,size(analogInByEvent{imInds.(group{item_i})},3))
+            plot(times, squeeze(analogInByEvent{catInds.(group{item_i})}(:,channel,i,lfpPaddedBy+1:end-lfpPaddedBy)));
+            ydata(i,:) = squeeze(analogInByEvent{catInds.(group{item_i})}(:,channel,i,lfpPaddedBy+1:end-lfpPaddedBy));
           end
         end
         h = get(gca,'ylim');
         plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
         hold off
-        title(sprintf('single trials, %s, %s%s', groupName), 'FontSize',18);
+        title(sprintf('single trials, %s, %s', groupName,analogInChannelNames{channel}), 'FontSize',18);
         xlabel('time after stimulus (ms)', 'FontSize',18);
-        ylabel('voltage (uV)', 'FontSize',18);
+        ylabel(analogInChannelUnits{channel}, 'FontSize',18);
         set(gca,'fontsize',18);
         xlim([min(times) max(times)]);
         clear tmp
@@ -1857,7 +1859,7 @@ if isfield(plotSwitch,'singleTrialAnalogInByCategory') && plotSwitch.singleTrial
         figData{item_i} = tmp;
       end
       drawnow;
-      saveFigure(outDir,sprintf('Evoked_singleTrials_%s_%s%s_Run%s',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      saveFigure(outDir,sprintf('%s_singleTrials_%s_%s_Run%s',analogInChannelNames{channel},analogInChannelNames{channel},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
       if closeFig
         close(fh);
       end
