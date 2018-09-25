@@ -1848,7 +1848,7 @@ if isfield(plotSwitch,'singleTrialAnalogInByCategory') && plotSwitch.singleTrial
         h = get(gca,'ylim');
         plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
         hold off
-        title(sprintf('single trials, %s, %s', groupName,analogInChannelNames{channel}), 'FontSize',18);
+        title(sprintf('single trials, %s, %s', group{item_i},analogInChannelNames{channel}), 'FontSize',18);
         xlabel('time after stimulus (ms)', 'FontSize',18);
         ylabel(analogInChannelUnits{channel}, 'FontSize',18);
         set(gca,'fontsize',18);
@@ -1859,7 +1859,7 @@ if isfield(plotSwitch,'singleTrialAnalogInByCategory') && plotSwitch.singleTrial
         figData{item_i} = tmp;
       end
       drawnow;
-      saveFigure(outDir,sprintf('%s_singleTrials_%s_%s_Run%s',analogInChannelNames{channel},analogInChannelNames{channel},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      saveFigure(outDir,sprintf('%s_singleTrials_%s_Run%s',analogInChannelNames{channel},groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
       if closeFig
         close(fh);
       end
