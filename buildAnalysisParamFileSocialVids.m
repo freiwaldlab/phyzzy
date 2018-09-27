@@ -4,7 +4,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids()
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '002';
+runNum = '003';
 dateSubject = '20180828Mo';
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
@@ -333,13 +333,13 @@ analysisGroups.analogInDerivatives.colors = {{'b';[0 .7 0];'r';[0 .7 0];'m';'r';
 %Makes subplots w/ PSTH on top and evoked potential on the bottom
 analysisGroups.colorPsthEvoked.groups = {{'socialInteraction';'nonInteraction';'objects'}};
 analysisGroups.colorPsthEvoked.names = {'socVobj'};
-analysisGroups.colorPsthEvoked.colors = {{'b';[0 .7 0];'r'}};
+analysisGroups.colorPsthEvoked.colors = {{'b';[0 .6 0];'r'}};
 
 %same as above, but shows error bars, harder to see catagory selectivity
 %though
 analysisGroups.linePsthEvoked.groups = {{'socialInteraction';'nonInteraction';'objects'}};
 analysisGroups.linePsthEvoked.names = {'socVobj'};
-analysisGroups.linePsthEvoked.colors = {{'b';[0 .7 0];'r'}};
+analysisGroups.linePsthEvoked.colors = {{'b';[0 .6 0];'r'}};
 
 %Same as above, but everything ontop of eachother in 1 panel.
 analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'}};

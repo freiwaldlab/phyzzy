@@ -7,9 +7,9 @@ hold on;
 legendHandles = [];
 yMax = 0;
 spikeHeight = 0.075*max(max(squeeze(lfpByItem{1}(1,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy))));
-unitColors = {'r-','g-','b-','v-'}; %todo: fix hardcode!!!!!!!
+unitColors = {'r-',[0 .7 0],'b-','v-'}; %todo: fix hardcode!!!!!!!
 
-colors = [colors colors colors colors]; %Doubled the length. Not the best strat.
+%colors = [colors colors colors colors]; %Doubled the length. Not the best strat.
 
 for item_i = length(spikesByItem):-1:1  
 yOffset = yMax - min(min(squeeze(lfpByItem{item_i}(1,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy))));
@@ -17,12 +17,12 @@ for trial_i = 1:length(spikesByItem{item_i}{channel_i}{1})
   trialLfp = squeeze(mean(lfpByItem{item_i}(1,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy)))' + yOffset;
   trialErrs = squeeze(std(lfpByItem{item_i}(1,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy))/sqrt(size(lfpByItem{item_i},3) + yOffset))' + yOffset;
   yMax = max(yMax, max(trialLfp));
-  h = plot(-preAlign:imDur+postAlign,trialLfp, strcat(colors(mod(item_i,length(colors)) + 1),'-'));
+  h = plot(-preAlign:imDur+postAlign,trialLfp,'color', colors(mod(item_i,size(colors,1)) + 1,:));% + 1),'-'));
   if trial_i == 1
     legendHandles = vertcat(legendHandles,h);
   end
   lineProps.width = 3;
-  lineProps.col = colors(item_i);
+  lineProps.col = colors(item_i,:);
   hold on
   %mseb(repmat(times,length(group),1),trialLfp, trialErrs, lineProps);  
 %   for unit_i = 1:length(spikesByItem{1}{channel_i}) - 1

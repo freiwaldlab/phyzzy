@@ -14,7 +14,7 @@ if ~firstOnTop
     for trial_i = 1:length(spikesByItem{item_i}{channel_i}{1})
       trialLfp = squeeze(lfpByItem{item_i}(1,channel_i,trial_i,lfpPaddedBy+1:end-lfpPaddedBy))' + yOffset;
       yMax = max(yMax, max(trialLfp));
-      h = plot(-preAlign:imDur+postAlign,trialLfp, strcat(colors(mod(item_i,length(colors)) + 1),'-'));
+      h = plot(-preAlign:imDur+postAlign,trialLfp,'color', colors(mod(item_i,size(colors,1)) + 1,:));% + 1),'-'));
       if trial_i == 1
         legendHandles = vertcat(legendHandles,h);
       end
@@ -34,7 +34,7 @@ else
     for trial_i = 1:length(spikesByItem{item_i}{channel_i}{1})
       trialLfp = squeeze(lfpByItem{item_i}(1,channel_i,trial_i,lfpPaddedBy+1:end-lfpPaddedBy))' + yOffset;
       yMax = max(yMax, max(trialLfp));
-      h = plot(-preAlign:imDur+postAlign,trialLfp, strcat(colors(mod(item_i,length(colors)) + 1),'-'));
+      h = plot(-preAlign:imDur+postAlign,trialLfp,'color', colors(mod(item_i,size(colors,1)) + 1,:));% + 1),'-'));
       if trial_i == 1
         legendHandles = vertcat(legendHandles,h);
       end

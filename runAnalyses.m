@@ -82,8 +82,8 @@ for epoch_i = 1:length(frEpochsCell)
   end
 end
 
-colors = ['b','r','g','k','b','r','g'];
-chColors = ['b','r','g'];
+colors = [{'b'},{'r'},{[0 .6 0]},{'k'}];
+chColors = [{'b'},{'r'},{[0 .6 0]}];
 
 % check calcSwitch definitions and set defaults as needed
 calcSwitchFields = {'categoryPSTH';'imagePSTH';'faceSelectIndex';'faceSelectIndexEarly';'faceSelectIndexLate';'inducedTrialMagnitudeCorrection';...
@@ -414,10 +414,24 @@ catSpikeCounts = spikeCountsByCategoryByEpoch{1};
         else
             colorArray(item_i,:) = groupColors{item_i};
         end
-    end
+      end
       groupColors = colorArray;
       analysisGroups.stimulusLabelGroups.colors{group_i} = groupColors;
     end
+    
+%Maybe just make the above colors into cells?    
+%Swap colors defined above to numbers
+      colors_tmp = zeros(length(colors),3);
+      for item_i = 1:length(colors)
+        if ischar(colors{item_i})
+          colors_tmp(item_i,:) = rem(floor((strfind('kbgcrmyw', colors{item_i}) - 1) * [0.25 0.5 1]), 2);
+        else
+          colors_tmp(item_i,:) = colors{item_i};
+        end
+      end
+      colors = colors_tmp;  
+    
+    
     for image_i = 1:length(eventLabels)
       for item_i = 1:length(group)
         if any(strcmp(eventCategories{image_i},group{item_i})) || strcmp(eventLabels{image_i},group{item_i})
@@ -479,7 +493,7 @@ if ~taskData.RFmap
       if isfield(plotSwitch,'prefImAverageEvoked') && plotSwitch.prefImRasterAverageEvokedOverlay
         prefImRasterAverageEvokedOverlayTitle = sprintf('Preferred Image Raster, Average Evoked Potential Overlay - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
         fh = figure('Name',prefImRasterAverageEvokedOverlayTitle,'NumberTitle','off');
-        rasterAverageEvoked(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors)
+        averageEvoked(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors)
         title(sprintf('Preferred Images - Average Evoked, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImAverage-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         if closeFig
@@ -959,10 +973,10 @@ if isfield(plotSwitch,'evokedPsthMuaMultiCh') && plotSwitch.evokedPsthMuaMultiCh
       for channel_i = 1:length(lfpChannels)
         yyaxis right
         itemLfp = squeeze(mean(lfpByItem{itemNum}(1,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3));
-        lfpHandle = plot(times,itemLfp/max(itemLfp),'color',chColors(channel_i), 'linestyle','-','linewidth',2);  
+        lfpHandle = plot(times,itemLfp/max(itemLfp),'color',chColors{channel_i}, 'linestyle','-','linewidth',2);  
         yyaxis left
         itemPSTH = psthByItem{channel_i}{end}(itemNum,:);
-        spikeHandle = plot(times,itemPSTH/max(itemPSTH),'color',chColors(channel_i),'linestyle','--','linewidth',2); 
+        spikeHandle = plot(times,itemPSTH/max(itemPSTH),'color',chColors{channel_i},'linestyle','--','linewidth',2); 
         handlesForLegend(2*channel_i-1) = lfpHandle;
         handlesForLegend(2*channel_i) = spikeHandle;
         forLegend{2*channel_i-1} = strcat(channelNames{channel_i},' LFP');

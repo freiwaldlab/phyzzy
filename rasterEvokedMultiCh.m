@@ -41,7 +41,7 @@ for item_i = length(spikesByItem):-1:1
       end
       trialLfp = trialLfp + yOffset;
       yMax = max(yMax, max(trialLfp));
-      h = plot(-preAlign:imDur+postAlign,trialLfp, strcat(colors(mod(trial_i,length(colors)) + 1),channelLinestyles{channel_i}));
+      h = plot(-preAlign:imDur+postAlign,trialLfp,'color', colors(mod(item_i,size(colors,1)) + 1,:),channelLinestyles{channel_i});
       if item_i == 1 && trial_i == 1
         legendHandles = vertcat(legendHandles, h);
       end
