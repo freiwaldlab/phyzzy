@@ -3,3 +3,4 @@
 .DS_Store
 dependencies/.DS_Store
 dependencies/chronux_2_12/.DS_Store
+*.asv

@@ -1,10 +1,10 @@
-function [ analysisParamFilename ] = buildAnalysisParamFileSocialVids( )    
+function [analysisParamFilename] = buildAnalysisParamFileSocialVids()    
 %buildAnalysisParamFile saves a mat file of parameters, which control the
 %behavior of analyzeSession
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '003';
+runNum = '002';
 dateSubject = '20180828Mo';
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
@@ -42,9 +42,9 @@ ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
 ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
 ephysParams.lfpChannels = [1]; 
-ephysParams.channelNames = {'8Bm'};
+ephysParams.channelNames = {'8Bm+F7'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
-ephysParams.offlineSorted = 1; %Checks for a '*s.mat' Structure in the folder, with resorted spikes.
+ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
 ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
 ephysParams.cPtCal = 1/30; % conversion from spike sample indices to timestep of decimated LFP
@@ -89,7 +89,7 @@ photodiodeParams.dataLoader = []; %Incase you're using something besides a raw a
 photodiodeParams.peakTimeOffset = 0; %this is the offset, in ms, of the peak from the event it's coupled to (note: will be subtracted, so should be > 0 if peak follows event, type: numeric)
 photodiodeParams.strobeTroughs = 1; %Strobe causes troughs.
 photodiodeParams.peakFreq = 85; %approximate number of peaks per second
-photodiodeParams.levelCalibType = 'autoAndPlot';
+photodiodeParams.levelCalibType = 'auto';
 %'hardcode', 'hardcodeAndPlot', 'hardcodeAndCheck', 'auto', 'autoAndPlot',
 %'autoAndCheck', 'manual'
 photodiodeParams.numLevels = 1;
@@ -182,7 +182,7 @@ excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 
 psthParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
-psthParams.psthPost = 0;
+psthParams.psthPost = 800;
 psthParams.smoothingWidth = 50;  %psth smoothing width, in ms
 psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
@@ -243,27 +243,36 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
 plotSwitch.imagePsth = 1;
-plotSwitch.categoryPsth = 1;
-plotSwitch.prefImRaster = 0;
-plotSwitch.prefImRasterEvokedOverlay = 0;
+plotSwitch.categoryPsth = 0;
+
+plotSwitch.prefImRaster = 1;
+plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
+plotSwitch.prefImRasterAverageEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-plotSwitch.imageTuningSorted = 1;
+
+plotSwitch.imageTuningSorted = 1; %Barplot per image
+
 plotSwitch.stimPrefBarPlot = 1;
 plotSwitch.stimPrefBarPlotEarly = 0;
 plotSwitch.stimPrefBarPlotLate = 0;
+
 plotSwitch.tuningCurves = 0;
 plotSwitch.tuningCurvesEarly = 0;
 plotSwitch.tuningCurvesLate = 0;
+
 plotSwitch.RF = 0;
 plotSwitch.rfEarly = 0;
 plotSwitch.rfLate = 0;
 plotSwitch.latencyRF = 0;
+
 plotSwitch.evokedPowerRF = 0;
 plotSwitch.evokedPsthMuaMultiCh = 0;
-plotSwitch.evokedByCategory = 0;
+plotSwitch.evokedByCategory = 1;
+
 plotSwitch.analogInByItem = 0;
 plotSwitch.analogInDerivativesByItem = 0;
-plotSwitch.colorPsthEvoked = 0;
+
+plotSwitch.colorPsthEvoked = 1;
 plotSwitch.linePsthEvoked = 0;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
@@ -282,7 +291,7 @@ plotSwitch.lfpSpectraTfByImage = 0;
 plotSwitch.couplingPhasesUnwrapped = 0;
 plotSwitch.couplingPhasesAsOffsets = 0;
 plotSwitch.couplingPhasesPolar = 0;
-plotSwitch.tfSpectraByCategory = 0;
+plotSwitch.tfSpectraByCategory = 1;
 plotSwitch.tfErrs = 0;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
@@ -291,7 +300,7 @@ analysisGroups.selectivityIndex.groups = {{'socialInteraction';'nonInteraction'}
 
 %Barplots showing average activity across all members of a catagory
 analysisGroups.stimPrefBarPlot.groups = {{{'socialInteraction';'nonInteraction';'goalDirected';'idle';'scene';'scramble'}}};
-analysisGroups.stimPrefBarPlot.colors  = {{{'b';'c';'y';'g';'m';'g'}}};
+analysisGroups.stimPrefBarPlot.colors  = {{{'b';[0 .7 0];'r';[0 .7 0];'r';[0 .7 0]}}};
 analysisGroups.stimPrefBarPlot.names = {'Barplots per label'};
 analysisGroups.stimPrefBarPlot.groupDepth = 2; %2 subplots, each figure is defined by a cell array in the first item (groups).
 
@@ -299,12 +308,12 @@ analysisGroups.stimPrefBarPlot.groupDepth = 2; %2 subplots, each figure is defin
 %stimulus.
 analysisGroups.stimulusLabelGroups.groups = {{'socialInteraction';'nonInteraction';'goalDirected';'idle';'scene';'scramble'}};
 analysisGroups.stimulusLabelGroups.names = {'Preferred Stimulus'};
-analysisGroups.stimulusLabelGroups.colors = {{'b';'c';'y';'g';'m';'g'}};
+analysisGroups.stimulusLabelGroups.colors = {{'b';[0 .7 0];'r';[0 .7 0];'m';[0 .7 0]}};
 
 %Essentially LFP selectivity/strength/quality
-analysisGroups.evokedPotentials.groups = {{'socialInteraction';'nonInteraction';'objects'}};
-analysisGroups.evokedPotentials.names = {'socVobj'};
-analysisGroups.evokedPotentials.colors = {{'b';'g';'c'}};
+analysisGroups.evokedPotentials.groups = {{'socialInteraction';'nonInteraction';'objects'};{'socialInteraction';'nonInteraction'}};
+analysisGroups.evokedPotentials.names = {'socVobj';'Social v Non-Soc'};
+analysisGroups.evokedPotentials.colors = {{'b';[0 .7 0];'r'};{'b';[0 .7 0];'r'}};
 
 %Looks like evokedpotentials, but pulls from a different analog channels
 %(like pupul or eye).
@@ -312,25 +321,25 @@ analysisGroups.analogInPotentials.groups = {{'humanFace';'monkeyFace';'place';'f
 analysisGroups.analogInPotentials.channels = {[1; 2]};
 analysisGroups.analogInPotentials.names = {'eyePositions,fobPlus'};
 analysisGroups.analogInPotentials.units = {'degrees visual angle'};
-analysisGroups.analogInPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.analogInPotentials.colors = {{'b';'r';'k';[0 .7 0];'m';'r';'k'}};
 
 %Same thing, but derivatives.
 analysisGroups.analogInDerivatives.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
 analysisGroups.analogInDerivatives.channels = {[1; 2]};
 analysisGroups.analogInDerivatives.names = {'eyeVelocity,fobPlus'};
 analysisGroups.analogInDerivatives.units = {'degrees visual angle/sec'};
-analysisGroups.analogInDerivatives.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.analogInDerivatives.colors = {{'b';[0 .7 0];'r';[0 .7 0];'m';'r';'k'}};
 
 %Makes subplots w/ PSTH on top and evoked potential on the bottom
 analysisGroups.colorPsthEvoked.groups = {{'socialInteraction';'nonInteraction';'objects'}};
 analysisGroups.colorPsthEvoked.names = {'socVobj'};
-analysisGroups.colorPsthEvoked.colors = {{'b';'g';'c'}};
+analysisGroups.colorPsthEvoked.colors = {{'b';[0 .7 0];'r'}};
 
 %same as above, but shows error bars, harder to see catagory selectivity
 %though
 analysisGroups.linePsthEvoked.groups = {{'socialInteraction';'nonInteraction';'objects'}};
 analysisGroups.linePsthEvoked.names = {'socVobj'};
-analysisGroups.linePsthEvoked.colors = {{'b';'g'}};
+analysisGroups.linePsthEvoked.colors = {{'b';[0 .7 0];'r'}};
 
 %Same as above, but everything ontop of eachother in 1 panel.
 analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'}};
@@ -353,7 +362,7 @@ analysisGroups.spectraByCategory.colors = {{'r';'b'}};
 %Calculates the same spectra, but w/ sliding windows. sometimes the Power
 %spectrum changes overtime.
 analysisGroups.tfSpectraByCategory.groups = {{'socialInteraction';'nonInteraction';}};%{'object'};{'body'}      %todo: add tf spectra diff?
-analysisGroups.tfSpectraByCategory.names = {'socialInteraction';'interaction'};%'nonface';'object';'body'
+analysisGroups.tfSpectraByCategory.names = {'socialInt';'Int'};%'nonface';'object';'body'
 
 %Evoked potential plot, shows individual traces for a bunch of trials.
 analysisGroups.lfpSingleTrialsByCategory.groups = {{'socialInteraction';'nonInteraction';}};
@@ -363,7 +372,7 @@ analysisGroups.lfpSingleTrialsByCategory.names = {'SocialVNonSocial'};
 %channel. Does this on a trial by trial basis, and then averages across all
 %members of each group. 
 analysisGroups.coherenceByCategory.groups = {{'socialInteraction';'nonInteraction';}}; %{'face';'object';'body'};{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'hand';'techno'}
-analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; %{'r';'g';'b'};{'b';'c';'y';'g';'m';'r';'k';'k'}
+analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; %{'r';[0 .7 0];'b'};{'b';'c';'y';[0 .7 0];'m';'r';'k';'k'}
 analysisGroups.coherenceByCategory.names = {'SocialVNonSocial'}; %'fob';'slimCats'
 
 %Calculates the same as above but in sliding windows.
@@ -380,7 +389,7 @@ calcSwitch.evokedSpectra = 1;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatTF = 0;
+calcSwitch.evokedCatTF = 1;
 calcSwitch.inducedCatTF = 0;
 calcSwitch.meanEvokedTF = 0;
 calcSwitch.trialMeanSpectra = 0;

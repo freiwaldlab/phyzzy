@@ -287,7 +287,7 @@ if ~strcmp(levelCalibType,'manual')  %todo: fix plottng, make alternation check 
       calibSuffix = 'auto';
     end
 
-    figure();
+    figure('Name','Strobe Levels','NumberTitle','off');
     subplot(1,2,1);
     sampleRange = ceil(peakSampleInds(1) - 5*samplingFreq/peakFreq):ceil(peakSampleInds(1) + (peaksToPlot+0.5)*samplingFreq/peakFreq);
     sampleRange = sampleRange(sampleRange > 0);
@@ -463,7 +463,7 @@ end
 if strcmp(levelCalibType,'manual') || (notValid && checkHighLowAlternation)
   notValid = 1;
   while notValid
-    figure();
+    figure('Name','Strobe Calibration','NumberTitle','off');;
     subplot(1,2,1);
     sampleRange = ceil(length(dataTrace)/2):ceil(length(dataTrace)/2 + peaksToPlot*samplingFreq/peakFreq);
     plot(sampleRange,dataTrace(sampleRange));
@@ -657,7 +657,7 @@ if numLevels == 3
 end  
 
 % plot the peak levels and computed switch times
-figure();
+figure('Name','Strobe Level Outputs','NumberTitle','off');;
 h = plot(strobeTriggers.all,ones(size(strobeTriggers.all)),'linestyle','none','marker','o','color','b');
 hold on
 % note: build handle and label arrays for legend to defend against Matlab bug that leads to incorrect legends when some data series are empty
