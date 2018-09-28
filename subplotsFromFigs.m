@@ -12,13 +12,12 @@ function [  ] = texSubplot( title, dir, fname, figures )
 % preprocess the figure inputs, if not already png files
 for fig_i = 1:length(figures)
   for fig_j = 1:length(figures{1})
-    % if a subplot is .fig or fig handle, generate png and update figures with its filename
-    if ~ischar(figures{fig_i}{fig_j}) || ~isempty(regexp(figures{fig_i}{fig_j},'.fig','ONCE'))
+      % if a subplot is .fig or fig handle, generate png and update figures with its filename
       if ~ischar(figures{fig_i}{fig_j})  %it's a figure handle
         assert(isgraphics(figures{fig_i}{fig_j},'Figure'),'Invalid input type: choices are filename or figure handle');
         subplotFilename = sprintf('%s/subplot_%d_%d.png',dir,fig_i,fig_j);
         savefig(figures{fig_i}{fig_j},subplotFilename);
-      else  %it's a .fig
+      elseif ~isempty(regexp(figures{fig_i}{fig_j},'.fig','ONCE'))  %it's a .fig
         h = openfig(figures{fig_i}{fig_j});
         subplotFilename = regexprep(figures{fig_i}{fig_j},'.fig','.png');
         savefig(h,subplotFilename);
@@ -50,38 +49,26 @@ for fig_i = 1:length(figures)
 end
 
 mkdir(dir);
-system(sprintf('cp subplotTemplate.txt %s',dir));
-f = fopen(strcat(dir,'/','subplotTemplate.txt'),'a');
-fprintf(f,'\\begin{frame}\n');
 if ~isempty(title)
-  fprintf(f,'\\frametitle{%s}\n', title);
+  %todo handle title
 end
-fprintf(f,'\\begin{columns}[t]\n');
+
+
+
+
+
+
+
 for column_i = 1:length(figures{1})
-  fprintf(f,'\\column{%.2f\\textwidth}\n',1/size(figures,2));
-%   rowSpan = 1;
+  rowSpan = 1;
   for row_i = 1:length(figures)
-%     if row_i < length(figures) && strcmp(figures{row_i}{column_i}, figures{row_i+1}{column_i})
-%       rowSpan = rowSpan + 1;
-%     else
-%       fprintf(f,'\\includegraphics[width=%.2f\\textwidth,keepaspectratio]{%s}\n',.8/length(figures{1}),figures{row_i}{column_i});
-%       %fprintf(f,'\\includegraphics[height=%.2f\\textheight,keepaspectratio]{%s}\n',rowSpan/length(figures),figures{row_i}{column_i});
-%       rowSpan = 1;
-%     end
+    if row_i < length(figures) && strcmp(figures{row_i}{column_i}, figures{row_i+1}{column_i})
+      rowSpan = rowSpan + 1;
+    else
+      rowSpan = 1;
+    end
     
-    fprintf(f,'\\includegraphics[width=%.2fcm,height=%.2fcm,keepaspectratio]{%s}\\\\\n',8/length(figures{1}),6.5/length(figures),figures{row_i}{column_i});
-    fprintf(f,'\\vspace{0.3cm}\n');
   end
 end
-fprintf(f,'\\end{columns}\n\\end{frame}\n\\end{document}');
-fclose(f);
-system(sprintf('mv %s/subplotTemplate.txt %s/%s.tex',dir,dir,fname));
-if isempty(regexp(getenv('PATH'),'TeX/texbin','ONCE'))
-  setenv('PATH',strcat(getenv('PATH'),':/usr/texbin:/Library/TeX/texbin'));
-end
-wkdir = pwd();
-cd(dir);
-system(sprintf('pdflatex %s/%s',dir,fname));
-cd(wkdir);
 end
 
