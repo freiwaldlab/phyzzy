@@ -26,21 +26,22 @@ function [ spikesByEvent, spikesByCategory, lfpByEvent, lfpByCategory, categoryL
 
 addpath(genpath('dependencies/genpath_exclude'));
 addpath(genpath_exclude('dependencies',{'*mvgc_v1.0'})); %note: use this to exclude libraries that overwrite matlab builtin namespaces, until they're needed
+
 % load analysis parameters
-if nargin == 0
-  analysisParamFilename = buildAnalysisParamFile();
-else
-  if strcmp(varargin{1},'preprocessed')
-    load(varargin{2}); 
-  else
-    if strcmp(varargin{1},'paramBuilder')
-      analysisParamFilename = feval(varargin{2});
-    else
-      analysisParamFilename = varargin{1};
+if nargin > 1
+    if ~isempty(find(ismember(varargin, 'preprocessed'), 1))
+        load(varargin{find(ismember(varargin, 'preprocessed')) + 1})
     end
-  end 
-end
-if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
+    if ~isempty(find(ismember(varargin, 'paramBuilder'), 1))
+        analysisParamFilename = feval(varargin{find(ismember(varargin, 'paramBuilder')) + 1});
+    else
+        analysisParamFilename = buildAnalysisParamFile();
+    end
+else
+    analysisParamFilename = varargin{1};
+end 
+
+if nargin == 0 || isempty(find(ismember(varargin, 'preprocessed'), 1))
   checkAnalysisParamFile(analysisParamFilename);
   load(analysisParamFilename);
   % extract parameters needed in this function from structures
@@ -228,11 +229,10 @@ runAnalysisInputs.trialIDsByEvent = trialIDsByEvent;
 runAnalysisInputs.onsetsByCategory = onsetsByCategory;
 runAnalysisInputs.trialIDsByCategory = trialIDsByCategory;
 
-
-if nargin == 0 || (nargin == 2 && strcmp(varargin{1},'paramBuilder')) || (nargin == 2 && strcmp(varargin{1},'preprocessed'))
-  runAnalyses(runAnalysisInputs);
+if ~isempty(find(ismember(varargin, 'analyzer'), 1))
+    feval(varargin(find(ismember(varargin, 'analyzer'), 1) + 1), runAnalysisInputs)
 else
-  feval(varargin{end},runAnalysisInputs);
+    runAnalyses(runAnalysisInputs);
 end
 end
 

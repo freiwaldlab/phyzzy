@@ -5,7 +5,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids()
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '003';
-dateSubject = '20180828Mo';
+dateSubject = '180628Mo';
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
 
@@ -13,7 +13,7 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data'; 
     stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
-    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
+    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed3';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok    
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
@@ -26,11 +26,11 @@ switch machine
     outputVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok
 end
-analysisLabel = 'BasicSorted';
+analysisLabel = 'Basic';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;                %#ok
-closeFig = 0;               %#ok
+closeFig = 1;               %#ok
 exportFig = 0;              %#ok
 saveFigData = 0;            %#ok
 savePreprocessed = 1;       %#ok
@@ -244,35 +244,27 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
-
-plotSwitch.prefImRaster = 1;
+plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-
-plotSwitch.imageTuningSorted = 1; %Barplot per image
-
-plotSwitch.stimPrefBarPlot = 1;
+plotSwitch.imageTuningSorted = 0; %Barplot per image
+plotSwitch.stimPrefBarPlot = 0;
 plotSwitch.stimPrefBarPlotEarly = 0;
 plotSwitch.stimPrefBarPlotLate = 0;
-
 plotSwitch.tuningCurves = 0;
 plotSwitch.tuningCurvesEarly = 0;
 plotSwitch.tuningCurvesLate = 0;
-
 plotSwitch.RF = 0;
 plotSwitch.rfEarly = 0;
 plotSwitch.rfLate = 0;
 plotSwitch.latencyRF = 0;
-
 plotSwitch.evokedPowerRF = 0;
 plotSwitch.evokedPsthMuaMultiCh = 0;
-plotSwitch.evokedByCategory = 1;
-
+plotSwitch.evokedByCategory = 0;
 plotSwitch.analogInByItem = 0;
 plotSwitch.analogInDerivativesByItem = 0;
-
-plotSwitch.colorPsthEvoked = 1;
+plotSwitch.colorPsthEvoked = 0;
 plotSwitch.linePsthEvoked = 0;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
@@ -284,7 +276,7 @@ plotSwitch.lfpPowerAcrossChannels = 0;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 0;
-plotSwitch.lfpSpectraByCategory = 0;
+plotSwitch.lfpSpectraByCategory = 0; %Works
 plotSwitch.spikeSpectraByCategory = 0;
 plotSwitch.SpikeSpectraTfByImage = 0;
 plotSwitch.lfpSpectraTfByImage = 0;
@@ -292,7 +284,7 @@ plotSwitch.couplingPhasesUnwrapped = 0;
 plotSwitch.couplingPhasesAsOffsets = 0;
 plotSwitch.couplingPhasesPolar = 0;
 plotSwitch.tfSpectraByCategory = 1;
-plotSwitch.tfErrs = 0;           %#ok
+plotSwitch.tfErrs = 1;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 %Defined for Groups of 2, A-B/A+B type index.
@@ -371,8 +363,8 @@ analysisGroups.lfpSingleTrialsByCategory.names = {'SocialVNonSocial'};
 %Coherence between LFP time series and spike time series w/i single
 %channel. Does this on a trial by trial basis, and then averages across all
 %members of each group. 
-analysisGroups.coherenceByCategory.groups = {{'socialInteraction';'nonInteraction';}}; %{'face';'object';'body'};{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'hand';'techno'}
-analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; %{'r';[0 .7 0];'b'};{'b';'c';'y';[0 .7 0];'m';'r';'k';'k'}
+analysisGroups.coherenceByCategory.groups = {{'socialInteraction';'nonInteraction';}};
+analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; 
 analysisGroups.coherenceByCategory.names = {'SocialVNonSocial'}; %'fob';'slimCats'
 
 %Calculates the same as above but in sliding windows.
@@ -381,16 +373,16 @@ analysisGroups.tfCouplingByCategory.groups = {{'socialInteraction'};{'nonInterac
 
 calcSwitch.categoryPSTH = 1;
 calcSwitch.imagePSTH = 1;
-calcSwitch.faceSelectIndex = 1;
+calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
 calcSwitch.evokedSpectra = 1;
-calcSwitch.inducedSpectra = 0;
-calcSwitch.evokedImageTF = 0;
-calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatTF = 1;
-calcSwitch.inducedCatTF = 0;
+calcSwitch.inducedSpectra = 1;
+calcSwitch.evokedImageTF = 1;
+calcSwitch.inducedImageTF = 1;
+calcSwitch.evokedCatTF = 1; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
+calcSwitch.inducedCatTF = 1;
 calcSwitch.meanEvokedTF = 0;
 calcSwitch.trialMeanSpectra = 0;
 calcSwitch.coherenceByCategory = 0;
