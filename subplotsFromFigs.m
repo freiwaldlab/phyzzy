@@ -9,7 +9,7 @@ function [  ] = subplotsFromFigs( dir, fname, figures, equalColWidths, equalRowH
 %               the second gives the column in the assembled final figure
 %               When the same filename or handle appears in adjacent rows
 %               and columns, the corresponding figure will span those rows
-%               and columns
+%               and columns, e.g. {{fh1,fh2,fh3},{fh1,fh5,fh6}}, where the fhNs are any combination of figure handles and filenames
 %   - equalColWidths, equalRowHeights: if 1, make all cols/rows the same size. If 0, cols/rows will
 %               be sized according the width of their largest constituent figure
 
