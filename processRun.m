@@ -12,11 +12,11 @@ function [ spikesByEvent, spikesByCategory, lfpByEvent, lfpByCategory, categoryL
 %   - shows task event summary (via excludeTrials)
 %   - optionally calls an analysis routine; default is runAnalyses.m
 %   Inputs:
-%   - varargin can have the following forms:
-%       - empty (default assignments: buildAnalysisParamFile, runAnalyses)
+%   - varargin consists of name-value argument pairs:
 %       - 'paramBuilder', paramBuilderFunctionName
+%       - 'paramFile', paramFilename (must be .mat)
+%       - 'preprocessed', preProcessedDataFilename (must be .mat)
 %       - 'analyzer', analyzerFunctionName
-%       - 'paramBuilder', paramBuilderFunctionName, 'analyzer', analyzerFunctionName
 %       Note: functionNames are strings, and do not include the trailing '.m'; see 'feval' docs
 %   Notes:
 %   Depends:
@@ -28,20 +28,29 @@ addpath(genpath('dependencies/genpath_exclude'));
 addpath(genpath_exclude('dependencies',{'*mvgc_v1.0'})); %note: use this to exclude libraries that overwrite matlab builtin namespaces, until they're needed
 addpath('buildAnalysisParamFileLib');
 % load analysis parameters
+usePreprocessed = 0;
 if nargin == 0
   analysisParamFilename = buildAnalysisParamFile();
 else
-  if strcmp(varargin{1},'preprocessed')
-    load(varargin{2}); 
-  else
-    if strcmp(varargin{1},'paramBuilder')
-      analysisParamFilename = feval(varargin{2});
+  assert(mod(nargin,2) == 0, 'processRun takes arguments as name-value pairs; odd number of arguments provided');
+  for argPair_i=1:nargin/2
+    argName = varargin{1+2*(argPair_i-1)};
+    argVal = varargin{2+2*(argPair_i-1)};
+    if strcmp(argName,'preprocessed')
+      load(argVal);
+      usePreprocessed = 1;
+    elseif strcmp(argName,'paramBuilder')
+      analysisParamFilename = feval(argVal);
+    elseif strcmp(argName,'analyzer')
+      analyzer = argVal;
+    elseif strcmp(argName, 'paramFile')
+      analysisParamFilename = argVal;
     else
-      analysisParamFilename = varargin{1};
+      warning('Invalid field %s provided to processRun',argName);
     end
-  end 
+  end
 end
-if nargin == 0 || ~strcmp(varargin{1},'preprocessed')
+if ~usePreprocessed
   checkAnalysisParamFile(analysisParamFilename);
   load(analysisParamFilename);
   % extract parameters needed in this function from structures
@@ -232,10 +241,10 @@ runAnalysisInputs.onsetsByCategory = onsetsByCategory;
 runAnalysisInputs.trialIDsByCategory = trialIDsByCategory;
 
 
-if nargin == 0 || (nargin == 2 && strcmp(varargin{1},'paramBuilder')) || (nargin == 2 && strcmp(varargin{1},'preprocessed'))
+if ~exist('analyzer','var')
   runAnalyses(runAnalysisInputs);
 else
-  feval(varargin{end},runAnalysisInputs);
+  feval(analyzer,runAnalysisInputs);
 end
 end
 
