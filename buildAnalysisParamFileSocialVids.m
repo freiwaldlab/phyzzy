@@ -4,8 +4,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids()
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '003';
-dateSubject = '180628Mo';
+runNum = '001';
+dateSubject = '20180813Mo';
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
 
@@ -30,7 +30,7 @@ analysisLabel = 'Basic';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;                %#ok
-closeFig = 1;               %#ok
+closeFig = 0;               %#ok
 exportFig = 0;              %#ok
 saveFigData = 0;            %#ok
 savePreprocessed = 1;       %#ok
@@ -89,7 +89,7 @@ photodiodeParams.dataLoader = []; %Incase you're using something besides a raw a
 photodiodeParams.peakTimeOffset = 0; %this is the offset, in ms, of the peak from the event it's coupled to (note: will be subtracted, so should be > 0 if peak follows event, type: numeric)
 photodiodeParams.strobeTroughs = 1; %Strobe causes troughs.
 photodiodeParams.peakFreq = 85; %approximate number of peaks per second
-photodiodeParams.levelCalibType = 'auto';
+photodiodeParams.levelCalibType = 'hardcodeAndPlot';
 %'hardcode', 'hardcodeAndPlot', 'hardcodeAndCheck', 'auto', 'autoAndPlot',
 %'autoAndCheck', 'manual'
 photodiodeParams.numLevels = 1;
@@ -100,6 +100,9 @@ photodiodeParams.peaksToPlot = 50; %number of peaks to show in calibration plots
 photodiodeParams.cleanPeaks = 1;
 photodiodeParams.useRisingEdge = 0; % 0 = peaks, 1 = rising edge.
 photodiodeParams.numLevels = 3; %Number of levels the strobe is acting at.
+photodiodeParams.levelHigh = 6500;
+photodiodeParams.levelMid = 4000;
+photodiodeParams.levelLow = 1250;
 photodiodeParams.checkHighLowAlternation = 0;
 photodiodeParams.minPeakNumInLevel = 30;
 %photodiodeParams.samplingFreq = 30000; %Defined in Blackrock
@@ -107,7 +110,6 @@ photodiodeParams.hardcodeFromFile = 0; %(only needed for hardcode calib types)
 photodiodeParams.saveCalibFile = 0;
 photodiodeParams.saveFigures = 0;
 photodiodeParams.displayStats = 1;
-
 lineNoiseTriggerParams.needStrobe = 0;
 
 
@@ -183,7 +185,7 @@ excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 psthParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
 psthParams.psthPost = 800;
-psthParams.smoothingWidth = 50;  %psth smoothing width, in ms
+psthParams.smoothingWidth = 33;  %psth smoothing width, in ms
 psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;
@@ -283,8 +285,8 @@ plotSwitch.lfpSpectraTfByImage = 0;
 plotSwitch.couplingPhasesUnwrapped = 0;
 plotSwitch.couplingPhasesAsOffsets = 0;
 plotSwitch.couplingPhasesPolar = 0;
-plotSwitch.tfSpectraByCategory = 1;
-plotSwitch.tfErrs = 1;           %#ok
+plotSwitch.tfSpectraByCategory = 0;
+plotSwitch.tfErrs = 0;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 %Defined for Groups of 2, A-B/A+B type index.
@@ -377,16 +379,16 @@ calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 1;
-calcSwitch.inducedSpectra = 1;
-calcSwitch.evokedImageTF = 1;
-calcSwitch.inducedImageTF = 1;
+calcSwitch.evokedSpectra = 0;
+calcSwitch.inducedSpectra = 0;
+calcSwitch.evokedImageTF = 0;
+calcSwitch.inducedImageTF = 0;
 calcSwitch.evokedCatTF = 1; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
-calcSwitch.inducedCatTF = 1;
+calcSwitch.inducedCatTF = 0;
 calcSwitch.meanEvokedTF = 0;
 calcSwitch.trialMeanSpectra = 0;
 calcSwitch.coherenceByCategory = 0;
-calcSwitch.spikeTimes = 1;
+calcSwitch.spikeTimes = 0;
 calcSwitch.useJacknife = 0;      
 
 if calcSwitch.useJacknife

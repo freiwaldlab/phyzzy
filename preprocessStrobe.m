@@ -125,9 +125,6 @@ else
   displayStats = 1;
 end
 
-
-% end unpack params
-
 % load photodiode data, if needed
 if strcmp(inputDataType, 'blackrockFilename')
   assert(logical(exist(inputDataSource,'file')),'The data file you requested does not exist.');
@@ -162,7 +159,7 @@ rawPeaks.loc = rawPeaks.loc(rawPeaks.loc < length(dataTrace)); % don't count the
 rawPeaksSorted = sort(dataTrace(rawPeaks.loc),'descend');
 rawPeaksSorted = rawPeaksSorted(1:frameNumCeiling);
 
-if strcmp(levelCalibType,'hardcode')  
+if any(strcmp(levelCalibType, {'hardcodeAndPlot','hardcodeAndCheck','hardcode'}))  
   if params.hardcodeFromFile
     switch numLevels
       case 1
@@ -463,7 +460,7 @@ end
 if strcmp(levelCalibType,'manual') || (notValid && checkHighLowAlternation)
   notValid = 1;
   while notValid
-    figure('Name','Strobe Calibration','NumberTitle','off');;
+    figure('Name','Strobe Calibration','NumberTitle','off');
     subplot(1,2,1);
     sampleRange = ceil(length(dataTrace)/2):ceil(length(dataTrace)/2 + peaksToPlot*samplingFreq/peakFreq);
     plot(sampleRange,dataTrace(sampleRange));

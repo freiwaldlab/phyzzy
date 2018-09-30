@@ -28,20 +28,29 @@ addpath(genpath('dependencies/genpath_exclude'));
 addpath(genpath_exclude('dependencies',{'*mvgc_v1.0'})); %note: use this to exclude libraries that overwrite matlab builtin namespaces, until they're needed
 
 % load analysis parameters
-if nargin > 1
-    if ~isempty(find(ismember(varargin, 'preprocessed'), 1))
-        load(varargin{find(ismember(varargin, 'preprocessed')) + 1})
-    end
-    if ~isempty(find(ismember(varargin, 'paramBuilder'), 1))
-        analysisParamFilename = feval(varargin{find(ismember(varargin, 'paramBuilder')) + 1});
-    else
-        analysisParamFilename = buildAnalysisParamFile();
-    end
+usePreprocessed = 0;
+if nargin == 0
+  analysisParamFilename = buildAnalysisParamFile();
 else
-    analysisParamFilename = varargin{1};
-end 
-
-if nargin == 0 || isempty(find(ismember(varargin, 'preprocessed'), 1))
+  assert(mod(nargin,2) == 0, 'processRun takes arguments as name-value pairs; odd number of arguments provided');
+  for argPair_i=1:nargin/2
+    argName = varargin{1+2*(argPair_i-1)};
+    argVal = varargin{2+2*(argPair_i-1)};
+    if strcmp(argName,'preprocessed')
+      load(argVal);
+      usePreprocessed = 1;
+    elseif strcmp(argName,'paramBuilder')
+      analysisParamFilename = feval(argVal);
+    elseif strcmp(argName,'analyzer')
+      analyzer = argVal;
+    elseif strcmp(argName, 'paramFile')
+      analysisParamFilename = argVal;
+    else
+      warning('Invalid field %s provided to processRun',argName);
+    end
+  end
+end
+if ~usePreprocessed
   checkAnalysisParamFile(analysisParamFilename);
   load(analysisParamFilename);
   % extract parameters needed in this function from structures
@@ -70,8 +79,8 @@ if nargin == 0 || isempty(find(ismember(varargin, 'preprocessed'), 1))
   %%%%%%%%%%%%%%%%%
   analogInData = preprocessAnalogIn(analogInFilename, analogInParams); 
   [spikesByChannel, taskTriggers, channelUnitNames] = preprocessSpikes(spikeFilename, ephysParams);
-  lineNoiseTriggers = preprocessStrobe(lineNoiseTriggerFilename, lineNoiseTriggerParams);
-  lfpData = preprocessLFP(lfpFilename, ephysParams, lineNoiseTriggers);
+  %lineNoiseTriggers = preprocessStrobe(lineNoiseTriggerFilename, lineNoiseTriggerParams);
+  %lfpData = preprocessLFP(lfpFilename, ephysParams, lineNoiseTriggers);
   diodeTriggers = preprocessStrobe(photodiodeFilename, photodiodeParams);
   [ taskData, stimTiming ] = preprocessLogFile(taskFilename, taskTriggers, diodeTriggers, stimSyncParams); % load visual stimulus data and transform its timestamps to ephys clock reference
 %   [ pre, post ] = spikeBackground( spikesByChannel, taskData, spikeChannels, params )
@@ -229,10 +238,10 @@ runAnalysisInputs.trialIDsByEvent = trialIDsByEvent;
 runAnalysisInputs.onsetsByCategory = onsetsByCategory;
 runAnalysisInputs.trialIDsByCategory = trialIDsByCategory;
 
-if ~isempty(find(ismember(varargin, 'analyzer'), 1))
-    feval(varargin(find(ismember(varargin, 'analyzer'), 1) + 1), runAnalysisInputs)
+if ~exist('analyzer','var')
+  runAnalyses(runAnalysisInputs);
 else
-    runAnalyses(runAnalysisInputs);
+  feval(analyzer,runAnalysisInputs);
 end
 end
 
