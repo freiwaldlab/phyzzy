@@ -1,5 +1,5 @@
 function [ taskData, stimTiming ] = preprocessLogFileMonkeyLogic(logfile, taskTriggers, diodeTriggers, params)
-%Sync log file's timestamps to blackrock clock, and store: 
+%Reads in Black
 %  - in presentation order, stimulus filenames, start/end times and jump RF mapping positions
 %  - task event times: fixation in/out, fixspot flash start/end, juice delivery start/end 
 %  - currently, uses digital IO packets for synchronization. In future
@@ -33,10 +33,6 @@ function [ taskData, stimTiming ] = preprocessLogFileMonkeyLogic(logfile, taskTr
 %   - Statistics and Machine Learning Toolbox (for synchronizaton)
 %   - xml2struct (from Matlab fileExchange)
 
-% if params.usePhotodiode
-%   error('photodiode synchronization not enabled');
-% end
-
 disp('parsing serial IO packets');
 packetTimes = double(taskTriggers.TimeStampSec)*1000; %convert seconds to milliseconds
 packetData = double(taskTriggers.UnparsedData);
@@ -55,37 +51,37 @@ assert(logical(~isempty(packetData)),'The Blackrock Digital inputs are empty. Di
 %Parse the Log file
 disp('Loading MonkeyLogic log file');
 assert(logical(exist(logfile,'file')),'The logfile you requested does not exist.');
-logStruct = load(logfile); %This will be a .mat with cells connecting stimulus to array.
+[data,MLConfig,TrialRecord] = mlread(logfile);
 
 %Find stimulus timing range - in ML, we have no range within valid trials.
 stimTiming.shortest = 2800; %Making this 0 for now
 stimTiming.longest = 2800; %setting this to 2800 for now, but maybe save as an editable variable.
-stimTiming.ISI = logStruct.MLConfig.InterTrialInterval;
+stimTiming.ISI = MLConfig.InterTrialInterval;
 
 %Construct the translation table from the logfile
 %Find the Conditions that need to be connected to codes
-allConditions = unique(logStruct.TrialRecord.ConditionsPlayed); %Pull unique members of this list
+allConditions = unique(TrialRecord.ConditionsPlayed); %Pull unique members of this list
 translationTable = cell(length(allConditions),1); %Initialize translation table
 trial_ind = 1;
 
 %Check for empty members of the translation table. 
 while sum(find(cellfun('isempty', translationTable))) ~= 0
-    trialHolder = eval(sprintf('logStruct.Trial%s', num2str(trial_ind)));
+    trialHolder = data(trial_ind);
     stimName = trialHolder.TaskObject.Attribute(2).Name; %Pull the string containing the stimulus name.
     translationTable{trialHolder.Condition} = stimName(~isspace(stimName));
     trial_ind = trial_ind + 1;
 end
 
 %Pull Behavioral codes for other events
-behavioralCodes = logStruct.TrialRecord.TaskInfo.BehavioralCodes;
+behavioralCodes = TrialRecord.TaskInfo.BehavioralCodes;
 
-trialStartMarker = behavioralCodes.CodeNumbers(find(strcmp(behavioralCodes.CodeNames,'Start trial')));
-stimStartMarker = behavioralCodes.CodeNumbers(find(strcmp(behavioralCodes.CodeNames,'Stimuli On')));
-stimEndMarker = behavioralCodes.CodeNumbers(find(strcmp(behavioralCodes.CodeNames,'Stimuli Off')));
-rewardMarker = behavioralCodes.CodeNumbers(find(strcmp(behavioralCodes.CodeNames,'Reward')));
-frameSkipMarker = behavioralCodes.CodeNumbers(find(strcmp(behavioralCodes.CodeNames,'Frame skipped')));
-trialEndMarker = behavioralCodes.CodeNumbers(find(strcmp(behavioralCodes.CodeNames,'End trial')));
-manualRewardMarker = behavioralCodes.CodeNumbers(find(strcmp(behavioralCodes.CodeNames,'Manual reward')));
+trialStartMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Start trial'));
+stimStartMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Stimuli On'));
+stimEndMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Stimuli Off'));
+rewardMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Reward'));
+frameSkipMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Frame skipped'));
+trialEndMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'End trial'));
+manualRewardMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Manual reward'));
 
 %Code to get rid of any markers prior to the first trial beginning (means
 %we turned on blackrock AFTER beginning MKL.
@@ -122,31 +118,33 @@ end
 %What is the discrepency?
 offsets = zeros(sum(packetData == 40),1);
 
-
-if length(diodeTriggers.low) < length(diodeTriggers.mid) 
-    for ii = 1:length(taskEventStartTimesBlk)
-        [offsets(ii), ind_truestart] = min(abs(diodeTriggers.highToMid-taskEventStartTimesBlk(ii)));
-        taskEventStartTimesBlk(ii) = diodeTriggers.highToMid(ind_truestart);
-    end
-    %do the same for the end times, except referencing the nearest Low to high
-    %transition.
-    for ii = 1:length(taskEventEndTimesBlk)
-        [offsets(ii), ind_truestart] = min(abs(diodeTriggers.midToHigh-taskEventEndTimesBlk(ii)));
-        taskEventEndTimesBlk(ii) = diodeTriggers.midToHigh(ind_truestart);
-    end    
-else
-    for ii = 1:length(taskEventStartTimesBlk)
-        [offsets(ii), ind_truestart] = min(abs(diodeTriggers.highToLow-taskEventStartTimesBlk(ii)));
-        taskEventStartTimesBlk(ii) = diodeTriggers.highToLow(ind_truestart);
-    end
-    %do the same for the end times, except referencing the nearest Low to high
-    %transition.
-    for ii = 1:length(taskEventEndTimesBlk)
-        [offsets(ii), ind_truestart] = min(abs(diodeTriggers.lowToHigh-taskEventEndTimesBlk(ii)));
-        taskEventEndTimesBlk(ii) = diodeTriggers.lowToHigh(ind_truestart);
+if params.usePhotodiode
+    if length(diodeTriggers.low) < length(diodeTriggers.mid) 
+        % For each of the event start times, find the closest transition in
+        % the photodiode and overwrite the time stamp with this time.
+        for ii = 1:length(taskEventStartTimesBlk)
+            [offsets(ii), ind_truestart] = min(abs(diodeTriggers.highToMid-taskEventStartTimesBlk(ii)));
+            taskEventStartTimesBlk(ii) = diodeTriggers.highToMid(ind_truestart);
+        end
+        %do the same for the end times, except referencing the nearest Low to high
+        %transition.
+        for ii = 1:length(taskEventEndTimesBlk)
+            [offsets(ii), ind_truestart] = min(abs(diodeTriggers.midToHigh-taskEventEndTimesBlk(ii)));
+            taskEventEndTimesBlk(ii) = diodeTriggers.midToHigh(ind_truestart);
+        end    
+    else
+        for ii = 1:length(taskEventStartTimesBlk)
+            [offsets(ii), ind_truestart] = min(abs(diodeTriggers.highToLow-taskEventStartTimesBlk(ii)));
+            taskEventStartTimesBlk(ii) = diodeTriggers.highToLow(ind_truestart);
+        end
+        %do the same for the end times, except referencing the nearest Low to high
+        %transition.
+        for ii = 1:length(taskEventEndTimesBlk)
+            [offsets(ii), ind_truestart] = min(abs(diodeTriggers.lowToHigh-taskEventEndTimesBlk(ii)));
+            taskEventEndTimesBlk(ii) = diodeTriggers.lowToHigh(ind_truestart);
+        end
     end
 end
-
 fprintf('average offset %s ms\n', num2str(mean(offsets)))
 fprintf('range of offset %d ms - %d ms \n', [min(offsets), max(offsets)])
 
@@ -164,6 +162,11 @@ Output.VERBOSE(sprintf('number of stimulus trials: %s',length(taskEventIDs))); %
 % stimFramesLost = stimFramesLost(stimFramesLost >= 0);
 % taskEventStartTimesLog = taskEventStartTimesLog(taskEventStartTimesLog >= 0);
 % taskEventEndTimesLog = taskEventEndTimesLog(taskEventEndTimesLog >= 0);
+
+% Behavioral summary of performance during recording
+behaviorsummaryPhyzzy(logfile)
+[~, filename, ~] = fileparts(logfile);
+savefig(sprintf('%sBehavSum_%s',params.outDir,filename));
 
 %Adding these as 0s.
 fixSpotFlashStartTimesBlk = taskEventStartTimesBlk(1);
@@ -185,8 +188,8 @@ taskData.fixSpotFlashStartTimes = fixSpotFlashStartTimesBlk;
 taskData.fixSpotFlashEndTimes = fixSpotFlashEndTimesBlk;
 taskData.stimParams = 0;
 taskData.RFmap = 0;
-taskData.eyeCal.origin = logStruct.MLConfig.EyeTransform{2}.origin;
-taskData.eyeCal.gain = logStruct.MLConfig.EyeTransform{2}.gain;
+taskData.eyeCal.origin = MLConfig.EyeTransform{2}.origin;
+taskData.eyeCal.gain = MLConfig.EyeTransform{2}.gain;
 
 end
 %

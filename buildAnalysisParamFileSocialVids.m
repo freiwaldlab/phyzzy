@@ -5,7 +5,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids()
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '001';
-dateSubject = '20180813Mo';
+dateSubject = '20180828Mo';
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
 
@@ -100,7 +100,7 @@ photodiodeParams.peaksToPlot = 50; %number of peaks to show in calibration plots
 photodiodeParams.cleanPeaks = 1;
 photodiodeParams.useRisingEdge = 0; % 0 = peaks, 1 = rising edge.
 photodiodeParams.numLevels = 3; %Number of levels the strobe is acting at.
-photodiodeParams.levelHigh = 6500;
+photodiodeParams.levelHigh = 5500;
 photodiodeParams.levelMid = 4000;
 photodiodeParams.levelLow = 1250;
 photodiodeParams.checkHighLowAlternation = 0;
@@ -146,7 +146,8 @@ stimSyncParams.logProcessor = @preprocessLogFileMonkeyLogic;
 stimSyncParams.tryPreparsedLogFile = 1;
 stimSyncParams.keepTriggersAndSubTriggers = 0;
 stimSyncParams.subTriggerArrayFilenames = {'socialSceneConcatSubTriggers.mat'};
-stimSyncParams.usePhotodiode = 0;        %#ok
+stimSyncParams.usePhotodiode = 1;        
+stimSyncParams.outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum); %#ok
 %
 eyeCalParams.needEyeCal = 0;
 eyeCalParams.method = 'hardcodeZero'; %'zeroEachFixation'
