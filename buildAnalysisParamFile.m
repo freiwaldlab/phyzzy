@@ -108,7 +108,7 @@ photodiodeParams.dateSubject = dateSubject;
 photodiodeParams.calibFigFname = 'phDiodeCalib';
 photodiodeParams.triggersFigFname = 'phDiodeTriggers';
 photodiodeParams.dataChannel = 129;
-photodiodeParams.outputCalibrationFile = 'phDiodeCalib'; %#ok
+photodiodeParams.outputCalibrationFile = 'phDiodeCalib'; %path relative to to outDir
 
 % parameters for 60Hz strobe preprocessing
 lineNoiseTriggerParams.needStrobe = 0;
@@ -133,7 +133,7 @@ lineNoiseTriggerParams.dateSubject = dateSubject;
 lineNoiseTriggerParams.calibFigFname = 'lineNoiseTriggerCalib';
 lineNoiseTriggerParams.triggersFigFname = 'lineNoiseTriggers';
 lineNoiseTriggerParams.dataChannel = 130;
-lineNoiseTriggerParams.outputCalibrationFile = 'lineNoiseTriggerCalib'; %#ok
+lineNoiseTriggerParams.outputCalibrationFile = 'lineNoiseTriggerCalib'; %path relative to outDir
 
 % parameters preprocessLogFile, see function for details
 stimSyncParams.syncMethod = 'digitalTrigger';
@@ -235,13 +235,13 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {60, 260}; ...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
-plotSwitch.imagePsth = 1;
+plotSwitch.imagePsth = 0;
 plotSwitch.categoryPsth = 0;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-plotSwitch.imageTuningSorted = 0;
-plotSwitch.stimPrefBarPlot = 1;
+plotSwitch.imageTuningSorted = 1;
+plotSwitch.stimPrefBarPlot = 0;
 plotSwitch.stimPrefBarPlotEarly = 0;
 plotSwitch.stimPrefBarPlotLate = 0;
 plotSwitch.tuningCurves = 0;
@@ -253,10 +253,10 @@ plotSwitch.rfLate = 0;
 plotSwitch.latencyRF = 0;
 plotSwitch.evokedPowerRF = 0;
 plotSwitch.evokedPsthMuaMultiCh = 0;
-plotSwitch.evokedByCategory = 1;
-plotSwitch.analogInByItem = 1;
+plotSwitch.evokedByCategory = 0;
+plotSwitch.analogInByItem = 0;
 plotSwitch.analogInDerivativesByItem = 0;
-plotSwitch.colorPsthEvoked = 1;
+plotSwitch.colorPsthEvoked = 0;
 plotSwitch.linePsthEvoked = 0;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
@@ -264,13 +264,13 @@ plotSwitch.runSummaryImMeanSubDiv = 0;
 plotSwitch.lfpPowerMuaScatter = 0; 
 plotSwitch.lfpPeakToPeakMuaScatter = 0;
 plotSwitch.lfpLatencyMuaLatency = 0;
-plotSwitch.lfpPowerAcrossChannels = 1;
+plotSwitch.lfpPowerAcrossChannels = 0;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
-plotSwitch.singleTrialLfpByCategory = 1;
-plotSwitch.singleTrialAnalogInByCategory = 1;
-plotSwitch.lfpSpectraByCategory = 1;
-plotSwitch.spikeSpectraByCategory = 1;
+plotSwitch.singleTrialLfpByCategory = 0;
+plotSwitch.singleTrialAnalogInByCategory = 0;
+plotSwitch.lfpSpectraByCategory = 0;
+plotSwitch.spikeSpectraByCategory = 0;
 plotSwitch.SpikeSpectraTfByImage = 0;
 plotSwitch.lfpSpectraTfByImage = 0;
 plotSwitch.couplingPhasesUnwrapped = 0;
@@ -380,6 +380,8 @@ lineNoiseTriggerFilename = lfpFilename;                                         
 outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
 analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
 preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
+photodiodeParams.outputCalibrationFile = strcat(outDir,'/',photodiodeParams.outputCalibrationFile); %#ok
+lineNoiseTriggerParams.outputCalibrationFile = strcat(outDir,'/',lineNoiseTriggerParams.outputCalibrationFile); %#ok
 %
 load('cocode2.mat');
 psthColormap = map;  %#ok

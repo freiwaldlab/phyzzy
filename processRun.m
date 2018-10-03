@@ -1,4 +1,4 @@
-function [ spikesByEvent, spikesByCategory, lfpByEvent, lfpByCategory, categoryList, eventIDs ] = processRun( varargin )
+function [ runAnalysisInputs ] = processRun( varargin )
 %processRun loads, preprocesses, and aligns task events, lfps, muas, units, and analog signals (eg eye, accelerometer,photodiodes)
 %   - handles single-channel and multi-channel sessions
 %   - relies only on raw task log and physiology fiels: currently visiko (.log) and blackrock (.ns5,.ns2)
@@ -85,6 +85,26 @@ if ~usePreprocessed
 %   [ pre, post ] = spikeBackground( spikesByChannel, taskData, spikeChannels, params )
   analogInData = preprocessEyeSignals(analogInData,taskData,eyeCalParams);
   analogInData = preprocessAccelSignals(analogInData, accelParams); 
+  % determine the duration of ephys data collection, in ms
+  if ~isempty(lfpData)
+    ephysDuration = size(lfpData,2); 
+  elseif ~isempty(analogInData)
+    ephysDuration = size(analogInData,2); 
+  elseif ~isempty(spikesByChannel)
+    ephysDuration = 0;
+    for channel_i = 1:length(spikesByChannel)
+      ephysDuration = max(ephysDuration, max(spikesByChannel{channel_i}.times)); 
+    end
+    lastTaskTriggerTime = 1000*max(taskTriggers.TimeStampSec); 
+    if lastTaskTriggerTime > ephysDuration
+      ephysDuration = lastTaskTriggerTime;
+      warning('Using final digital trigger time to define end of ephys data collection, because it followed the final spike, and because no LFP or analog in data available. May bias results');
+    else
+      warning('Using final spike time to define end of ephys data collection, because it followed the final digital trigger, and because no LFP or analog in data available. May bias results');
+    end
+  end
+  excludeStimParams.ephysDuration = ephysDuration;
+  
   taskDataAll = taskData;
   taskData = excludeTrials( taskData, excludeStimParams); %exclude trials for lost fixation etc. 
   

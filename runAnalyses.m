@@ -481,6 +481,13 @@ if ~taskData.RFmap
           groupName = analysisGroups.stimulusLabelGroups.names{group_i};
           superbar(imageSortedRates,'E',imFrErrSorted,'BarFaceColor',sortedGroupLabelColors(:,:,group_i));
           set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(eventLabels),'TickDir','out');
+          mu = mean(imageSortedRates);
+          sigma = mean(imFrErrSorted);
+          nullDistSorts = sort(normrnd(mu,sigma,100,length(imageSortedRates)),2,'descend');
+          hold on
+          lineProps.col = {'k'};
+          h = mseb(1:length(imageSortedRates),mean(nullDistSorts,1),std(nullDistSorts,1),lineProps);
+          legend(h.mainLine,{'flat tuning null model'});
           ylabel('Firing rate, Hz');
           title(sprintf('Image tuning, sorted, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
           clear figData
