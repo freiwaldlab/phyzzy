@@ -379,6 +379,10 @@ end
 imFr = firingRatesByImageByEpoch{1};
 imFrErr = firingRateErrsByImageByEpoch{1};
 imSpikeCounts = spikeCountsByImageByEpoch{1};
+trialCountsByImage = zeros(length(spikesByEvent),1);
+for event_i = 1:length(spikesByEvent)
+  trialCountsByImage(event_i) = length(spikesByEvent{event_i}{1}{1});
+end
 
 if ~isempty(spikesByCategory)
   firingRatesByCategoryByEpoch = cell(size(frEpochs,1),1);
@@ -431,6 +435,7 @@ if ~taskData.RFmap
       [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');
       imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
       sortedImageLabels = eventLabels(imageSortOrder);
+      trialCountsByImageSorted = trialCountsByImage(imageSortOrder);
       if exist('groupLabelColorsByImage','var')
         sortedGroupLabelColors = groupLabelColorsByImage(imageSortOrder,:,:);
       else
@@ -482,7 +487,7 @@ if ~taskData.RFmap
           superbar(imageSortedRates,'E',imFrErrSorted,'BarFaceColor',sortedGroupLabelColors(:,:,group_i));
           set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(eventLabels),'TickDir','out');
           mu = mean(imageSortedRates);
-          sigma = mean(imFrErrSorted);
+          sigma = mean(imFrErrSorted(trialCountsByImageSorted > 1));
           nullDistSorts = sort(normrnd(mu,sigma,100,length(imageSortedRates)),2,'descend');
           hold on
           lineProps.col = {'k'};
