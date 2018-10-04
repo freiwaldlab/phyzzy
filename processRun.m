@@ -15,8 +15,19 @@ function [ runAnalysisInputs ] = processRun( varargin )
 %   - varargin consists of name-value argument pairs:
 %       - 'paramBuilder', paramBuilderFunctionName
 %       - 'paramFile', paramFilename (must be .mat)
-%       - 'preprocessed', preProcessedDataFilename (must be .mat)
 %       - 'analyzer', analyzerFunctionName
+%       - 'preprocessed', preProcessedDataFilename (must be .mat), or '-d'
+%             for default, in which case preprocessedDataFilename will be
+%             extracted from the dateSubj+runNum in buildAnalysisParamFile,
+%             paramBuilder, or paramFile. Unless paramFile is supplied,
+%             will overwrite the calcSwitch, plotSwitch, and analysisGroups
+%             fields of the saved analysisParamFile, based on their current
+%             values in the param file builder. 
+%       - 'preprocessedCC', preProcessedDataFilename (must be .mat), or '-d'
+%             identical behavior to preprocessed, except that no variables
+%             in analysisParamFile will be updated or overwritten. This is
+%             useful to reproduce an analysis, or to run identically specified analyses
+%             with a different or modified analyzer.
 %       Note: functionNames are strings, and do not include the trailing '.m'; see 'feval' docs
 %   Notes:
 %   Depends:
@@ -29,27 +40,71 @@ addpath(genpath_exclude('dependencies',{'*mvgc_v1.0'})); %note: use this to excl
 addpath('buildAnalysisParamFileLib');
 % load analysis parameters
 usePreprocessed = 0;
-if nargin == 0
-  analysisParamFilename = buildAnalysisParamFile();
-else
-  assert(mod(nargin,2) == 0, 'processRun takes arguments as name-value pairs; odd number of arguments provided');
-  for argPair_i=1:nargin/2
-    argName = varargin{1+2*(argPair_i-1)};
-    argVal = varargin{2+2*(argPair_i-1)};
-    if strcmp(argName,'preprocessed')
-      load(argVal);
-      usePreprocessed = 1;
-    elseif strcmp(argName,'paramBuilder')
-      analysisParamFilename = feval(argVal);
-    elseif strcmp(argName,'analyzer')
-      analyzer = argVal;
-    elseif strcmp(argName, 'paramFile')
-      analysisParamFilename = argVal;
+preprocessedCC = 0;
+defaultPreprocessed = 0;
+assert(mod(nargin,2) == 0, 'processRun takes arguments as name-value pairs; odd number of arguments provided');
+for argPair_i=1:nargin/2
+  argName = varargin{1+2*(argPair_i-1)};
+  argVal = varargin{2+2*(argPair_i-1)};
+  if strcmp(argName,'preprocessed')
+    if strcmp(argVal,'-d')
+      defaultPreprocessed = 1;
     else
-      warning('Invalid field %s provided to processRun',argName);
+      preprocessedDataFilename = argVal;
+    end
+    usePreprocessed = 1;
+  elseif strcmp(argName,'preprocessedCC')
+    if strcmp(argVal,'-d')
+      defaultPreprocessed = 1;
+    else
+      preprocessedDataFilename = argVal;
+    end
+    usePreprocessed = 1;
+    preprocessedCC = 1;
+  elseif strcmp(argName,'paramBuilder')
+    paramBuilder = argVal;
+  elseif strcmp(argName,'analyzer')
+    analyzer = argVal;
+  elseif strcmp(argName, 'paramFile')
+    analysisParamFilename = argVal;
+  else
+    warning('Invalid field %s provided to processRun',argName);
+  end
+end
+
+if usePreprocessed
+  if defaultPreprocessed
+    if preprocessedCC
+      if ~exist('analysisParamFilename','var')
+        if exist('paramBuilder','var')
+          analysisParamFilename = feval(paramBuilder,'noSave');
+        else
+          analysisParamFilename = buildAnalysisParamFile('noSave');
+        end
+      end
+    else
+      if ~exist('analysisParamFilename','var')
+        if exist('paramBuilder','var')
+          analysisParamFilename = feval(paramBuilder,'saveNoPreprocParams');
+        else
+          analysisParamFilename = buildAnalysisParamFile('saveNoPreprocParams');
+        end
+      end
+    end
+    load(analysisParamFilename,'preprocessedDataFilename');
+  end
+  load(preprocessedDataFilename);
+else
+  if ~exist('analysisParamFilename','var')
+    if exist('paramBuilder','var')
+      analysisParamFilename = feval(paramBuilder);
+    else
+      analysisParamFilename = buildAnalysisParamFile();
     end
   end
 end
+
+
 if ~usePreprocessed
   checkAnalysisParamFile(analysisParamFilename);
   load(analysisParamFilename);
@@ -226,7 +281,7 @@ if ~usePreprocessed
     save(preprocessedDataFilename,'analysisParamFilename', 'spikesByChannel', 'lfpData', 'analogInData', 'taskData', 'taskDataAll', 'psthImDur', 'preAlign', 'postAlign',...
       'categoryList', 'eventLabels', 'jumpsByImage', 'spikesByEvent', 'psthEmptyByEvent', 'spikesByCategory', 'psthEmptyByCategory',...
       'spikesByEventForTF', 'spikesByCategoryForTF', 'lfpByEvent', 'lfpByCategory', 'analogInByEvent','analogInByCategory','channelUnitNames', ...
-      'stimTiming', 'eventCategories', 'onsetsByEvent', 'onsetsByCategory');
+      'stimTiming', 'eventCategories', 'onsetsByEvent', 'onsetsByCategory','trialIDsByEvent','trialIDsByCategory');
   end
 end
 

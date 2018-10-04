@@ -1,6 +1,9 @@
-function [ analysisParamFilename ] = buildAnalysisParamFile( )    
+function [ analysisParamFilename ] = buildAnalysisParamFile( varargin )    
 %buildAnalysisParamFile saves a mat file of parameters, which control the
 %behavior of analyzeSession
+%   varargin: 
+%       - if 'noSave', then doesn't save output
+%       - if 'saveNoPreprocParams', then saves only variables that affect only runAnalyses 
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 
@@ -236,7 +239,7 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
 plotSwitch.imagePsth = 0;
-plotSwitch.categoryPsth = 0;
+plotSwitch.categoryPsth = 1;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
@@ -389,6 +392,10 @@ psthColormap = map;  %#ok
 if ~exist(outDir,'dir')
   mkdir(outDir);
 end
-save(analysisParamFilename);
+if isempty(varargin) 
+  save(analysisParamFilename);
+elseif strcmp(varargin,'saveNoPreprocParams')
+  save(analysisParamFilename,'calcSwitch','analysisGroups','plotSwitch','-append');
+end
 end
 
