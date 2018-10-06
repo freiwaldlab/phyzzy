@@ -432,6 +432,9 @@ if ~taskData.RFmap
   % preferred images
   for channel_i = 1:length(spikeChannels)
     for unit_i = 1:length(channelUnitNames{channel_i})
+      if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
+        continue;
+      end
       [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');
       imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
       sortedImageLabels = eventLabels(imageSortOrder);

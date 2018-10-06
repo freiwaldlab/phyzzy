@@ -34,7 +34,7 @@ switch machine
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
     stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   %#ok
 end
-analysisLabel = 'Basic180924';
+analysisLabel = 'Basic181006';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;           %#ok
@@ -174,6 +174,8 @@ excludeStimParams.flashPost = 0; %ms
 excludeStimParams.juicePre = 0; % optional, ms
 excludeStimParams.juicePost = 0; % optional, ms
 excludeStimParams.maxEventTimeAdjustmentDeviation = 1; %ms
+excludeStimParams.ephysDataPre = 500;
+excludeStimParams.ephysDataPost = 1000;
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
 

@@ -28,6 +28,9 @@ function [ runAnalysisInputs ] = processRun( varargin )
 %             in analysisParamFile will be updated or overwritten. This is
 %             useful to reproduce an analysis, or to run identically specified analyses
 %             with a different or modified analyzer.
+%       - 'keepItemsNotPresented', logical, default 0. If 0, events that
+%           appear in the stimulus param files, but that have no valid trials,
+%           do not appear in output data structures. 
 %       Note: functionNames are strings, and do not include the trailing '.m'; see 'feval' docs
 %   Notes:
 %   Depends:
@@ -42,6 +45,7 @@ addpath('buildAnalysisParamFileLib');
 usePreprocessed = 0;
 preprocessedCC = 0;
 defaultPreprocessed = 0;
+keepItemsNotPresented = 0;
 assert(mod(nargin,2) == 0, 'processRun takes arguments as name-value pairs; odd number of arguments provided');
 for argPair_i=1:nargin/2
   argName = varargin{1+2*(argPair_i-1)};
@@ -67,6 +71,8 @@ for argPair_i=1:nargin/2
     analyzer = argVal;
   elseif strcmp(argName, 'paramFile')
     analysisParamFilename = argVal;
+  elseif strcmp(argName, 'keepItemsNotPresented')
+    keepItemsNotPresented = argVal;
   else
     warning('Invalid field %s provided to processRun',argName);
   end
@@ -209,12 +215,14 @@ if ~usePreprocessed
     disp('No presentations of the following images survived exclusion:');
     disp(eventIDs(eventsNotObserved == 1));
   end
-  onsetsByEvent = onsetsByEvent(eventsNotObserved == 0);
-  offsetsByEvent = offsetsByEvent(eventsNotObserved == 0);
-  trialIDsByEvent = trialIDsByEvent(eventsNotObserved == 0);
-  eventIDs = eventIDs(eventsNotObserved == 0);
-  eventLabels = eventLabels(eventsNotObserved == 0);
-  eventCategories = eventCategories(eventsNotObserved == 0);
+  if ~keepItemsNotPresented
+    onsetsByEvent = onsetsByEvent(eventsNotObserved == 0);
+    offsetsByEvent = offsetsByEvent(eventsNotObserved == 0);
+    trialIDsByEvent = trialIDsByEvent(eventsNotObserved == 0);
+    eventIDs = eventIDs(eventsNotObserved == 0);
+    eventLabels = eventLabels(eventsNotObserved == 0);
+    eventCategories = eventCategories(eventsNotObserved == 0);
+  end
   
   onsetsByCategory = cell(length(categoryList),1);
   offsetsByCategory = cell(length(categoryList),1);
@@ -239,10 +247,12 @@ if ~usePreprocessed
     Output.DEBUG(numel(catOnsets));
   end
   
-  onsetsByCategory = onsetsByCategory(catsNotObserved == 0);
-  offsetsByCategory = offsetsByCategory(catsNotObserved == 0);
-  categoryList = categoryList(catsNotObserved == 0);
-  trialIDsByCategory = trialIDsByCategory(catsNotObserved == 0);
+  if ~keepItemsNotPresented
+    onsetsByCategory = onsetsByCategory(catsNotObserved == 0);
+    offsetsByCategory = offsetsByCategory(catsNotObserved == 0);
+    categoryList = categoryList(catsNotObserved == 0);
+    trialIDsByCategory = trialIDsByCategory(catsNotObserved == 0);
+  end
   
   if taskData.RFmap
     jumpsByImage = cell(length(eventIDs),1);
@@ -310,10 +320,13 @@ runAnalysisInputs.analogInByCategory = analogInByCategory;
 runAnalysisInputs.channelUnitNames = channelUnitNames;
 runAnalysisInputs.stimTiming = stimTiming;  
 runAnalysisInputs.eventCategories = eventCategories;  
-runAnalysisInputs.onsetsByEvent = onsetsByEvent; 
+runAnalysisInputs.onsetsByEvent = onsetsByEvent;
+runAnalysisInputs.offsetsByEvent = offsetsByEvent; 
 runAnalysisInputs.trialIDsByEvent = trialIDsByEvent;
 runAnalysisInputs.onsetsByCategory = onsetsByCategory;
+runAnalysisInputs.offsetsByCategory = offsetsByCategory;
 runAnalysisInputs.trialIDsByCategory = trialIDsByCategory;
+runAnalysisInputs.excludeStimParams = excludeStimParams;
 
 
 if ~exist('analyzer','var')
