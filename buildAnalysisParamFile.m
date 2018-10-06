@@ -8,8 +8,8 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( varargin )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '009';
-dateSubject = '180426ALAN'; 
+runNum = '010';
+dateSubject = '180515ALAN'; 
 machine = 'laptop';
 
 switch machine
@@ -240,7 +240,7 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {60, 260}; ...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
-plotSwitch.imagePsth = 0;
+plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 1;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;

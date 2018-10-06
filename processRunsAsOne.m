@@ -60,6 +60,9 @@ end
 runNum = '';
 for run_i = 1:length(runList)
   runNum = strcat(runNum, runList{run_i});
+  if run_i < length(runList)
+    runNum = strcat(runNum,'-');
+  end
 end
 finalOutDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
 finalAnalysisParamFilename = strcat(finalOutDir,analysisParamFilenameStem);
@@ -76,6 +79,17 @@ save(finalAnalysisParamFilename);
 for run_i = 1:length(runList)
   runNum = runList{run_i};
   analysisParamFilename = strcat(finalOutDir,'run',runNum,analysisParamFilenameStem);
+  analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
+
+  lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        
+  spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
+  taskFilename = sprintf('%s/%s/%s0%s.log',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
+  photodiodeFilename = lfpFilename;                                                           %#ok
+  lineNoiseTriggerFilename = lfpFilename;                                                     %#ok
+  preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
+  photodiodeParams.outputCalibrationFile = strcat(outDir,'/',photodiodeParams.outputCalibrationFile); %#ok
+  lineNoiseTriggerParams.outputCalibrationFile = strcat(outDir,'/',lineNoiseTriggerParams.outputCalibrationFile); %#ok
+
   save(analysisParamFilename);
   runAnalysisInputsTmp = processRun('paramFile',analysisParamFilename,'analyzer', @(x) 1,'keepItemsNotPresented',1);
   if run_i == 1
@@ -159,8 +173,8 @@ for run_i = 1:length(runList)
       for unit_i = 1:length(runAnalysisInputsTmp.spikesByEvent{1}{channel_i})
         runAnalysisInputs.spikesByEvent{event_i}{channel_i}{unit_i} = vertcat(runAnalysisInputs.spikesByEvent{event_i}{channel_i}{unit_i},...
           runAnalysisInputsTmp.spikesByEvent{event_i}{channel_i}{unit_i}); 
-        runAnalysisInputs.psthEmptyByEvent{event_i}{channel_i}{unit_i} = vertcat(runAnalysisInputs.psthEmptyByEvent{event_i}{channel_i}{unit_i},...
-          runAnalysisInputsTmp.psthEmptyByEvent{event_i}{channel_i}{unit_i});
+        runAnalysisInputs.psthEmptyByEvent{event_i}{channel_i}{unit_i} = runAnalysisInputs.psthEmptyByEvent{event_i}{channel_i}{unit_i} &&...
+          runAnalysisInputsTmp.psthEmptyByEvent{event_i}{channel_i}{unit_i};
         runAnalysisInputs.spikesByEventForTF{event_i}{channel_i}{unit_i} = vertcat(runAnalysisInputs.spikesByEventForTF{event_i}{channel_i}{unit_i},...
           runAnalysisInputsTmp.spikesByEventForTF{event_i}{channel_i}{unit_i});
       end      
@@ -180,8 +194,8 @@ for run_i = 1:length(runList)
       for unit_i = 1:length(runAnalysisInputsTmp.spikesByCategory{1}{channel_i})
         runAnalysisInputs.spikesByCategory{cat_i}{channel_i}{unit_i} = vertcat(runAnalysisInputs.spikesByCategory{cat_i}{channel_i}{unit_i},...
           runAnalysisInputsTmp.spikesByCategory{cat_i}{channel_i}{unit_i}); 
-        runAnalysisInputs.psthEmptyByCategory{cat_i}{channel_i}{unit_i} = vertcat(runAnalysisInputs.psthEmptyByCategory{cat_i}{channel_i}{unit_i},...
-          runAnalysisInputsTmp.psthEmptyByCategory{cat_i}{channel_i}{unit_i});
+        runAnalysisInputs.psthEmptyByCategory{cat_i}{channel_i}{unit_i} = runAnalysisInputs.psthEmptyByCategory{cat_i}{channel_i}{unit_i} &&...
+          runAnalysisInputsTmp.psthEmptyByCategory{cat_i}{channel_i}{unit_i};
         runAnalysisInputs.spikesByCategoryForTF{cat_i}{channel_i}{unit_i} = vertcat(runAnalysisInputs.spikesByCategoryForTF{cat_i}{channel_i}{unit_i},...
           runAnalysisInputsTmp.spikesByCategoryForTF{cat_i}{channel_i}{unit_i});
       end
