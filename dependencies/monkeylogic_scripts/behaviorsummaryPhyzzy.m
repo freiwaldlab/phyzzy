@@ -28,7 +28,7 @@ userVars2 = data(end).VariableChanges;
 
 if ~isfield(userVars,'clipDuration')
     filebits = strsplit(filepath, '/');
-    filebits = cell2mat(fullfile(filebits(1:end-1),filesep));
+    filebits = cell2mat(fullfile(filebits(1:end-1),'/'));
     xlsxLog = dir([filebits 'Recordings*.xlsx']);
     [num, txt, raw] = xlsread([xlsxLog.folder filesep xlsxLog.name]);
     
@@ -215,13 +215,13 @@ y = y - lineinterval;
 uicontrol('parent',hFig,'style','text','units','pixel','position',[x+80 y w-80 22],'string',sprintf('(Elapsed: %s)',datestr(EndTime-StartTime,'HH:MM:SS')), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
 y = y - lineinterval;
-uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Stimulus duration: %d ms',userVars.clipDuration), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
+uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Stimulus duration: %s ms',userVars.clipDuration), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
 y = y - lineinterval;
 uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Reward amount (mean): %d ms',userVars.rewardTimeMean), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
 y = y - lineinterval;
-uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Reward SD: %d ms',userVars.rewardSD), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
+uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Reward SD: %s ms',userVars.rewardSD), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
 y = y - lineinterval;
 nblock = length(blockorder);

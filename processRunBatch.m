@@ -34,6 +34,7 @@ for dateSubj_i = 1:length(runList)
         spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
         taskFilename = sprintf('%s/%s/%s%s.mat',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
         outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
+        stimSyncParams.outDir = outDir;
         photodiodeFilename = lfpFilename;                %#ok
         lineNoiseTriggerFilename = lfpFilename; %#ok        
         analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
@@ -43,8 +44,15 @@ for dateSubj_i = 1:length(runList)
         end
         save(analysisParamFilename);
         fprintf('Processing run for %s%s... \n', dateSubject,runNum);
-        processRun('paramFile', analysisParamFilename)
-        clc; close all
+        try
+            processRun('paramFile', analysisParamFilename)
+        catch
+            disp('Error caught, going on to next loop')
+            clc; close all;
+            fprintf('Done! \n');
+            continue
+        end
+        clc; close all;
         fprintf('Done! \n');
     end
 end

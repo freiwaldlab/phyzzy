@@ -5,7 +5,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids()
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '001';
-dateSubject = '20180710Mo';
+dateSubject = '20180704Mo';
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
 
@@ -13,7 +13,7 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data'; 
     stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
-    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
+    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed - Batch Test';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok    
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
@@ -42,7 +42,7 @@ ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
 ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
 ephysParams.lfpChannels = [1]; 
-ephysParams.channelNames = {''};
+ephysParams.channelNames = {'8Bm'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 1; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
 ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
