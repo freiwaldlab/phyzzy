@@ -43,7 +43,7 @@ for dateSubj_i = 1:length(runList)
         end
         save(analysisParamFilename);
         fprintf('Processing run for %s%s... \n', dateSubject,runNum);
-        processRun(analysisParamFilename)
+        processRun('paramFile', analysisParamFilename)
         clc; close all
         fprintf('Done! \n');
     end

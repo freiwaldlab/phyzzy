@@ -48,7 +48,11 @@ for channel_i = 1:length(params.spikeChannels)
   tmp.times = params.cPtCal*double(NEV.Data.Spikes.Timestamps(NEV.Data.Spikes.Electrode == params.spikeChannels(channel_i)));
   tmp.units = NEV.Data.Spikes.Unit(NEV.Data.Spikes.Electrode == params.spikeChannels(channel_i));
   tmp.waveforms = NEV.Data.Spikes.Waveform(NEV.Data.Spikes.Electrode == params.spikeChannels(channel_i),:);
-  unitNamesTmp = unitNames(1:length(unique(tmp.units)));
+  if min(tmp.units) > 0 && isempty(params.unitsToUnsort{channel_i})
+    unitNamesTmp = unitNames(2:length(unique(tmp.units))+1);
+  else
+    unitNamesTmp = unitNames(1:length(unique(tmp.units)));
+  end
   for discard_i = 1:length(params.unitsToDiscard{channel_i})
     tmp.times = tmp.times(tmp.units ~= params.unitsToDiscard{channel_i}(discard_i));
     tmp.waveforms = tmp.waveforms(tmp.units ~= params.unitsToDiscard{channel_i}(discard_i));

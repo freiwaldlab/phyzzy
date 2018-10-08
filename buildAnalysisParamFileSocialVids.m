@@ -5,7 +5,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids()
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '001';
-dateSubject = '20180828Mo';
+dateSubject = '20180710Mo';
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
 
@@ -13,7 +13,7 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data'; 
     stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
-    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed3';
+    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok    
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
@@ -26,11 +26,11 @@ switch machine
     outputVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok
 end
-analysisLabel = 'Basic';
+analysisLabel = 'Batch Test';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;                %#ok
-closeFig = 0;               %#ok
+closeFig = 1;               %#ok
 exportFig = 0;              %#ok
 saveFigData = 0;            %#ok
 savePreprocessed = 1;       %#ok
@@ -42,9 +42,9 @@ ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
 ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
 ephysParams.lfpChannels = [1]; 
-ephysParams.channelNames = {'8Bm+F7'};
+ephysParams.channelNames = {''};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
-ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
+ephysParams.offlineSorted = 1; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
 ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
 ephysParams.cPtCal = 1/30; % conversion from spike sample indices to timestep of decimated LFP
@@ -186,7 +186,7 @@ excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 psthParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
 psthParams.psthPost = 800;
-psthParams.smoothingWidth = 33;  %psth smoothing width, in ms
+psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
 psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;
@@ -247,11 +247,11 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
-plotSwitch.prefImRaster = 0;
+plotSwitch.prefImRaster = 1;
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-plotSwitch.imageTuningSorted = 0; %Barplot per image
+plotSwitch.imageTuningSorted = 1; %Barplot per image
 plotSwitch.stimPrefBarPlot = 0;
 plotSwitch.stimPrefBarPlotEarly = 0;
 plotSwitch.stimPrefBarPlotLate = 0;
