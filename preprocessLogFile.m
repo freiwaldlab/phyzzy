@@ -171,7 +171,7 @@ end
 if ~isfield(params,'syncMethod') || any(strcmp(params.syncMethod,{'digitalTrigger','digitalTriggerNearestFrame','digitalTriggerNearestLowToHigh'}))
   % first, if nev has one more start trigger than log, throw out final nev
   % trigger (this is a known visiko bug, according to Michael Borisov's code)
-  assert(length(taskEventStartTimesBlk) - length(taskEventStartTimesLog) <= 1, 'Error: Start triggers missing from log file');
+  assert(length(taskEventStartTimesBlk) - length(taskEventStartTimesLog) <= 1, 'Error: Start triggers missing from log file (%d in ephys system, %d in log)',length(taskEventStartTimesBlk),length(taskEventStartTimesLog));
   if length(taskEventStartTimesBlk) < length(taskEventStartTimesLog)
     figure();
     plot(taskEventStartTimesLog(1:length(taskEventStartTimesBlk)), taskEventStartTimesBlk);

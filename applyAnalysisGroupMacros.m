@@ -1,7 +1,9 @@
 function [analysisGroups] = applyAnalysisGroupMacros(analysisGroups, categoryLabels, eventLabels, eventCategories, colors)
 %applyAnalysisGroupMacros unpacks the following macros in analysisGroups:
 %     - ALL_CATS
+%     - ALL_CATS_SPLIT
 %     - ALL_EVENTS
+%     - ALL_EVENTS_SPLIT
 %     - ALL_EVENTS_IN_* (where * is a category label; e.g. ALL_EVENTS_IN_face)
 %     - ALL_EVENTS_BY_CAT_WITH_CAT_AVE
 %     - ALL_EVENTS_BY_CAT
@@ -10,6 +12,9 @@ function [analysisGroups] = applyAnalysisGroupMacros(analysisGroups, categoryLab
 %       in which they appear. The new items are inserted in place of the
 %       macro, so e.g. with categoryLabels = {'face','object','body'},
 %       {'face1','ALL_CATS','face2'} becomes {'face1','face','object','body','face2'}
+%
+%     ALL_CATS_SPLIT and ALL_EVENTS_SPLIT create a new group for each event/category. 
+%       Insertion occurs as in ALL_CATS and ALL_EVENTS
 %
 %     ALL_EVENTS_BY_CAT_WITH_CAT_AVE and ALL_EVENTS_BY_CAT make new groups,
 %       one group per category. Each group contains the elements of the
@@ -201,6 +206,82 @@ for field_i = 1:length(analysisGroupsFields)
         newGroups = vertcat(newGroups, newGroupsSuffix);
         newColors = vertcat(newColors, newColorsSuffix);
         field.groups = newGroups; 
+        field.colors = newColors;
+        field.names = newNames;
+        
+      elseif strcmp(item,'ALL_CATS_SPLIT')
+        newGroupPrefix = field.groups{group_i}(1:item_i-1);
+        newColorPrefix = field.colors{group_i}(1:item_i-1);
+        if item_i < length(field.groups{group_i})
+          newGroupSuffix = field.groups{group_i}(item_i+1:end);
+          newColorSuffix = field.colors{group_i}(item_i+1:end);
+        else
+          newGroupSuffix = {};
+          newColorSuffix = {};
+        end
+        newGroups = field.groups(1:group_i-1);
+        newColors = field.colors(1:group_i-1);
+        newNames = field.names(1:group_i-1);
+        if group_i < length(field.groups)
+          newGroupsSuffix = vertcat(newGroups,field.groups(group_i+1:end));
+          newColorsSuffix = vertcat(newColors,field.colors(group_i+1:end));
+          newNamesSuffix = vertcat(newNames,field.names(group_i+1:end));
+        else
+          newGroupsSuffix = {};
+          newColorsSuffix = {};
+          newNamesSuffix = {};
+        end
+        for cat_i = 1:length(categoryLabels)
+          catLabel = categoryLabels{cat_i};
+          newGroup = vertcat(newGroupPrefix,catLabel);
+          newGroup = vertcat(newGroup, newGroupSuffix);
+          newGroups = vertcat(newGroups, {newGroup});
+          newColor = vertcat(newColorPrefix,colors(1),newColorSuffix);
+          newColors = vertcat(newColors,{newColor});
+          newNames = vertcat(newNames, strcat(catLabel));
+        end
+        newGroups = vertcat(newGroups, newGroupsSuffix);
+        newColors = vertcat(newColors, newColorsSuffix);
+        newNames = vertcat(newNames, newNamesSuffix);
+        field.groups = newGroups;
+        field.colors = newColors;
+        field.names = newNames;
+        
+      elseif strcmp(item,'ALL_EVENTS_SPLIT')
+        newGroupPrefix = field.groups{group_i}(1:item_i-1);
+        newColorPrefix = field.colors{group_i}(1:item_i-1);
+        if item_i < length(field.groups{group_i})
+          newGroupSuffix = field.groups{group_i}(item_i+1:end);
+          newColorSuffix = field.colors{group_i}(item_i+1:end);
+        else
+          newGroupSuffix = {};
+          newColorSuffix = {};
+        end
+        newGroups = field.groups(1:group_i-1);
+        newColors = field.colors(1:group_i-1);
+        newNames = field.names(1:group_i-1);
+        if group_i < length(field.groups)
+          newGroupsSuffix = vertcat(newGroups,field.groups(group_i+1:end));
+          newColorsSuffix = vertcat(newColors,field.colors(group_i+1:end));
+          newNamesSuffix = vertcat(newNames,field.names(group_i+1:end));
+        else
+          newGroupsSuffix = {};
+          newColorsSuffix = {};
+          newNamesSuffix = {};
+        end
+        for event_i = 1:length(eventLabels)
+          eventLabel = eventLabels{event_i};
+          newGroup = vertcat(newGroupPrefix,eventLabel);
+          newGroup = vertcat(newGroup, newGroupSuffix);
+          newGroups = vertcat(newGroups, {newGroup});
+          newColor = vertcat(newColorPrefix,colors(1),newColorSuffix);
+          newColors = vertcat(newColors,{newColor});
+          newNames = vertcat(newNames, strcat(eventLabel));
+        end
+        newGroups = vertcat(newGroups, newGroupsSuffix);
+        newColors = vertcat(newColors, newColorsSuffix);
+        newNames = vertcat(newNames, newNamesSuffix);
+        field.groups = newGroups;
         field.colors = newColors;
         field.names = newNames;
       else

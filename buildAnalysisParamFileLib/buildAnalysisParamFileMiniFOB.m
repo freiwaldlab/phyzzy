@@ -14,29 +14,29 @@ switch machine
     ephysVolume = '/Volumes/Users-1/User/Desktop';
     stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   
   case 'laptop'
     ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   
   case 'hopper'
     ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Visiko';
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   
   case 'turing'
     ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Freiwald/ephys/sserene/ALAN_DATA/Visiko';
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamsFullFOB3.mat';   %#ok
+    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   
 end
-analysisLabel = 'Basic2';
+analysisLabel = '181012';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;           %#ok
 closeFig = 1;          %#ok
-exportFig = 0;         %#ok
+exportFig = 1;         %#ok
 saveFigData = 0;       %#ok
 savePreprocessed = 0;  %#ok
 verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
@@ -73,9 +73,10 @@ ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a
 ephysParams.plotFilterResult = 0; %#ok
 
 % parameters preprocessAnalogIn, see function for details
-analogInParams.needAnalogIn = 1;
+analogInParams.needAnalogIn = 0;
 analogInParams.analogInChannels = [138,139,140]; 
 analogInParams.channelNames = {'eyeX','eyeY','eyeD'};
+analogInParams.channelUnits = {'dva','dva','au'};
 analogInParams.analogInChannelScaleBy = [5/32764 5/32764 5/32764]; %converts raw values to volts
 analogInParams.decimateFactorPass1 = 1; 
 analogInParams.decimateFactorPass2 = 1;
@@ -86,13 +87,61 @@ butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 120, 'StopbandFre
 analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
 analogInParams.plotFilterResult = 1; %#ok
 
-photodiodeParams.needPhotodiode = 0;
-photodiodeParams.channels = [1;2]; %#ok
+% parameters for photodiode strobe preprocessing
+photodiodeParams.needStrobe = 0;
+photodiodeParams.levelCalibType = 'autoAndCheck';
+photodiodeParams.peaksToPlot = 100;
+photodiodeParams.cleanPeaks = 1;
+photodiodeParams.numLevels = 2;
+photodiodeParams.strobeTroughs = 1;
+photodiodeParams.inputDataType = 'blackrockFilename';
+photodiodeParams.peakFreq = 100;
+photodiodeParams.minPeakNumInLevel = 5;
+photodiodeParams.saveFigures = 1;
+photodiodeParams.displayStats = 1;
+photodiodeParams.saveCalibFile = 1;
+photodiodeParams.peakTimeOffset = 5.0;
+photodiodeParams.checkHighLowAlternation = 0;
+photodiodeParams.outDir = strcat(outputVolume,'/');
+photodiodeParams.runNum = runNum;
+photodiodeParams.dateSubject = dateSubject;
+photodiodeParams.calibFigFname = 'phDiodeCalib';
+photodiodeParams.triggersFigFname = 'phDiodeTriggers';
+photodiodeParams.dataChannel = 129;
+photodiodeParams.outputCalibrationFile = 'phDiodeCalib'; %path relative to to outDir
+
+% parameters for 60Hz strobe preprocessing
+lineNoiseTriggerParams.needStrobe = 0;
+lineNoiseTriggerParams.levelCalibType = 'autoAndCheck';
+lineNoiseTriggerParams.peaksToPlot = 100;
+lineNoiseTriggerParams.cleanPeaks = 0;
+lineNoiseTriggerParams.useRisingEdge = 1;
+lineNoiseTriggerParams.numLevels = 1;
+lineNoiseTriggerParams.strobeTroughs = 0;
+lineNoiseTriggerParams.inputDataType = 'blackrockFilename';
+lineNoiseTriggerParams.peakFreq = 60;
+lineNoiseTriggerParams.noisePeaksAtPeak = 10;
+lineNoiseTriggerParams.minPeakNumInLevel = 5;
+lineNoiseTriggerParams.saveFigures = 1;
+lineNoiseTriggerParams.displayStats = 1;
+lineNoiseTriggerParams.saveCalibFile = 1;
+lineNoiseTriggerParams.peakTimeOffset = 0;
+lineNoiseTriggerParams.checkHighLowAlternation = 0;
+lineNoiseTriggerParams.outDir = strcat(outputVolume,'/');
+lineNoiseTriggerParams.runNum = runNum;
+lineNoiseTriggerParams.dateSubject = dateSubject;
+lineNoiseTriggerParams.calibFigFname = 'lineNoiseTriggerCalib';
+lineNoiseTriggerParams.triggersFigFname = 'lineNoiseTriggers';
+lineNoiseTriggerParams.dataChannel = 130;
+lineNoiseTriggerParams.outputCalibrationFile = 'lineNoiseTriggerCalib'; %path relative to outDir
 
 % parameters preprocessLogFile, see function for details
+stimSyncParams.syncMethod = 'digitalTrigger';
+stimSyncParams.showSyncQuality = 0;
 stimSyncParams.usePhotodiode = 0;        %#ok
 %
-eyeCalParams.needEyeCal = 1;
+%
+eyeCalParams.needEyeCal = 0;
 eyeCalParams.method = 'zeroEachFixation';
 eyeCalParams.makePlots = 1;
 eyeCalParams.eyeXChannelInd = 1;
@@ -113,18 +162,21 @@ accelParams.calMethods = {'hardcode'}; %other option is 'calFile'; calibration m
 accelParams.calFiles = {''}; %if method is 'calFile', an ns2 filename
 
 % parameters for excludeStimuli, see function for details
-excludeStimParams.fixPre = 100; %ms
-excludeStimParams.fixPost = 100; %ms
-excludeStimParams.flashPre = 50;  %ms
-excludeStimParams.flashPost = 50; %ms
+excludeStimParams.fixPre = 200; %ms
+excludeStimParams.fixPost = 400; %ms
+excludeStimParams.flashPre = 200;  %ms
+excludeStimParams.flashPost = 400; %ms
 excludeStimParams.juicePre = 0; % optional, ms
 excludeStimParams.juicePost = 0; % optional, ms
+excludeStimParams.maxEventTimeAdjustmentDeviation = 1; %ms
+excludeStimParams.ephysDataPre = 500;
+excludeStimParams.ephysDataPost = 500;
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
 
-psthParams.psthPre = 100; % if e.g. +200, then start psth 200ms before trial onset; 
+psthParams.psthPre = 200; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 0;  % only need to set this for variable length stim runs; else, comes from log file
-psthParams.psthPost = 100;
+psthParams.psthPost = 400;
 psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
 psthParams.errorType = 3; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
@@ -183,8 +235,8 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {60, 260}; ...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
-plotSwitch.imagePsth = 1;
-plotSwitch.categoryPsth = 1;
+plotSwitch.imagePsth = 0;
+plotSwitch.categoryPsth = 0;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
@@ -209,17 +261,17 @@ plotSwitch.linePsthEvoked = 0;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
 plotSwitch.runSummaryImMeanSubDiv = 0;
-plotSwitch.lfpPowerMuaScatter = 1; 
-plotSwitch.lfpPeakToPeakMuaScatter = 1;
+plotSwitch.lfpPowerMuaScatter = 0; 
+plotSwitch.lfpPeakToPeakMuaScatter = 0;
 plotSwitch.lfpLatencyMuaLatency = 0;
-plotSwitch.lfpPowerAcrossChannels = 1;
-plotSwitch.lfpPeakToPeakAcrossChannels = 1;
-plotSwitch.lfpLatencyShiftAcrossChannels = 1;
-plotSwitch.singleTrialLfpByCategory = 1;
-plotSwitch.lfpSpectraByCategory = 1;
-plotSwitch.spikeSpectraByCategory = 1;
-plotSwitch.SpikeSpectraTfByImage = 1;
-plotSwitch.lfpSpectraTfByImage = 1;
+plotSwitch.lfpPowerAcrossChannels = 0;
+plotSwitch.lfpPeakToPeakAcrossChannels = 0;
+plotSwitch.lfpLatencyShiftAcrossChannels = 0;
+plotSwitch.singleTrialLfpByCategory = 0;
+plotSwitch.lfpSpectraByCategory = 0;
+plotSwitch.spikeSpectraByCategory = 0;
+plotSwitch.SpikeSpectraTfByImage = 0;
+plotSwitch.lfpSpectraTfByImage = 0;
 plotSwitch.couplingPhasesUnwrapped = 1;
 plotSwitch.couplingPhasesAsOffsets = 1;
 plotSwitch.couplingPhasesPolar = 0;
@@ -274,11 +326,10 @@ analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'};{'HumanheadoriD25'
 analysisGroups.evokedPsthOnePane.names = {'faceVnon';'HumanheadoriD25';'monkeybodypart7';'HumanheadoriB11';'HumanheadoriB12';...
   'place8';'MonkeyheadoriB2';'humanbody4grayBG';'HumanheadoriE11'};
 %
-analysisGroups.tuningCurves.groups = {{'humanFaceL90','humanFaceL45','humanFaceFront','humanFaceR45','humanFaceR90'},...
-  {'monkeyFaceL90','monkeyFaceL45','monkeyFaceFront','monkeyFaceR45','monkeyFaceR90'}}; %can be images or categories
-analysisGroups.tuningCurves.paramValues = {[-90 -45 0 45 90], [-90 -45 0 45 90]};
-analysisGroups.tuningCurves.paramLabels = {'viewing angle (degrees)','viewing angle (degrees)'};
-analysisGroups.tuningCurves.names = {'Human face view','Monkey face view'};
+analysisGroups.tuningCurves.groups = {}; %can be images or categories
+analysisGroups.tuningCurves.paramValues = {};
+analysisGroups.tuningCurves.paramLabels = {};
+analysisGroups.tuningCurves.names = {};
 %
 analysisGroups.spectraByCategory.groups = {{'face';'nonface'}};  %todo: add spectra diff?
 analysisGroups.spectraByCategory.names = {'faceVnon'};
@@ -300,11 +351,11 @@ analysisGroups.analogInSingleTrialsByCategory.channels = {[1;2];[1;2];[1;2];[1;2
 analysisGroups.analogInSingleTrialsByCategory.units = {'degrees visual angle';'degrees visual angle';'degrees visual angle';'degrees visual angle';...
   'degrees visual angle';'degrees visual angle';'degrees visual angle';'degrees visual angle'};
 %
-analysisGroups.coherenceByCategory.groups = {{'face';'nonface'}}; %{'face';'object';'body'};{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'hand';'techno'}
-analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; %{'r';'g';'b'};{'b';'c';'y';'g';'m';'r';'k';'k'}
-analysisGroups.coherenceByCategory.names = {'faceVnon'}; %'fob';'slimCats'
+analysisGroups.coherenceByCategory.groups = {{'ALL_EVENTS_SPLIT'}}; %{'face';'object';'body'};{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'hand';'techno'}
+analysisGroups.coherenceByCategory.colors = {{}}; %{'r';'g';'b'};{'b';'c';'y';'g';'m';'r';'k';'k'}
+analysisGroups.coherenceByCategory.names = {}; %'fob';'slimCats'
 %
-analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'};{'object'};{'body'}}; %#ok
+analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'};{'object'};{'body'}}; 
 %%%%%
 
 calcSwitch.categoryPSTH = 1;
@@ -312,7 +363,7 @@ calcSwitch.imagePSTH = 1;
 calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
-calcSwitch.inducedTrialMagnitudeCorrection = 1;
+calcSwitch.inducedTrialMagnitudeCorrection = 0;
 calcSwitch.evokedSpectra = 1;
 calcSwitch.inducedSpectra = 1;
 calcSwitch.evokedImageTF = 1;
@@ -334,13 +385,22 @@ analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,
 lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        
 spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
 taskFilename = sprintf('%s/%s/%s0%s.log',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
-photodiodeFilename = lfpFilename;                                                           %#ok
+photodiodeFilename = lfpFilename;  
+lineNoiseTriggerFilename = lfpFilename; %#ok
 outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
 analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
 preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
+photodiodeParams.outputCalibrationFile = strcat(outDir,'/',photodiodeParams.outputCalibrationFile); %#ok
+lineNoiseTriggerParams.outputCalibrationFile = strcat(outDir,'/',lineNoiseTriggerParams.outputCalibrationFile); %#ok
 %
 load('cocode2.mat');
 psthColormap = map;  %#ok
+tmp = load(stimParamsFilename);
+if ~isfield(tmp,'eventLabels')
+  tmp.eventLabels = tmp.pictureLabels;
+end
+analysisGroups = applyAnalysisGroupMacros(analysisGroups, tmp.categoryLabels, tmp.eventLabels, tmp.paramArray, ['b','c','y','g','m','r','k']); %#ok
+clear tmp
 %
 if ~exist(outDir,'dir')
   mkdir(outDir);

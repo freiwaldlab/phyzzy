@@ -180,7 +180,9 @@ for run_i = 1:length(runList)
       end      
     end
     runAnalysisInputs.lfpByEvent{event_i} = cat(3, runAnalysisInputs.lfpByEvent{event_i}, runAnalysisInputsTmp.lfpByEvent{event_i});
-    runAnalysisInputs.analogInByEvent{event_i} = cat(3, runAnalysisInputs.analogInByEvent{event_i}, runAnalysisInputsTmp.analogInByEvent{event_i});
+    if analogInParams.needAnalogIn
+      runAnalysisInputs.analogInByEvent{event_i} = cat(3, runAnalysisInputs.analogInByEvent{event_i}, runAnalysisInputsTmp.analogInByEvent{event_i});
+    end
     if runAnalysisInputsTmp.taskData.RFmap
       runAnalysisInputs.jumpsByImage{event_i} = vertcat(runAnalysisInputs.jumpsByImage{event_i}, runAnalysisInputsTmp.jumpsByImage{event_i});
     end
@@ -201,8 +203,9 @@ for run_i = 1:length(runList)
       end
     end
     runAnalysisInputs.lfpByCategory{cat_i} = cat(3, runAnalysisInputs.lfpByCategory{cat_i}, runAnalysisInputsTmp.lfpByCategory{cat_i});
-    runAnalysisInputs.analogInByCategory{cat_i} = cat(3, runAnalysisInputs.analogInByCategory{cat_i}, runAnalysisInputsTmp.analogInByCategory{cat_i});
-    
+    if analogInParams.needAnalogIn
+      runAnalysisInputs.analogInByCategory{cat_i} = cat(3, runAnalysisInputs.analogInByCategory{cat_i}, runAnalysisInputsTmp.analogInByCategory{cat_i});
+    end
     runAnalysisInputs.onsetsByCategory{cat_i} = vertcat(runAnalysisInputs.onsetsByCategory{cat_i},runAnalysisInputsTmp.onsetsByCategory{cat_i});
     runAnalysisInputs.trialIDsByCategory{cat_i} = vertcat(runAnalysisInputs.trialIDsByCategory{cat_i},...
       runAnalysisInputsTmp.trialIDsByCategory{cat_i} + accumulatedTrialOffset);
@@ -228,7 +231,9 @@ runAnalysisInputs.spikesByEvent = runAnalysisInputs.spikesByEvent(eventsNotObser
 runAnalysisInputs.psthEmptyByEvent = runAnalysisInputs.psthEmptyByEvent(eventsNotObserved == 0);
 runAnalysisInputs.spikesByEventForTF = runAnalysisInputs.spikesByEventForTF(eventsNotObserved == 0);
 runAnalysisInputs.lfpByEvent = runAnalysisInputs.lfpByEvent(eventsNotObserved == 0);
-runAnalysisInputs.analogInByEvent = runAnalysisInputs.analogInByEvent(eventsNotObserved == 0);
+if analogInParams.needAnalogIn
+  runAnalysisInputs.analogInByEvent = runAnalysisInputs.analogInByEvent(eventsNotObserved == 0);
+end
 if runAnalysisInputsTmp.taskData.RFmap
   runAnalysisInputs.jumpsByImage = runAnalysisInputs.jumpsByImage(eventsNotObserved == 0);
 end
@@ -246,7 +251,9 @@ runAnalysisInputs.spikesByCategory = runAnalysisInputs.spikesByCategory(catsNotO
 runAnalysisInputs.psthEmptyByCategory = runAnalysisInputs.psthEmptyByCategory(catsNotObserved == 0);
 runAnalysisInputs.spikesByCategoryForTF = runAnalysisInputs.spikesByCategoryForTF(catsNotObserved == 0);
 runAnalysisInputs.lfpByCategory = runAnalysisInputs.lfpByCategory(catsNotObserved == 0);
-runAnalysisInputs.analogInByCategory = runAnalysisInputs.analogInByCategory(catsNotObserved == 0);
+if analogInParams.needAnalogIn
+  runAnalysisInputs.analogInByCategory = runAnalysisInputs.analogInByCategory(catsNotObserved == 0);
+end
 
 if savePreprocessed
   analysisParamFilename = runAnalysisInputs. analysisParamFilename; %#ok
