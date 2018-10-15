@@ -46,7 +46,11 @@ if ~isfield(userVars,'clipDuration')
     
     %Pull the data from those columns, using the "Recording" column to
     %match days to runs.
-    userVars.clipDuration = num2str(data(1).ObjectStatusRecord.SceneParam(2).AdapterArgs{1,3}{3});
+    try
+        userVars.clipDuration = num2str(data(1).ObjectStatusRecord.SceneParam(2).AdapterArgs{1,3}{3});
+    catch
+        userVars.clipDuration = num2str(data(10).ObjectStatusRecord.SceneParam(2).AdapterArgs{3}{1,2});
+    end
     userVars.rewardSD = '0';
     userVars.rewardTimeMean = MLConfig.RewardFuncArgs.Duration;
     userVars2.comments = num2str(raw{rowID,commInd});
@@ -215,13 +219,13 @@ y = y - lineinterval;
 uicontrol('parent',hFig,'style','text','units','pixel','position',[x+80 y w-80 22],'string',sprintf('(Elapsed: %s)',datestr(EndTime-StartTime,'HH:MM:SS')), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
 y = y - lineinterval;
-uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Stimulus duration: %s ms',userVars.clipDuration), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
+uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Stimulus duration: %d ms',userVars.clipDuration), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
 y = y - lineinterval;
 uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Reward amount (mean): %d ms',userVars.rewardTimeMean), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
 y = y - lineinterval;
-uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Reward SD: %s ms',userVars.rewardSD), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
+uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Reward SD: %d ms',userVars.rewardSD), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
 y = y - lineinterval;
 nblock = length(blockorder);

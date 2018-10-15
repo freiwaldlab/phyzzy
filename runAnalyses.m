@@ -12,13 +12,13 @@ function [  ] = runAnalyses( inputs )
 %   - makes tuning curves for parameterized images or categories, as
 %     specified in the stim param file
 
-
 %%% unpack inputs
 analysisParamFilename = inputs.analysisParamFilename;
 spikesByChannel = inputs.spikesByChannel; 
 lfpData = inputs.lfpData; 
 analogInData = inputs.analogInData; 
-taskData = inputs.taskData;
+taskEventIDs = inputs.taskData;
+taskData = inputs.taskData; 
 taskDataAll = inputs.taskDataAll; 
 psthImDur = inputs.psthImDur; 
 preAlign = inputs.preAlign; 
@@ -256,7 +256,6 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
   end
 end
 
-
 times = -psthPre:psthImDur+psthPost;
 calcSwitches = [calcSwitch.imagePSTH, calcSwitch.categoryPSTH];
 for calc_i = 1:length(calcSwitches)
@@ -332,6 +331,31 @@ for calc_i = 1:length(calcSwitches)
   end
 end
 
+%Quick Temporary Structure to find out peak times during analysis, save to
+%a file where it can be retrieved easily by Monkeylogic.
+trialDatabaseStruct = struct();
+trialDatabaseStruct.images = eventLabels;
+translationTable = cell(length(eventLabels),1);
+for ii = 1:length(eventLabels)
+    translationTable{ii} = paramArray{strcmp(pictureLabels,eventLabels(ii))}{1};
+end
+trialDatabaseStruct.translationTable = translationTable;
+psthPeaksByImageTmp = psthByImage;
+
+for ii = 1:length(psthPeaksByImageTmp)
+    for jj = 1:length(psthPeaksByImageTmp{ii})
+            psthPeaksByImageTmp{ii}{jj} = psthPeaksByImageTmp{ii}{jj}(:,psthPre+1:(end-psthPost-1));
+            %Zero regions not interested in, making sure to not add
+            %anything in the front to mess up index.
+            psthPeaksByImageTmp{ii}{jj}(1:frEpochs(1,1)) = 0;
+            [psthPeaksByImage{ii}{jj},  psthPeaksIndByImage{ii}{jj}] = max(psthPeaksByImageTmp{ii}{jj},[],2);
+    end
+end
+trialDatabaseStruct.psthPeaksIndByImage = psthPeaksIndByImage;
+trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage;
+
+save([outDir 'trialDatabase'], 'trialDatabaseStruct')
+
 if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
   for channel_i = 1:length(channelNames)
     for unit_i = 1:length(channelUnitNames{channel_i})
@@ -382,6 +406,10 @@ imFr = firingRatesByImageByEpoch{1};
 peakImFr = max(psthByImage{1}{1},[],2);
 imFrErr = firingRateErrsByImageByEpoch{1};
 imSpikeCounts = spikeCountsByImageByEpoch{1};
+trialCountsByImage = zeros(length(spikesByEvent),1);
+for event_i = 1:length(spikesByEvent)
+  trialCountsByImage(event_i) = length(spikesByEvent{event_i}{1}{1});
+end
 
 if ~isempty(spikesByCategory)
   firingRatesByCategoryByEpoch = cell(size(frEpochs,1),1);
@@ -454,6 +482,7 @@ if ~taskData.RFmap
       [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');
       imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
       sortedImageLabels = eventLabels(imageSortOrder);
+      trialCountsByImageSorted = trialCountsByImage(imageSortOrder);
       if exist('groupLabelColorsByImage','var')
         sortedGroupLabelColors = groupLabelColorsByImage(imageSortOrder,:,:);
       else
@@ -519,6 +548,13 @@ if ~taskData.RFmap
           groupName = analysisGroups.stimulusLabelGroups.names{group_i};
           superbar(imageSortedRates,'E',imFrErrSorted,'BarFaceColor',sortedGroupLabelColors(:,:,group_i));
           set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(eventLabels),'TickDir','out');
+          mu = mean(imageSortedRates);
+          sigma = mean(imFrErrSorted(trialCountsByImageSorted > 1));
+          nullDistSorts = sort(normrnd(mu,sigma,100,length(imageSortedRates)),2,'descend');
+          hold on
+          lineProps.col = {'k'};
+          h = mseb(1:length(imageSortedRates),mean(nullDistSorts,1),std(nullDistSorts,1),lineProps, 1);
+          legend(h.mainLine,{'flat tuning null model'});          
           ylabel('Firing rate, Hz');
           title(sprintf('Image tuning, sorted, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
           clear figData
@@ -2798,7 +2834,7 @@ for calc_i = 1:length(tfCalcSwitches)
     end
   end
 end
-   
+
 %%% coupling across channels and modalities (units/unsorted/mua, fields)
 tfCalcSwitchNames = {'evokedCatTF', 'inducedCatTF'}; % todo: make separate switch for coherence?
 tfCalcSwitchTitleSuffixes = {'',', induced'}; % appended to titles

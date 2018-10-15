@@ -129,6 +129,8 @@ if ~usePreprocessed
     trialIDsByEvent{event_i} = find(strcmp(taskData.taskEventIDs,eventIDs{event_i}));
   end
 
+  assert(~(sum(eventsNotObserved) == length(eventsNotObserved)),'No Events observed. Confirm correct stimulus Param file is in use.');
+  
   % todo: need defense against image with onset but no offset? 
   % todo: add similar defense for rf map locations here?
   if ~taskData.RFmap

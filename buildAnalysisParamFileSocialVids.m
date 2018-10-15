@@ -5,37 +5,41 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids()
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '001';
-dateSubject = '20180704Mo';
+dateSubject = '20181015Mo';
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
 
 switch machine
+  case 'kekean-pc'
+      ephysVolume = 'Z:/';
+      stimulusLogVolume = 'Y:/SocialvNonSocial - random';
+      outputVolume = 'C:/Users/Farid/Desktop/phyzzy/Analysis';
+      stimParamsFilename = 'C:/Users/Farid/Desktop/phyzzy/StimParamFileSocialVids_V2.mat';                  %#ok
   case 'Alienware_FA'
     ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data'; 
     stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed - Batch Test';
-    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok    
+    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok    
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     stimulusLogVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     outputVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
-    stimParamsFilename = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok
+    stimParamsFilename = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok
   case 'FA_Desktop_Home'
     ephysVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     stimulusLogVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     outputVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
-    stimParamsFilename = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids.mat';   %#ok
+    stimParamsFilename = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok
 end
 analysisLabel = 'Batch Test';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;                %#ok
-closeFig = 1;               %#ok
+closeFig = 0;               %#ok
 exportFig = 0;              %#ok
 saveFigData = 0;            %#ok
 savePreprocessed = 1;       %#ok
 verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
-
 
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
@@ -44,7 +48,7 @@ ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be th
 ephysParams.lfpChannels = [1]; 
 ephysParams.channelNames = {'8Bm'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
-ephysParams.offlineSorted = 1; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
+ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
 ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
 ephysParams.cPtCal = 1/30; % conversion from spike sample indices to timestep of decimated LFP
@@ -100,7 +104,7 @@ photodiodeParams.peaksToPlot = 50; %number of peaks to show in calibration plots
 photodiodeParams.cleanPeaks = 1;
 photodiodeParams.useRisingEdge = 0; % 0 = peaks, 1 = rising edge.
 photodiodeParams.numLevels = 3; %Number of levels the strobe is acting at.
-photodiodeParams.levelHigh = 5500;
+photodiodeParams.levelHigh = 5350;
 photodiodeParams.levelMid = 4000;
 photodiodeParams.levelLow = 1250;
 photodiodeParams.checkHighLowAlternation = 0;
@@ -246,8 +250,8 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
 plotSwitch.imagePsth = 1;
-plotSwitch.categoryPsth = 0;
-plotSwitch.prefImRaster = 1;
+plotSwitch.categoryPsth = 1;
+plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
@@ -264,7 +268,7 @@ plotSwitch.rfLate = 0;
 plotSwitch.latencyRF = 0;
 plotSwitch.evokedPowerRF = 0;
 plotSwitch.evokedPsthMuaMultiCh = 0;
-plotSwitch.evokedByCategory = 0;
+plotSwitch.evokedByCategory = 1;
 plotSwitch.analogInByItem = 0;
 plotSwitch.analogInDerivativesByItem = 0;
 plotSwitch.colorPsthEvoked = 0;
@@ -382,7 +386,7 @@ calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
 calcSwitch.evokedSpectra = 0;
 calcSwitch.inducedSpectra = 0;
-calcSwitch.evokedImageTF = 0;
+calcSwitch.evokedImageTF = 1;
 calcSwitch.inducedImageTF = 0;
 calcSwitch.evokedCatTF = 1; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
 calcSwitch.inducedCatTF = 0;
@@ -400,7 +404,7 @@ end
 analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
 lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        
 spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
-taskFilename = sprintf('%s/%s/%s%s.mat',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
+taskFilename = sprintf('%s/%s/%s%s.bhv2',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
 photodiodeFilename = lfpFilename;                %#ok
 lineNoiseTriggerFilename = lfpFilename; %#ok
 outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);

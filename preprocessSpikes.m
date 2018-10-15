@@ -33,14 +33,21 @@ if isfield(params,'offlineSorted') && params.offlineSorted == 1
     tmpFilename = strsplit(tmpString{end}, '.');
     sortedFilename = [tmpFilename{1} '.xls'];
     tmpString{end} = sortedFilename;
-    spikeFilename = strjoin(tmpString,'/');
-    spikeMat = xlsread(spikeFilename);
+    spikeFilenameSorted = strjoin(tmpString,'/');
+    assert(logical(exist(spikeFilenameSorted,'file')),'The Offline sorted spike file you requested does not exist.');
+    spikeMat = xlsread(spikeFilenameSorted);
     %Overwrite NEV fields
     NEV.Data.Spikes.Electrode = spikeMat(:,1);
     NEV.Data.Spikes.Unit = spikeMat(:,2);
     NEV.Data.Spikes.Timestamps = spikeMat(:,3)*30e3; %Sampling Freq should likely be a variable pulled from elsewhere.
     NEV.Data.Spikes.Waveform = spikeMat(:,4:end);
 end
+
+% if isfield(params, 'waveClus') && params.waveClus
+%     [A, B, C] = fileparts(spikeFilename);
+%     lfpFilename = [A '/' B '.ns5'];
+%     parse_data_NSx(lfpFilename,2) %(filename,max_memo_GB)
+% end
 
 
 for channel_i = 1:length(params.spikeChannels)
