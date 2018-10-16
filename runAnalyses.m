@@ -36,7 +36,7 @@ lfpByEvent = inputs.lfpByEvent;
 lfpByCategory = inputs.lfpByCategory;  
 analogInByEvent = inputs.analogInByEvent; 
 analogInByCategory = inputs.analogInByCategory;  
-channelUnitNames = inputs.channelUnitNames;  
+channelUnitNames = inputs.channelUnitNames; 
 stimTiming = inputs.stimTiming;  
 eventCategories = inputs.eventCategories;  
 onsetsByEvent = inputs.onsetsByEvent;  
@@ -54,6 +54,7 @@ spikeChannels = ephysParams.spikeChannels;
 lfpChannels = ephysParams.lfpChannels;
 analogInChannels = analogInParams.analogInChannels;
 analogInChannelNames = analogInParams.channelNames;
+analogInChannelUnits = analogInParams.channelUnits;
 psthPre = psthParams.psthPre;
 psthPost = psthParams.psthPost;
 smoothingWidth = psthParams.smoothingWidth;
@@ -84,6 +85,13 @@ end
 
 colors = [{'b'},{'r'},{[0 .6 0]},{'k'}];
 chColors = [{'b'},{'r'},{[0 .6 0]}];
+
+% trialDB = trialDatabaseInit(dateSubject, runNum, length(taskData.taskEventStartTimes));
+% for event_i = 1:length(eventLabels)
+%   for trial_i = 1:length(trialIDsByEvent{event_i})
+%     trialDB = trialDatabaseSetField('eventLabel',eventLabels{event_i},trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
+%   end
+% end
 
 % check calcSwitch definitions and set defaults as needed
 calcSwitchFields = {'categoryPSTH';'imagePSTH';'faceSelectIndex';'faceSelectIndexEarly';'faceSelectIndexLate';'inducedTrialMagnitudeCorrection';...
@@ -232,9 +240,9 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
   spikesByCategoryBinned = cell(size(spikesByCategory));
   assert((movingWin(1)/2 > 3*smoothingWidth),'Error: current implementation assumes that movingWin/2 > 3*psthSmoothingWidth. Not true here');
   for cat_i = 1:length(spikesByCategory)
-    spikesByCategoryBinned{cat_i} = cell(length(channelNames));
+    spikesByCategoryBinned{cat_i} = cell(length(channelNames),1);
     for channel_i = 1:length(channelNames)
-      spikesByCategoryBinned{cat_i}{channel_i} = cell(length(channelUnitNames{channel_i}));
+      spikesByCategoryBinned{cat_i}{channel_i} = cell(length(channelUnitNames{channel_i}),1);
       for unit_i = 1:length(channelUnitNames{channel_i})
         % this tmp variable fixes a Chronux bug that leads the last entry in the binned spike array to be zero when it shouldn't be
         spikesTmp = binspikes(spikesByCategory{cat_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+psthPost+1+movingWin(1)/2])';
@@ -242,19 +250,43 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
       end
     end
   end
-  spikesByEventBinned = cell(size(spikesByCategory));
+  spikesByEventBinned = cell(size(spikesByEvent));
   for image_i = 1:length(spikesByEvent)
-    spikesByEventBinned{image_i} = cell(length(channelNames));
+    spikesByEventBinned{image_i} = cell(length(channelNames),1);
     for channel_i = 1:length(channelNames)
-      spikesByEventBinned{image_i}{channel_i} = cell(length(channelUnitNames{channel_i}));
+      spikesByEventBinned{image_i}{channel_i} = cell(length(channelUnitNames{channel_i}),1);
       for unit_i = 1:length(channelUnitNames{channel_i})
         % this tmp variable fixes a Chronux bug that leads the last entry in the binned spike array to be zero when it shouldn't be
         spikesTmp = binspikes(spikesByEvent{image_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+1+psthPost+movingWin(1)/2])';
         spikesByEventBinned{image_i}{channel_i}{unit_i} = spikesTmp(:,1:end-1);
+%         for trial_i = 1:size(spikesByEventBinned{image_i}{channel_i}{unit_i},1)
+%           fieldName = sprintf('spikesBinned.%s_%s',channelNames{channel_i}(~isspace(channelNames{channel_i})),channelUnitNames{channel_i}{unit_i}(~isspace(channelUnitNames{channel_i}{unit_i})));
+%           trialDB = trialDatabaseSetField(fieldName,spikesByEventBinned{image_i}{channel_i}{unit_i}(trial_i,:),trialDB,trialIDsByEvent{image_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
+%         end
       end
     end
   end
 end
+
+% for channel_i = 1:length(channelNames)
+%   for event_i = 1:length(eventLabels)
+%     for trial_i = 1:length(trialIDsByEvent{event_i})
+%       fieldName = sprintf('LFP.%s',channelNames{channel_i}(~isspace(channelNames{channel_i})));
+%       trialDB = trialDatabaseSetField(fieldName,lfpByEvent{event_i}(1,channel_i,trial_i,:),trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
+%     end
+%   end
+% end
+% 
+% if ~isempty(analogInByEvent)
+%   for channel_i = 1:length(analogInChannelNames)
+%     for event_i = 1:length(eventLabels)
+%       for trial_i = 1:length(trialIDsByEvent{event_i})
+%         fieldName = analogInChannelNames{channel_i}(~isspace(analogInChannelNames{channel_i}));
+%         trialDB =trialDatabaseSetField(fieldName,analogInByEvent{event_i}(1,channel_i,trial_i,:),trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
+%       end
+%     end
+%   end
+% end
 
 times = -psthPre:psthImDur+psthPost;
 calcSwitches = [calcSwitch.imagePSTH, calcSwitch.categoryPSTH];
@@ -479,6 +511,9 @@ if ~taskData.RFmap
   % preferred images
   for channel_i = 1:length(spikeChannels)
     for unit_i = 1:length(channelUnitNames{channel_i})
+      if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
+        continue;
+      end
       [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');
       imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
       sortedImageLabels = eventLabels(imageSortOrder);
@@ -493,7 +528,7 @@ if ~taskData.RFmap
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i),imFrErrSorted(i));
       end
       fprintf('\nLeast Preferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
-      for i = 1:min(5,length(eventLabels))
+      for i = 0:min(4,length(eventLabels)-1)
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{end-i},imageSortedRates(end-i), imFrErrSorted(end-i));
       end
       % preferred images raster plot
@@ -549,12 +584,18 @@ if ~taskData.RFmap
           superbar(imageSortedRates,'E',imFrErrSorted,'BarFaceColor',sortedGroupLabelColors(:,:,group_i));
           set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(eventLabels),'TickDir','out');
           mu = mean(imageSortedRates);
-          sigma = mean(imFrErrSorted(trialCountsByImageSorted > 1));
-          nullDistSorts = sort(normrnd(mu,sigma,100,length(imageSortedRates)),2,'descend');
+          rawSigmas = imFrErrSorted(trialCountsByImageSorted > 1).*sqrt(trialCountsByImageSorted(trialCountsByImageSorted > 1))';
+          mixSigmas = horzcat(imFrErrSorted(trialCountsByImageSorted > 1),randsample(rawSigmas,sum(trialCountsByImageSorted == 1),true));
+          nullDistSortsMix = zeros(100,length(imageSortedRates));
+          for i = 1:length(imageSortedRates)
+            nullDistSortsMix(:,i) = normrnd(mu,mixSigmas(i),100,1);
+          end
+          nullDistSortsMix = sort(nullDistSortsMix,2,'descend');
           hold on
           lineProps.col = {'k'};
-          h = mseb(1:length(imageSortedRates),mean(nullDistSorts,1),std(nullDistSorts,1),lineProps, 1);
-          legend(h.mainLine,{'flat tuning null model'});          
+          h = mseb(1:length(imageSortedRates),mean(nullDistSortsMix,1),std(nullDistSortsMix,1),lineProps);
+          ylim(max(ylim(),0));
+          legend(h.mainLine,{'flat tuning null model, gaussian mix'});
           ylabel('Firing rate, Hz');
           title(sprintf('Image tuning, sorted, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
           clear figData
@@ -592,7 +633,7 @@ if ~taskData.RFmap
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
     end
     fprintf('\n\nMulti-channel Least preferred Images, Maximin\n\n');
-    for i = 1:min(5,length(eventLabels))
+    for i = 0:min(4,length(eventLabels)-1)
       fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
     end
 
@@ -603,7 +644,7 @@ if ~taskData.RFmap
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
     end
     fprintf('\n\nMulti-channel Least preferred Images, Channel-Normalized Maximin\n\n');
-    for i = 1:min(5, length(sortedImageLabels))
+    for i = 0:min(4, length(sortedImageLabels)-1)
       fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
     end
 
@@ -614,7 +655,7 @@ if ~taskData.RFmap
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
     end
     fprintf('\n\nMulti-channel Least preferred Images, Channel-Normalized Mean\n\n');
-    for i = 1:min(5,length(eventLabels))
+    for i = 0:min(4,length(eventLabels)-1)
       fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
     end
   end
@@ -930,6 +971,25 @@ if calcSwitch.meanEvokedTF && calcSwitch.spikeTimes
 end
 
 % if we're going to need induced psth's and lfp's, build them now
+
+%by event
+if (calcSwitch.inducedSpectra || calcSwitch.inducedImageTF) && ~calcSwitch.spikeTimes && ~calcSwitch.inducedTrialMagnitudeCorrection
+  % subtract the event mean psth from every trial to obtain induced psth
+  spikesByEventBinnedInduced = spikesByEventBinned;
+  for event_i = 1:length(spikesByEventBinned)
+    for channel_i = 1:length(channelNames)
+      for unit_i = 1:length(channelUnitNames{channel_i})
+        spikesByEventBinnedInduced{event_i}{channel_i}{unit_i} = spikesByEventBinned{event_i}{channel_i}{unit_i} - mean(spikesByEventBinned{event_i}{channel_i}{unit_i},1); %note: matlab automatically applies subtraction to every row
+      end
+    end
+  end
+  lfpByEventInduced = lfpByEvent;
+  for event_i = 1:length(lfpByEvent)
+    lfpByEventInduced{event_i} = lfpByEvent{event_i} - mean(lfpByEvent{event_i},3); %note: matlab automatically applies subtraction to every trial/channel appropriately
+  end
+end
+
+% by category
 if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF) && ~calcSwitch.spikeTimes && ~calcSwitch.inducedTrialMagnitudeCorrection
   % subtract the category mean psth from every trial to obtain induced psth
   spikesByCategoryBinnedInduced = spikesByCategoryBinned;
@@ -947,6 +1007,41 @@ if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF) && ~calcSwitch.spikeTi
 end
 
 % if we're going to need induced, response-magnitude-corrected psth's and lfp's, build them now
+
+%by event
+if (calcSwitch.inducedSpectra || calcSwitch.inducedImageTF) && ~calcSwitch.spikeTimes && calcSwitch.inducedTrialMagnitudeCorrection
+  % subtract the category mean psth from every trial to obtain induced psth
+  spikesByEventBinnedInduced = spikesByEventBinned;
+  for event_i = 1:length(spikesByEventBinned)
+    for channel_i = 1:length(channelNames)
+      for unit_i = 1:length(channelUnitNames{channel_i})
+        unitEventMean = mean(spikesByEventBinned{event_i}{channel_i}{unit_i},1);
+        unitEventMeanSpikeBkgnd = sum(unitEventMean(1:50)); %todo: set this according to psth pre etc. to get best background estimate
+        unitEventMeanBkgndSub = unitEventMean - unitEventMeanSpikeBkgnd;
+        unitEventMeanTotalEvokedSpikes = sum(unitEventMeanBkgndSub);
+        for trial_i = 1:size(spikesByEventBinned{event_i}{channel_i}{unit_i},1)
+          %magnitudeCorrector = mean(spikesByEventBinned{event_i}{channel_i}{unit_i},1)*sum(spikesByEventBinned{event_i}{channel_i}{unit_i});
+          trialSpikes = spikesByEventBinned{event_i}{channel_i}{unit_i}(trial_i,:);
+          trialSpikesBkgndSub = trialSpikes - mean(trialSpikes(1:50));
+          evokedMagnitudeCorrector =  sum(trialSpikesBkgndSub)/unitEventMeanTotalEvokedSpikes;
+          spikesByEventBinnedInduced{event_i}{channel_i}{unit_i} = trialSpikesBkgndSub - evokedMagnitudeCorrector*unitEventMeanBkgndSub;
+        end
+      end
+    end
+  end
+  lfpByEventInduced = lfpByEvent;
+  for event_i = 1:length(lfpByEvent)
+    for channel_i = 1:length(channelNames)
+      channelEventMean = squeeze(mean(lfpByEvent{event_i}(1,channel_i,:,:),3));
+      channelEventMeanMagnitude = mean(abs(channelEventMean));
+      for trial_i = 1:size(lfpByEvent{event_i},3)
+        magnitudeCorrector = mean(squeeze(abs(lfpByEvent{event_i}(1,channel_i,trial_i,:))))/channelEventMeanMagnitude;
+        lfpByEventInduced{event_i}(1,channel_i,trial_i,:) = lfpByEvent{event_i}(1,channel_i,trial_i,:) - magnitudeCorrector*reshape(channelEventMean,1,1,1,[]);
+      end
+    end
+  end
+end
+% by cat
 if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF) && ~calcSwitch.spikeTimes && calcSwitch.inducedTrialMagnitudeCorrection
   % subtract the category mean psth from every trial to obtain induced psth
   spikesByCategoryBinnedInduced = spikesByCategoryBinned;
@@ -1899,8 +1994,9 @@ if isfield(plotSwitch,'singleTrialAnalogInByCategory') && plotSwitch.singleTrial
   for group_i = 1:length(analysisGroups.analogInSingleTrialsByCategory.groups)
     group = analysisGroups.analogInSingleTrialsByCategory.groups{group_i};
     groupName = analysisGroups.analogInSingleTrialsByCategory.names{group_i};
-    groupChannel = analysisGroups.analogInSingleTrialsByCategory.channels{group_i};
-    for channel_i = 1:length(channelNames)
+    groupChannels = analysisGroups.analogInSingleTrialsByCategory.channels{group_i};
+    for channel_i = 1:length(groupChannels)
+      channel = groupChannels(channel_i);
       fh = figure();
       figData = cell(length(group),1);
       for item_i = 1:length(group)
@@ -1908,22 +2004,22 @@ if isfield(plotSwitch,'singleTrialAnalogInByCategory') && plotSwitch.singleTrial
         hold on
         ydata = zeros(50,length(times));
         if isfield(catInds,group{item_i})
-          for i = 1:min(50,size(lfpByCategory{catInds.(group{item_i})},3))
-            plot(times, squeeze(analogInByCategory{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy)));
-            ydata(i,:) = squeeze(analogInByCategory{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy));
+          for i = 1:min(50,size(analogInByCategory{catInds.(group{item_i})},3))
+            plot(times, squeeze(analogInByCategory{catInds.(group{item_i})}(:,channel,i,lfpPaddedBy+1:end-lfpPaddedBy)));
+            ydata(i,:) = squeeze(analogInByCategory{catInds.(group{item_i})}(:,channel,i,lfpPaddedBy+1:end-lfpPaddedBy));
           end
         else
-          for i = 1:min(50,size(lfpByEvent{imInds.(group{item_i})},3))
-            plot(times, squeeze(analogInByEvent{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy)));
-            ydata(i,:) = squeeze(analogInByEvent{catInds.(group{item_i})}(:,groupChannel,:,lfpPaddedBy+1:end-lfpPaddedBy));
+          for i = 1:min(50,size(analogInByEvent{imInds.(group{item_i})},3))
+            plot(times, squeeze(analogInByEvent{catInds.(group{item_i})}(:,channel,i,lfpPaddedBy+1:end-lfpPaddedBy)));
+            ydata(i,:) = squeeze(analogInByEvent{catInds.(group{item_i})}(:,channel,i,lfpPaddedBy+1:end-lfpPaddedBy));
           end
         end
         h = get(gca,'ylim');
         plot([0, psthImDur],[h(1)+0.05*(h(2)-h(1)), h(1)+0.05*(h(2)-h(1))],'color','k','linewidth',3);
         hold off
-        title(sprintf('single trials, %s, %s%s', groupName), 'FontSize',18);
+        title(sprintf('single trials, %s, %s', group{item_i},analogInChannelNames{channel}), 'FontSize',18);
         xlabel('time after stimulus (ms)', 'FontSize',18);
-        ylabel('voltage (uV)', 'FontSize',18);
+        ylabel(analogInChannelUnits{channel}, 'FontSize',18);
         set(gca,'fontsize',18);
         xlim([min(times) max(times)]);
         clear tmp
@@ -1932,7 +2028,7 @@ if isfield(plotSwitch,'singleTrialAnalogInByCategory') && plotSwitch.singleTrial
         figData{item_i} = tmp;
       end
       drawnow;
-      saveFigure(outDir,sprintf('Evoked_singleTrials_%s_%s%s_Run%s',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      saveFigure(outDir,sprintf('%s_singleTrials_%s_Run%s',analogInChannelNames{channel},groupName,runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
       if closeFig
         close(fh);
       end
@@ -2490,7 +2586,7 @@ for calc_i = 1:length(tfCalcSwitches)
         for image_i = 1:length(eventLabels)
           % todo: put in dB conversion and specgramrowave option
           for unit_i =1:length(channelUnitNames{channel_i})
-            if length(channelUnitNames{channel_i}) == 1 && unit_i ==1 %if no isolated spike, don't separate unsorted and MUA
+            if length(channelUnitNames{channel_i}) == 2 && unit_i ==1 %if no isolated spike, don't separate unsorted and MUA
               continue
             end
             if calcSwitch.spikeTimes
@@ -2626,7 +2722,7 @@ for calc_i = 1:length(tfCalcSwitches)
           for item_i = 1:length(group) %note that cat_i here refers to an index into the group
             % spikes
             for unit_i = 1:length(channelUnitNames{channel_i})
-              if length(channelUnitNames{channel_i}) == 1 && unit_i == 1
+              if length(channelUnitNames{channel_i}) == 2 && unit_i == 1
                 continue
               end
               if calcSwitch.spikeTimes
@@ -2919,6 +3015,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
                 line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
+                line(xlim,ylim,'Color','w','LineWidth',0.5);
                 title(sprintf('%s %s - %s field correlation, %s%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 clear figData
                 figData.x = t;
@@ -3204,7 +3301,7 @@ for calc_i = 1:length(tfCalcSwitches)
                   xlabel('frequency (Hz)');
                   ylabel('phase');
                   hold on
-                  plot(repmat(xlim(),length(piMultipliers),1),repmat(piMultipliers,2,1),'color','k');
+                  line(repmat(xlim(),length(piMultipliers),1)',repmat(piMultipliers',1,2)','color','k');
                   title(sprintf('Trial mean %s %s - %s field phase%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                   drawnow;
                   saveFigure(outDir,sprintf('phase_mean_unwrapped_%s_%s-%s_LFP_%s%s_Run%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
@@ -3466,6 +3563,7 @@ for calc_i = 1:length(tfCalcSwitches)
               draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
               line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
               line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
+              line(xlim,ylim,'Color','w','LineWidth',0.5);
               title(sprintf('%s field - %s field correlation, %s%s',channelNames{channel_i},channelNames{channel2_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
               clear figData
               figData.x = t;
@@ -3803,11 +3901,11 @@ for calc_i = 1:length(tfCalcSwitches)
       for channel_i = 1:length(channelNames)
         for channel2_i = channel_i:length(lfpChannels) %make sure we only calculate once for each pair
           for unit_i = 1:length(channelUnitNames{channel_i})
-            if length(channelUnitNames{channel_i}) == 1 && unit_i == 1 %skip unsorted if no isolated unit
+            if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %skip unsorted if no isolated unit
               continue
             end
             for unit2_i = 1:length(channelUnitNames{channel2_i})
-              if length(channelUnitNames{channel2_i}) == 1 && unit2_i == 1 %skip unsorted if no isolated unit
+              if length(channelUnitNames{channel2_i}) == 2 && unit2_i == 1 %skip unsorted if no isolated unit
                 continue
               end
               %if intrachannel, check that pair is unique and non-self
@@ -3855,6 +3953,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
                 line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
+                line(xlim,ylim,'Color','w','LineWidth',0.5);
                 title(sprintf('%s %s - %s %s correlation, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 clear figData
                 figData.x = t;
@@ -3896,11 +3995,11 @@ for calc_i = 1:length(tfCalcSwitches)
       for channel_i = 1:length(channelNames)
         for channel2_i = channel_i:length(lfpChannels) %make sure we only calculate once for each pair
           for unit_i = 1:length(channelUnitNames{channel_i})
-            if length(channelUnitNames{channel_i}) == 1 && unit_i == 1
+            if length(channelUnitNames{channel_i}) == 2 && unit_i == 1
               continue
             end
             for unit2_i = 1:length(channelUnitNames{channel2_i})
-              if length(channelUnitNames{channel2_i}) == 1 && unit2_i == 1
+              if length(channelUnitNames{channel2_i}) == 2 && unit2_i == 1
                 continue
               end
               %if intrachannel, check that pair is unique and non-self
@@ -3921,8 +4020,8 @@ for calc_i = 1:length(tfCalcSwitches)
                   [C,phi,~,~,~,f,~,confC,phistd, Cerr] = callChronuxCoherency(@coherencypt,spikesByItemForTF{itemNum}{channel_i}{unit_i},...
                     spikesByItemForTF{itemNum}{channel2_i}{unit2_i},chronuxParams); %can have time grid as additional arg
                 else
-                  [C,phi,~,~,~,f,~,confC,phistd, Cerr] = callChronuxCoherency(@coherencypb,spikesByItemBinned{itemNum}{channel_i}{unit_i},...
-                    spikesByItemBinned{itemNum}{channel2_i}{unit2_i},chronuxParams);
+                  [C,phi,~,~,~,f,~,confC,phistd, Cerr] = callChronuxCoherency(@coherencypb,spikesByItemBinned{itemNum}{channel_i}{unit_i}',...
+                    spikesByItemBinned{itemNum}{channel2_i}{unit2_i}',chronuxParams);
                 end
                 if item_i == 1
                   spectra = zeros(length(group),length(C));
@@ -4063,11 +4162,11 @@ for calc_i = 1:length(tfCalcSwitches)
       for channel_i = 1:length(channelNames)
         for channel2_i = channel_i:length(lfpChannels) %make sure we only calculate once for each pair
           for unit_i = 1:length(channelUnitNames{channel_i})
-            if length(channelUnitNames{channel_i}) == 1 && unit_i == 1
+            if length(channelUnitNames{channel_i}) == 2 && unit_i == 1
               continue
             end
             for unit2_i = 1:length(channelUnitNames{channel2_i})
-              if length(channelUnitNames{channel2_i}) == 1 && unit2_i == 1
+              if length(channelUnitNames{channel2_i}) == 2 && unit2_i == 1
                 continue
               end
               %if intrachannel, check that pair is unique and non-self
@@ -4239,5 +4338,6 @@ for calc_i = 1:length(tfCalcSwitches)
     end
   end
 end
+%save(strcat(outDir,'/','trialDatabase.mat'),'trialDB');
 end
 

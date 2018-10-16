@@ -1,4 +1,4 @@
-function [ analysisParamFilename ] = buildAnalysisParamFile( varargin )    
+function [ analysisParamFilename ] = buildAnalysisParamFileNoTask( varargin )    
 %buildAnalysisParamFile saves a mat file of parameters, which control the
 %behavior of analyzeSession
 %   varargin: 
@@ -8,8 +8,8 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( varargin )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '005';
-dateSubject = '180426ALAN'; 
+runNum = '004';
+dateSubject = '180227ALAN'; 
 machine = 'laptop';
 
 switch machine
@@ -17,29 +17,29 @@ switch machine
     ephysVolume = '/Volumes/Users-1/User/Desktop';
     stimulusLogVolume = '/Volumes/Users/FreiwaldLab/Desktop';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';  
+    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   %#ok
   case 'laptop'
     ephysVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Visiko';
     outputVolume = '/Users/stephenserene/Desktop/Freiwald/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   
+    stimParamsFilename = '/Users/stephenserene/Desktop/Freiwald/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   %#ok
   case 'hopper'
     ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Visiko';
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   
+    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   %#ok
   case 'turing'
     ephysVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Blackrock'; 
     stimulusLogVolume = '/Freiwald/ephys/sserene/ALAN_DATA/Visiko';
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
-    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   
+    stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   %#ok
 end
-analysisLabel = '181015';
+analysisLabel = '181010';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;           %#ok
 closeFig = 1;          %#ok
-exportFig = 0;         %#ok
+exportFig = 1;         %#ok
 saveFigData = 0;       %#ok
 savePreprocessed = 1;  %#ok
 verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
@@ -180,7 +180,7 @@ excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
 
 psthParams.psthPre = 300; % if e.g. +200, then start psth 200ms before trial onset; 
-psthParams.psthImDur = 0;  % only need to set this for variable length stim runs; else, comes from log file
+psthParams.psthImDur = 1000;  % only need to set this for variable length stim runs; else, comes from log file
 psthParams.psthPost = 400;
 psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
 psthParams.errorType = 3; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
@@ -245,7 +245,7 @@ plotSwitch.categoryPsth = 1;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-plotSwitch.imageTuningSorted = 1;
+plotSwitch.imageTuningSorted = 0;
 plotSwitch.stimPrefBarPlot = 1;
 plotSwitch.stimPrefBarPlotEarly = 1;
 plotSwitch.stimPrefBarPlotLate = 1;
@@ -285,72 +285,59 @@ plotSwitch.tfSpectraByCategory = 1;
 plotSwitch.tfErrs = 1;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
-analysisGroups.selectivityIndex.groups = {{'face';'nonface'},{'face';'object'},{'face';'body'}};
+analysisGroups.selectivityIndex.groups = {{'null'}};
 %
-analysisGroups.stimPrefBarPlot.groups = {{{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};{'face';'object';'body'}}};
-analysisGroups.stimPrefBarPlot.colors  = {{{'b';'c';'y';'g';'m';'r';'k'};{'b';'g';'r'}}};
-analysisGroups.stimPrefBarPlot.names = {'fobPlus'};
-analysisGroups.stimPrefBarPlot.groupDepth = 2;
+analysisGroups.stimulusLabelGroups.groups = {{'null'}};
+analysisGroups.stimulusLabelGroups.names = {'null'};
+analysisGroups.stimulusLabelGroups.colors = {{'b'}};
 %
-analysisGroups.stimulusLabelGroups.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.stimulusLabelGroups.names = {'fobPlus'};
-analysisGroups.stimulusLabelGroups.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.evokedPotentials.groups = {{'null'}};
+analysisGroups.evokedPotentials.names = {'null'};
+analysisGroups.evokedPotentials.colors = {{'b'}};
 %
-analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.evokedPotentials.names = {'fobPlus'};
-analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
-%
-analysisGroups.analogInPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.analogInPotentials.groups = {{'null'}};
 analysisGroups.analogInPotentials.channels = {[3]};
 analysisGroups.analogInPotentials.names = {'pupilDiameter,fobPlus'};
 analysisGroups.analogInPotentials.units = {'au'};
-analysisGroups.analogInPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.analogInPotentials.colors = {{'b';}};
 %
-analysisGroups.analogInDerivatives.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.analogInDerivatives.groups = {{'null'}};
 analysisGroups.analogInDerivatives.channels = {[1; 2]};
 analysisGroups.analogInDerivatives.names = {'eyeVelocity,fobPlus'};
 analysisGroups.analogInDerivatives.units = {'degrees visual angle/sec'};
-analysisGroups.analogInDerivatives.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.analogInDerivatives.colors = {{'b'}};
 %
 
-analysisGroups.analogInSingleTrialsByCategory.groups = {{'face';'nonface'}};
-analysisGroups.analogInSingleTrialsByCategory.names = {'faceVnon'};
+analysisGroups.analogInSingleTrialsByCategory.groups = {{'null'}};
+analysisGroups.analogInSingleTrialsByCategory.names = {'null'};
 analysisGroups.analogInSingleTrialsByCategory.channels = {[1,2,3]};
 %
-analysisGroups.colorPsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};...
-  {'face';'object';'body';'place'}};
-analysisGroups.colorPsthEvoked.names = {'fobPlus'; 'fobp'};
-analysisGroups.colorPsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}; {'b';'r';'g';'k'}};
+analysisGroups.colorPsthEvoked.groups = {{'null'}};
+analysisGroups.colorPsthEvoked.names = {'null'};
+analysisGroups.colorPsthEvoked.colors = {{'b'}};
 %
-analysisGroups.linePsthEvoked.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};...
-  {'face';'object';'body';'place'}};
-analysisGroups.linePsthEvoked.names = {'fobPlus';'fobp'};
-analysisGroups.linePsthEvoked.colors = {{'b';'c';'y';'g';'m';'r';'k'}; {'b';'r';'g';'k'}};
+analysisGroups.linePsthEvoked.groups = {{'null'}};
+analysisGroups.linePsthEvoked.names = {'null'};
+analysisGroups.linePsthEvoked.colors = {{'b'}};
 %
-analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'}};
-analysisGroups.evokedPsthOnePane.names = {'faceVnon'};
+analysisGroups.evokedPsthOnePane.groups = {{'null'}};
+analysisGroups.evokedPsthOnePane.names = {'null'};
 %
-analysisGroups.tuningCurves.groups = {{'humanFaceL90','humanFaceL45','humanFaceFront','humanFaceR45','humanFaceR90'},...
-  {'monkeyFaceL90','monkeyFaceL45','monkeyFaceFront','monkeyFaceR45','monkeyFaceR90'}}; %can be images or categories
-analysisGroups.tuningCurves.paramValues = {[-90 -45 0 45 90], [-90 -45 0 45 90]};
-analysisGroups.tuningCurves.paramLabels = {'viewing angle (degrees)','viewing angle (degrees)'};
-analysisGroups.tuningCurves.names = {'Human face view','Monkey face view'};
+analysisGroups.spectraByCategory.groups = {{'null'}};  %todo: add spectra diff?
+analysisGroups.spectraByCategory.names = {'null'};
+analysisGroups.spectraByCategory.colors = {{'r'}};
 %
-analysisGroups.spectraByCategory.groups = {{'face';'nonface'}};  %todo: add spectra diff?
-analysisGroups.spectraByCategory.names = {'faceVnon'};
-analysisGroups.spectraByCategory.colors = {{'r';'b'}};
+analysisGroups.tfSpectraByCategory.groups = {{'null'}};    %todo: add tf spectra diff?
+analysisGroups.tfSpectraByCategory.names = {'face'};
 %
-analysisGroups.tfSpectraByCategory.groups = {{'face'};{'nonface'}};%{'object'};{'body'}      %todo: add tf spectra diff?
-analysisGroups.tfSpectraByCategory.names = {'face','nonface'};%'nonface';'object';'body'
+analysisGroups.lfpSingleTrialsByCategory.groups = {{'null'}};
+analysisGroups.lfpSingleTrialsByCategory.names = {'null'};
 %
-analysisGroups.lfpSingleTrialsByCategory.groups = {{'face';'nonface'}};
-analysisGroups.lfpSingleTrialsByCategory.names = {'faceVnon'};
-%
-analysisGroups.coherenceByCategory.groups = {{'face';'nonface'}}; %{'face';'object';'body'};{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'hand';'techno'}
-analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; %{'r';'g';'b'};{'b';'c';'y';'g';'m';'r';'k';'k'}
+analysisGroups.coherenceByCategory.groups = {{'null'}}; 
+analysisGroups.coherenceByCategory.colors = {{'r'}}; 
 analysisGroups.coherenceByCategory.names = {'faceVnon'}; %'fob';'slimCats'
 %
-analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'}}; 
+analysisGroups.tfCouplingByCategory.groups = {{'null'}}; %#ok
 %%%%%
 
 calcSwitch.categoryPSTH = 1;
@@ -390,13 +377,6 @@ lineNoiseTriggerParams.outputCalibrationFile = strcat(outDir,'/',lineNoiseTrigge
 %
 load('cocode2.mat');
 psthColormap = map;  %#ok
-%
-tmp = load(stimParamsFilename);
-if ~isfield(tmp,'eventLabels')
-  tmp.eventLabels = tmp.pictureLabels;
-end
-analysisGroups = applyAnalysisGroupMacros(analysisGroups, tmp.categoryLabels, tmp.eventLabels, tmp.paramArray, ['b','c','y','g','m','r','k']); %#ok
-clear tmp
 %
 if ~exist(outDir,'dir')
   mkdir(outDir);

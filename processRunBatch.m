@@ -32,7 +32,7 @@ for dateSubj_i = 1:length(runList)
         analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
         lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        
         spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
-        taskFilename = sprintf('%s/%s/%s%s.mat',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
+        taskFilename = sprintf('%s/%s/%s%s.bhv2',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
         outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
         stimSyncParams.outDir = outDir;
         photodiodeFilename = lfpFilename;                %#ok
@@ -49,7 +49,7 @@ for dateSubj_i = 1:length(runList)
         catch
             disp('Error caught, going on to next loop')
             clc; close all;
-            fprintf('Done! \n');
+            fprintf('Ran into Error, Moving to next File. \n');
             continue
         end
         clc; close all;

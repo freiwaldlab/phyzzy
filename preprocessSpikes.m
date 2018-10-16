@@ -23,7 +23,7 @@ end
 
 %%%%% remove spike data from non-spike channels (e.g. reference electrodes), unsort low quality units, and remove noise units
 spikesByChannel = repmat(struct('times',[],'units',[],'waveforms',[]),length(params.spikeChannels),1);
-unitNames = {'unsorted', 'unit 1','unit 2','unit 3','unit 4','unit 5'};
+unitNames = {'unsorted', 'unit 1','unit 2','unit 3','unit 4','unit 5', 'unit 6','unit 7','unit 8','unit 9','unit 10'};
 channelUnitNames = cell(length(params.spikeChannels),1);
 
 %Checks for resorted spikes, overwrites NEV structure with new unit

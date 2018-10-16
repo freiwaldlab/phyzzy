@@ -1,4 +1,4 @@
-function [ runAnalysisInputs ] = processRun( varargin )
+function [ runAnalysisInputs ] = processRunNoTask( varargin )
 %processRun loads, preprocesses, and aligns task events, lfps, muas, units, and analog signals (eg eye, accelerometer,photodiodes)
 %   - handles single-channel and multi-channel sessions
 %   - relies only on raw task log and physiology fiels: currently visiko (.log) and blackrock (.ns5,.ns2)
@@ -40,14 +40,12 @@ function [ runAnalysisInputs ] = processRun( varargin )
 
 addpath(genpath('dependencies/genpath_exclude'));
 addpath(genpath_exclude('dependencies',{'*mvgc_v1.0'})); %note: use this to exclude libraries that overwrite matlab builtin namespaces, until they're needed
-
 addpath('buildAnalysisParamFileLib');
 % load analysis parameters
 usePreprocessed = 0;
 preprocessedCC = 0;
 defaultPreprocessed = 0;
 keepItemsNotPresented = 0;
-
 assert(mod(nargin,2) == 0, 'processRun takes arguments as name-value pairs; odd number of arguments provided');
 for argPair_i=1:nargin/2
   argName = varargin{1+2*(argPair_i-1)};
@@ -107,10 +105,11 @@ else
     if exist('paramBuilder','var')
       analysisParamFilename = feval(paramBuilder);
     else
-      analysisParamFilename = buildAnalysisParamFile();
+      analysisParamFilename = buildAnalysisParamFileNoTask();
     end
   end
 end
+
 
 if ~usePreprocessed
   checkAnalysisParamFile(analysisParamFilename);
@@ -143,8 +142,30 @@ if ~usePreprocessed
   lineNoiseTriggers = preprocessStrobe(lineNoiseTriggerFilename, lineNoiseTriggerParams);
   lfpData = preprocessLFP(lfpFilename, ephysParams, lineNoiseTriggers);
   diodeTriggers = preprocessStrobe(photodiodeFilename, photodiodeParams);
-  [ taskData, stimTiming ] = preprocessLogFile(taskFilename, taskTriggers, diodeTriggers, stimSyncParams); % load visual stimulus data and transform its timestamps to ephys clock reference
-%   [ pre, post ] = spikeBackground( spikesByChannel, taskData, spikeChannels, params )
+
+  %special section to spoof task data
+  numTrials = floor((size(lfpData,2)-2*preAlign)/(psthPre+psthPost+psthImDur));
+  taskData.taskEventIDs = repmat({'null'},numTrials,1);
+  taskData.stimJumps = repmat([0 0],numTrials,1);
+  taskData.stimFramesLost = zeros(numTrials,1);
+  taskData.taskEventStartTimes = (2*preAlign:psthPre+psthPost+psthImDur:size(lfpData,2))';
+  taskData.taskEventEndTimes = taskData.taskEventStartTimes+psthImDur;
+  taskData.eventTimeAdjustments = zeros(size(taskData.taskEventStartTimes));
+  taskData.fixationInTimes = 1;
+  taskData.fixationOutTimes = [];
+  taskData.juiceOnTimes = [];
+  taskData.juiceOffTimes = [];
+  taskData.fixSpotFlashStartTimes = [];
+  taskData.fixSpotFlashEndTimes = [];
+  taskData.stimParams = struct();
+  taskData.RFmap = 0;
+  
+  stimTiming.shortest = psthImDur;
+  stimTiming.longest = psthImDur;
+  stimTiming.ISI = psthPre+psthPost;
+  %end special section
+  
+  %   [ pre, post ] = spikeBackground( spikesByChannel, taskData, spikeChannels, params )
   analogInData = preprocessEyeSignals(analogInData,taskData,eyeCalParams);
   analogInData = preprocessAccelSignals(analogInData, accelParams); 
   % determine the duration of ephys data collection, in ms
@@ -168,7 +189,6 @@ if ~usePreprocessed
   excludeStimParams.ephysDuration = ephysDuration;
   
   taskDataAll = taskData;
-  taskData = excludeTrials( taskData, excludeStimParams); %exclude trials for lost fixation etc. 
   
   if stimTiming.shortest == stimTiming.longest
     psthParams.psthImDur = stimTiming.shortest;
@@ -187,14 +207,9 @@ if ~usePreprocessed
   end
 
   %sort trials by image and image category
-  tmp = load(stimParamsFilename); %loads variables paramArray, categoryLabels,eventLabels
-  eventCategories = tmp.paramArray;
-  categoryList = tmp.categoryLabels;
-  try
-    eventLabels = tmp.eventLabels;
-  catch
-    eventLabels = tmp.pictureLabels; %implements back-compatibility with previous variable names
-  end
+  eventCategories = {{'null','null'}};
+  categoryList = {'null'};
+  eventLabels = {'null'};
   eventIDs = cell(size(eventCategories,1),1);
   for event_i = 1:length(eventCategories)
     eventIDs{event_i} = eventCategories{event_i}{1}; %per the stimParamFile spec, this is the event ID
@@ -210,8 +225,6 @@ if ~usePreprocessed
     trialIDsByEvent{event_i} = find(strcmp(taskData.taskEventIDs,eventIDs{event_i}));
   end
 
-  assert(~(sum(eventsNotObserved) == length(eventsNotObserved)),'No Events observed. Confirm correct stimulus Param file is in use.');
-  
   % todo: need defense against image with onset but no offset? 
   % todo: add similar defense for rf map locations here?
   if ~taskData.RFmap
@@ -330,6 +343,7 @@ runAnalysisInputs.onsetsByCategory = onsetsByCategory;
 runAnalysisInputs.offsetsByCategory = offsetsByCategory;
 runAnalysisInputs.trialIDsByCategory = trialIDsByCategory;
 runAnalysisInputs.excludeStimParams = excludeStimParams;
+
 
 if ~exist('analyzer','var')
   runAnalyses(runAnalysisInputs);

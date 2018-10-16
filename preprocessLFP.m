@@ -2,7 +2,7 @@ function [ lfpData, extraChannels ] = preprocessLFP( lfpFilename, params, vararg
 % Load, decimate, and filter LFP, and index it by order in params. lfpChannels
 %    decimation and filtering are optional; specified in params
 %
-%    Also return extraChannels sampled at the LFP sampling frequency, as
+%    Also return extra channels sampled at the LFP sampling frequency, as
 %    struct with fields ChannelID and Data, with matching indexing
 
 % unpack params fields

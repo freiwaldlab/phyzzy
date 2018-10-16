@@ -16,10 +16,20 @@ function [ taskDataValid ] = excludeTrials( taskData, params )
 %   - minStimDuration (ms)
 %   todo: exclude stimuli shorter than minStimDuration (for arrythmic runs)
 
+if isfield(params,'needExcludeTrials') && params.needExcludeTrials == 0
+  taskDataValid = taskData;
+  return
+end
 fixPre = params.fixPre;
 fixPost = params.fixPost; 
 flashPre = params.flashPre;  
 flashPost = params.flashPost;
+if isfield(params,'ephysDataDuration')
+  ephysDuration = params.ephysDuration;
+else
+  ephysDuration = max(taskData.taskEventStartTimes);
+  disp('No ephysDataDuration supplied to excludeParams; using final task event start time as duration lower bound.');
+end
 if isfield(params,'needExcludeTrials') && ~params.needExcludeTrials
   taskDataValid = taskData;
   return
@@ -40,6 +50,16 @@ end
 if isfield(params, 'maxEventTimeAdjustmentDeviation') && isfield(taskData,'eventTimeAdjustments')
   maxEventTimeAdjustmentDeviation = params.maxEventTimeAdjustmentDeviation;
   eventTimeAdjustmentDeviations = abs(taskData.eventTimeAdjustments - median(taskData.eventTimeAdjustments));
+end
+if isfield(params, 'ephysDataPre')
+ ephysDataPre = params.ephysDataPre;
+else
+  ephysDataPre = fixPre;
+end
+if isfield(params, 'ephysDataPost')
+ ephysDataPost = params.ephysDataPost;
+else
+  ephysDataPost = fixPost;
 end
 
 trialValid = zeros(length(taskData.taskEventIDs),1);
@@ -107,6 +127,12 @@ for trial_i = 1:length(taskData.taskEventIDs)
     if ~isempty(lastShakeOn) && lastShakeOn > lastShakeOff %note: short circuit
       continue
     end
+  end
+  if (taskData.taskEventStartTimes(trial_i) - ephysDataPre) <= 0
+    continue
+  end
+  if taskData.taskEventEndTimes(trial_i) + ephysDataPost > ephysDuration
+    continue
   end
   trialValid(trial_i) = 1;
 end
