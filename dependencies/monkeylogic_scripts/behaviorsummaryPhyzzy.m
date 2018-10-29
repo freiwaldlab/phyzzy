@@ -257,7 +257,9 @@ uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'st
 y = y - lineinterval*2.5;
 uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w-20 22*2.5],'string',sprintf('Activity comments: %s',userVars2.activityComments), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
-y = y - lineinterval*3;
-uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w-20 22*3],'string',sprintf('General Comments: %s',userVars2.comments), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
+if isfield(userVars2,'comments')
+  y = y - lineinterval*3;
+  uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w-20 22*3],'string',sprintf('General Comments: %s',userVars2.comments), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
+end
 
 end

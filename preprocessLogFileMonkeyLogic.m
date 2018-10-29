@@ -37,21 +37,11 @@ disp('parsing serial IO packets');
 packetTimes = double(taskTriggers.TimeStampSec)*1000; %convert seconds to milliseconds
 packetData = double(taskTriggers.UnparsedData);
 
-assert(logical(~isempty(packetData)),'The Blackrock Digital inputs are empty. Digital inputs may have not been plugged in.');
-
-% OVERALL PLAN - Don't reference the eventmarkers as signs of stim on time,
-% use the closest strobe swap to the arrival of that marker instead.
-
-% Find the time stamps for the stimuli presentation. 
-% taskEventStartTimesBlk = packetTimes(packetData == 20);  %Blk affix signifies Blackrock reference frame
-% taskEventEndTimesBlk = packetTimes(packetData == 30);
-% fprintf('number of stim triggers received by blackrock: %s \n', num2str(length(taskEventStartTimesBlk)));
-%clear packetData; %Seemingly still of use later.
-
 %Parse the Log file
 disp('Loading MonkeyLogic log file');
 assert(logical(exist(logfile,'file')),'The logfile you requested does not exist.');
 [data,MLConfig,TrialRecord] = mlread(logfile);
+
 
 %Find stimulus timing range - in ML, we have no range within valid trials.
 stimTiming.shortest = 2800; %Making this 0 for now
@@ -75,6 +65,7 @@ end
 %Pull Behavioral codes for other events
 behavioralCodes = TrialRecord.TaskInfo.BehavioralCodes;
 
+fixCueMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Fix Cue'));
 trialStartMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Start trial'));
 stimStartMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Stimuli On'));
 stimEndMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Stimuli Off'));
@@ -83,33 +74,82 @@ frameSkipMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'
 trialEndMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'End trial'));
 manualRewardMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Manual reward'));
 
-%Code to get rid of any markers prior to the first trial beginning (means
-%we turned on blackrock AFTER beginning MKL.
-lol = find(packetData == trialStartMarker);
-packetData = packetData(lol(1):end);
-packetTimes = packetTimes(lol(1):end);
 
-%Comb through the Blackrock data and pull codes/times associated w/ valid
-%trials. 
-[taskEventStartTimesBlk, taskEventEndTimesBlk, juiceOnTimesBlk, juiceOffTimesBlk, taskEventIDs_condnum] = deal(zeros(sum(packetData == 40), 1));
-trueTrialcount = 1;
 
-for ii = 1:length(packetData)
-    if packetData(ii) > 100
-        stimCondTemp = packetData(ii);
-    elseif packetData(ii) == stimStartMarker
-        stimStartTemp = packetTimes(ii);
-    elseif packetData(ii) == stimEndMarker
-        stimEndTemp = packetTimes(ii);
-    elseif packetData(ii) == 40 %This assumes the "juice end time" is right after this marker.
-        taskEventIDs_condnum(trueTrialcount) = stimCondTemp;
-        taskEventStartTimesBlk(trueTrialcount) = stimStartTemp;
-        taskEventEndTimesBlk(trueTrialcount) = stimEndTemp;
-        juiceOnTimesBlk(trueTrialcount) = packetTimes(ii);
-        juiceOffTimesBlk(trueTrialcount) = packetTimes(ii + 1);
-        trueTrialcount = trueTrialcount + 1;
+if ~isempty(packetData) %Means the packets didn't get to Blackrock. This data is represented in the logfile produced as well.
+    %Code to get rid of any markers prior to the first trial beginning (means
+    % blackrock turned on AFTER beginning MKL.
+    lol = find(packetData == trialStartMarker);
+    packetData = packetData(lol(1):end);
+    packetTimes = packetTimes(lol(1):end);
+    
+    %Comb through the Blackrock data and pull codes/times associated w/ valid
+    %trials.
+    [taskEventStartTimesBlk, taskEventEndTimesBlk, juiceOnTimesBlk, juiceOffTimesBlk, taskEventIDs_condnum] = deal(zeros(sum(packetData == 40), 1));
+    trueTrialcount = 1;
+    
+    for ii = 1:length(packetData)
+        if packetData(ii) > 100
+            stimCondTemp = packetData(ii);
+        elseif packetData(ii) == stimStartMarker
+            stimStartTemp = packetTimes(ii);
+        elseif packetData(ii) == stimEndMarker
+            stimEndTemp = packetTimes(ii);
+        elseif packetData(ii) == rewardMarker %This assumes the "juice end time" is right after this marker.
+            taskEventIDs_condnum(trueTrialcount) = stimCondTemp;
+            taskEventStartTimesBlk(trueTrialcount) = stimStartTemp;
+            taskEventEndTimesBlk(trueTrialcount) = stimEndTemp;
+            juiceOnTimesBlk(trueTrialcount) = packetTimes(ii);
+            juiceOffTimesBlk(trueTrialcount) = packetTimes(ii + 1);
+            trueTrialcount = trueTrialcount + 1;
+        end
     end
+else
+    error('The Blackrock Digital inputs are empty. Digital inputs may have not been plugged in.');
+    disp('The Blackrock Digital inputs are empty. Digital inputs may have not been plugged in. Using MKL Time stamps.');
+    [taskEventStartTimesBlk, taskEventEndTimesBlk, juiceOnTimesBlk, juiceOffTimesBlk, taskEventIDs_condnum] = deal(zeros(sum(TrialRecord.TrialErrors == 0), 1));
+    
+    %Since there are no behavioral timestamps, you need to line these codes
+    %up with something. The strobe is the only non-digital signal which is directed and
+    %simply "lined up" to MonkeyLogic's control of trials. Assumptions must
+    %be made. as of Oct '18, the grey background is "mid", the strobe in
+    %white is high, and the task has the strobe @ low, or black. Every
+    %trial has the fixation period, most proceed past it, few don't. Proper
+    %indexing of the strobe will rely on capturing the fixation period.
+
+    %Grab the array of start times from the data structure.
+    %[dataConcat, ~, ~] = mlconcatenate(logfile);
+    
+    %Find the time stamp of the first trial's start time. 
+    firstTrialFix = data(1).BehavioralCodes.CodeTimes(find(data(1).BehavioralCodes.CodeNumbers == fixCueMarker));
+
+    % This value should line up with the first switching on of the strobe,
+    % and if recording of the strobe began after the MKL Exp was started
+    % (but not initiated, before Trial 1), screen is grey, strobe is white
+    % for fix, so 'midtoHigh' first marker is what we want to match this
+    % to.
+    strobeToMKLOffset = diodeTriggers.midToHigh - firstTrialFix;
+    
+    %Add this offset to all the startTimes.
+    %taskEventStartTimesBlk = vertcat(dataConcat.AbsoluteTrialStartTime);
+
+    
+    %taskEventStartTimesBlk = vertcat(data(1:end).AbsoluteTrialStartTime) + strobeToMKLOffset;
+    
+    %Shift all of those start times by the amount between the start of the
+    %blackrock (First transition from mid/high). This may not work in
+    %scenarios where the Blackrock was turned on well before the trial
+    %began (and if anything came on the screen to mess with it). (Assuming
+    %these timestamps are in the same units).
+    
+    
+    %Idea 1 - use the transition from Grey to White (Before task to First
+    %Fix window) as a source of Lag, and add it to every time stamp once it
+    %is collected.
+    
+    
 end
+
 
 %We now have the start of trials, as per the eventmarkers. We want to move
 %that to strobe space. This will be done by finding the transitions for the
