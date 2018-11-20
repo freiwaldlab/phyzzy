@@ -264,7 +264,7 @@ else
     eyeCalParams.needEyeCal = 0;
     logString = strcat(logString,'eyeCalParams.needEyeCal\n');
   end
-  if ~isfield(eyeCalParams,'method') || ~ischar(eyeCalParams.method) || ~ismember(eyeCalParams.method,{'autoZeroSingle','zeroEachFixation','hardcodeZero','fromFile'})
+  if ~isfield(eyeCalParams,'method') || ~ischar(eyeCalParams.method) || ~ismember(eyeCalParams.method,{'autoZeroSingle','zeroEachFixation','hardcodeZero','fromFile','monkeyLogic'})
     eyeCalParams.method = 'autoZeroSingle';
     logString = strcat(logString,'eyeCalParams.method\n');
   end

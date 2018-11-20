@@ -4,8 +4,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids()
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '005';
-dateSubject = '20181021Mo';
+runNum = '002';
+dateSubject = '20181029Mo';
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
 
@@ -19,7 +19,7 @@ switch machine
     ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data October'; 
     stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data October';
     outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
-    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok    
+    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_V2.mat';   %#ok    
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     stimulusLogVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
@@ -73,9 +73,9 @@ ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a
 ephysParams.plotFilterResult = 0; %#ok
 
 % parameters preprocessAnalogIn, see function for details
-analogInParams.needAnalogIn = 0;
-analogInParams.analogInChannels = [129,130]; 
-analogInParams.channelNames = {'eyeX','eyeY'};
+analogInParams.needAnalogIn = 1;
+analogInParams.analogInChannels = [129,130,137]; 
+analogInParams.channelNames = {'eyeX','eyeY','pupil'};
 analogInParams.channelUnits = {'dva','dva','au'};
 analogInParams.analogInChannelScaleBy = [5/32764 5/32764 5/32764]; %converts raw values to volts
 analogInParams.decimateFactorPass1 = 1; 
@@ -154,18 +154,19 @@ stimSyncParams.subTriggerArrayFilenames = {'socialSceneConcatSubTriggers.mat'};
 stimSyncParams.usePhotodiode = 1;        
 stimSyncParams.outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum); %#ok
 %
-eyeCalParams.needEyeCal = 0;
-eyeCalParams.method = 'hardcodeZero'; %'zeroEachFixation'
+eyeCalParams.needEyeCal = 1;
+eyeCalParams.method = 'monkeyLogic'; %'zeroEachFixation', 'monkeyLogic'
+eyeCalParams.monkeyLogicShift = 1;
 eyeCalParams.makePlots = 1;
 eyeCalParams.eyeXChannelInd = 1;
 eyeCalParams.eyeYChannelInd = 2;
 eyeCalParams.eyeDChannelInd = 3;
-eyeCalParams.gainX = 112;
-eyeCalParams.gainY = 107;
-eyeCalParams.flipX = 1;
-eyeCalParams.flipY = 1; 
-eyeCalParams.offsetX = -6.4;
-eyeCalParams.offsetY = -5.6; 
+eyeCalParams.gainX = 0;
+eyeCalParams.gainY = 0;
+eyeCalParams.flipX = 0;
+eyeCalParams.flipY = 0; 
+eyeCalParams.offsetX = 0;
+eyeCalParams.offsetY = 0; 
 eyeCalParams.calFile = ''; %note: needed only when method = fromFile
 eyeCalParams.fixOutLag = 10; 
 eyeCalParams.minFixZeroTime = 1000; %#ok
