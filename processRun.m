@@ -40,8 +40,8 @@ function [ runAnalysisInputs ] = processRun( varargin )
 
 addpath(genpath('dependencies/genpath_exclude'));
 addpath(genpath_exclude('dependencies',{'*mvgc_v1.0'})); %note: use this to exclude libraries that overwrite matlab builtin namespaces, until they're needed
-
 addpath('buildAnalysisParamFileLib');
+
 % load analysis parameters
 usePreprocessed = 0;
 preprocessedCC = 0;
