@@ -248,19 +248,19 @@ end
   %Shift over all the events, using the calculated line.
   eventTimeAdjustments = taskEventStartTimesFit-taskEventStartTimesBlk;
   
-  figure();
-  hist(eventTimeAdjustments,40);
-  title('Sync adjustments from photodiode');
-  xlabel('offset (adjusted - original) (ms)');
-  ylabel('count');
-  disp(median(eventTimeAdjustments));
-  [~,adjSortInds] = sort(abs(eventTimeAdjustments-median(eventTimeAdjustments)), 'descend');
-  disp('worst alignments, log file times');
-  disp(taskEventStartTimesLog(adjSortInds(1:min(5,length(adjSortInds)))));
-  disp('worst alignments, adjusted times');
-  disp(taskEventStartTimesBlk(adjSortInds(1:min(5,length(adjSortInds)))));
-  disp('worst alignments, adjustment values (ms)');
-  disp(eventTimeAdjustments(adjSortInds(1:min(5,length(adjSortInds)))));
+%   figure();
+%   hist(eventTimeAdjustments,40);
+%   title('Sync adjustments from photodiode');
+%   xlabel('offset (adjusted - original) (ms)');
+%   ylabel('count');
+%   disp(median(eventTimeAdjustments));
+%   [~,adjSortInds] = sort(abs(eventTimeAdjustments-median(eventTimeAdjustments)), 'descend');
+%   disp('worst alignments, log file times');
+%   disp(taskEventStartTimesLog(adjSortInds(1:min(5,length(adjSortInds)))));
+%   disp('worst alignments, adjusted times');
+%   disp(taskEventStartTimesBlk(adjSortInds(1:min(5,length(adjSortInds)))));
+%   disp('worst alignments, adjustment values (ms)');
+%   disp(eventTimeAdjustments(adjSortInds(1:min(5,length(adjSortInds)))));
   
   %Assuming you're happy with this model, shift values only in the log to
   %Blackrock time.

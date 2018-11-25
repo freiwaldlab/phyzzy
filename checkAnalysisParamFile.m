@@ -116,7 +116,7 @@ else
     else
       ephysParams.channelNames = cell(numChannels,1);
       for channel_i = 1:numChannels
-        ephysParams.channelNames{channel_i} = sprintf('ch%d',channel_i);  
+        ephysParams.channelNames{channel_i} = sprintf('ch%d',channel_i);
       end
       logString = strcat(logString,'ephysParams.channelNames\n');
     end
@@ -141,41 +141,41 @@ else
   end
   if ~isfield(ephysParams,'samPerMS') || ~isnumeric(ephysParams.samPerMS)
     ephysParams.samPerMS = 1;
-    logString = strcat(logString,'ephysParams.samPerMS\n'); 
-  else
-    if ephysParams.samPerMS ~= 1
-      disp('Warning: lfp samples per ms ~= 1. In current implementation, this will lead to axes in samples incorrectly labeled as in ms');
-    end
-  end
-  if ~isfield(ephysParams,'unitsToUnsort') || ~iscell(ephysParams.unitsToUnsort) || ~length(ephysParams.unitsToUnsort) == length(ephysParams.spikeChannels)
-    ephysParams.unitsToUnsort = cell(length(ephysParams.spikeChannels));
-    logString = strcat(logString,'ephysParams.unitsToUnsort\n'); 
-  end
-  if ~isfield(ephysParams,'unitsToDiscard') || ~iscell(ephysParams.unitsToDiscard) || ~length(ephysParams.unitsToDiscard) == length(ephysParams.spikeChannels)
-    ephysParams.unitsToDiscard = cell(length(ephysParams.spikeChannels));
-    logString = strcat(logString,'ephysParams.unitsToDiscard\n'); 
-  end
-  if ~isfield(ephysParams,'spikeWaveformPca') || ~ismember(ephysParams.spikeWaveformPca,[0 1])
-    ephysParams.spikeWaveformPca = 0;
-    logString = strcat(logString,'ephysParams.spikeWaveformPca\n');
-  end
-  if ~isfield(ephysParams,'plotSpikeWaveforms') || ~ismember(ephysParams.plotSpikeWaveforms,[0 1])
-    ephysParams.plotSpikeWaveforms = 0;
-    logString = strcat(logString,'ephysParams.plotSpikeWaveforms\n');
-  end
-  if ~isfield(ephysParams,'shiftSpikeWaveforms') || ~ismember(ephysParams.shiftSpikeWaveforms,[0 1])
-    ephysParams.shiftSpikeWaveforms = 0;
-    logString = strcat(logString,'ephysParams.shiftSpikeWaveforms\n');
-  end
-  if ~isfield(ephysParams,'filter') %todo: add check for digitalFilter object type?
-    ephysParams.filter = '';
-    logString = strcat(logString,'ephysParams.filter\n');
-  end
-  if ~isfield(ephysParams,'plotFilterResult') || ~ismember(ephysParams.plotFilterResult,[0 1])
-    ephysParams.plotFilterResult = 0;
-    logString = strcat(logString,'ephysParams.plotFilterResult\n');
+    logString = strcat(logString,'ephysParams.samPerMS\n');
+  elseif ephysParams.samPerMS ~= 1
+    disp('Warning: lfp samples per ms ~= 1. In current implementation, this will lead to axes in samples incorrectly labeled as in ms');
   end
 end
+
+if ~isfield(ephysParams,'unitsToUnsort') || ~iscell(ephysParams.unitsToUnsort) || ~length(ephysParams.unitsToUnsort) == length(ephysParams.spikeChannels)
+  ephysParams.unitsToUnsort = cell(length(ephysParams.spikeChannels));
+  logString = strcat(logString,'ephysParams.unitsToUnsort\n');
+end
+if ~isfield(ephysParams,'unitsToDiscard') || ~iscell(ephysParams.unitsToDiscard) || ~length(ephysParams.unitsToDiscard) == length(ephysParams.spikeChannels)
+  ephysParams.unitsToDiscard = cell(length(ephysParams.spikeChannels));
+  logString = strcat(logString,'ephysParams.unitsToDiscard\n');
+end
+if ~isfield(ephysParams,'spikeWaveformPca') || ~ismember(ephysParams.spikeWaveformPca,[0 1])
+  ephysParams.spikeWaveformPca = 0;
+  logString = strcat(logString,'ephysParams.spikeWaveformPca\n');
+end
+if ~isfield(ephysParams,'plotSpikeWaveforms') || ~ismember(ephysParams.plotSpikeWaveforms,[0 1])
+  ephysParams.plotSpikeWaveforms = 0;
+  logString = strcat(logString,'ephysParams.plotSpikeWaveforms\n');
+end
+if ~isfield(ephysParams,'shiftSpikeWaveforms') || ~ismember(ephysParams.shiftSpikeWaveforms,[0 1])
+  ephysParams.shiftSpikeWaveforms = 0;
+  logString = strcat(logString,'ephysParams.shiftSpikeWaveforms\n');
+end
+if ~isfield(ephysParams,'filter') %todo: add check for digitalFilter object type?
+  ephysParams.filter = '';
+  logString = strcat(logString,'ephysParams.filter\n');
+end
+if ~isfield(ephysParams,'plotFilterResult') || ~ismember(ephysParams.plotFilterResult,[0 1])
+  ephysParams.plotFilterResult = 0;
+  logString = strcat(logString,'ephysParams.plotFilterResult\n');
+end
+
 
 %%% AnalogInParams %%%
 if ~logical(exist('analogInParams','var')) || ~isstruct(analogInParams)
