@@ -113,47 +113,10 @@ switch calibMethod
     end
 end
 
-eyeD = eyeD - mean(eyeD(fixInInds == 1)); %This doesn't seem to be passed out?
 fixInX = eyeX(fixInInds == 1);
 fixInY = eyeY(fixInInds == 1);
 fixInD = eyeD(fixInInds == 1);
 
-%% Move MonkeyLogic's eye signal over to Blackrock's clock - to be used when blackrock eye signals are unreliable for whatever reason.
-% Assumes Y is correct, as seems to be the case for August and October
-% recordings
-if isfield(params, 'monkeyLogicShift') && (params.monkeyLogicShift == 1)
-  %Hardcoded variables
-  samPerMS = 1; %1000 Hz Sampling rate which the eye data exists in.
-  
-  %Make an array that will look like the blackrock one.
-  eyeXMKL = zeros(size(eyeX));
-  eyeYMKL = zeros(size(eyeY));
-  
-  for ii = 1:length(taskData.mklTrialStarts) %for every trial start
-    %Find the spot in the vector to go (and end) - Mkl times already in ms.
-    startInd = round(samPerMS*taskData.mklTrialStarts(ii));
-    if startInd == 0
-      startInd = 1;
-    end
-    endInd = startInd + length(taskData.eyeData(ii).Eye(:,1)') - 1;
-    
-    %Place the data in the vector
-    eyeXMKL(startInd:endInd) = taskData.eyeData(ii).Eye(:,1)';
-    eyeYMKL(startInd:endInd) = taskData.eyeData(ii).Eye(:,2)';
-  end
-  
-  %Next Step - find the delay between the y on both machines... 
-  tlag = finddelay(eyeYMKL,eyeY);
-  
-  %and shift the signal for the X to that space. Overwrite the .ns2 output
-  eyeX = padarray(eyeXMKL, [0,tlag], 0, 'pre');
-  eyeY = padarray(eyeYMKL, [0,tlag], 0, 'pre');
-  
-  %A cut the same amount off the end, to preserve the length.
-  eyeX = eyeX(1:end-tlag);
-  eyeY = eyeY(1:end-tlag);
-  
-end
 %% Plots and Output
 
 if params.makePlots
@@ -180,7 +143,7 @@ end
 
 analogInData(params.eyeXChannelInd,:) = eyeX;
 analogInData(params.eyeYChannelInd,:) = eyeY;
-analogInData(params.eyeYChannelInd,:) = eyeD;
+analogInData(params.eyeDChannelInd,:) = eyeD;
 
 end
 

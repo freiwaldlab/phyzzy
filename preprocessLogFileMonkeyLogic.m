@@ -276,8 +276,8 @@ end
 %nor are they directly recorded by MKL.
 fixSpotFlashStartTimesBlk = taskEventStartTimesBlk(1);
 fixSpotFlashEndTimesBlk = taskEventEndTimesBlk(1);
-fixationInTimesBlk = taskEventStartTimesBlk(2);
-fixationOutTimesBlk = taskEventEndTimesBlk(end);
+fixationInTimesBlk = taskEventStartTimesBlk(1);
+fixationOutTimesBlk = taskEventEndTimesBlk(1);
 
 % finally, build the output structure
 taskData.taskEventIDs = taskEventIDs';
@@ -297,6 +297,8 @@ taskData.eyeData = tmpEye;
 taskData.eyeCal.origin = MLConfig.EyeTransform{2}.origin;
 taskData.eyeCal.gain = MLConfig.EyeTransform{2}.gain;
 taskData.mklTrialStarts = mklTrialStarts;
+taskData.NEVTrialTimes = taskEventStartTimesBlk;
+
 
 end
 %

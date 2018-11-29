@@ -369,24 +369,28 @@ trialDatabaseStruct = struct();
 trialDatabaseStruct.images = eventLabels;
 translationTable = cell(length(eventLabels),1);
 for ii = 1:length(eventLabels)
-    translationTable{ii} = paramArray{strcmp(pictureLabels,eventLabels(ii))}{1};
+  translationTable{ii} = paramArray{strcmp(pictureLabels,eventLabels(ii))}{1};
 end
 trialDatabaseStruct.translationTable = translationTable;
 psthPeaksByImageTmp = psthByImage;
 
 for ii = 1:length(psthPeaksByImageTmp)
-    for jj = 1:length(psthPeaksByImageTmp{ii})
-            psthPeaksByImageTmp{ii}{jj} = psthPeaksByImageTmp{ii}{jj}(:,psthPre+1:(end-psthPost-1));
-            %Zero regions not interested in, making sure to not add
-            %anything in the front to mess up index.
-            psthPeaksByImageTmp{ii}{jj}(1:frEpochs(1,1)) = 0;
-            [psthPeaksByImage{ii}{jj},  psthPeaksIndByImage{ii}{jj}] = max(psthPeaksByImageTmp{ii}{jj},[],2);
-    end
+  for jj = 1:length(psthPeaksByImageTmp{ii})
+    psthPeaksByImageTmp{ii}{jj} = psthPeaksByImageTmp{ii}{jj}(:,psthPre+1:(end-psthPost-1));
+    %Zero regions not interested in, making sure to not add
+    %anything in the front to mess up index.
+    psthPeaksByImageTmp{ii}{jj}(1:frEpochs(1,1)) = 0;
+    [psthPeaksByImage{ii}{jj},  psthPeaksIndByImage{ii}{jj}] = max(psthPeaksByImageTmp{ii}{jj},[],2);
+  end
 end
 trialDatabaseStruct.psthPeaksIndByImage = psthPeaksIndByImage;
 trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage;
 
 save([outDir 'trialDatabase'], 'trialDatabaseStruct')
+
+if isfield(plotswitch,'imageEyeHeatMap') && plotSwitch.imageEyeHeatMap
+
+end
 
 if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
   for channel_i = 1:length(channelNames)

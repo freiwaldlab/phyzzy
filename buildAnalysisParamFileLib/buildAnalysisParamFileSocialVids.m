@@ -191,13 +191,12 @@ excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 
 psthParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
-psthParams.psthPost = 800;
+psthParams.psthPost = 300;
 psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
 psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;
 psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
-
 
 % TW=3 with T=.2, then W = 15 Hz (5 tapers)
 % TW=1.5 with T=.1, then W = 15 Hz (2 tapers)
@@ -233,6 +232,8 @@ correlParams.smoothingFilter = smoothingFilter/sum(smoothingFilter); %#ok
 lfpAlignParams.samPerMS = 1; % because this is after decimation
 lfpAlignParams.msPreAlign = psthParams.psthPre+tfParams.movingWin(1)/2; 
 lfpAlignParams.msPostAlign = psthParams.psthImDur+psthParams.psthPost+tfParams.movingWin(1)/2;
+lfpAlignParams.Processor = @preprocessLogFileMonkeyLogic
+stimSyncParams.log = @preprocessLogFileMonkeyLogic;
 %
 spikeAlignParams.preAlign = psthParams.psthPre+3*psthParams.smoothingWidth;
 spikeAlignParams.postAlign = psthParams.psthImDur+psthParams.psthPost+3*psthParams.smoothingWidth;   %#ok
