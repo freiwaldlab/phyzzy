@@ -232,8 +232,8 @@ correlParams.smoothingFilter = smoothingFilter/sum(smoothingFilter); %#ok
 lfpAlignParams.samPerMS = 1; % because this is after decimation
 lfpAlignParams.msPreAlign = psthParams.psthPre+tfParams.movingWin(1)/2; 
 lfpAlignParams.msPostAlign = psthParams.psthImDur+psthParams.psthPost+tfParams.movingWin(1)/2;
-lfpAlignParams.Processor = @preprocessLogFileMonkeyLogic
-stimSyncParams.log = @preprocessLogFileMonkeyLogic;
+lfpAlignParams.processor = @alignAnalogInMonkeyLogic;
+lfpAlignParams.taskFilename = sprintf('%s/%s/%s%s.bhv2',stimulusLogVolume,dateSubject,dateSubject,runNum);
 %
 spikeAlignParams.preAlign = psthParams.psthPre+3*psthParams.smoothingWidth;
 spikeAlignParams.postAlign = psthParams.psthImDur+psthParams.psthPost+3*psthParams.smoothingWidth;   %#ok
