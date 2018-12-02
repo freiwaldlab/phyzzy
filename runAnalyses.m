@@ -388,8 +388,41 @@ trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage;
 
 save([outDir 'trialDatabase'], 'trialDatabaseStruct')
 
-if isfield(plotswitch,'imageEyeHeatMap') && plotSwitch.imageEyeHeatMap
-
+if isfield(plotSwitch,'imageEyeMap') && plotSwitch.imageEyeMap
+  % Add Colors to each Line
+  % Add footage underneath
+  
+  for ii = 1:length(analogInByEvent)
+    %Isolate the eye data for a stimuli, its name, and path.
+    eyeInByEvent = squeeze(analogInByEvent{ii}(:,1:2,:,:));
+    event = translationTable{ii};
+    stimInfo = dir(strcat(stimDir, '/**/', event));
+    stimPath = [stimInfo(1).folder filesep stimInfo(1).name];
+    
+    %Open the Movie file
+    stimVid = VideoReader(stimPath);
+    figure()
+    xlim([-24 24])
+    ylim([-24 24])
+    title(sprintf('%s eye signal', event));
+    hold on
+    for jj = 1:size(eyeInByEvent,2)
+      x = squeeze(eyeInByEvent(1,jj,:));
+      y = squeeze(eyeInByEvent(2,jj,:));
+      h = animatedline(x(1), y(1),'color' ,colors{mod(jj,length(colors))+1});
+      a = tic; % start timer
+      for k = 2:length(x)
+        addpoints(h,x(k),y(k))
+        b = toc(a); % check timer
+        if b > (1/1000)
+          drawnow % update screen every 1/30 seconds
+          a = tic; % reset timer after updating
+        end
+      end
+    end
+    drawnow % draw final frame
+    
+  end
 end
 
 if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth

@@ -19,7 +19,8 @@ switch machine
     ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data October'; 
     stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data October';
     outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
-    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_V2.mat';   %#ok    
+    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_V2.mat';   %#ok  
+    stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     stimulusLogVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
@@ -232,8 +233,6 @@ correlParams.smoothingFilter = smoothingFilter/sum(smoothingFilter); %#ok
 lfpAlignParams.samPerMS = 1; % because this is after decimation
 lfpAlignParams.msPreAlign = psthParams.psthPre+tfParams.movingWin(1)/2; 
 lfpAlignParams.msPostAlign = psthParams.psthImDur+psthParams.psthPost+tfParams.movingWin(1)/2;
-lfpAlignParams.processor = @alignAnalogInMonkeyLogic;
-lfpAlignParams.taskFilename = sprintf('%s/%s/%s%s.bhv2',stimulusLogVolume,dateSubject,dateSubject,runNum);
 %
 spikeAlignParams.preAlign = psthParams.psthPre+3*psthParams.smoothingWidth;
 spikeAlignParams.postAlign = psthParams.psthImDur+psthParams.psthPost+3*psthParams.smoothingWidth;   %#ok
@@ -252,6 +251,7 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {60, 260}; ...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
+plotSwitch.imageEyeMap = 1;
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
 plotSwitch.prefImRaster = 0;

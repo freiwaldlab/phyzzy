@@ -7,11 +7,6 @@ if isempty(analogInData)
   return
 end
 
-if isfield(alignParams,'processor')
-  [ analogInByItem ] = alignParams.processor(analogInData, alignPointsByItem, analogInChannels, alignParams);
-  return
-end
-
 samPerMS = alignParams.samPerMS;
 samplesPreAlign = samPerMS*alignParams.msPreAlign;
 samplesPostAlign = samPerMS*alignParams.msPostAlign;

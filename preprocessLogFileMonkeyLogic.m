@@ -297,7 +297,7 @@ taskData.eyeData = tmpEye;
 taskData.eyeCal.origin = MLConfig.EyeTransform{2}.origin;
 taskData.eyeCal.gain = MLConfig.EyeTransform{2}.gain;
 taskData.mklTrialStarts = mklTrialStarts;
-taskData.NEVTrialTimes = taskEventStartTimesBlk;
+taskData.NEVTrialTimes = trialStartTimesBlk;
 
 
 end

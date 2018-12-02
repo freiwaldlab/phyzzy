@@ -117,6 +117,53 @@ fixInX = eyeX(fixInInds == 1);
 fixInY = eyeY(fixInInds == 1);
 fixInD = eyeD(fixInInds == 1);
 
+%% monkeyLogic Shift
+% If for whatever reason eye signal on Blackrock is unreliable, create
+% artificial vectors from monkeyLogic's eye data, placing it at the event
+% start times on Blackrock.
+if isfield(params, 'monkeyLogicShift') && params.monkeyLogicShift
+  [eyeXBLK, eyeYBLK] = deal(nan(size(eyeY)));
+  samPerMS = 1;
+  for ii = 1:length(taskData.NEVTrialTimes) %for every trial start
+    %Find the spot in the vector to go (and end) - Mkl times already in ms.
+    startInd = round(samPerMS*taskData.NEVTrialTimes(ii));
+    if startInd == 0
+      startInd = 1;
+    end
+    endInd = startInd + length(taskData.eyeData(ii).Eye(:,1)') - 1;
+    
+    %Place the data in the vector
+    eyeXBLK(startInd:endInd) = taskData.eyeData(ii).Eye(:,1)';
+    eyeYBLK(startInd:endInd) = taskData.eyeData(ii).Eye(:,2)';
+  end
+  
+  figure()
+  plot(eyeY)
+  hold on
+  plot(eyeYBLK)
+  
+  %Create a better fit by using an lm
+  eyeYModel = eyeY;
+  eyeYModel(isnan(eyeYBLK)) = nan;
+  eyeYBLKModel = eyeYBLK;
+  
+  logVsBlkModel = fitlm(eyeYModel, eyeYBLKModel);
+  disp(logVsBlkModel)
+  
+  m = logVsBlkModel.Coefficients.Estimate(2);
+  y0 = logVsBlkModel.Coefficients.Estimate(1);
+  eyeYBLK = (1/m)*(eyeYBLK - y0);
+  plot(eyeYBLK);
+  
+  legend('Blackrock Y Signal','Reconstructed Y signal','Reconstructed and Fit Y signal')
+  
+  %If the fit looks alright, swap in these newly constructed arrays
+  eyeXBLK = (1/m)*(eyeXBLK - y0);
+  
+  eyeY = eyeYBLK;
+  eyeX = eyeXBLK;
+end
+
 %% Plots and Output
 
 if params.makePlots
