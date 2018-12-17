@@ -8,8 +8,8 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( varargin )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '005';
-dateSubject = '180426ALAN'; 
+runNum = '009';
+dateSubject = '181205ALAN'; 
 machine = 'laptop';
 
 switch machine
@@ -48,9 +48,9 @@ verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
-ephysParams.spikeChannels = [1,33,35]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-ephysParams.lfpChannels = [1,33,35]; 
-ephysParams.channelNames = {'ML','AL','AM'};
+ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+ephysParams.lfpChannels = [1]; 
+ephysParams.channelNames = {'ML'};
 ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764, 8191/32764]; %converts raw values to microvolts
 ephysParams.commonRef = [0 0 0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
@@ -59,7 +59,7 @@ ephysParams.decimateFactorPass1 = 6; %note: product of the two decimate factors 
 ephysParams.decimateFactorPass2 = 5;
 ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should be raw rate/productOfDecimateFactors)
 %note: use Blackrock indexing for unitsToUnsort and unitsToDiscard, so unsorted is 0, first defined unit is 1, etc.
-ephysParams.unitsToUnsort = {[1,2,3],[1,2,3],[1,2,3]}; %these units will be re-grouped with u0
+ephysParams.unitsToUnsort = {[],[],[]}; %these units will be re-grouped with u0
 ephysParams.unitsToDiscard = {[],[],[]}; %these units will be considered noise and discarded
 ephysParams.spikeWaveformPca = 0;
 ephysParams.plotSpikeWaveforms = 0; %0, 1 to build then close, 2 to build and leave open
@@ -179,9 +179,9 @@ excludeStimParams.ephysDataPost = 1000;
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
 
-psthParams.psthPre = 300; % if e.g. +200, then start psth 200ms before trial onset; 
+psthParams.psthPre = 100; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 0;  % only need to set this for variable length stim runs; else, comes from log file
-psthParams.psthPost = 400;
+psthParams.psthPost = 100;
 psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
 psthParams.errorType = 3; %chronux convention: 1 is poisson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
@@ -247,8 +247,8 @@ plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
 plotSwitch.imageTuningSorted = 1;
 plotSwitch.stimPrefBarPlot = 1;
-plotSwitch.stimPrefBarPlotEarly = 1;
-plotSwitch.stimPrefBarPlotLate = 1;
+plotSwitch.stimPrefBarPlotEarly = 0;
+plotSwitch.stimPrefBarPlotLate = 0;
 plotSwitch.tuningCurves = 0;
 plotSwitch.tuningCurvesEarly = 0;
 plotSwitch.tuningCurvesLate = 0;
@@ -274,18 +274,18 @@ plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 1;
 plotSwitch.singleTrialAnalogInByCategory = 0;
-plotSwitch.lfpSpectraByCategory = 1;
-plotSwitch.spikeSpectraByCategory = 1;
+plotSwitch.lfpSpectraByCategory = 0;
+plotSwitch.spikeSpectraByCategory = 0;
 plotSwitch.SpikeSpectraTfByImage = 0;
 plotSwitch.lfpSpectraTfByImage = 0;
 plotSwitch.couplingPhasesUnwrapped = 0;
 plotSwitch.couplingPhasesAsOffsets = 0;
-plotSwitch.couplingPhasesPolar = 1;
-plotSwitch.tfSpectraByCategory = 1;
-plotSwitch.tfErrs = 1;           %#ok
+plotSwitch.couplingPhasesPolar = 0;
+plotSwitch.tfSpectraByCategory = 0;
+plotSwitch.tfErrs = 0;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
-analysisGroups.selectivityIndex.groups = {{'face';'nonface'},{'face';'object'},{'face';'body'}};
+analysisGroups.selectivityIndex.groups = {{'face';'nonface'};{'face';'object'};{'face';'body'}};
 %
 analysisGroups.stimPrefBarPlot.groups = {{{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'};{'face';'object';'body'}}};
 analysisGroups.stimPrefBarPlot.colors  = {{{'b';'c';'y';'g';'m';'r';'k'};{'b';'g';'r'}}};
@@ -355,16 +355,16 @@ analysisGroups.tfCouplingByCategory.groups = {{'face'};{'nonface'}};
 
 calcSwitch.categoryPSTH = 1;
 calcSwitch.imagePSTH = 1;
-calcSwitch.faceSelectIndex = 1;
-calcSwitch.faceSelectIndexEarly = 1;
-calcSwitch.faceSelectIndexLate = 1;
+calcSwitch.selectivityIndices = 1;
+calcSwitch.selectivityIndicesEarly = 0;
+calcSwitch.selectivityIndicesLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 1;
-calcSwitch.inducedSpectra = 1;
+calcSwitch.evokedSpectra = 0;
+calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatTF = 1;
-calcSwitch.inducedCatTF = 1;
+calcSwitch.evokedCatTF = 0;
+calcSwitch.inducedCatTF = 0;
 calcSwitch.meanEvokedTF = 0;
 calcSwitch.trialMeanSpectra = 0;
 calcSwitch.coherenceByCategory = 0; %note: not currently used, 10/10/18

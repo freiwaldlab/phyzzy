@@ -5,8 +5,8 @@ function [ analysisParamFilename ] = buildAnalysisParamFileMiniFOB( )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '006';
-dateSubject = '171119ALAN'; 
+runNum = '003';
+dateSubject = '180413ALAN'; 
 machine = 'laptop';
 
 switch machine

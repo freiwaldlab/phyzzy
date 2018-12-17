@@ -82,6 +82,10 @@ for epoch_i = 1:length(frEpochsCell)
   end
 end
 
+analysisOutFilename = strcat(outDir,'analyzedData.mat');
+save(analysisOutFilename,'dateSubject','runNum','analysisParamFilename');
+
+
 colors = ['b','c','y','g','m','r','k'];
 chColors = ['b','g','m'];
 
@@ -92,10 +96,22 @@ chColors = ['b','g','m'];
 %   end
 % end
 
-% check calcSwitch definitions and set defaults as needed
+% check calcSwitch definitions, set defaults, and apply field name updates as needed
 calcSwitchFields = {'categoryPSTH';'imagePSTH';'faceSelectIndex';'faceSelectIndexEarly';'faceSelectIndexLate';'inducedTrialMagnitudeCorrection';...
   'evokedSpectra';'inducedSpectra';'evokedImageTF';'inducedImageTF';'evokedCatTF';'inducedCatTF';'meanEvokedTF';'trialMeanSpectra';'coherenceByCategory';...
   'useJacknife'};
+% update deprecated fieldnames: syntax is:
+% {{{'oldName1_1';'oldName1_2';...};'newName1'};{{'oldName2_1';'oldName2_2';...};'newName2'};...}
+calcSwitchFieldnameUpdateMap = {{{'faceSelectIndex'};'selectivityIndices'};{{'faceSelectIndexEarly'};'selectivityIndicesEarly'};...
+  {{'faceSelectIndexLate'};'selectivityIndicesLate'}};
+for currentField_i = 1:length(calcSwitchFieldnameUpdateMap)
+  for oldField_i = 1:length(calcSwitchFieldnameUpdateMap{currentField_i}{1})
+    if isfield(calcSwitch,calcSwitchFieldnameUpdateMap{currentField_i}{1}{oldField_i})
+      calcSwitch.(calcSwitchFieldnameUpdateMap{currentField_i}{2}) = calcSwitch.calcSwitchFieldnameUpdateMap{currentField_i}{1}{oldField_i};
+    end
+  end
+end
+
 for field_i = 1:length(calcSwitchFields)
   if ~isfield(calcSwitch,calcSwitchFields{field_i}) || ~ismember(calcSwitch.(calcSwitchFields{field_i}),[0,1])
     calcSwitch.(calcSwitchFields{field_i}) = 0;
@@ -127,7 +143,7 @@ for field_i = 1:length(analysisGroupFields)
     continue
   end
   subfields = fieldnames(analysisGroups.(field));
-  itemDelimitedSubfields = cell(size(subfields));
+  itemDelimitedSubfields = cell(length(subfields),1); %we'll use this to remove all subfield entries corresponding to items not presented
   itemDelimitedSubfield_i = 0;
   for subfield_i = 1:length(itemDelimitedSubfields)
     subfield = subfields{subfield_i};
@@ -166,6 +182,25 @@ for field_i = 1:length(analysisGroupFields)
       analysisGroups.(field).(itemDelimitedSubfields{subfield_i}){group_i} = tmp(1:newItem_i);
     end
   end
+  % now, remove any groups that are empty after empty-item exclusion
+  newStruct = analysisGroups.(field);
+  validGroups = 0;
+  for group_i = 1:length(analysisGroups.(field).groups)
+    if ~isempty(analysisGroups.(field).groups{group_i})
+      validGroups = validGroups + 1;
+      for subfield_i = 1:length(subfields)
+        newStruct.(subfields{subfield_i})(validGroups) = analysisGroups.(field).(subfields{subfield_i})(group_i);
+      end
+    else
+      fprintf('The analsysGroups.%s group with index %d was removed because no item had a valid trial\n',field,group_i);
+      disp(analysisGroups.(field).groups{group_i});
+      disp('If you think there should be valid trials, check that the item naming convention in the task log file matches that in stimulusParamFile.');
+    end
+  end
+  for subfield_i = 1:length(subfields)
+    newStruct.(subfields{subfield_i}) = newStruct.(subfields{subfield_i})(1:validGroups);
+  end
+  analysisGroups.(field) = newStruct;
 end
 for field_i = 1:length(analysisGroupFields)
   field = analysisGroupFields{field_i};
@@ -235,6 +270,8 @@ for image_i = 1:length(eventLabels)
   imInds.(eventLabels{image_i}) = image_i;
 end
 
+save(analysisOutFilename,'catInds','imInds');
+
 if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
   spikesByCategoryBinned = cell(size(spikesByCategory));
   assert((movingWin(1)/2 > 3*smoothingWidth),'Error: current implementation assumes that movingWin/2 > 3*psthSmoothingWidth. Not true here');
@@ -249,6 +286,7 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
       end
     end
   end
+  save(analysisOutFilename,'spikesByCategoryBinned');
   spikesByEventBinned = cell(size(spikesByEvent));
   for image_i = 1:length(spikesByEvent)
     spikesByEventBinned{image_i} = cell(length(channelNames),1);
@@ -265,6 +303,7 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
       end
     end
   end
+  save(analysisOutFilename,'spikesByEventBinned');
 end
 
 % for channel_i = 1:length(channelNames)
@@ -355,9 +394,11 @@ for calc_i = 1:length(calcSwitches)
     if calc_i == 1
       psthByImage = psthByItem;
       psthErrByImage = psthErrByItem;
+      save(analysisOutFilename,'psthByImage','psthErrByImage');
     else
       psthByCategory = psthByItem;
       psthErrByCategory = psthErrByItem;
+      save(analysisOutFilename,'psthByCategory','psthErrByCategory');
     end
   end
 end
@@ -414,6 +455,9 @@ for event_i = 1:length(spikesByEvent)
   trialCountsByImage(event_i) = length(spikesByEvent{event_i}{1}{1});
 end
 
+save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch');
+save(analysisOutFilename,'imFr','imFrErr','imSpikeCounts','trialCountsByImage');
+
 if ~isempty(spikesByCategory)
   firingRatesByCategoryByEpoch = cell(size(frEpochs,1),1);
   firingRateErrsByCategoryByEpoch = cell(size(frEpochs,1),1);
@@ -427,8 +471,14 @@ if ~isempty(spikesByCategory)
   catFr = firingRatesByCategoryByEpoch{1};
   catFrErr = firingRateErrsByCategoryByEpoch{1};
   catSpikeCounts = spikeCountsByCategoryByEpoch{1};
+  trialCountsByCategory = zeros(length(spikesByCategory),1);
+  for cat_i = 1:length(spikesByCategory)
+    trialCountsByCategory(cat_i) = length(spikesByCategory{cat_i}{1}{1});
+  end
   
-
+  save(analysisOutFilename,'firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch');
+  save(analysisOutFilename,'catFr','catFrErr','catSpikeCounts','trialCountsByCategory');
+  
   groupLabelsByImage = zeros(length(eventLabels),length(analysisGroups.stimulusLabelGroups));
   groupLabelColorsByImage = ones(length(eventLabels),3,length(analysisGroups.stimulusLabelGroups));
   for group_i = 1:1:length(analysisGroups.stimulusLabelGroups.groups)
@@ -456,6 +506,7 @@ if ~isempty(spikesByCategory)
       end
     end
   end
+  save(analysisOutFilename,'groupLabelsByImage','groupLabelColorsByImage');
 end
 
 if ~taskData.RFmap
@@ -465,7 +516,7 @@ if ~taskData.RFmap
       if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
         continue;
       end
-      [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');
+      [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');  %todo: write the firing rates to file
       imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
       sortedImageLabels = eventLabels(imageSortOrder);
       trialCountsByImageSorted = trialCountsByImage(imageSortOrder);
@@ -474,6 +525,7 @@ if ~taskData.RFmap
       else
         sortedGroupLabelColors = ones(length(eventLabels),3);
       end
+      save(analysisOutFilename,'imageSortedRates','sortedImageLabels','imFrErrSorted','trialCountsByImageSorted');
       fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
       for i = 1:min(10,length(eventLabels))
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i),imFrErrSorted(i));
@@ -563,7 +615,9 @@ if ~taskData.RFmap
     multiChSpikesMeanNorm = mean(multiChMuaNorm);
     % multi-channel preferred images
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMin,2,'descend');
-    sortedImageLabels = eventLabels(imageSortOrder);
+    sortedImageLabels = eventLabels(imageSortOrder); 
+    multiChMinFrSort = struct('imageSortedRates',imageSortedRates','imageSortOrder',imageSortOrder,'sortedImageLabels',sortedImageLabels);
+    save(analysisOutFilename,'multiChMinFrSort');
     fprintf('\n\n\nMulti-channel Preferred Images, Maximin\n\n');
     for i = 1:min(10,length(eventLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -575,6 +629,8 @@ if ~taskData.RFmap
 
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMinNorm,2,'descend');
     sortedImageLabels = eventLabels(imageSortOrder);
+    multiChMinNormFrSort = struct('imageSortedRates',imageSortedRates','imageSortOrder',imageSortOrder,'sortedImageLabels',sortedImageLabels);
+    save(analysisOutFilename,'multiChMinNormFrSort');
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Maximin\n\n');
     for i = 1:min(10, length(sortedImageLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -586,6 +642,8 @@ if ~taskData.RFmap
 
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMeanNorm,2,'descend');
     sortedImageLabels = eventLabels(imageSortOrder);
+    multiChMeanNormFrSort = struct('imageSortedRates',imageSortedRates','imageSortOrder',imageSortOrder,'sortedImageLabels',sortedImageLabels);
+    save(analysisOutFilename,'multiChMeanNormFrSort');
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Mean\n\n');
     for i = 1:min(10,length(eventLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -626,7 +684,7 @@ if ~taskData.RFmap
               response2 = imFr{channel_i}(unit_i,imInds.(group{2}));
             end
             selectIndex = (response1 - response2) / (response1 + response2);
-            fprintf('%s > %s: %.3f\n',group{1},group{2},selectIndex);
+            fprintf('%s > %s: %.3f\n',group{1},group{2},selectIndex);   
           end
         end
       end

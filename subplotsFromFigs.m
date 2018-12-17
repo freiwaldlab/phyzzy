@@ -1,5 +1,5 @@
 function [  ] = subplotsFromFigs( dir, fname, figures, equalColWidths, equalRowHeights )
-%texSubplot uses the beamer class of LaTeX to make a subplot figure
+%subplotsFromFigs uses the beamer class of LaTeX to make a subplot figure
 %   If same fig on sequential rows, fig spans those rows
 %   Params: 
 %   - dir, string, location at which to store tmp pngs
@@ -27,7 +27,7 @@ figurePixels = cell(length(figures),length(figures{1}));
 % preprocess the figure inputs, if not already png files
 for fig_i = 1:length(figures)
   for fig_j = 1:length(figures{1})
-    if finished(fig_i,fig_j)
+    if finished(fig_i,fig_j) || isempty(figures{fig_i}{fig_j})
       continue
     end
     % if a subplot is .fig or fig handle, generate png and update figures with its filename
