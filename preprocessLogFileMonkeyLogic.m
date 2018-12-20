@@ -95,6 +95,12 @@ end
 tmpEye = [data(trueTrialArray).AnalogData];
 tmpEye = rmfield(tmpEye, {'SampleInterval', 'EyeExtra','Joystick','Mouse','PhotoDiode','General','Button'});
 
+%Package the information necessary for proper eye/stimuli relationship.
+tmp = split(MLConfig.Resolution,' ');
+screenStats.screenSize = {str2double(tmp{1}), str2double(tmp{3})};
+screenStats.PixelsPerDegree = abs(MLConfig.PixelsPerDegree);
+screenStats.DiagonalSize = MLConfig.DiagonalSize;
+
 % Behavioral summary of performance during recording
 behaviorsummaryPhyzzy(logfile)
 [~, filename, ~] = fileparts(logfile);
@@ -294,6 +300,7 @@ taskData.fixSpotFlashEndTimes = fixSpotFlashEndTimesBlk;
 taskData.stimParams = 0;
 taskData.RFmap = 0;
 taskData.eyeData = tmpEye;
+taskData.screenStats = screenStats;
 taskData.eyeCal.origin = MLConfig.EyeTransform{2}.origin;
 taskData.eyeCal.gain = MLConfig.EyeTransform{2}.gain;
 taskData.mklTrialStarts = mklTrialStarts;

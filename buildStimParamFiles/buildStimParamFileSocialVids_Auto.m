@@ -11,7 +11,7 @@ function [ ] = buildStimParamFileSocialVids_Auto()
 %Find the folder with what you want
 fprintf('Select folder containing files...\n');
 %StimFolder = uigetdir();
-StimFolder = 'E:\StimuliForFaridfromJulia\SocialDecomposed_renamed';
+StimFolder = 'G:\StimuliForFaridfromJulia\SocialDecomposed_renamed';
 
 %Find every file in this folder with the extension desired.
 tmpStimFiles = dir(StimFolder);
@@ -38,8 +38,9 @@ for ii = 1:length(dirInd)
   stimList = vertcat(stimList, subStimList);
 end
 
-%% Turn that list into the appropriate file for phyzzy.
-pictureLabels = stimList; %Nice names won't exist for now;
+%% Turn that list into the appropriate file for phyzzy..
+pictureLabels = split(stimList, '.');
+pictureLabels = pictureLabels(:,1);
 
 for ii = 1:length(stimList)
   stim = stimList{ii};
@@ -99,7 +100,7 @@ for ii = 1:length(stimList)
   stimList{ii} = horzcat(stimList{ii}, stimLabels);
 end
 
-categoryLabels = {'agents', 'objects', 'scrambles', 'landscapes', 'interaction', 'GoalDirected/Moving','Still/Idle'...
+categoryLabels = {'agents', 'objects', 'scrambles', 'landscapes', 'interaction', 'GoalDirectedOrMoving','StillIdle'...
     'chasing', 'fighting', 'mounting', 'grooming', 'holding', 'following', 'observing','foraging','sitting'...
     'faces','bodies','hands','background'};
 

@@ -33,7 +33,11 @@ analogInData = analogInDataRaw(analogInChannelMap,:);
 clear analogInDataRaw
 
 % filter the analogIn data using 2 step process.
-filterPad = 0;
+if isfield(params, 'filterPad')
+  filterPad = params.filterPad;
+else
+  filterPad = 0;
+end
 analogInDataDecPadded = zeros(size(analogInData,1),ceil(size(analogInData,2)/(decimateFactorPass1*decimateFactorPass2))+2*filterPad);
 % convert scaled units to microvolts, and decimate (note: decimation broken
 % into two steps, per matlab doc recommendation

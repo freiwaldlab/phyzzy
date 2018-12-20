@@ -4,8 +4,9 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids()
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '002';
-dateSubject = '20181029Mo';
+runNum = '003';
+dateSubject = '20181205Mo';
+
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
 
@@ -16,10 +17,10 @@ switch machine
       outputVolume = 'C:/Users/Farid/Desktop/phyzzy/Analysis';
       stimParamsFilename = 'C:/Users/Farid/Desktop/phyzzy/StimParamFileSocialVids_V2.mat';                  %#ok
   case 'Alienware_FA'
-    ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data October'; 
-    stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data October';
+    ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data_Dec'; 
+    stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data_Dec';
     outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
-    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_V2.mat';   %#ok  
+    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Decomp.mat';   %#ok  
     stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
@@ -49,6 +50,8 @@ ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be th
 ephysParams.lfpChannels = [1]; 
 ephysParams.channelNames = {'8Bm'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
+ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
+ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. In wave_clus folder.
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
 ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
@@ -60,7 +63,8 @@ ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should 
 ephysParams.unitsToUnsort = {[]}; %these units will be re-grouped with u0
 ephysParams.unitsToDiscard = {[]}; %these units will be considered noise and discarded
 ephysParams.spikeWaveformPca = 0;
-ephysParams.plotSpikeWaveforms = 0; %0, 1 to build then close, 2 to build and leave open
+ephysParams.plotSpikeWaveforms = 2; %0, 1 to build then close, 2 to build and leave open
+ephysParams.spikeWaveformsColors = [[0.0 0.0 1.0];[1.0 0.0 0.0];[0.0 0.5 0.0];[0.620690 0.0 0.0];[0.413793 0.0 0.758621];[0.965517 0.517241 0.034483]];
 ephysParams.shiftSpikeWaveforms = 0;
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
 hp1Hz = designfilt('highpassiir', 'FilterOrder',8,'PassbandFrequency',1, ...
@@ -71,7 +75,9 @@ butter1Hz200Hz_v1 = designfilt('bandpassiir','DesignMethod','butter','PassbandFr
 [tmp1,tmp2] = butter(4,[1/500,200/500]);
 butter1Hz200Hz_v2 = [tmp1,tmp2];        %#ok
 ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter
-ephysParams.plotFilterResult = 0; %#ok
+ephysParams.plotFilterResult = 0; 
+ephysParams.outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
+ephysParams.saveFig = saveFig;
 
 % parameters preprocessAnalogIn, see function for details
 analogInParams.needAnalogIn = 1;
@@ -81,6 +87,7 @@ analogInParams.channelUnits = {'dva','dva','au'};
 analogInParams.analogInChannelScaleBy = [5/32764 5/32764 5/32764]; %converts raw values to volts
 analogInParams.decimateFactorPass1 = 1; 
 analogInParams.decimateFactorPass2 = 1;
+analogInParams.filterPad = 0;
 analogInParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to analogIn (should be raw rate/productOfDecimateFactors)
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
 butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 120, 'StopbandFrequency', 480, 'PassbandRipple', 1,...
@@ -251,15 +258,15 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {60, 260}; ...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
-plotSwitch.imageEyeMap = 1;
+plotSwitch.imageEyeMap = 0;
 plotSwitch.imagePsth = 1;
-plotSwitch.categoryPsth = 0;
+plotSwitch.categoryPsth = 1;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
 plotSwitch.imageTuningSorted = 1; %Barplot per image
-plotSwitch.stimPrefBarPlot = 1;
+plotSwitch.stimPrefBarPlot = 0;
 plotSwitch.stimPrefBarPlotEarly = 0;
 plotSwitch.stimPrefBarPlotLate = 0;
 plotSwitch.tuningCurves = 0;
@@ -286,7 +293,7 @@ plotSwitch.lfpPowerAcrossChannels = 0;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 0;
-plotSwitch.lfpSpectraByCategory = 0; %Works
+plotSwitch.lfpSpectraByCategory = 0;
 plotSwitch.spikeSpectraByCategory = 0;
 plotSwitch.SpikeSpectraTfByImage = 0;
 plotSwitch.lfpSpectraTfByImage = 0;
@@ -357,8 +364,8 @@ analysisGroups.tuningCurves.names = {'Human face view','Monkey face view'};
 
 %Power spectra of SPIKE TIMES (i.e. 1's at spike times, flat elsewhere).
 %Used for both Spikes and LFPs.
-analysisGroups.spectraByCategory.groups = {{'socialInteraction';'nonInteraction';}};  %todo: add spectra diff?
-analysisGroups.spectraByCategory.names = {'SocialVNonSocial'};
+analysisGroups.spectraByCategory.groups = {{'interaction';'scrambles';}};  %todo: add spectra diff?
+analysisGroups.spectraByCategory.names = {'Interaction V Scrambles'};
 analysisGroups.spectraByCategory.colors = {{'r';'b'}};
 
 %Calculates the same spectra, but w/ sliding windows. sometimes the Power
@@ -373,9 +380,9 @@ analysisGroups.lfpSingleTrialsByCategory.names = {'SocialVNonSocial'};
 %Coherence between LFP time series and spike time series w/i single
 %channel. Does this on a trial by trial basis, and then averages across all
 %members of each group. 
-analysisGroups.coherenceByCategory.groups = {{'socialInteraction';'nonInteraction';}};
+analysisGroups.coherenceByCategory.groups = {{'interaction';'scrambles';}};
 analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; 
-analysisGroups.coherenceByCategory.names = {'SocialVNonSocial'}; %'fob';'slimCats'
+analysisGroups.coherenceByCategory.names = {'Interaction V Scrambles'}; %'fob';'slimCats'
 
 %Calculates the same as above but in sliding windows.
 analysisGroups.tfCouplingByCategory.groups = {{'socialInteraction'};{'nonInteraction';};{'objects'};{'goalDirected'}}; %#ok
@@ -391,7 +398,7 @@ calcSwitch.evokedSpectra = 0;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatTF = 1; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
+calcSwitch.evokedCatTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
 calcSwitch.inducedCatTF = 0;
 calcSwitch.meanEvokedTF = 0;
 calcSwitch.trialMeanSpectra = 0;

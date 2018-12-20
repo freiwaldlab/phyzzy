@@ -1,4 +1,4 @@
-function [ spikesByChannel, taskTriggers, channelUnitNames ] = preprocessSpikes( spikeFilename, params )
+function [ spikesByChannel, taskTriggers, channelUnitNames ] = preprocessSpikes(spikeFilename, params )
 %UNTITLED5 Summary of this function goes here
 %   params is struct with fields
 %   - spikeChannels: same length as LFP channels, in the same order, if analyzing both
@@ -43,12 +43,64 @@ if isfield(params,'offlineSorted') && params.offlineSorted == 1
     NEV.Data.Spikes.Waveform = spikeMat(:,4:end);
 end
 
-% if isfield(params, 'waveClus') && params.waveClus
-%     [A, B, C] = fileparts(spikeFilename);
-%     lfpFilename = [A '/' B '.ns5'];
-%     parse_data_NSx(lfpFilename,2) %(filename,max_memo_GB)
-% end
+if isfield(params, 'waveClus') && params.waveClus
+    %Temporarily add directories needed for wave_clus
+    addpath(genpath('dependencies/wave_clus'))
+  
+    %use the typical naming convention to find the contious trace (ns5)
+    [A, B, ~] = fileparts(spikeFilename);
+    lfpFilename = [A '/' B '.ns5'];
+    
+    %parse the ns5.
+    parsedData = parse_data_NSx(lfpFilename, 2); %(filename,max_memo_GB)
+    
+    %Find spikes in the files which matter
+    for ii = 1:length(parsedData)
+      tmpFilename = parsedData{ii};
+      tmpCut = split(tmpFilename, ["_","."]);
+      if str2double(tmpCut{end-1}(3:end)) < 129 %Connector Banks on Blackrock are channels 1 - 128.
+       output_paths = Get_spikes(parsedData{ii});
+      end
+    end
+    
+    %Cluster them, based on either a specified param file or the default.
+    if isfield(params, 'paramHandle')
+      clusterResults = Do_clustering(output_paths, 'par', params.paramHandle);
+    else
+      clusterResults = Do_clustering(output_paths);
+    end
 
+    %Cycle through cluster results (done per electrode) and load them into
+    %a temporary NEV structure.
+    [tmpSpikes.Timestamps, tmpSpikes.Electrode, tmpSpikes.Unit, tmpSpikes.Waveform] = deal([]);
+    for ii=1:length(clusterResults)
+      WC = load(clusterResults{ii});
+      tmpSpikes.Unit = vertcat(tmpSpikes.Unit, WC.cluster_class(:,1));
+      tmpSpikes.Timestamps = vertcat(tmpSpikes.Timestamps, WC.cluster_class(:,2));
+      tmpSpikes.Waveform = vertcat(tmpSpikes.Waveform, WC.spikes);
+      tmpSpikes.Electrode = vertcat(tmpSpikes.Electrode, ones(length(WC.cluster_class), 1)*ii);
+    end
+    
+    %Timestamps are already in ms, so unscale them so later code works.
+    tmpSpikes.Timestamps = tmpSpikes.Timestamps/params.cPtCal;
+    
+    %Overwrite the NEV data.
+    NEV.Data.Spikes = tmpSpikes; 
+    
+    %Clean up - Remove added paths, delete folder with files.
+    rmpath(genpath('dependencies/wave_clus'))
+    rmdir([A '/' B '_parsed'], 's');
+    
+    %Save figures
+    if isfield(params, 'saveFig') && params.saveFig
+      figHandles = findobj('Type', 'figure');
+      savefig(figHandles, [params.outDir B '_waveClus'], 'compact') %Will save files 
+    end
+    
+    %Append waveClus params to the AnalysisParams file in the outDir.
+    waveClusParams = WC.par;
+    save([params.outDir 'AnalysisParams.mat'], 'waveClusParams', '-append');
+end
 
 for channel_i = 1:length(params.spikeChannels)
   %change units from sample index to ms; type from int32 to double
@@ -75,7 +127,6 @@ for channel_i = 1:length(params.spikeChannels)
   end
   Output.VERBOSE(channelUnitNames{channel_i});
 end
-
 if params.shiftSpikeWaveforms
   rawSpikes = spikesByChannel;
   for channel_i = 1:length(params.spikeChannels)
@@ -111,7 +162,18 @@ if params.shiftSpikeWaveforms
   end
 end
 
-colors = ['k','r','c','g','b'];
+if isfield(params, 'spikeWaveformsColors')
+  if isnumeric(params.spikeWaveformsColors) %assumes a RGB array, where each row is a color
+    for ii = 1:size(params.spikeWaveformsColors,1)
+      colors{ii} = params.spikeWaveformsColors(ii,:);
+    end
+  else
+      colors = params.spikeWaveformsColors;
+  end
+else
+  colors = {'k','r','c','g','b'};
+end
+
 if params.plotSpikeWaveforms
   endTime = 0;
   for channel_i = 1:length(params.spikeChannels)
@@ -178,35 +240,40 @@ if params.plotSpikeWaveforms
       midPoint = find(unitTimesToPlot > halfTime, 1 );
       subplot(3,numPlotColumns,unit_i);
       for spike_i = 1:length(unitWaveformsToPlot)
-        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors{mod(unit_i-1,length(colors))+1});
       end
       subplot(3,numPlotColumns,numPlotColumns); %MUA plot
       for spike_i = 1:length(unitWaveformsToPlot)
-        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors{mod(unit_i-1,length(colors))+1});
       end
       subplot(3,numPlotColumns,numPlotColumns+unit_i) %second row of the subplot
       for spike_i = 1:midPoint - 1
-        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors{mod(unit_i-1,length(colors))+1});
       end    
       subplot(3,numPlotColumns,2*numPlotColumns); %MUA plot
       for spike_i = 1:midPoint - 1
-        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors{mod(unit_i-1,length(colors))+1});
       end
       subplot(3,numPlotColumns,2*numPlotColumns+unit_i) %third row of the subplot
       for spike_i = midPoint:length(unitWaveformsToPlot)
-        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors{mod(unit_i-1,length(colors))+1});
       end
       subplot(3,numPlotColumns,3*numPlotColumns); %MUA plot
       for spike_i = midPoint:length(unitWaveformsToPlot)
-        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors(unit_i));
+        plot(tAxis,unitWaveformsToPlot(spike_i,:),'color',colors{mod(unit_i-1,length(colors))+1});
       end
     end
     drawnow;
+    if isfield(params, 'saveFig') && params.saveFig
+      figHandles = findobj('Type', 'figure');
+      savefig(figHandles(1), [params.outDir B '_SpikeWaveforms'], 'compact')
+    end
     if params.plotSpikeWaveforms == 1
       close(fh);
     end
   end
 end
+
 if params.spikeWaveformPca
   if ~exist('halfTime','var')
     endTime = 0;
@@ -276,61 +343,63 @@ if params.spikeWaveformPca
     h = subplot(3,3,1);
     scatterHandles(1) = h;
     for unit_i = 1:numUnits
-      scatter(score(tmp.units == unit_i-1,1),score(tmp.units == unit_i-1,2),36,colors(unit_i));
+      scatter(score(tmp.units == unit_i-1,1),score(tmp.units == unit_i-1,2),36,colors{mod(unit_i-1,length(colors))+1});
     end
     h = subplot(3,3,4);
     scatterHandles(4) = h;
     for unit_i = 1:numUnits
-      scatter(score(tmp.units == unit_i-1 & tmp.times < halfTime,1),score(tmp.units == unit_i-1 & tmp.times < halfTime,2),36,colors(unit_i));
+      scatter(score(tmp.units == unit_i-1 & tmp.times < halfTime,1),score(tmp.units == unit_i-1 & tmp.times < halfTime,2),36,colors{mod(unit_i-1,length(colors))+1});
     end
     h = subplot(3,3,7);
     scatterHandles(7) = h;
     for unit_i = 1:numUnits
-      scatter(score(tmp.units == unit_i-1 & tmp.times >= halfTime,1),score(tmp.units == unit_i-1 & tmp.times >= halfTime,2),36,colors(unit_i));
+      scatter(score(tmp.units == unit_i-1 & tmp.times >= halfTime,1),score(tmp.units == unit_i-1 & tmp.times >= halfTime,2),36,colors{mod(unit_i-1,length(colors))+1});
     end
     % 1 vs 3
     h = subplot(3,3,2);
     scatterHandles(2) = h;
     for unit_i = 1:numUnits
-      scatter(score(tmp.units == unit_i-1,1),score(tmp.units == unit_i-1,3),36,colors(unit_i));
+      scatter(score(tmp.units == unit_i-1,1),score(tmp.units == unit_i-1,3),36,colors{mod(unit_i-1,length(colors))+1});
     end
     h = subplot(3,3,5);
     scatterHandles(5) = h;
     for unit_i = 1:numUnits
-      scatter(score(tmp.units == unit_i-1 & tmp.times < halfTime,1),score(tmp.units == unit_i-1 & tmp.times < halfTime,3),36,colors(unit_i));
+      scatter(score(tmp.units == unit_i-1 & tmp.times < halfTime,1),score(tmp.units == unit_i-1 & tmp.times < halfTime,3),36,colors{mod(unit_i-1,length(colors))+1});
     end
     h = subplot(3,3,8);
     scatterHandles(8) = h;
     for unit_i = 1:numUnits
-      scatter(score(tmp.units == unit_i-1 & tmp.times >= halfTime,1),score(tmp.units == unit_i-1 & tmp.times >= halfTime,3),36,colors(unit_i));
+      scatter(score(tmp.units == unit_i-1 & tmp.times >= halfTime,1),score(tmp.units == unit_i-1 & tmp.times >= halfTime,3),36,colors{mod(unit_i-1,length(colors))+1});
     end
     % 2 vs 3
     h = subplot(3,3,3);
     scatterHandles(3) = h;
     for unit_i = 1:numUnits
-      scatter(score(tmp.units == unit_i-1,2),score(tmp.units == unit_i-1,3),36,colors(unit_i));
+      scatter(score(tmp.units == unit_i-1,2),score(tmp.units == unit_i-1,3),36,colors{mod(unit_i-1,length(colors))+1});
     end
     h = subplot(3,3,6);
     scatterHandles(6) = h;
     for unit_i = 1:numUnits
-      scatter(score(tmp.units == unit_i-1 & tmp.times < halfTime,2),score(tmp.units == unit_i-1 & tmp.times < halfTime,3),36,colors(unit_i));
+      scatter(score(tmp.units == unit_i-1 & tmp.times < halfTime,2),score(tmp.units == unit_i-1 & tmp.times < halfTime,3),36,colors{mod(unit_i-1,length(colors))+1});
     end
     h = subplot(3,3,9);
     scatterHandles(9) = h;
     for unit_i = 1:numUnits
-      scatter(score(tmp.units == unit_i-1 & tmp.times >= halfTime,2),score(tmp.units == unit_i-1 & tmp.times >= halfTime,3),36,colors(unit_i));
+      scatter(score(tmp.units == unit_i-1 & tmp.times >= halfTime,2),score(tmp.units == unit_i-1 & tmp.times >= halfTime,3),36,colors{mod(unit_i-1,length(colors))+1});
     end
     linkaxes(scatterHandles);
     %
     drawnow;
+    
     if params.spikeWaveformPca == 1
       close(fh);
     end
   end
 end
+
 if params.shiftSpikeWaveforms
   spikesByChannel = rawSpikes;
 end
+
 clear NEV
 end
-

@@ -159,7 +159,7 @@ if ~isfield(ephysParams,'spikeWaveformPca') || ~ismember(ephysParams.spikeWavefo
   ephysParams.spikeWaveformPca = 0;
   logString = strcat(logString,'ephysParams.spikeWaveformPca\n');
 end
-if ~isfield(ephysParams,'plotSpikeWaveforms') || ~ismember(ephysParams.plotSpikeWaveforms,[0 1])
+if ~isfield(ephysParams,'plotSpikeWaveforms') || ~ismember(ephysParams.plotSpikeWaveforms,[0 1 2])
   ephysParams.plotSpikeWaveforms = 0;
   logString = strcat(logString,'ephysParams.plotSpikeWaveforms\n');
 end

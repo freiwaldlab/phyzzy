@@ -388,33 +388,59 @@ trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage;
 
 save([outDir 'trialDatabase'], 'trialDatabaseStruct')
 
+%load('imageEyeMap_Predata');
 if isfield(plotSwitch,'imageEyeMap') && plotSwitch.imageEyeMap
   % Add Colors to each Line
   % Add footage underneath
+  % times = -psthPre:psthImDur+psthPost;
+    stimStartInd = psthPre+lfpPaddedBy + 1;
+    stimEndInd = stimStartInd + psthImDur - 1;
   
   for ii = 1:length(analogInByEvent)
     %Isolate the eye data for a stimuli, its name, and path.
-    eyeInByEvent = squeeze(analogInByEvent{ii}(:,1:2,:,:));
-    event = translationTable{ii};
-    stimInfo = dir(strcat(stimDir, '/**/', event));
-    stimPath = [stimInfo(1).folder filesep stimInfo(1).name];
+    eyeInByEvent = squeeze(analogInByEvent{ii}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
+    stimInfo = dir(strcat(stimDir, '/**/', translationTable{ii})); %use the translationTable to find the file
+    stimPath = [stimInfo(1).folder filesep stimInfo(1).name]; %create its path.
     
-    %Open the Movie file
-    stimVid = VideoReader(stimPath);
-    figure()
+    %Open the Video, Get some Info on it
+    stimVid = VideoReader(stimPath); %#ok<TNMLP> %Open the file.
+    TotalFrames = stimVid.Duration*stimVid.FrameRate;
+    samplesPerFrame = floor(psthImDur/TotalFrames);
+    
+    %Down sample eye signal so that we have one point per frame.
+    eyeInByEventDownsampled = zeros(2, size(eyeInByEvent,2), TotalFrames);
+    for jj = 1:size(eyeInByEventDownsampled, 2)
+      for kk = 1:TotalFrames
+        startInd = 1 + ((kk - 1) * samplesPerFrame);
+        endInd =  startInd + samplesPerFrame;
+        eyeInByEventDownsampled(1,jj,kk) = mean(eyeInByEvent(1,jj,startInd:endInd));
+        eyeInByEventDownsampled(2,jj,kk) = mean(eyeInByEvent(2,jj,startInd:endInd));
+      end
+    end
+    
+    %Draw each Frame with its Eye signal, from all trials. Cycle through
+    %all the Frames, adding the appropriate points to each line. 
+    hf = figure;
+    set(hf, 'position', [100 100 stimVid.Width stimVid.Height])
+    stimVid.CurrentTime = 0;
+    while hasFrame(stimVid)
+      image(readFrame(stimVid)); %Seems likle this is working slow. 
+      pause(1/stimVid.FrameRate);
+    end
+   
     xlim([-24 24])
     ylim([-24 24])
-    title(sprintf('%s eye signal', event));
+    title(sprintf('%s eye signal', translationTable{ii}));
     hold on
-    for jj = 1:size(eyeInByEvent,2)
-      x = squeeze(eyeInByEvent(1,jj,:));
-      y = squeeze(eyeInByEvent(2,jj,:));
+    for jj = 1:size(eyeInByEventDownsampled,2)
+      x = squeeze(eyeInByEventDownsampled(1,jj,:));
+      y = squeeze(eyeInByEventDownsampled(2,jj,:));
       h = animatedline(x(1), y(1),'color' ,colors{mod(jj,length(colors))+1});
       a = tic; % start timer
       for k = 2:length(x)
-        addpoints(h,x(k),y(k))
         b = toc(a); % check timer
-        if b > (1/1000)
+        if b > (1/30)
+          addpoints(h,x(k),y(k))
           drawnow % update screen every 1/30 seconds
           a = tic; % reset timer after updating
         end
