@@ -87,10 +87,6 @@ if isfield(params, 'waveClus') && params.waveClus
     %Overwrite the NEV data.
     NEV.Data.Spikes = tmpSpikes; 
     
-    %Clean up - Remove added paths, delete folder with files.
-    rmpath(genpath('dependencies/wave_clus'))
-    rmdir([A '/' B '_parsed'], 's');
-    
     %Save figures
     if isfield(params, 'saveFig') && params.saveFig
       figHandles = findobj('Type', 'figure');
@@ -100,6 +96,10 @@ if isfield(params, 'waveClus') && params.waveClus
     %Append waveClus params to the AnalysisParams file in the outDir.
     waveClusParams = WC.par;
     save([params.outDir 'AnalysisParams.mat'], 'waveClusParams', '-append');
+    
+    %Clean up - Remove added paths, delete folder with files.
+    rmpath(genpath('dependencies/wave_clus'))
+    rmdir([A '/' B '_parsed'], 's');
 end
 
 for channel_i = 1:length(params.spikeChannels)
