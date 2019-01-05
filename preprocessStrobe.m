@@ -3,7 +3,6 @@ function [ strobeTriggers ] = preprocessStrobe( inputDataSource, params )
 %   Inputs:
 %   - inputDataSource: may be:
 %       - a filename, if inputDataType is either blackrockFilename or
-%         otherFilename
 %         that takes filenames
 %       - a 1xN array of data samples
 %   - params: struct with the fields
