@@ -1,4 +1,4 @@
-function [ analogInByItem ] = alignAnalogIn( analogInData, alignPointsByItem, analogInChannels, alignParams  )
+function [ analogInByItem ] = alignAnalogIn( analogInData, alignPointsByItem, analogInChannels, alignParams)
 %UNTITLED3 Summary of this function goes here
 %   Detailed explanation goes here
 if isempty(analogInData)

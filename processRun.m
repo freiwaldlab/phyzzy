@@ -41,11 +41,16 @@ function [ runAnalysisInputs ] = processRun( varargin )
 addpath(genpath('dependencies/genpath_exclude'));
 addpath(genpath_exclude('dependencies',{'*mvgc_v1.0'})); %note: use this to exclude libraries that overwrite matlab builtin namespaces, until they're needed
 addpath('buildAnalysisParamFileLib');
-% load analysis parameters
+
+%% load analysis parameters
+
+%Default values
 usePreprocessed = 0;
 preprocessedCC = 0;
 defaultPreprocessed = 0;
 keepItemsNotPresented = 0;
+
+%Parse inputs
 assert(mod(nargin,2) == 0, 'processRun takes arguments as name-value pairs; odd number of arguments provided');
 for argPair_i=1:nargin/2
   argName = varargin{1+2*(argPair_i-1)};
@@ -78,9 +83,11 @@ for argPair_i=1:nargin/2
   end
 end
 
+%% ParamBuilder and preprocessed file handling
+
 if usePreprocessed
   if defaultPreprocessed
-    if preprocessedCC
+    if preprocessedCC 
       if ~exist('analysisParamFilename','var')
         if exist('paramBuilder','var')
           analysisParamFilename = feval(paramBuilder,'noSave');
@@ -110,7 +117,6 @@ else
   end
 end
 
-
 if ~usePreprocessed
   checkAnalysisParamFile(analysisParamFilename);
   load(analysisParamFilename);
@@ -136,16 +142,19 @@ if ~usePreprocessed
     Output.level(Output.DISP_DEBUG);
   end
 
-  %%%%%%%%%%%%%%%%%
-  analogInData = preprocessAnalogIn(analogInFilename, analogInParams); 
-  [spikesByChannel, taskTriggers, channelUnitNames] = preprocessSpikes(spikeFilename, ephysParams);
-  lineNoiseTriggers = preprocessStrobe(lineNoiseTriggerFilename, lineNoiseTriggerParams);
-  lfpData = preprocessLFP(lfpFilename, ephysParams, lineNoiseTriggers);
-  diodeTriggers = preprocessStrobe(photodiodeFilename, photodiodeParams);
-  [ taskData, stimTiming ] = preprocessLogFile(taskFilename, taskTriggers, diodeTriggers, stimSyncParams); % load visual stimulus data and transform its timestamps to ephys clock reference
-%   [ pre, post ] = spikeBackground( spikesByChannel, taskData, spikeChannels, params )
-  analogInData = preprocessEyeSignals(analogInData,taskData,eyeCalParams);
-  analogInData = preprocessAccelSignals(analogInData, accelParams); 
+  %% Preprocess inputs
+  
+  analogInData =                                          preprocessAnalogIn(analogInFilename, analogInParams); 
+  [spikesByChannel, taskTriggers, channelUnitNames] =     preprocessSpikes(spikeFilename, ephysParams);
+  lineNoiseTriggers =                                     preprocessStrobe(lineNoiseTriggerFilename, lineNoiseTriggerParams);
+  lfpData =                                               preprocessLFP(lfpFilename, ephysParams, lineNoiseTriggers);
+  diodeTriggers =                                         preprocessStrobe(photodiodeFilename, photodiodeParams);
+  [taskData, stimTiming ] =                               preprocessLogFile(taskFilename, taskTriggers, diodeTriggers, stimSyncParams); % load visual stimulus data and transform its timestamps to ephys clock reference
+%   [pre, post] =                                           spikeBackground( spikesByChannel, taskData, spikeChannels, params )
+  analogInData =                                          preprocessEyeSignals(analogInData,taskData,eyeCalParams);
+  analogInData =                                          preprocessAccelSignals(analogInData, accelParams); 
+  
+  
   % determine the duration of ephys data collection, in ms
   if ~isempty(lfpData)
     ephysDuration = size(lfpData,2); 
@@ -169,6 +178,9 @@ if ~usePreprocessed
   taskDataAll = taskData;
   taskData = excludeTrials( taskData, excludeStimParams); %exclude trials for lost fixation etc. 
   
+
+%% find Stimulus length
+
   if stimTiming.shortest == stimTiming.longest
     psthParams.psthImDur = stimTiming.shortest;
     psthImDur = psthParams.psthImDur;
@@ -185,7 +197,8 @@ if ~usePreprocessed
     fprintf('Variable stimulus length run. Excluding trials shorter than %d\n',psthImDur);
   end
 
-  %sort trials by image and image category
+%% Sort trials by image and image category, align data appropriately.
+
   tmp = load(stimParamsFilename); %loads variables paramArray, categoryLabels,eventLabels
   eventCategories = tmp.paramArray;
   categoryList = tmp.categoryLabels;
@@ -209,6 +222,8 @@ if ~usePreprocessed
     trialIDsByEvent{event_i} = find(strcmp(taskData.taskEventIDs,eventIDs{event_i}));
   end
 
+  assert(~(sum(eventsNotObserved) == length(eventsNotObserved)),'No Events observed. Confirm correct stimulus Param file is in use.');
+  
   % todo: need defense against image with onset but no offset? 
   % todo: add similar defense for rf map locations here?
   if ~taskData.RFmap
@@ -262,7 +277,8 @@ if ~usePreprocessed
   else
     jumpsByImage = [];
   end
-  %align spikes by trial, and sort by image and category
+  
+  % align spikes by trial, and sort by image and category
   spikeAlignParamsToCoverMovingWin.preAlign = lfpAlignParams.msPreAlign; % need to include spikes throughout the window chronux will use to calculate spectra
   spikeAlignParamsToCoverMovingWin.postAlign = lfpAlignParams.msPostAlign;
   spikeAlignParamsToCoverMovingWin.refOffset = 0;  
@@ -276,7 +292,7 @@ if ~usePreprocessed
   spikeAlignParamsTF.refOffset = -lfpAlignParams.msPreAlign;
   spikesByEventForTF = alignSpikes( spikesByChannel, onsetsByEvent, spikeChannels, spikeAlignParamsTF );
   spikesByCategoryForTF = alignSpikes( spikesByChannel, onsetsByCategory, spikeChannels, spikeAlignParamsTF );
-  %  align LFP data  by trial, sort by image and category, and possibly remove DC and linear components
+  % align LFP data  by trial, sort by image and category, and possibly remove DC and linear components
   lfpByEvent = alignLFP(lfpData, onsetsByEvent, lfpChannels, lfpAlignParams);
   lfpByCategory = alignLFP(lfpData, onsetsByCategory, lfpChannels, lfpAlignParams);
   analogInByEvent = alignAnalogIn(analogInData, onsetsByEvent, analogInChannels, lfpAlignParams);
@@ -294,6 +310,8 @@ if ~usePreprocessed
       'stimTiming', 'eventCategories', 'onsetsByEvent', 'onsetsByCategory','trialIDsByEvent','trialIDsByCategory');
   end
 end
+
+%% Package Analysis inputs, and run Analysis
 
 runAnalysisInputs.analysisParamFilename = analysisParamFilename;
 runAnalysisInputs.spikesByChannel = spikesByChannel; 
@@ -327,7 +345,6 @@ runAnalysisInputs.onsetsByCategory = onsetsByCategory;
 runAnalysisInputs.offsetsByCategory = offsetsByCategory;
 runAnalysisInputs.trialIDsByCategory = trialIDsByCategory;
 runAnalysisInputs.excludeStimParams = excludeStimParams;
-
 
 if ~exist('analyzer','var')
   runAnalyses(runAnalysisInputs);

@@ -20,26 +20,30 @@ function [ analogInData ] = preprocessEyeSignals( analogInData,taskData,params )
 if ~params.needEyeCal
   return
 end
+
 calibMethod = params.method;
-if strcmp(calibMethod,'fromFile')
-  load(params.calFile);
-else
-  gainX = params.gainX;
-  gainY = params.gainY;
-  flipY = params.flipY;
-  flipX = params.flipX;
+switch calibMethod
+  case 'fromFile'
+    load(params.calFile);
+  case  {'hardcodeZero','monkeyLogic'}
+    offsetX = taskData.eyeCal.origin(1);
+    offsetY = taskData.eyeCal.origin(2);
+    gainX = taskData.eyeCal.gain(1);
+    gainY = taskData.eyeCal.gain(2);
+    flipY = params.flipY;
+    flipX = params.flipX;
+  case 'zeroEachFixation'
+    minFixZeroTime = params.minFixZeroTime; %Don't know what this means
+    gainX = taskData.eyeCal.gain(1);
+    gainY = taskData.eyeCal.gain(2);
+    flipY = params.flipY;
+    flipX = params.flipX;
 end
+
 if isfield(params, 'fixOutLag')
   fixOutLag = params.fixOutLag;
 else
   fixOutLag = 10; %time in eye data samples; typically ms
-end
-if strcmp(calibMethod,'hardcodeZero')
-  offsetX = params.offsetX;
-  offsetY = params.offsetY;
-end
-if strcmp(calibMethod, 'zeroEachFixation')
-  minFixZeroTime = params.minFixZeroTime;
 end
 
 eyeX = analogInData(params.eyeXChannelInd,:);
@@ -64,47 +68,104 @@ if length(taskData.fixationOutTimes) > length(taskData.fixationInTimes)
   fixInInds(ceil(taskData.fixationInTimes(fix_i)):end) = 1;
 end
 
-eyeX = gainX*eyeX*(-1*flipX + ~flipX);
-eyeY = gainY*eyeY*(-1*flipY + ~flipY);
-if strcmp(calibMethod,'autoZeroSingle')
-  eyeX = eyeX - mean(eyeX(fixInInds == 1));
-  eyeY = eyeY - mean(eyeY(fixInInds == 1));
-end
-if strcmp(calibMethod,'zeroEachFixation')
-  for fix_i = 1:length(taskData.fixationInTimes)
-    % find the new offset, if we don't have one, or if fixation is long enough 
-    % note: an alternative method here would be to find the first
-    % long-enough interval, then back-apply its offset.
-    if fix_i == 1 || (fix_i <= length(taskData.fixationOutTimes) && taskData.fixationOutTimes(fix_i) - taskData.fixationInTimes(fix_i) > minFixZeroTime)
-      offsetX = mean(eyeX(ceil(taskData.fixationInTimes(fix_i)):(floor(taskData.fixationOutTimes(fix_i))-fixOutLag)));
-      offsetY = mean(eyeY(ceil(taskData.fixationInTimes(fix_i)):(floor(taskData.fixationOutTimes(fix_i))-fixOutLag)));
+switch calibMethod
+  case 'monkeyLogic' %applies origin, then gain
+    eyeX = eyeX - offsetX;
+    eyeY = eyeY - offsetY;
+    eyeX = gainX*eyeX*(-1*flipX + ~flipX);
+    eyeY = gainY*eyeY*(-1*flipY + ~flipY);    
+  case 'hardcodeZero' %applies gain, then origin
+    eyeX = gainX*eyeX*(-1*flipX + ~flipX);
+    eyeY = gainY*eyeY*(-1*flipY + ~flipY);
+    eyeX = eyeX - offsetX;
+    eyeY = eyeY - offsetY;
+  case 'autoZeroSingle'
+    eyeX = gainX*eyeX*(-1*flipX + ~flipX);
+    eyeY = gainY*eyeY*(-1*flipY + ~flipY);
+    eyeX = eyeX - mean(eyeX(fixInInds == 1));
+    eyeY = eyeY - mean(eyeY(fixInInds == 1));
+  case 'zeroEachFixation'
+    eyeX = gainX*eyeX*(-1*flipX + ~flipX);
+    eyeY = gainY*eyeY*(-1*flipY + ~flipY);
+    for fix_i = 1:length(taskData.fixationInTimes)
+      % find the new offset, if we don't have one, or if fixation is long enough
+      % note: an alternative method here would be to find the first
+      % long-enough interval, then back-apply its offset.
+      if fix_i == 1 || (fix_i <= length(taskData.fixationOutTimes) && taskData.fixationOutTimes(fix_i) - taskData.fixationInTimes(fix_i) > minFixZeroTime)
+        offsetX = mean(eyeX(ceil(taskData.fixationInTimes(fix_i)):(floor(taskData.fixationOutTimes(fix_i))-fixOutLag)));
+        offsetY = mean(eyeY(ceil(taskData.fixationInTimes(fix_i)):(floor(taskData.fixationOutTimes(fix_i))-fixOutLag)));
+      end
+      % cover the case where final fix interval extends to end of run
+      if fix_i > length(taskData.fixationOutTimes) && (fix_i == 1 || length(eyeX) - taskData.fixationInTimes(fix_i) > minFixZeroTime)
+        offsetX = mean(eyeX(ceil(taskData.fixationInTimes(fix_i)):end));
+        offsetY = mean(eyeY(ceil(taskData.fixationInTimes(fix_i)):end));
+      end
+      % apply the offset up to the next fixation window, or end, if last window
+      if fix_i < length(taskData.fixationInTimes)
+        eyeX(ceil(taskData.fixationInTimes(fix_i)):floor(taskData.fixationInTimes(fix_i+1))) =  ...
+          eyeX(ceil(taskData.fixationInTimes(fix_i)):floor(taskData.fixationInTimes(fix_i+1))) - offsetX;
+        eyeY(ceil(taskData.fixationInTimes(fix_i)):floor(taskData.fixationInTimes(fix_i+1))) =  ...
+          eyeY(ceil(taskData.fixationInTimes(fix_i)):floor(taskData.fixationInTimes(fix_i+1))) - offsetY;
+      else
+        eyeX(ceil(taskData.fixationInTimes(fix_i)):end) = eyeX(ceil(taskData.fixationInTimes(fix_i)):end) - offsetX;
+        eyeY(ceil(taskData.fixationInTimes(fix_i)):end) = eyeY(ceil(taskData.fixationInTimes(fix_i)):end) - offsetY;
+      end
     end
-    % cover the case where final fix interval extends to end of run
-    if fix_i > length(taskData.fixationOutTimes) && (fix_i == 1 || length(eyeX) - taskData.fixationInTimes(fix_i) > minFixZeroTime)
-      offsetX = mean(eyeX(ceil(taskData.fixationInTimes(fix_i)):end));
-      offsetY = mean(eyeY(ceil(taskData.fixationInTimes(fix_i)):end));
-    end
-    % apply the offset up to the next fixation window, or end, if last window
-    if fix_i < length(taskData.fixationInTimes)
-      eyeX(ceil(taskData.fixationInTimes(fix_i)):floor(taskData.fixationInTimes(fix_i+1))) =  ...
-        eyeX(ceil(taskData.fixationInTimes(fix_i)):floor(taskData.fixationInTimes(fix_i+1))) - offsetX;
-      eyeY(ceil(taskData.fixationInTimes(fix_i)):floor(taskData.fixationInTimes(fix_i+1))) =  ...
-        eyeY(ceil(taskData.fixationInTimes(fix_i)):floor(taskData.fixationInTimes(fix_i+1))) - offsetY;
-    else
-      eyeX(ceil(taskData.fixationInTimes(fix_i)):end) = eyeX(ceil(taskData.fixationInTimes(fix_i)):end) - offsetX;
-      eyeY(ceil(taskData.fixationInTimes(fix_i)):end) = eyeY(ceil(taskData.fixationInTimes(fix_i)):end) - offsetY;
-    end
-  end
-end
-if strcmp(calibMethod,'hardcodeZero')
-  eyeX = eyeX - offsetX;
-  eyeY = eyeY - offsetY;
 end
 
-eyeD = eyeD - mean(eyeD(fixInInds == 1));
 fixInX = eyeX(fixInInds == 1);
 fixInY = eyeY(fixInInds == 1);
 fixInD = eyeD(fixInInds == 1);
+
+%% monkeyLogic Shift
+% If for whatever reason eye signal on Blackrock is unreliable, create
+% artificial vectors from monkeyLogic's eye data, placing it at the event
+% start times on Blackrock.
+if isfield(params, 'monkeyLogicShift') && params.monkeyLogicShift
+  [eyeXBLK, eyeYBLK] = deal(nan(size(eyeY)));
+  samPerMS = 1;
+  for ii = 1:length(taskData.NEVTrialTimes) %for every trial start
+    %Find the spot in the vector to go (and end) - Mkl times already in ms.
+    startInd = round(samPerMS*taskData.NEVTrialTimes(ii));
+    if startInd == 0
+      startInd = 1;
+    end
+    endInd = startInd + length(taskData.eyeData(ii).Eye(:,1)') - 1;
+    
+    %Place the data in the vector
+    eyeXBLK(startInd:endInd) = taskData.eyeData(ii).Eye(:,1)';
+    eyeYBLK(startInd:endInd) = taskData.eyeData(ii).Eye(:,2)';
+  end
+  
+  figure()
+  plot(eyeY)
+  hold on
+  plot(eyeYBLK)
+  
+  %Create a better fit by using an lm
+  eyeYModel = eyeY;
+  eyeYModel(isnan(eyeYBLK)) = nan;
+  eyeYBLKModel = eyeYBLK;
+  
+  logVsBlkModel = fitlm(eyeYModel, eyeYBLKModel);
+  disp(logVsBlkModel)
+  
+  m = logVsBlkModel.Coefficients.Estimate(2);
+  y0 = logVsBlkModel.Coefficients.Estimate(1);
+  eyeYBLK = (1/m)*(eyeYBLK - y0);
+  plot(eyeYBLK);
+  
+  legend('Blackrock Y Signal','Reconstructed Y signal','Reconstructed and Fit Y signal')
+  
+  %If the fit looks alright, swap in these newly constructed arrays
+  eyeXBLK = (1/m)*(eyeXBLK - y0);
+  
+  eyeY = eyeYBLK;
+  eyeX = eyeXBLK;
+end
+
+%% Plots and Output
+
 if params.makePlots
   figure()
   scatter(fixInX,fixInY,1,'b');
@@ -126,7 +187,10 @@ if params.makePlots
   a2 = subplot(1,2,2);
   histogram2(eyeX(~fixInInds)',eyeY(~fixInInds)',[50 50],'Normalization','probability','DisplayStyle','tile','BinMethod','integer');
 end
+
 analogInData(params.eyeXChannelInd,:) = eyeX;
 analogInData(params.eyeYChannelInd,:) = eyeY;
+analogInData(params.eyeDChannelInd,:) = eyeD;
+
 end
 

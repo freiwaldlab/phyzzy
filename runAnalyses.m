@@ -12,13 +12,13 @@ function [  ] = runAnalyses( inputs )
 %   - makes tuning curves for parameterized images or categories, as
 %     specified in the stim param file
 
-
 %%% unpack inputs
 analysisParamFilename = inputs.analysisParamFilename;
 spikesByChannel = inputs.spikesByChannel; 
 lfpData = inputs.lfpData; 
 analogInData = inputs.analogInData; 
-taskData = inputs.taskData;
+taskEventIDs = inputs.taskData;
+taskData = inputs.taskData; 
 taskDataAll = inputs.taskDataAll; 
 psthImDur = inputs.psthImDur; 
 preAlign = inputs.preAlign; 
@@ -43,7 +43,8 @@ onsetsByEvent = inputs.onsetsByEvent;
 trialIDsByEvent = inputs.trialIDsByEvent;
 onsetsByCategory = inputs.onsetsByCategory;
 trialIDsByCategory = inputs.trialIDsByCategory;
-%%% finished unpacking inputs
+
+%%% Load parameters from analysis pand stim param files.
 load(analysisParamFilename);
 eventLabelsTmp = eventLabels; %note: hack to avoid overwriting list of not presented stimuli
 load(stimParamsFilename);
@@ -85,9 +86,8 @@ end
 analysisOutFilename = strcat(outDir,'analyzedData.mat');
 save(analysisOutFilename,'dateSubject','runNum','analysisParamFilename');
 
-
-colors = ['b','c','y','g','m','r','k'];
-chColors = ['b','g','m'];
+colors = [{'b'}, {[0 .6 0]}, {'m'} ,{'r'}, {'k'}];
+chColors = [{'b'}, {[0 .6 0]} , {'m'}];
 
 % trialDB = trialDatabaseInit(dateSubject, runNum, length(taskData.taskEventStartTimes));
 % for event_i = 1:length(eventLabels)
@@ -403,16 +403,105 @@ for calc_i = 1:length(calcSwitches)
   end
 end
 
+%Quick Temporary Structure to find out peak times during analysis, save to
+%a file where it can be retrieved easily by Monkeylogic.
+trialDatabaseStruct = struct();
+trialDatabaseStruct.images = eventLabels;
+translationTable = cell(length(eventLabels),1);
+for ii = 1:length(eventLabels)
+  translationTable{ii} = paramArray{strcmp(pictureLabels,eventLabels(ii))}{1};
+end
+trialDatabaseStruct.translationTable = translationTable;
+psthPeaksByImageTmp = psthByImage;
+
+for ii = 1:length(psthPeaksByImageTmp)
+  for jj = 1:length(psthPeaksByImageTmp{ii})
+    psthPeaksByImageTmp{ii}{jj} = psthPeaksByImageTmp{ii}{jj}(:,psthPre+1:(end-psthPost-1));
+    %Zero regions not interested in, making sure to not add
+    %anything in the front to mess up index.
+    psthPeaksByImageTmp{ii}{jj}(1:frEpochs(1,1)) = 0;
+    [psthPeaksByImage{ii}{jj},  psthPeaksIndByImage{ii}{jj}] = max(psthPeaksByImageTmp{ii}{jj},[],2);
+  end
+end
+trialDatabaseStruct.psthPeaksIndByImage = psthPeaksIndByImage;
+trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage;
+
+save([outDir 'trialDatabase'], 'trialDatabaseStruct')
+
+%load('imageEyeMap_Predata');
+if isfield(plotSwitch,'imageEyeMap') && plotSwitch.imageEyeMap
+  % Add Colors to each Line
+  % Add footage underneath
+  % times = -psthPre:psthImDur+psthPost;
+    stimStartInd = psthPre+lfpPaddedBy + 1;
+    stimEndInd = stimStartInd + psthImDur - 1;
+  
+  for ii = 1:length(analogInByEvent)
+    %Isolate the eye data for a stimuli, its name, and path.
+    eyeInByEvent = squeeze(analogInByEvent{ii}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
+    stimInfo = dir(strcat(stimDir, '/**/', translationTable{ii})); %use the translationTable to find the file
+    stimPath = [stimInfo(1).folder filesep stimInfo(1).name]; %create its path.
+    
+    %Open the Video, Get some Info on it
+    stimVid = VideoReader(stimPath); %#ok<TNMLP> %Open the file.
+    TotalFrames = stimVid.Duration*stimVid.FrameRate;
+    samplesPerFrame = floor(psthImDur/TotalFrames);
+    
+    %Down sample eye signal so that we have one point per frame.
+    eyeInByEventDownsampled = zeros(2, size(eyeInByEvent,2), TotalFrames);
+    for jj = 1:size(eyeInByEventDownsampled, 2)
+      for kk = 1:TotalFrames
+        startInd = 1 + ((kk - 1) * samplesPerFrame);
+        endInd =  startInd + samplesPerFrame;
+        eyeInByEventDownsampled(1,jj,kk) = mean(eyeInByEvent(1,jj,startInd:endInd));
+        eyeInByEventDownsampled(2,jj,kk) = mean(eyeInByEvent(2,jj,startInd:endInd));
+      end
+    end
+    
+    %Draw each Frame with its Eye signal, from all trials. Cycle through
+    %all the Frames, adding the appropriate points to each line. 
+    hf = figure;
+    set(hf, 'position', [100 100 stimVid.Width stimVid.Height])
+    stimVid.CurrentTime = 0;
+    while hasFrame(stimVid)
+      image(readFrame(stimVid)); %Seems likle this is working slow. 
+      pause(1/stimVid.FrameRate);
+    end
+   
+    xlim([-24 24])
+    ylim([-24 24])
+    title(sprintf('%s eye signal', translationTable{ii}));
+    hold on
+    for jj = 1:size(eyeInByEventDownsampled,2)
+      x = squeeze(eyeInByEventDownsampled(1,jj,:));
+      y = squeeze(eyeInByEventDownsampled(2,jj,:));
+      h = animatedline(x(1), y(1),'color' ,colors{mod(jj,length(colors))+1});
+      a = tic; % start timer
+      for k = 2:length(x)
+        b = toc(a); % check timer
+        if b > (1/30)
+          addpoints(h,x(k),y(k))
+          drawnow % update screen every 1/30 seconds
+          a = tic; % reset timer after updating
+        end
+      end
+    end
+    drawnow % draw final frame
+    
+  end
+end
+
 if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
   for channel_i = 1:length(channelNames)
     for unit_i = 1:length(channelUnitNames{channel_i})
       if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
         continue;
       end
-      psthTitle = sprintf('%s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+      psthTitle = sprintf('Per Image PSTH %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
       figure('Name',psthTitle,'NumberTitle','off');
       plotPSTH(psthByImage{channel_i}{unit_i}, [], psthPre, psthPost, psthImDur, 'color', psthTitle, eventLabels, psthColormap );
       clear figData
+      title(psthTitle);
       figData.z = psthByImage{channel_i}{unit_i};
       figData.x = -psthPre:psthImDur+psthPost;
       saveFigure(outDir, sprintf('imPSTH_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
@@ -426,17 +515,17 @@ if isfield(plotSwitch,'categoryPsth') && plotSwitch.categoryPsth
       if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
         continue;
       end
-      psthTitle = sprintf('%s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+      psthTitle = sprintf('Per Catagory PSTH %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
       figure('Name',psthTitle,'NumberTitle','off');
       plotPSTH(psthByCategory{channel_i}{unit_i}, [], psthPre, psthPost, psthImDur, 'color', psthTitle, categoryList, psthColormap );
       clear figData
+      title(psthTitle);
       figData.z = psthByCategory{channel_i}{unit_i};
       figData.x = -psthPre:psthImDur+psthPost;
-      saveFigure(outDir, sprintf('catPSTH_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+      saveFigure(outDir, sprintf('catPSTH_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum));
     end
   end
 end
-
 
 firingRatesByImageByEpoch = cell(size(frEpochs,1),1);
 firingRateErrsByImageByEpoch = cell(size(frEpochs,1),1);
@@ -447,7 +536,9 @@ for epoch_i = 1:size(frEpochs,1)
   firingRateErrsByImageByEpoch{epoch_i} = frErr;
   spikeCountsByImageByEpoch{epoch_i} = spikeCounts;
 end
+
 imFr = firingRatesByImageByEpoch{1};
+peakImFr = max(psthByImage{1}{1},[],2);
 imFrErr = firingRateErrsByImageByEpoch{1};
 imSpikeCounts = spikeCountsByImageByEpoch{1};
 trialCountsByImage = zeros(length(spikesByEvent),1);
@@ -468,6 +559,7 @@ if ~isempty(spikesByCategory)
     firingRateErrsByCategoryByEpoch{epoch_i} = frErr;
     spikeCountsByCategoryByEpoch{epoch_i} = spikeCounts;
   end
+  
   catFr = firingRatesByCategoryByEpoch{1};
   catFrErr = firingRateErrsByCategoryByEpoch{1};
   catSpikeCounts = spikeCountsByCategoryByEpoch{1};
@@ -478,6 +570,7 @@ if ~isempty(spikesByCategory)
   
   save(analysisOutFilename,'firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch');
   save(analysisOutFilename,'catFr','catFrErr','catSpikeCounts','trialCountsByCategory');
+
   
   groupLabelsByImage = zeros(length(eventLabels),length(analysisGroups.stimulusLabelGroups));
   groupLabelColorsByImage = ones(length(eventLabels),3,length(analysisGroups.stimulusLabelGroups));
@@ -488,11 +581,30 @@ if ~isempty(spikesByCategory)
       colorArray = zeros(length(groupColors),3);
       for item_i = 1:length(groupColors)
         % this silly line converts from colorspec letters to the corresponding rgb values
-        colorArray(item_i,:) = rem(floor((strfind('kbgcrmyw', groupColors{item_i}) - 1) * [0.25 0.5 1]), 2);
+        % Silly line now checks to see if conversion is needed.
+        if ischar(groupColors{item_i})
+            colorArray(item_i,:) = rem(floor((strfind('kbgcrmyw', groupColors{item_i}) - 1) * [0.25 0.5 1]), 2);
+        else
+            colorArray(item_i,:) = groupColors{item_i};
+        end
       end
       groupColors = colorArray;
       analysisGroups.stimulusLabelGroups.colors{group_i} = groupColors;
     end
+    
+%Maybe just make the above colors into cells?    
+%Swap colors defined above to numbers
+      colors_tmp = zeros(length(colors),3);
+      for item_i = 1:length(colors)
+        if ischar(colors{item_i})
+          colors_tmp(item_i,:) = rem(floor((strfind('kbgcrmyw', colors{item_i}) - 1) * [0.25 0.5 1]), 2);
+        else
+          colors_tmp(item_i,:) = colors{item_i};
+        end
+      end
+      colors = colors_tmp;  
+    
+    
     for image_i = 1:length(eventLabels)
       for item_i = 1:length(group)
         if any(strcmp(eventCategories{image_i},group{item_i})) || strcmp(eventLabels{image_i},group{item_i})
@@ -536,8 +648,9 @@ if ~taskData.RFmap
       end
       % preferred images raster plot
       if isfield(plotSwitch,'prefImRaster') && plotSwitch.prefImRaster
-        fh = figure();
-        raster(spikesByEvent(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
+        prefImRasterTitle = sprintf('Preferred Image Raster - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+        fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
+        raster(spikesByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors); %FA temporary to see all
         title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         if closeFig
@@ -546,18 +659,31 @@ if ~taskData.RFmap
       end
       % preferred images raster-evoked overlay
       if isfield(plotSwitch,'prefImRasterEvokedOverlay') && plotSwitch.prefImRasterEvokedOverlay
-        fh = figure();
-        rasterEvoked(spikesByEvent(imageSortOrder(1:10)), lfpByEvent(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
+        prefImRasterEvokedOverlayTitle = sprintf('Preferred Image Raster, Evoked Potential Overlay - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+        fh = figure('Name',prefImRasterEvokedOverlayTitle,'NumberTitle','off');
+        rasterEvoked(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
         title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         if closeFig
           close(fh);
         end
       end
+      % preferred images average evoked
+      if isfield(plotSwitch,'prefImAverageEvoked') && plotSwitch.prefImRasterAverageEvokedOverlay
+        prefImRasterAverageEvokedOverlayTitle = sprintf('Preferred Image Raster, Average Evoked Potential Overlay - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+        fh = figure('Name',prefImRasterAverageEvokedOverlayTitle,'NumberTitle','off');
+        averageEvoked(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors)
+        title(sprintf('Preferred Images - Average Evoked, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+        saveFigure(outDir, sprintf('prefImAverage-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+        if closeFig
+          close(fh);
+        end
+      end
       % preferred images raster-evoked overlay, with other channels
       if isfield(plotSwitch,'prefImMultiChRasterEvokedOverlay') && plotSwitch.prefImMultiChRasterEvokedOverlay
-        fh = figure();
-        rasterEvokedMultiCh(spikesByEvent(imageSortOrder(1:10)), lfpByEvent(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
+        prefImMultiChRasterEvokedOverlayTitle = sprintf('Preferred Image Raster, Multichannel, Evoked Potential Overlay - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+        fh = figure('Name',prefImMultiChRasterEvokedOverlayTitle,'NumberTitle','off');
+        rasterEvokedMultiCh(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
         title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster-LFP-MultiChannel_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         if closeFig
@@ -567,7 +693,8 @@ if ~taskData.RFmap
       % image preference barplot
       if isfield(plotSwitch,'imageTuningSorted') && plotSwitch.imageTuningSorted
         for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
-          fh = figure();
+          imageTuningSortedTitle = sprintf('Image Tuning, Sorted - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+          fh = figure('Name',imageTuningSortedTitle,'NumberTitle','off');
           groupName = analysisGroups.stimulusLabelGroups.names{group_i};
           superbar(imageSortedRates,'E',imFrErrSorted,'BarFaceColor',sortedGroupLabelColors(:,:,group_i));
           set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(eventLabels),'TickDir','out');
@@ -1098,10 +1225,10 @@ if isfield(plotSwitch,'evokedPsthMuaMultiCh') && plotSwitch.evokedPsthMuaMultiCh
       for channel_i = 1:length(lfpChannels)
         yyaxis right
         itemLfp = squeeze(mean(lfpByItem{itemNum}(1,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3));
-        lfpHandle = plot(times,itemLfp/max(itemLfp),'color',chColors(channel_i), 'linestyle','-','linewidth',2);  
+        lfpHandle = plot(times,itemLfp/max(itemLfp),'color',chColors{channel_i}, 'linestyle','-','linewidth',2);  
         yyaxis left
         itemPSTH = psthByItem{channel_i}{end}(itemNum,:);
-        spikeHandle = plot(times,itemPSTH/max(itemPSTH),'color',chColors(channel_i),'linestyle','--','linewidth',2); 
+        spikeHandle = plot(times,itemPSTH/max(itemPSTH),'color',chColors{channel_i},'linestyle','--','linewidth',2); 
         handlesForLegend(2*channel_i-1) = lfpHandle;
         handlesForLegend(2*channel_i) = spikeHandle;
         forLegend{2*channel_i-1} = strcat(channelNames{channel_i},' LFP');
@@ -2924,7 +3051,7 @@ for calc_i = 1:length(tfCalcSwitches)
     end
   end
 end
-   
+
 %%% coupling across channels and modalities (units/unsorted/mua, fields)
 tfCalcSwitchNames = {'evokedCatTF', 'inducedCatTF'}; % todo: make separate switch for coherence?
 tfCalcSwitchTitleSuffixes = {'',', induced'}; % appended to titles

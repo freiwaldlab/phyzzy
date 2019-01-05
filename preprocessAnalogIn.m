@@ -31,14 +31,17 @@ end
 analogInChannelMap = analogInChannelMap(analogInChannelMap > 0);
 analogInData = analogInDataRaw(analogInChannelMap,:);
 clear analogInDataRaw
-filterPad = 0;
+
+% filter the analogIn data using 2 step process.
+if isfield(params, 'filterPad')
+  filterPad = params.filterPad;
+else
+  filterPad = 0;
+end
 analogInDataDecPadded = zeros(size(analogInData,1),ceil(size(analogInData,2)/(decimateFactorPass1*decimateFactorPass2))+2*filterPad);
 % convert scaled units to microvolts, and decimate (note: decimation broken
 % into two steps, per matlab doc recommendation
 disp('decimating, scaling, and filtering analog inputs');
-for i = 1:size(analogInData,1)
-  analogInData(i,:) = analogInData(i,:) - mean(analogInData(i,:));
-end
 for i = 1:size(analogInData,1)
   analogInDataDecPadded(i,filterPad+1:end-filterPad) = analogInChannelScaleBy(i)*decimate(decimate(analogInData(i,:),decimateFactorPass1),decimateFactorPass2);
   %analogInDataDecPadded(i,1:filterPad) = analogInDataDecPadded(i,filterPad+1)*analogInDataDecPadded(i,1:filterPad);
@@ -56,11 +59,11 @@ for i = 1:size(analogInData,1)
     if length(analogInFilter) == 2
       analogInDataDecPadded(i,:) = filtfilt(analogInFilter(1),analogInFilter(2),analogInDataDecPadded(i,:));
     end
-  if params.plotFilterResult && (isa(analogInFilter,'digitalFilter') || length(analogInFilter) == 2)
-    plot(analogInData(i,filterPad+100000:filterPad+105000),'color','b');
-    legend({'raw','filtered'});
-    drawnow;
-  end
+    if params.plotFilterResult && (isa(analogInFilter,'digitalFilter') || length(analogInFilter) == 2)
+      plot(analogInData(i,filterPad+100000:filterPad+105000),'color','b');
+      legend({'raw','filtered'});
+      drawnow;
+    end
   end
 end
 analogInData = analogInDataDecPadded(:,filterPad+1:end-filterPad);
