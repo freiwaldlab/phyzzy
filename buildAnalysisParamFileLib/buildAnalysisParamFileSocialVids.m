@@ -403,7 +403,7 @@ calcSwitch.inducedCatTF = 0;
 calcSwitch.meanEvokedTF = 0;
 calcSwitch.trialMeanSpectra = 0;
 calcSwitch.coherenceByCategory = 0;
-calcSwitch.spikeTimes = 0;
+calcSwitch.spikeTimes = 1;
 calcSwitch.useJacknife = 0;      
 
 if calcSwitch.useJacknife

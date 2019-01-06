@@ -14,8 +14,8 @@ function [  ] = runAnalyses( inputs )
 
 %% unpack inputs
 analysisParamFilename = inputs.analysisParamFilename;
-spikesByChannel = inputs.spikesByChannel; 
-lfpData = inputs.lfpData; 
+spikesByChannel = inputs.spikesByChannel;
+lfpData = inputs.lfpData;
 analogInData = inputs.analogInData; 
 taskEventIDs = inputs.taskData;
 taskData = inputs.taskData; 
@@ -269,41 +269,14 @@ imInds = struct();
 for image_i = 1:length(eventLabels)
   imInds.(eventLabels{image_i}) = image_i;
 end
-
 save(analysisOutFilename,'catInds','imInds', '-append');
 
+%% Analyses
+
 if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
-  spikesByCategoryBinned = cell(size(spikesByCategory));
-  assert((movingWin(1)/2 > 3*smoothingWidth),'Error: current implementation assumes that movingWin/2 > 3*psthSmoothingWidth. Not true here');
-  for cat_i = 1:length(spikesByCategory)
-    spikesByCategoryBinned{cat_i} = cell(length(channelNames),1);
-    for channel_i = 1:length(channelNames)
-      spikesByCategoryBinned{cat_i}{channel_i} = cell(length(channelUnitNames{channel_i}),1);
-      for unit_i = 1:length(channelUnitNames{channel_i})
-        % this tmp variable fixes a Chronux bug that leads the last entry in the binned spike array to be zero when it shouldn't be
-        spikesTmp = binspikes(spikesByCategory{cat_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+psthPost+1+movingWin(1)/2])';
-        spikesByCategoryBinned{cat_i}{channel_i}{unit_i} = spikesTmp(:,1:end-1);
-      end
-    end
-  end
-  save(analysisOutFilename,'spikesByCategoryBinned', '-append');
-  spikesByEventBinned = cell(size(spikesByEvent));
-  for image_i = 1:length(spikesByEvent)
-    spikesByEventBinned{image_i} = cell(length(channelNames),1);
-    for channel_i = 1:length(channelNames)
-      spikesByEventBinned{image_i}{channel_i} = cell(length(channelUnitNames{channel_i}),1);
-      for unit_i = 1:length(channelUnitNames{channel_i})
-        % this tmp variable fixes a Chronux bug that leads the last entry in the binned spike array to be zero when it shouldn't be
-        spikesTmp = binspikes(spikesByEvent{image_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+1+psthPost+movingWin(1)/2])';
-        spikesByEventBinned{image_i}{channel_i}{unit_i} = spikesTmp(:,1:end-1);
-%         for trial_i = 1:size(spikesByEventBinned{image_i}{channel_i}{unit_i},1)
-%           fieldName = sprintf('spikesBinned.%s_%s',channelNames{channel_i}(~isspace(channelNames{channel_i})),channelUnitNames{channel_i}{unit_i}(~isspace(channelUnitNames{channel_i}{unit_i})));
-%           trialDB = trialDatabaseSetField(fieldName,spikesByEventBinned{image_i}{channel_i}{unit_i}(trial_i,:),trialDB,trialIDsByEvent{image_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
-%         end
-      end
-    end
-  end
-  save(analysisOutFilename,'spikesByEventBinned', '-append');
+  spikesByEventBinned = calcSpikeTimes(spikesByEvent, movingWin, smoothingWidth, channelNames, channelUnitNames, psthPre, psthImDur, psthPost);
+  spikesByCategoryBinned = calcSpikeTimes(spikesByCategory, movingWin, smoothingWidth, channelNames, channelUnitNames, psthPre, psthImDur, psthPost);
+  save(analysisOutFilename,'spikesByEventBinned','spikesByCategoryBinned', '-append');
 end
 
 % for channel_i = 1:length(channelNames)
@@ -327,145 +300,26 @@ end
 % end
 
 times = -psthPre:psthImDur+psthPost;
-calcSwitches = [calcSwitch.imagePSTH, calcSwitch.categoryPSTH];
-for calc_i = 1:length(calcSwitches)
-  if calcSwitches(calc_i)
-    if calc_i == 1
-      if calcSwitch.spikeTimes
-        spikesByItem = spikesByEvent;
-      else
-        spikesByItemBinned = spikesByEventBinned;
-      end
-      psthEmptyByItem = psthEmptyByEvent;
-      numItems = length(eventLabels);
-    else
-      if calcSwitch.spikeTimes
-        spikesByItem = spikesByCategory;
-      else
-        spikesByItemBinned = spikesByCategoryBinned;
-      end
-      psthEmptyByItem = psthEmptyByCategory;
-      numItems = length(categoryList);
-    end
-    if ~calcSwitch.spikeTimes
-      filterPoints = -3*smoothingWidth:3*smoothingWidth;
-      smoothingFilter = exp(-1*filterPoints.^2/(2*smoothingWidth^2));
-      smoothingFilter = smoothingFilter/sum(smoothingFilter);
-    end
-    psthByItem = cell(length(channelNames),1);
-    psthErrByItem = cell(length(channelNames),1);
-    for channel_i = 1:length(channelNames)
-      channelItemPsth = cell(length(channelUnitNames{channel_i}),1);
-      channelItemPsthErr = cell(length(channelUnitNames{channel_i}),1);
-      for unit_i = 1:length(channelUnitNames{channel_i}) 
-        unitItemPsth = zeros(numItems,length(times));
-        unitItemPsthErr = zeros(numItems,length(times));
-        for item_i = 1:numItems
-          if ~psthEmptyByItem{item_i}{channel_i}{unit_i}            
-            if calcSwitch.spikeTimes
-              [paddedPsth,~,paddedPsthErr] = psth(spikesByItem{item_i}{channel_i}{unit_i},smoothingWidth,'n',[-preAlign postAlign],min(psthErrorType,2),-preAlign:postAlign);
-              paddedPsth = 1000*paddedPsth;
-              paddedPsthErr = 1000*paddedPsthErr;
-              unitItemPsth(item_i,:) = paddedPsth(3*smoothingWidth+1:end-3*smoothingWidth);
-              unitItemPsthErr(item_i,:) = paddedPsthErr(3*smoothingWidth+1:end-3*smoothingWidth)*psthErrorRangeZ/2; %note: psth returns +/- 2 stderr; thus the factor of 0.5
-            else %use spike bins
-              paddedPsth = 1000*conv(mean(spikesByItemBinned{item_i}{channel_i}{unit_i},1),smoothingFilter,'same');
-              if psthErrorType == 1 || size(spikesByItemBinned{item_i}{channel_i}{unit_i},1) == 1  % if only one trial, can't use bootstrap  
-                %note: the factor of sqrt(1000) appears because we need to convert to spks/ms to get poisson error, then back to Hz
-                paddedPsthErr = sqrt(paddedPsth)*(sqrt(1000)*psthErrorRangeZ/sqrt(size(spikesByItemBinned{item_i}{channel_i}{unit_i},1)));
-              else
-                if psthErrorType == 2
-                  paddedPsthErr = std(bootstrp(psthBootstrapSamples,@(x) mean(x,1),convn(spikesByItemBinned{item_i}{channel_i}{unit_i},smoothingFilter,'same')),[],1)*psthErrorRangeZ*1000;
-                else
-                  paddedPsthErr = convn(std(spikesByItemBinned{item_i}{channel_i}{unit_i},[],1),smoothingFilter,'same')*psthErrorRangeZ*1000/sqrt(size(spikesByItemBinned{item_i}{channel_i}{unit_i},1));
-                end
-              end
-              unitItemPsth(item_i,:) = paddedPsth(movingWin(1)/2+1:end-movingWin(1)/2);
-              unitItemPsthErr(item_i,:) = paddedPsthErr(movingWin(1)/2+1:end-movingWin(1)/2)*psthErrorRangeZ; 
-            end
-          end
-        end
-        channelItemPsth{unit_i} = unitItemPsth;
-        channelItemPsthErr{unit_i} = unitItemPsthErr;
-      end
-      psthByItem{channel_i} = channelItemPsth;
-      psthErrByItem{channel_i} = channelItemPsthErr;
-    end
-    if calc_i == 1
-      psthByImage = psthByItem;
-      psthErrByImage = psthErrByItem;
-      save(analysisOutFilename,'psthByImage','psthErrByImage', '-append');
-    else
-      psthByCategory = psthByItem;
-      psthErrByCategory = psthErrByItem;
-      save(analysisOutFilename,'psthByCategory','psthErrByCategory', '-append');
-    end
-  end
+if calcSwitch.imagePSTH && calcSwitch.spikeTimes
+  [psthByImage, psthErrByImage] = calcStimPSTH(spikesByEvent, eventLabels, psthEmptyByEvent, channelNames, channelUnitNames, calcSwitch.spikeTimes, smoothingWidth, times, preAlign, postAlign, psthErrorType, psthErrorRangeZ);
+  save(analysisOutFilename,'psthByImage','psthErrByImage', '-append');
+elseif calcSwitch.imagePSTH
+  [psthByImage, psthErrByImage] = calcStimPSTH(spikesByEventBinned, eventLabels, psthEmptyByEvent, channelNames, channelUnitNames, calcSwitch.spikeTimes, smoothingWidth, times, preAlign, postAlign, psthErrorType, psthErrorRangeZ);
+  save(analysisOutFilename,'psthByImage','psthErrByImage', '-append');
 end
 
-%FA
+if calcSwitch.categoryPSTH && calcSwitch.spikeTimes
+  [psthByCategory, psthErrByCategory] = calcStimPSTH(spikesByCategory, categoryList, psthEmptyByCategory, channelNames, channelUnitNames, calcSwitch.spikeTimes, smoothingWidth, times, preAlign, postAlign, psthErrorType, psthErrorRangeZ);
+  save(analysisOutFilename,'psthByCategory','psthErrByCategory', '-append');
+elseif calcSwitch.categoryPSTH
+  [psthByCategory, psthErrByCategory] = calcStimPSTH(spikesByCategoryBinned, categoryList, psthEmptyByCategory, channelNames, channelUnitNames, calcSwitch.spikeTimes, smoothingWidth, times, preAlign, postAlign, psthErrorType, psthErrorRangeZ);
+  save(analysisOutFilename,'psthByCategory','psthErrByCategory', '-append');
+end
+
 trialDatabaseStruct(eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
 
 if isfield(plotSwitch,'imageEyeMap') && plotSwitch.imageEyeMap
-  % Add Colors to each Line
-  % Add footage underneath
-  % times = -psthPre:psthImDur+psthPost;
-    stimStartInd = psthPre+lfpPaddedBy + 1;
-    stimEndInd = stimStartInd + psthImDur - 1;
-  
-  for ii = 1:length(analogInByEvent)
-    %Isolate the eye data for a stimuli, its name, and path.
-    eyeInByEvent = squeeze(analogInByEvent{ii}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
-    stimInfo = dir(strcat(stimDir, '/**/', translationTable{ii})); %use the translationTable to find the file
-    stimPath = [stimInfo(1).folder filesep stimInfo(1).name]; %create its path.
-    
-    %Open the Video, Get some Info on it
-    stimVid = VideoReader(stimPath); %#ok<TNMLP> %Open the file.
-    TotalFrames = stimVid.Duration*stimVid.FrameRate;
-    samplesPerFrame = floor(psthImDur/TotalFrames);
-    
-    %Down sample eye signal so that we have one point per frame.
-    eyeInByEventDownsampled = zeros(2, size(eyeInByEvent,2), TotalFrames);
-    for jj = 1:size(eyeInByEventDownsampled, 2)
-      for kk = 1:TotalFrames
-        startInd = 1 + ((kk - 1) * samplesPerFrame);
-        endInd =  startInd + samplesPerFrame;
-        eyeInByEventDownsampled(1,jj,kk) = mean(eyeInByEvent(1,jj,startInd:endInd));
-        eyeInByEventDownsampled(2,jj,kk) = mean(eyeInByEvent(2,jj,startInd:endInd));
-      end
-    end
-    
-    %Draw each Frame with its Eye signal, from all trials. Cycle through
-    %all the Frames, adding the appropriate points to each line. 
-    hf = figure;
-    set(hf, 'position', [100 100 stimVid.Width stimVid.Height])
-    stimVid.CurrentTime = 0;
-    while hasFrame(stimVid)
-      image(readFrame(stimVid)); %Seems likle this is working slow. 
-      pause(1/stimVid.FrameRate);
-    end
-   
-    xlim([-24 24])
-    ylim([-24 24])
-    title(sprintf('%s eye signal', translationTable{ii}));
-    hold on
-    for jj = 1:size(eyeInByEventDownsampled,2)
-      x = squeeze(eyeInByEventDownsampled(1,jj,:));
-      y = squeeze(eyeInByEventDownsampled(2,jj,:));
-      h = animatedline(x(1), y(1),'color' ,colors{mod(jj,length(colors))+1});
-      a = tic; % start timer
-      for k = 2:length(x)
-        b = toc(a); % check timer
-        if b > (1/30)
-          addpoints(h,x(k),y(k))
-          drawnow % update screen every 1/30 seconds
-          a = tic; % reset timer after updating
-        end
-      end
-    end
-    drawnow % draw final frame
-    
-  end
+  imageEyeMap(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, translationTable, colors)
 end
 
 if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
@@ -523,8 +377,7 @@ for event_i = 1:length(spikesByEvent)
   trialCountsByImage(event_i) = length(spikesByEvent{event_i}{1}{1});
 end
 
-save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch', '-append');
-save(analysisOutFilename,'imFr','imFrErr','imSpikeCounts','trialCountsByImage', '-append');
+save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch', 'imFr','imFrErr','imSpikeCounts','trialCountsByImage', '-append');
 
 if ~isempty(spikesByCategory)
   firingRatesByCategoryByEpoch = cell(size(frEpochs,1),1);
@@ -1174,6 +1027,7 @@ if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF) && ~calcSwitch.spikeTi
 end
 
 %%%% evoked potential plots
+times = -psthPre:psthImDur+psthPost;
 if isfield(plotSwitch,'evokedPsthMuaMultiCh') && plotSwitch.evokedPsthMuaMultiCh
   for group_i = 1:length(analysisGroups.evokedPsthOnePane.groups)
     group = analysisGroups.evokedPsthOnePane.groups{group_i};
@@ -4439,6 +4293,8 @@ end
 %save(strcat(outDir,'/','trialDatabase.mat'),'trialDB');
 end
 
+%% Individual Analysis Functions
+
 function trialDatabaseStruct(eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
 %Quick Temporary Structure to find out peak times during analysis, save to
 %a file where it can be retrieved easily by Monkeylogic.
@@ -4465,3 +4321,150 @@ trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage;
 
 save([outDir 'trialDatabase'], 'trialDatabaseStruct')
 end
+
+function spikesByStimBinned = calcSpikeTimes(spikesByStim, movingWin, smoothingWidth, channelNames, channelUnitNames, psthPre, psthImDur, psthPost)
+%Wrapper which cycles through a particular Stimulus tier (Catagory or
+%Event/Image) and feeds it into the chronux binspikes function with bin
+%sizes of 1 ms.
+assert((movingWin(1)/2 > 3*smoothingWidth),'Error: current implementation assumes that movingWin/2 > 3*psthSmoothingWidth. Not true here');
+
+spikesByStimBinned = cell(size(spikesByStim));
+for image_i = 1:length(spikesByStim)
+  spikesByStimBinned{image_i} = cell(length(channelNames),1);
+  for channel_i = 1:length(channelNames)
+    spikesByStimBinned{image_i}{channel_i} = cell(length(channelUnitNames{channel_i}),1);
+    for unit_i = 1:length(channelUnitNames{channel_i})
+      % this tmp variable fixes a Chronux bug that leads the last entry in the binned spike array to be zero when it shouldn't be
+      spikesTmp = binspikes(spikesByStim{image_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+1+psthPost+movingWin(1)/2])';
+      spikesByStimBinned{image_i}{channel_i}{unit_i} = spikesTmp(:,1:end-1);
+      %         for trial_i = 1:size(spikesByEventBinned{image_i}{channel_i}{unit_i},1)
+      %           fieldName = sprintf('spikesBinned.%s_%s',channelNames{channel_i}(~isspace(channelNames{channel_i})),channelUnitNames{channel_i}{unit_i}(~isspace(channelUnitNames{channel_i}{unit_i})));
+      %           trialDB = trialDatabaseSetField(fieldName,spikesByEventBinned{image_i}{channel_i}{unit_i}(trial_i,:),trialDB,trialIDsByEvent{image_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
+      %         end
+    end
+  end
+end
+end
+
+function imageEyeMap(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, translationTable, colors)
+
+% Add Colors to each Line
+% Add footage underneath
+times = -psthPre:psthImDur+psthPost;
+stimStartInd = psthPre+lfpPaddedBy + 1;
+stimEndInd = stimStartInd + psthImDur - 1;
+
+for ii = 1:length(analogInByEvent)
+  %Isolate the eye data for a stimuli, its name, and path.
+  eyeInByEvent = squeeze(analogInByEvent{ii}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
+  stimInfo = dir(strcat(stimDir, '/**/', translationTable{ii})); %use the translationTable to find the file
+  stimPath = [stimInfo(1).folder filesep stimInfo(1).name]; %create its path.
+  
+  %Open the Video, Get some Info on it
+  stimVid = VideoReader(stimPath); %#ok<TNMLP> %Open the file.
+  TotalFrames = stimVid.Duration*stimVid.FrameRate;
+  samplesPerFrame = floor(psthImDur/TotalFrames);
+  
+  %Down sample eye signal so that we have one point per frame.
+  eyeInByEventDownsampled = zeros(2, size(eyeInByEvent,2), TotalFrames);
+  for jj = 1:size(eyeInByEventDownsampled, 2)
+    for kk = 1:TotalFrames
+      startInd = 1 + ((kk - 1) * samplesPerFrame);
+      endInd =  startInd + samplesPerFrame;
+      eyeInByEventDownsampled(1,jj,kk) = mean(eyeInByEvent(1,jj,startInd:endInd));
+      eyeInByEventDownsampled(2,jj,kk) = mean(eyeInByEvent(2,jj,startInd:endInd));
+    end
+  end
+  
+  %Draw each Frame with its Eye signal, from all trials. Cycle through
+  %all the Frames, adding the appropriate points to each line.
+  hf = figure;
+  set(hf, 'position', [100 100 stimVid.Width stimVid.Height])
+  stimVid.CurrentTime = 0;
+  while hasFrame(stimVid)
+    image(readFrame(stimVid)); %Seems likle this is working slow.
+    pause(1/stimVid.FrameRate);
+  end
+  
+  xlim([-24 24])
+  ylim([-24 24])
+  title(sprintf('%s eye signal', translationTable{ii}));
+  hold on
+  for jj = 1:size(eyeInByEventDownsampled,2)
+    x = squeeze(eyeInByEventDownsampled(1,jj,:));
+    y = squeeze(eyeInByEventDownsampled(2,jj,:));
+    h = animatedline(x(1), y(1),'color' ,colors{mod(jj,length(colors))+1});
+    a = tic; % start timer
+    for k = 2:length(x)
+      b = toc(a); % check timer
+      if b > (1/30)
+        addpoints(h,x(k),y(k))
+        drawnow % update screen every 1/30 seconds
+        a = tic; % reset timer after updating
+      end
+    end
+  end
+  drawnow % draw final frame
+  
+end
+end
+
+function [psthByStim, psthErrByStim] = calcStimPSTH(spikesByStim, stimLabels, psthEmptyByStim, channelNames, channelUnitNames, spikeTimes, smoothingWidth, times, preAlign, postAlign, psthErrorType, psthErrorRangeZ)
+
+%spikesByStim = some data structure input (spikesByEvent/Catagory,
+%optionally binned).
+spikesByItem = spikesByStim;
+psthEmptyByItem = psthEmptyByStim;
+numItems = length(stimLabels);
+
+if spikeTimes
+  filterPoints = -3*smoothingWidth:3*smoothingWidth;
+  smoothingFilter = exp(-1*filterPoints.^2/(2*smoothingWidth^2));
+  smoothingFilter = smoothingFilter/sum(smoothingFilter);
+end
+
+%initialize vecotrs for PSTH and accompanying error.
+[psthByItem, psthErrByItem] = deal(cell(length(channelNames),1));
+
+%Cycle through channels, units, then items.
+for channel_i = 1:length(channelNames)
+  [channelItemPsth, channelItemPsthErr] = deal(cell(length(channelUnitNames{channel_i}),1));
+  for unit_i = 1:length(channelUnitNames{channel_i})
+    [unitItemPsth, unitItemPsthErr] = deal(zeros(numItems,length(times)));
+    for item_i = 1:numItems
+      if ~psthEmptyByItem{item_i}{channel_i}{unit_i}
+        if spikeTimes
+          [paddedPsth,~,paddedPsthErr] = psth(spikesByItem{item_i}{channel_i}{unit_i},smoothingWidth,'n',[-preAlign postAlign],min(psthErrorType,2),-preAlign:postAlign);
+          paddedPsth = 1000*paddedPsth;
+          paddedPsthErr = 1000*paddedPsthErr;
+          unitItemPsth(item_i,:) = paddedPsth(3*smoothingWidth+1:end-3*smoothingWidth);
+          unitItemPsthErr(item_i,:) = paddedPsthErr(3*smoothingWidth+1:end-3*smoothingWidth)*psthErrorRangeZ/2; %note: psth returns +/- 2 stderr; thus the factor of 0.5
+        else %use spike bins
+          paddedPsth = 1000*conv(mean(spikesByItem{item_i}{channel_i}{unit_i},1),smoothingFilter,'same');
+          if psthErrorType == 1 || size(spikesByItem{item_i}{channel_i}{unit_i},1) == 1  % if only one trial, can't use bootstrap
+            %note: the factor of sqrt(1000) appears because we need to convert to spks/ms to get poisson error, then back to Hz
+            paddedPsthErr = sqrt(paddedPsth)*(sqrt(1000)*psthErrorRangeZ/sqrt(size(spikesByItem{item_i}{channel_i}{unit_i},1)));
+          else
+            if psthErrorType == 2
+              paddedPsthErr = std(bootstrp(psthBootstrapSamples,@(x) mean(x,1),convn(spikesByItem{item_i}{channel_i}{unit_i},smoothingFilter,'same')),[],1)*psthErrorRangeZ*1000;
+            else
+              paddedPsthErr = convn(std(spikesByItem{item_i}{channel_i}{unit_i},[],1),smoothingFilter,'same')*psthErrorRangeZ*1000/sqrt(size(spikesByItem{item_i}{channel_i}{unit_i},1));
+            end
+          end
+          unitItemPsth(item_i,:) = paddedPsth(movingWin(1)/2+1:end-movingWin(1)/2);
+          unitItemPsthErr(item_i,:) = paddedPsthErr(movingWin(1)/2+1:end-movingWin(1)/2)*psthErrorRangeZ;
+        end
+      end
+    end
+    channelItemPsth{unit_i} = unitItemPsth;
+    channelItemPsthErr{unit_i} = unitItemPsthErr;
+  end
+  psthByItem{channel_i} = channelItemPsth;
+  psthErrByItem{channel_i} = channelItemPsthErr;
+end
+
+%Properly package outputs with the right names, save them.
+psthByStim = psthByItem;
+psthErrByStim = psthErrByItem;
+end
+
