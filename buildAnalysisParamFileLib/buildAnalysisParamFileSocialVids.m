@@ -1,4 +1,4 @@
-function [analysisParamFilename] = buildAnalysisParamFileSocialVids()    
+function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )    
 %buildAnalysisParamFile saves a mat file of parameters, which control the
 %behavior of analyzeSession
 %   todo: option to load 'fixed' params from file, for ease accross days
@@ -427,6 +427,12 @@ psthColormap = map;  %#ok
 if ~exist(outDir,'dir')
   mkdir(outDir);
 end
-save(analysisParamFilename);
+if isempty(varargin) 
+  save(analysisParamFilename);
+elseif strcmp(varargin,'saveNoPreprocParams')
+  save(analysisParamFilename,'calcSwitch','analysisGroups','plotSwitch','-append');
+end
+
+
 end
 

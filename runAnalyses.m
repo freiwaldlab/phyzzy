@@ -12,7 +12,7 @@ function [  ] = runAnalyses( inputs )
 %   - makes tuning curves for parameterized images or categories, as
 %     specified in the stim param file
 
-%%% unpack inputs
+%% unpack inputs
 analysisParamFilename = inputs.analysisParamFilename;
 spikesByChannel = inputs.spikesByChannel; 
 lfpData = inputs.lfpData; 
@@ -96,7 +96,7 @@ chColors = [{'b'}, {[0 .6 0]} , {'m'}];
 %   end
 % end
 
-% check calcSwitch definitions, set defaults, and apply field name updates as needed
+%% check calcSwitch definitions, set defaults, and apply field name updates as needed
 calcSwitchFields = {'categoryPSTH';'imagePSTH';'faceSelectIndex';'faceSelectIndexEarly';'faceSelectIndexLate';'inducedTrialMagnitudeCorrection';...
   'evokedSpectra';'inducedSpectra';'evokedImageTF';'inducedImageTF';'evokedCatTF';'inducedCatTF';'meanEvokedTF';'trialMeanSpectra';'coherenceByCategory';...
   'useJacknife'};
@@ -107,7 +107,7 @@ calcSwitchFieldnameUpdateMap = {{{'faceSelectIndex'};'selectivityIndices'};{{'fa
 for currentField_i = 1:length(calcSwitchFieldnameUpdateMap)
   for oldField_i = 1:length(calcSwitchFieldnameUpdateMap{currentField_i}{1})
     if isfield(calcSwitch,calcSwitchFieldnameUpdateMap{currentField_i}{1}{oldField_i})
-      calcSwitch.(calcSwitchFieldnameUpdateMap{currentField_i}{2}) = calcSwitch.calcSwitchFieldnameUpdateMap{currentField_i}{1}{oldField_i};
+      calcSwitch.(calcSwitchFieldnameUpdateMap{currentField_i}{2}) = calcSwitch.(calcSwitchFieldnameUpdateMap{currentField_i}{1}{oldField_i});
     end
   end
 end
@@ -270,7 +270,7 @@ for image_i = 1:length(eventLabels)
   imInds.(eventLabels{image_i}) = image_i;
 end
 
-save(analysisOutFilename,'catInds','imInds');
+save(analysisOutFilename,'catInds','imInds', '-append');
 
 if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
   spikesByCategoryBinned = cell(size(spikesByCategory));
@@ -286,7 +286,7 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
       end
     end
   end
-  save(analysisOutFilename,'spikesByCategoryBinned');
+  save(analysisOutFilename,'spikesByCategoryBinned', '-append');
   spikesByEventBinned = cell(size(spikesByEvent));
   for image_i = 1:length(spikesByEvent)
     spikesByEventBinned{image_i} = cell(length(channelNames),1);
@@ -303,7 +303,7 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
       end
     end
   end
-  save(analysisOutFilename,'spikesByEventBinned');
+  save(analysisOutFilename,'spikesByEventBinned', '-append');
 end
 
 % for channel_i = 1:length(channelNames)
@@ -394,41 +394,18 @@ for calc_i = 1:length(calcSwitches)
     if calc_i == 1
       psthByImage = psthByItem;
       psthErrByImage = psthErrByItem;
-      save(analysisOutFilename,'psthByImage','psthErrByImage');
+      save(analysisOutFilename,'psthByImage','psthErrByImage', '-append');
     else
       psthByCategory = psthByItem;
       psthErrByCategory = psthErrByItem;
-      save(analysisOutFilename,'psthByCategory','psthErrByCategory');
+      save(analysisOutFilename,'psthByCategory','psthErrByCategory', '-append');
     end
   end
 end
 
-%Quick Temporary Structure to find out peak times during analysis, save to
-%a file where it can be retrieved easily by Monkeylogic.
-trialDatabaseStruct = struct();
-trialDatabaseStruct.images = eventLabels;
-translationTable = cell(length(eventLabels),1);
-for ii = 1:length(eventLabels)
-  translationTable{ii} = paramArray{strcmp(pictureLabels,eventLabels(ii))}{1};
-end
-trialDatabaseStruct.translationTable = translationTable;
-psthPeaksByImageTmp = psthByImage;
+%FA
+trialDatabaseStruct(eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
 
-for ii = 1:length(psthPeaksByImageTmp)
-  for jj = 1:length(psthPeaksByImageTmp{ii})
-    psthPeaksByImageTmp{ii}{jj} = psthPeaksByImageTmp{ii}{jj}(:,psthPre+1:(end-psthPost-1));
-    %Zero regions not interested in, making sure to not add
-    %anything in the front to mess up index.
-    psthPeaksByImageTmp{ii}{jj}(1:frEpochs(1,1)) = 0;
-    [psthPeaksByImage{ii}{jj},  psthPeaksIndByImage{ii}{jj}] = max(psthPeaksByImageTmp{ii}{jj},[],2);
-  end
-end
-trialDatabaseStruct.psthPeaksIndByImage = psthPeaksIndByImage;
-trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage;
-
-save([outDir 'trialDatabase'], 'trialDatabaseStruct')
-
-%load('imageEyeMap_Predata');
 if isfield(plotSwitch,'imageEyeMap') && plotSwitch.imageEyeMap
   % Add Colors to each Line
   % Add footage underneath
@@ -546,8 +523,8 @@ for event_i = 1:length(spikesByEvent)
   trialCountsByImage(event_i) = length(spikesByEvent{event_i}{1}{1});
 end
 
-save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch');
-save(analysisOutFilename,'imFr','imFrErr','imSpikeCounts','trialCountsByImage');
+save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch', '-append');
+save(analysisOutFilename,'imFr','imFrErr','imSpikeCounts','trialCountsByImage', '-append');
 
 if ~isempty(spikesByCategory)
   firingRatesByCategoryByEpoch = cell(size(frEpochs,1),1);
@@ -568,8 +545,8 @@ if ~isempty(spikesByCategory)
     trialCountsByCategory(cat_i) = length(spikesByCategory{cat_i}{1}{1});
   end
   
-  save(analysisOutFilename,'firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch');
-  save(analysisOutFilename,'catFr','catFrErr','catSpikeCounts','trialCountsByCategory');
+  save(analysisOutFilename,'firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch', '-append');
+  save(analysisOutFilename,'catFr','catFrErr','catSpikeCounts','trialCountsByCategory', '-append');
 
   
   groupLabelsByImage = zeros(length(eventLabels),length(analysisGroups.stimulusLabelGroups));
@@ -618,7 +595,7 @@ if ~isempty(spikesByCategory)
       end
     end
   end
-  save(analysisOutFilename,'groupLabelsByImage','groupLabelColorsByImage');
+  save(analysisOutFilename,'groupLabelsByImage','groupLabelColorsByImage', '-append');
 end
 
 if ~taskData.RFmap
@@ -637,7 +614,7 @@ if ~taskData.RFmap
       else
         sortedGroupLabelColors = ones(length(eventLabels),3);
       end
-      save(analysisOutFilename,'imageSortedRates','sortedImageLabels','imFrErrSorted','trialCountsByImageSorted');
+      save(analysisOutFilename,'imageSortedRates','sortedImageLabels','imFrErrSorted','trialCountsByImageSorted', '-append');
       fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
       for i = 1:min(10,length(eventLabels))
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i),imFrErrSorted(i));
@@ -744,7 +721,7 @@ if ~taskData.RFmap
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMin,2,'descend');
     sortedImageLabels = eventLabels(imageSortOrder); 
     multiChMinFrSort = struct('imageSortedRates',imageSortedRates','imageSortOrder',imageSortOrder,'sortedImageLabels',sortedImageLabels);
-    save(analysisOutFilename,'multiChMinFrSort');
+    save(analysisOutFilename,'multiChMinFrSort', '-append');
     fprintf('\n\n\nMulti-channel Preferred Images, Maximin\n\n');
     for i = 1:min(10,length(eventLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -757,7 +734,7 @@ if ~taskData.RFmap
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMinNorm,2,'descend');
     sortedImageLabels = eventLabels(imageSortOrder);
     multiChMinNormFrSort = struct('imageSortedRates',imageSortedRates','imageSortOrder',imageSortOrder,'sortedImageLabels',sortedImageLabels);
-    save(analysisOutFilename,'multiChMinNormFrSort');
+    save(analysisOutFilename,'multiChMinNormFrSort', '-append');
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Maximin\n\n');
     for i = 1:min(10, length(sortedImageLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -770,7 +747,7 @@ if ~taskData.RFmap
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMeanNorm,2,'descend');
     sortedImageLabels = eventLabels(imageSortOrder);
     multiChMeanNormFrSort = struct('imageSortedRates',imageSortedRates','imageSortOrder',imageSortOrder,'sortedImageLabels',sortedImageLabels);
-    save(analysisOutFilename,'multiChMeanNormFrSort');
+    save(analysisOutFilename,'multiChMeanNormFrSort', '-append');
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Mean\n\n');
     for i = 1:min(10,length(eventLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -4462,3 +4439,29 @@ end
 %save(strcat(outDir,'/','trialDatabase.mat'),'trialDB');
 end
 
+function trialDatabaseStruct(eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
+%Quick Temporary Structure to find out peak times during analysis, save to
+%a file where it can be retrieved easily by Monkeylogic.
+trialDatabaseStruct = struct();
+trialDatabaseStruct.images = eventLabels;
+translationTable = cell(length(eventLabels),1);
+for ii = 1:length(eventLabels)
+  translationTable{ii} = paramArray{strcmp(pictureLabels,eventLabels(ii))}{1};
+end
+trialDatabaseStruct.translationTable = translationTable;
+psthPeaksByImageTmp = psthByImage;
+
+for ii = 1:length(psthPeaksByImageTmp)
+  for jj = 1:length(psthPeaksByImageTmp{ii})
+    psthPeaksByImageTmp{ii}{jj} = psthPeaksByImageTmp{ii}{jj}(:,psthPre+1:(end-psthPost-1));
+    %Zero regions not interested in, making sure to not add
+    %anything in the front to mess up index.
+    psthPeaksByImageTmp{ii}{jj}(1:frEpochs(1,1)) = 0;
+    [psthPeaksByImage{ii}{jj},  psthPeaksIndByImage{ii}{jj}] = max(psthPeaksByImageTmp{ii}{jj},[],2);
+  end
+end
+trialDatabaseStruct.psthPeaksIndByImage = psthPeaksIndByImage;
+trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage;
+
+save([outDir 'trialDatabase'], 'trialDatabaseStruct')
+end

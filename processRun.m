@@ -55,31 +55,32 @@ assert(mod(nargin,2) == 0, 'processRun takes arguments as name-value pairs; odd 
 for argPair_i=1:nargin/2
   argName = varargin{1+2*(argPair_i-1)};
   argVal = varargin{2+2*(argPair_i-1)};
-  if strcmp(argName,'preprocessed')
-    if strcmp(argVal,'-d')
-      defaultPreprocessed = 1;
-    else
-      preprocessedDataFilename = argVal;
-    end
-    usePreprocessed = 1;
-  elseif strcmp(argName,'preprocessedCC')
-    if strcmp(argVal,'-d')
-      defaultPreprocessed = 1;
-    else
-      preprocessedDataFilename = argVal;
-    end
-    usePreprocessed = 1;
-    preprocessedCC = 1;
-  elseif strcmp(argName,'paramBuilder')
-    paramBuilder = argVal;
-  elseif strcmp(argName,'analyzer')
-    analyzer = argVal;
-  elseif strcmp(argName, 'paramFile')
-    analysisParamFilename = argVal;
-  elseif strcmp(argName, 'keepItemsNotPresented')
-    keepItemsNotPresented = argVal;
-  else
-    warning('Invalid field %s provided to processRun',argName);
+  switch argName
+    case 'paramBuilder'
+      paramBuilder = argVal;
+    case 'analyzer'
+      analyzer = argVal;
+    case 'paramFile'
+      analysisParamFilename = argVal;
+    case 'keepItemsNotPresented'
+      keepItemsNotPresented = argVal;
+    case 'preprocessed'
+      if strcmp(argVal,'-d')
+        defaultPreprocessed = 1;
+      else
+        preprocessedDataFilename = argVal;
+      end
+      usePreprocessed = 1;
+    case 'preprocessedCC'
+      if strcmp(argVal,'-d')
+        defaultPreprocessed = 1;
+      else
+        preprocessedDataFilename = argVal;
+      end
+      usePreprocessed = 1;
+      preprocessedCC = 1;
+    otherwise
+      error('Invalid field %s provided to processRun',argName);
   end
 end
 
@@ -307,7 +308,7 @@ if ~usePreprocessed
     save(preprocessedDataFilename,'analysisParamFilename', 'spikesByChannel', 'lfpData', 'analogInData', 'taskData', 'taskDataAll', 'psthImDur', 'preAlign', 'postAlign',...
       'categoryList', 'eventLabels', 'jumpsByImage', 'spikesByEvent', 'psthEmptyByEvent', 'spikesByCategory', 'psthEmptyByCategory',...
       'spikesByEventForTF', 'spikesByCategoryForTF', 'lfpByEvent', 'lfpByCategory', 'analogInByEvent','analogInByCategory','channelUnitNames', ...
-      'stimTiming', 'eventCategories', 'onsetsByEvent', 'onsetsByCategory','trialIDsByEvent','trialIDsByCategory');
+      'stimTiming', 'eventCategories', 'onsetsByEvent', 'offsetsByEvent', 'onsetsByCategory', 'offsetsByCategory', 'trialIDsByEvent','trialIDsByCategory', 'excludeStimParams');
   end
 end
 
