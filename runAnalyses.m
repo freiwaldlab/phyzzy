@@ -270,7 +270,7 @@ for image_i = 1:length(eventLabels)
   imInds.(eventLabels{image_i}) = image_i;
 end
 
-save(analysisOutFilename,'catInds','imInds');
+save(analysisOutFilename,'catInds','imInds','-append');
 
 if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
   spikesByCategoryBinned = cell(size(spikesByCategory));
@@ -286,7 +286,7 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
       end
     end
   end
-  save(analysisOutFilename,'spikesByCategoryBinned');
+  save(analysisOutFilename,'spikesByCategoryBinned','-append');
   spikesByEventBinned = cell(size(spikesByEvent));
   for image_i = 1:length(spikesByEvent)
     spikesByEventBinned{image_i} = cell(length(channelNames),1);
@@ -303,7 +303,7 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
       end
     end
   end
-  save(analysisOutFilename,'spikesByEventBinned');
+  save(analysisOutFilename,'spikesByEventBinned','-append');
 end
 
 % for channel_i = 1:length(channelNames)
@@ -394,11 +394,11 @@ for calc_i = 1:length(calcSwitches)
     if calc_i == 1
       psthByImage = psthByItem;
       psthErrByImage = psthErrByItem;
-      save(analysisOutFilename,'psthByImage','psthErrByImage');
+      save(analysisOutFilename,'psthByImage','psthErrByImage','-append');
     else
       psthByCategory = psthByItem;
       psthErrByCategory = psthErrByItem;
-      save(analysisOutFilename,'psthByCategory','psthErrByCategory');
+      save(analysisOutFilename,'psthByCategory','psthErrByCategory','-append');
     end
   end
 end
@@ -455,8 +455,8 @@ for event_i = 1:length(spikesByEvent)
   trialCountsByImage(event_i) = length(spikesByEvent{event_i}{1}{1});
 end
 
-save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch');
-save(analysisOutFilename,'imFr','imFrErr','imSpikeCounts','trialCountsByImage');
+save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch','-append');
+save(analysisOutFilename,'imFr','imFrErr','imSpikeCounts','trialCountsByImage','-append');
 
 if ~isempty(spikesByCategory)
   firingRatesByCategoryByEpoch = cell(size(frEpochs,1),1);
@@ -476,8 +476,8 @@ if ~isempty(spikesByCategory)
     trialCountsByCategory(cat_i) = length(spikesByCategory{cat_i}{1}{1});
   end
   
-  save(analysisOutFilename,'firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch');
-  save(analysisOutFilename,'catFr','catFrErr','catSpikeCounts','trialCountsByCategory');
+  save(analysisOutFilename,'firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch','-append');
+  save(analysisOutFilename,'catFr','catFrErr','catSpikeCounts','trialCountsByCategory','-append');
   
   groupLabelsByImage = zeros(length(eventLabels),length(analysisGroups.stimulusLabelGroups));
   groupLabelColorsByImage = ones(length(eventLabels),3,length(analysisGroups.stimulusLabelGroups));
@@ -506,7 +506,7 @@ if ~isempty(spikesByCategory)
       end
     end
   end
-  save(analysisOutFilename,'groupLabelsByImage','groupLabelColorsByImage');
+  save(analysisOutFilename,'groupLabelsByImage','groupLabelColorsByImage','-append');
 end
 
 if ~taskData.RFmap
@@ -525,7 +525,7 @@ if ~taskData.RFmap
       else
         sortedGroupLabelColors = ones(length(eventLabels),3);
       end
-      save(analysisOutFilename,'imageSortedRates','sortedImageLabels','imFrErrSorted','trialCountsByImageSorted');
+      save(analysisOutFilename,'imageSortedRates','sortedImageLabels','imFrErrSorted','trialCountsByImageSorted','-append');
       fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
       for i = 1:min(10,length(eventLabels))
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i),imFrErrSorted(i));
@@ -599,14 +599,15 @@ if ~taskData.RFmap
   end
 
 
-  % multi-channel MUA image preference
+  % multi-channel MUA image preference 
+  %(todo: all these, but with mean-sigma as the sort criterion)
   if length(channelNames) > 1
     multiChSpikesMin = zeros(length(eventLabels));
     multiChSpikesMinNorm = zeros(length(eventLabels));
     multiChSpikesMeanNorm = zeros(length(eventLabels));
     multiChMua = zeros(length(spikeChannels),length(eventLabels));
     multiChMuaNorm = zeros(length(spikeChannels),length(eventLabels));
-    for channel_i = 1:length(spikeChannels)
+    for channel_i = 1:length(spikeChannels) %todo: deal with MUA vs. units
       multiChMua(channel_i,:) = imFr{channel_i}(end,:);
       multiChMuaNorm(channel_i,:) = imFr{channel_i}(end,:)/max(imFr{channel_i}(end,:));
     end
@@ -615,9 +616,11 @@ if ~taskData.RFmap
     multiChSpikesMeanNorm = mean(multiChMuaNorm);
     % multi-channel preferred images
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMin,2,'descend');
-    sortedImageLabels = eventLabels(imageSortOrder); 
-    multiChMinFrSort = struct('imageSortedRates',imageSortedRates','imageSortOrder',imageSortOrder,'sortedImageLabels',sortedImageLabels);
-    save(analysisOutFilename,'multiChMinFrSort');
+    sortedImageLabels = eventLabels(imageSortOrder);
+    multiChMinFrSort.imageSortedRates = imageSortedRates';
+    multiChMinFrSort.imageSortOrder = imageSortOrder';
+    multiChMinFrSort.sortedImageLabels = sortedImageLabels';
+    save(analysisOutFilename,'multiChMinFrSort','-append');
     fprintf('\n\n\nMulti-channel Preferred Images, Maximin\n\n');
     for i = 1:min(10,length(eventLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -629,8 +632,10 @@ if ~taskData.RFmap
 
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMinNorm,2,'descend');
     sortedImageLabels = eventLabels(imageSortOrder);
-    multiChMinNormFrSort = struct('imageSortedRates',imageSortedRates','imageSortOrder',imageSortOrder,'sortedImageLabels',sortedImageLabels);
-    save(analysisOutFilename,'multiChMinNormFrSort');
+    multiChMinNormFrSort.imageSortedRates = imageSortedRates';
+    multiChMinNormFrSort.imageSortOrder = imageSortOrder';
+    multiChMinNormFrSort.sortedImageLabels = sortedImageLabels';
+    save(analysisOutFilename,'multiChMinNormFrSort','-append');
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Maximin\n\n');
     for i = 1:min(10, length(sortedImageLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -642,8 +647,10 @@ if ~taskData.RFmap
 
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMeanNorm,2,'descend');
     sortedImageLabels = eventLabels(imageSortOrder);
-    multiChMeanNormFrSort = struct('imageSortedRates',imageSortedRates','imageSortOrder',imageSortOrder,'sortedImageLabels',sortedImageLabels);
-    save(analysisOutFilename,'multiChMeanNormFrSort');
+    multiChMeanNormFrSort.imageSortedRates = imageSortedRates';
+    multiChMeanNormFrSort.imageSortOrder = imageSortOrder';
+    multiChMeanNormFrSort.sortedImageLabels = sortedImageLabels';
+    save(analysisOutFilename,'multiChMeanNormFrSort','-append');
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Mean\n\n');
     for i = 1:min(10,length(eventLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -654,7 +661,9 @@ if ~taskData.RFmap
     end
   end
   % selectivity indices
-  calcSwitches = [calcSwitch.faceSelectIndex, calcSwitch.faceSelectIndexEarly, calcSwitch.faceSelectIndexLate];
+  calcSwitches = [calcSwitch.selectivityIndices, calcSwitch.selectivityIndicesEarly, calcSwitch.selectivityIndicesLate];
+  selectivityIndices = struct();
+  %todo: add parametric and nonparametric z scores
   for calc_i = 1:length(calcSwitches)
     if ~calcSwitches(calc_i)
       continue
@@ -684,12 +693,14 @@ if ~taskData.RFmap
               response2 = imFr{channel_i}(unit_i,imInds.(group{2}));
             end
             selectIndex = (response1 - response2) / (response1 + response2);
-            fprintf('%s > %s: %.3f\n',group{1},group{2},selectIndex);   
+            fprintf('%s > %s: %.3f\n',group{1},group{2},selectIndex);
+            selectivityIndices.(analysisGroups.selectivityIndex.names{group_i}).(sprintf('from%dms_to_%dms',frEpochs(calc_i,1),frEpochs(calc_i,2))) = selectIndex;
           end
         end
       end
     end
   end
+  save(analysisOutFilename,'selectivityIndices','-append');
   
   % category preference bar plot
   calcSwitches = [isfield(plotSwitch,'stimPrefBarPlot') && plotSwitch.stimPrefBarPlot, isfield(plotSwitch,'stimPrefBarPlotEarly') && plotSwitch.stimPrefBarPlotEarly,...
@@ -765,6 +776,7 @@ if ~taskData.RFmap
   % tuning curves
   calcSwitches = [isfield(plotSwitch,'tuningCurves') && plotSwitch.tuningCurves, isfield(plotSwitch,'tuningCurvesEarly') && plotSwitch.tuningCurvesEarly, ...
     isfield(plotSwitch,'tuningCurvesLate') && plotSwitch.tuningCurvesLate];  
+  %todo: compute and save measures like pref view, tuning depth, fisher info, fwhm, (mirror) symmetry
   for calc_i = 1:length(calcSwitches)
     if ~calcSwitches(calc_i)
       continue

@@ -8,8 +8,8 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( varargin )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '009';
-dateSubject = '181205ALAN'; 
+runNum = '010';
+dateSubject = '180502ALAN'; 
 machine = 'laptop';
 
 switch machine
@@ -34,7 +34,7 @@ switch machine
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
     stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   
 end
-analysisLabel = '181015';
+analysisLabel = '181224';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;           %#ok
@@ -48,9 +48,9 @@ verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
-ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-ephysParams.lfpChannels = [1]; 
-ephysParams.channelNames = {'ML'};
+ephysParams.spikeChannels = [1,33,35]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+ephysParams.lfpChannels = [1,33,35]; 
+ephysParams.channelNames = {'ML';'AL';'AM'};
 ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764, 8191/32764]; %converts raw values to microvolts
 ephysParams.commonRef = [0 0 0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
@@ -72,7 +72,7 @@ butter1Hz200Hz_v1 = designfilt('bandpassiir','DesignMethod','butter','PassbandFr
   'SampleRate',1000,'MatchExactly','passband','StopbandFrequency1',0.67,'StopbandFrequency2',250);
 [tmp1,tmp2] = butter(4,[1/500,200/500]);
 butter1Hz200Hz_v2 = [tmp1,tmp2];        %#ok
-ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter
+ephysParams.filter = '';%butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter
 ephysParams.plotFilterResult = 0; %#ok
 
 % parameters preprocessAnalogIn, see function for details
@@ -242,10 +242,10 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 1;
-plotSwitch.prefImRaster = 0;
+plotSwitch.prefImRaster = 1;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-plotSwitch.imageTuningSorted = 1;
+plotSwitch.imageTuningSorted = 0;
 plotSwitch.stimPrefBarPlot = 1;
 plotSwitch.stimPrefBarPlotEarly = 0;
 plotSwitch.stimPrefBarPlotLate = 0;
@@ -258,7 +258,7 @@ plotSwitch.rfLate = 0;
 plotSwitch.latencyRF = 0;
 plotSwitch.evokedPowerRF = 0;
 plotSwitch.evokedPsthMuaMultiCh = 0;
-plotSwitch.evokedByCategory = 0;
+plotSwitch.evokedByCategory = 1;
 plotSwitch.analogInByItem = 0;
 plotSwitch.analogInDerivativesByItem = 0;
 plotSwitch.colorPsthEvoked = 1;
@@ -296,9 +296,9 @@ analysisGroups.stimulusLabelGroups.groups = {{'humanFace';'monkeyFace';'place';'
 analysisGroups.stimulusLabelGroups.names = {'fobPlus'};
 analysisGroups.stimulusLabelGroups.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
 %
-analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.evokedPotentials.names = {'fobPlus'};
-analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'},{'face';'object';'body';'place';'grayback'}};
+analysisGroups.evokedPotentials.names = {'fobPlus';'fobpg'};
+analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'};{'b';'c';'y';'g';'m'}};
 %
 analysisGroups.analogInPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
 analysisGroups.analogInPotentials.channels = {[3]};
