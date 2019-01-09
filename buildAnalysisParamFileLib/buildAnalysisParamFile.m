@@ -8,8 +8,8 @@ function [ analysisParamFilename ] = buildAnalysisParamFile( varargin )
 
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '009';
-dateSubject = '181205ALAN'; 
+runNum = '010';
+dateSubject = '180502ALAN'; 
 machine = 'laptop';
 
 switch machine
@@ -34,7 +34,7 @@ switch machine
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
     stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   
 end
-analysisLabel = '181015';
+analysisLabel = '181224';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;           %#ok
@@ -48,9 +48,9 @@ verbosity = 'INFO'; %other options, 'DEBUG', 'VERBOSE';
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
-ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-ephysParams.lfpChannels = [1]; 
-ephysParams.channelNames = {'ML'};
+ephysParams.spikeChannels = [1,33,35]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+ephysParams.lfpChannels = [1,33,35]; 
+ephysParams.channelNames = {'ML';'AL';'AM'};
 ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764, 8191/32764]; %converts raw values to microvolts
 ephysParams.commonRef = [0 0 0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
@@ -72,7 +72,7 @@ butter1Hz200Hz_v1 = designfilt('bandpassiir','DesignMethod','butter','PassbandFr
   'SampleRate',1000,'MatchExactly','passband','StopbandFrequency1',0.67,'StopbandFrequency2',250);
 [tmp1,tmp2] = butter(4,[1/500,200/500]);
 butter1Hz200Hz_v2 = [tmp1,tmp2];        %#ok
-ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter
+ephysParams.filter = '';%butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter
 ephysParams.plotFilterResult = 0; %#ok
 
 % parameters preprocessAnalogIn, see function for details
@@ -245,8 +245,8 @@ plotSwitch.categoryPsth = 1;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-plotSwitch.imageTuningSorted = 1;
-plotSwitch.stimPrefBarPlot = 1;
+plotSwitch.imageTuningSorted = 0;
+plotSwitch.stimPrefBarPlot = 0;
 plotSwitch.stimPrefBarPlotEarly = 0;
 plotSwitch.stimPrefBarPlotLate = 0;
 plotSwitch.tuningCurves = 0;
@@ -261,7 +261,7 @@ plotSwitch.evokedPsthMuaMultiCh = 0;
 plotSwitch.evokedByCategory = 0;
 plotSwitch.analogInByItem = 0;
 plotSwitch.analogInDerivativesByItem = 0;
-plotSwitch.colorPsthEvoked = 1;
+plotSwitch.colorPsthEvoked = 0;
 plotSwitch.linePsthEvoked = 0;
 plotSwitch.runSummary = 0;
 plotSwitch.runSummaryImMeanSub = 0;
@@ -274,8 +274,12 @@ plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 1;
 plotSwitch.singleTrialAnalogInByCategory = 0;
-plotSwitch.lfpSpectraByCategory = 0;
-plotSwitch.spikeSpectraByCategory = 0;
+plotSwitch.lfpSpectraByCategory = 1;
+plotSwitch.lfpAutocorrelTfByItem = 0;
+plotSwitch.lfpAutocorrelByItem = 0;
+plotSwitch.spikeSpectraByCategory = 1;
+plotSwitch.spikeAutocorrelTfByItem = 0;
+plotSwitch.spikeAutocorrelByItem = 0;
 plotSwitch.SpikeSpectraTfByImage = 0;
 plotSwitch.lfpSpectraTfByImage = 0;
 plotSwitch.couplingPhasesUnwrapped = 0;
@@ -296,9 +300,9 @@ analysisGroups.stimulusLabelGroups.groups = {{'humanFace';'monkeyFace';'place';'
 analysisGroups.stimulusLabelGroups.names = {'fobPlus'};
 analysisGroups.stimulusLabelGroups.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
 %
-analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
-analysisGroups.evokedPotentials.names = {'fobPlus'};
-analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'}};
+analysisGroups.evokedPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'},{'face';'object';'body';'place';'grayback'}};
+analysisGroups.evokedPotentials.names = {'fobPlus';'fobpg'};
+analysisGroups.evokedPotentials.colors = {{'b';'c';'y';'g';'m';'r';'k'};{'b';'c';'y';'g';'m'}};
 %
 analysisGroups.analogInPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
 analysisGroups.analogInPotentials.channels = {[3]};
@@ -359,7 +363,7 @@ calcSwitch.selectivityIndices = 1;
 calcSwitch.selectivityIndicesEarly = 0;
 calcSwitch.selectivityIndicesLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 0;
+calcSwitch.evokedSpectra = 1;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;

@@ -272,7 +272,6 @@ end
 save(analysisOutFilename,'catInds','imInds', '-append');
 
 %% Analyses
-
 if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
   spikesByEventBinned = calcSpikeTimes(spikesByEvent, movingWin, smoothingWidth, channelNames, channelUnitNames, psthPre, psthImDur, psthPost);
   spikesByCategoryBinned = calcSpikeTimes(spikesByCategory, movingWin, smoothingWidth, channelNames, channelUnitNames, psthPre, psthImDur, psthPost);
@@ -398,9 +397,7 @@ if ~isempty(spikesByCategory)
     trialCountsByCategory(cat_i) = length(spikesByCategory{cat_i}{1}{1});
   end
   
-  save(analysisOutFilename,'firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch', '-append');
-  save(analysisOutFilename,'catFr','catFrErr','catSpikeCounts','trialCountsByCategory', '-append');
-
+save(analysisOutFilename,'firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch', 'catFr','catFrErr','catSpikeCounts','trialCountsByCategory', '-append');
   
   groupLabelsByImage = zeros(length(eventLabels),length(analysisGroups.stimulusLabelGroups));
   groupLabelColorsByImage = ones(length(eventLabels),3,length(analysisGroups.stimulusLabelGroups));
@@ -467,7 +464,9 @@ if ~taskData.RFmap
       else
         sortedGroupLabelColors = ones(length(eventLabels),3);
       end
-      save(analysisOutFilename,'imageSortedRates','sortedImageLabels','imFrErrSorted','trialCountsByImageSorted', '-append');
+
+      save(analysisOutFilename,'imageSortedRates','sortedImageLabels','imFrErrSorted','trialCountsByImageSorted','-append');
+
       fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
       for i = 1:min(10,length(eventLabels))
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i),imFrErrSorted(i));
@@ -556,14 +555,15 @@ if ~taskData.RFmap
   end
 
 
-  % multi-channel MUA image preference
+  % multi-channel MUA image preference 
+  %(todo: all these, but with mean-sigma as the sort criterion)
   if length(channelNames) > 1
     multiChSpikesMin = zeros(length(eventLabels));
     multiChSpikesMinNorm = zeros(length(eventLabels));
     multiChSpikesMeanNorm = zeros(length(eventLabels));
     multiChMua = zeros(length(spikeChannels),length(eventLabels));
     multiChMuaNorm = zeros(length(spikeChannels),length(eventLabels));
-    for channel_i = 1:length(spikeChannels)
+    for channel_i = 1:length(spikeChannels) %todo: deal with MUA vs. units
       multiChMua(channel_i,:) = imFr{channel_i}(end,:);
       multiChMuaNorm(channel_i,:) = imFr{channel_i}(end,:)/max(imFr{channel_i}(end,:));
     end
@@ -572,9 +572,13 @@ if ~taskData.RFmap
     multiChSpikesMeanNorm = mean(multiChMuaNorm);
     % multi-channel preferred images
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMin,2,'descend');
-    sortedImageLabels = eventLabels(imageSortOrder); 
-    multiChMinFrSort = struct('imageSortedRates',imageSortedRates','imageSortOrder',imageSortOrder,'sortedImageLabels',sortedImageLabels);
-    save(analysisOutFilename,'multiChMinFrSort', '-append');
+
+    sortedImageLabels = eventLabels(imageSortOrder);
+    multiChMinFrSort.imageSortedRates = imageSortedRates';
+    multiChMinFrSort.imageSortOrder = imageSortOrder';
+    multiChMinFrSort.sortedImageLabels = sortedImageLabels';
+    save(analysisOutFilename,'multiChMinFrSort','-append');
+
     fprintf('\n\n\nMulti-channel Preferred Images, Maximin\n\n');
     for i = 1:min(10,length(eventLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -586,8 +590,10 @@ if ~taskData.RFmap
 
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMinNorm,2,'descend');
     sortedImageLabels = eventLabels(imageSortOrder);
-    multiChMinNormFrSort = struct('imageSortedRates',imageSortedRates','imageSortOrder',imageSortOrder,'sortedImageLabels',sortedImageLabels);
-    save(analysisOutFilename,'multiChMinNormFrSort', '-append');
+    multiChMinNormFrSort.imageSortedRates = imageSortedRates';
+    multiChMinNormFrSort.imageSortOrder = imageSortOrder';
+    multiChMinNormFrSort.sortedImageLabels = sortedImageLabels';
+    save(analysisOutFilename,'multiChMinNormFrSort','-append');
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Maximin\n\n');
     for i = 1:min(10, length(sortedImageLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -598,9 +604,13 @@ if ~taskData.RFmap
     end
 
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMeanNorm,2,'descend');
-    sortedImageLabels = eventLabels(imageSortOrder);
-    multiChMeanNormFrSort = struct('imageSortedRates',imageSortedRates','imageSortOrder',imageSortOrder,'sortedImageLabels',sortedImageLabels);
-    save(analysisOutFilename,'multiChMeanNormFrSort', '-append');
+    sortedImageLabels = eventLabels(imageSortOrder); 
+    multiChMeanNormFrSort.imageSortedRates = imageSortedRates';
+    multiChMeanNormFrSort.imageSortOrder = imageSortOrder';
+    multiChMeanNormFrSort.sortedImageLabels = sortedImageLabels';
+    save(analysisOutFilename,'multiChMeanNormFrSort','-append');
+
+
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Mean\n\n');
     for i = 1:min(10,length(eventLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -611,7 +621,9 @@ if ~taskData.RFmap
     end
   end
   % selectivity indices
-  calcSwitches = [calcSwitch.faceSelectIndex, calcSwitch.faceSelectIndexEarly, calcSwitch.faceSelectIndexLate];
+  calcSwitches = [calcSwitch.selectivityIndices, calcSwitch.selectivityIndicesEarly, calcSwitch.selectivityIndicesLate];
+  selectivityIndices = struct();
+  %todo: add parametric and nonparametric z scores
   for calc_i = 1:length(calcSwitches)
     if ~calcSwitches(calc_i)
       continue
@@ -641,12 +653,14 @@ if ~taskData.RFmap
               response2 = imFr{channel_i}(unit_i,imInds.(group{2}));
             end
             selectIndex = (response1 - response2) / (response1 + response2);
-            fprintf('%s > %s: %.3f\n',group{1},group{2},selectIndex);   
+            fprintf('%s > %s: %.3f\n',group{1},group{2},selectIndex);
+            selectivityIndices.(analysisGroups.selectivityIndex.names{group_i}).(sprintf('from%dms_to_%dms',frEpochs(calc_i,1),frEpochs(calc_i,2))) = selectIndex;
           end
         end
       end
     end
   end
+  save(analysisOutFilename,'selectivityIndices','-append');
   
   % category preference bar plot
   calcSwitches = [isfield(plotSwitch,'stimPrefBarPlot') && plotSwitch.stimPrefBarPlot, isfield(plotSwitch,'stimPrefBarPlotEarly') && plotSwitch.stimPrefBarPlotEarly,...
@@ -722,6 +736,7 @@ if ~taskData.RFmap
   % tuning curves
   calcSwitches = [isfield(plotSwitch,'tuningCurves') && plotSwitch.tuningCurves, isfield(plotSwitch,'tuningCurvesEarly') && plotSwitch.tuningCurvesEarly, ...
     isfield(plotSwitch,'tuningCurvesLate') && plotSwitch.tuningCurvesLate];  
+  %todo: compute and save measures like pref view, tuning depth, fisher info, fwhm, (mirror) symmetry
   for calc_i = 1:length(calcSwitches)
     if ~calcSwitches(calc_i)
       continue
@@ -2204,7 +2219,16 @@ for calc_i = 1:length(calcSwitches)
               close(fh);
             end
           end
-          % time domain autocorrelation 
+        end
+      end
+    end
+    % time domain autocorrelation
+    if (isfield(plotSwitch,'lfpAutocorrelTfByItem') && plotSwitch.lfpAutocorrelTfByItem) || (isfield(plotSwitch,'lfpAutocorrelByItem') && plotSwitch.lfpAutocorrelByItem)
+      for group_i = 1:length(analysisGroups.spectraByCategory.groups)
+        group = analysisGroups.spectraByCategory.groups{group_i};
+        groupName = analysisGroups.spectraByCategory.names{group_i};
+        groupColors = analysisGroups.spectraByCategory.colors{group_i};
+        for channel_i = 1:length(channelNames)
           for item_i = 1:length(group)
             if isfield(catInds,group{item_i})
               lfpByItem = lfpByCategory;
@@ -2226,45 +2250,48 @@ for calc_i = 1:length(calcSwitches)
             specErrs(item_i,:,:) = confC;  
             shifts(item_i,:) = shiftList';
             t = -psthPre:psthImDur+psthPost;
-
-            fh = figure(); 
-            imagesc(t,t,Cgram); axis xy  
-            xlabel('Time (ms)'); 
-            ylabel('Time(ms)');
-            c = colorbar();
-            ylabel(c,'Correlation');
-            hold on
-            draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
-            line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
-            title(sprintf('%s LFP autocorrelation, %s%s',channelNames{channel_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+            if isfield(plotSwitch,'lfpAutocorrelTfByItem') && plotSwitch.lfpAutocorrelTfByItem
+              fh = figure(); 
+              imagesc(t,t,Cgram); axis xy  
+              xlabel('Time (ms)'); 
+              ylabel('Time(ms)');
+              c = colorbar();
+              ylabel(c,'Correlation');
+              hold on
+              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
+              line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
+              title(sprintf('%s LFP autocorrelation, %s%s',channelNames{channel_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+              clear figData
+              figData.x = t;
+              figData.y = 1;
+              figData.z = Cgram;
+              drawnow;
+              saveFigure(outDir,sprintf('autocorrel_TF_%s_LFP_%s%s_Run%s',channelNames{channel_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              if closeFig
+                close(fh);
+              end
+            end
+          end
+          if isfield(plotSwitch,'lfpAutocorrelByItem') && plotSwitch.lfpAutocorrelByItem
+            fh = figure();
+            lineProps.width = 3;
+            lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+            mseb(shifts,spectra,specErrs,lineProps);
+            legend(group);
+            xlabel('time (ms)');
+            ylabel('correlation');
+            title(sprintf('%s LFP autocorrelation %s',channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
             clear figData
-            figData.x = t;
-            figData.y = 1;
-            figData.z = Cgram;
+            figData.x = shifts; 
+            figData.y = spectra;
+            figData.e = specErrs;
             drawnow;
-            saveFigure(outDir,sprintf('autocorrel_TF_%s_LFP_%s%s_Run%s',channelNames{channel_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+            saveFigure(outDir,sprintf('autocorrel_%s_LFP_%s%s_Run%s',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
             if closeFig
               close(fh);
             end
-          end
-          fh = figure();
-          lineProps.width = 3;
-          lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
-          mseb(shifts,spectra,specErrs,lineProps);
-          legend(group);
-          xlabel('time (ms)');
-          ylabel('correlation');
-          title(sprintf('%s LFP autocorrelation %s',channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-          clear figData
-          figData.x = shifts; 
-          figData.y = spectra;
-          figData.e = specErrs;
-          drawnow;
-          saveFigure(outDir,sprintf('autocorrel_%s_LFP_%s%s_Run%s',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-          if closeFig
-            close(fh);
           end
         end
       end
@@ -2430,8 +2457,17 @@ for calc_i = 1:length(calcSwitches)
                 close(fh);
               end
             end
+          end
+        end
+      end
             
-             % time domain autocorrelation
+      % time domain autocorrelation
+      if (isfield(plotSwitch,'spikeAutocorrelTfByItem') && plotSwitch.spikeAutocorrelTfByItem) || (isfield(plotSwitch,'spikeAutocorrelByItem') && plotSwitch.spikeAutocorrelByItem)
+        for group_i = 1:length(analysisGroups.spectraByCategory.groups)
+          group = analysisGroups.spectraByCategory.groups{group_i};
+          groupName = analysisGroups.spectraByCategory.names{group_i};
+          groupColors = analysisGroups.spectraByCategory.colors{group_i};
+          for channel_i = 1:length(channelNames)
             if calcSwitch.spikeTimes
               disp('Requested time-domain spike autocorrelation analysis for non-binned spikes. Not implemented. Skipping');
             else
@@ -2458,45 +2494,48 @@ for calc_i = 1:length(calcSwitches)
                 specErrs(item_i,:,:) = confC;  
                 shifts(item_i,:) = shiftList';
                 t = -psthPre:psthImDur+psthPost;
-
-                fh = figure(); 
-                imagesc(t,t,Cgram); axis xy
-                xlabel('Time (ms)'); 
-                ylabel('Time (ms)');
-                c = colorbar();
-                ylabel(c,'Correlation');
-                hold on
-                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
-                line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
-                title(sprintf('%s %s autocorrelation, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                if isfield(plotSwitch,'spikeAutocorrelTfByItem') && plotSwitch.spikeAutocorrelTfByItem 
+                  fh = figure(); 
+                  imagesc(t,t,Cgram); axis xy
+                  xlabel('Time (ms)'); 
+                  ylabel('Time (ms)');
+                  c = colorbar();
+                  ylabel(c,'Correlation');
+                  hold on
+                  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  title(sprintf('%s %s autocorrelation, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                  clear figData
+                  figData.x = t;
+                  figData.y = t;
+                  figData.z = Cgram;
+                  drawnow;
+                  saveFigure(outDir,sprintf('autocorrel_TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                  if closeFig
+                    close(fh);
+                  end
+                end
+              end
+              if isfield(plotSwitch,'spikeAutocorrelByItem') && plotSwitch.spikeAutocorrelByItem
+                fh = figure();
+                lineProps.width = 3;
+                lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+                mseb(shifts,spectra,specErrs,lineProps);
+                legend(group);
+                xlabel('time (ms)');
+                ylabel('correlation');
+                title(sprintf('%s %s autocorrelation %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 clear figData
-                figData.x = t;
-                figData.y = t;
-                figData.z = Cgram;
+                figData.x = shifts; 
+                figData.y = spectra;
+                figData.e = specErrs;
                 drawnow;
-                saveFigure(outDir,sprintf('autocorrel_TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                saveFigure(outDir,sprintf('autocorrel_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
                 if closeFig
                   close(fh);
                 end
-              end
-              fh = figure();
-              lineProps.width = 3;
-              lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
-              mseb(shifts,spectra,specErrs,lineProps);
-              legend(group);
-              xlabel('time (ms)');
-              ylabel('correlation');
-              title(sprintf('%s %s autocorrelation %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-              clear figData
-              figData.x = shifts; 
-              figData.y = spectra;
-              figData.e = specErrs;
-              drawnow;
-              saveFigure(outDir,sprintf('autocorrel_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              if closeFig
-                close(fh);
               end
             end
           end
