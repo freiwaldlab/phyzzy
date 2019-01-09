@@ -1235,7 +1235,6 @@ if isfield(plotSwitch,'analogInDerivativesByItem') && plotSwitch.analogInDerivat
   end
 end
 
-
 % lfp - (color) psth subplot
 for channel_i = 1:length(lfpChannels)  
   if isfield(plotSwitch,'colorPsthEvoked') && plotSwitch.colorPsthEvoked
@@ -1516,7 +1515,7 @@ if isfield(plotSwitch,'runSummary') && plotSwitch.runSummary
     end
   end
 end
-  
+
 if isfield(plotSwitch,'runSummaryImMeanSub') && plotSwitch.runSummaryImMeanSub
   for channel_i = 1:length(channelNames)
     fh = figure();
@@ -1605,7 +1604,7 @@ if isfield(plotSwitch,'runSummaryImMeanSub') && plotSwitch.runSummaryImMeanSub
     end
   end
 end
-  
+
 if isfield(plotSwitch,'runSummaryImMeanSubDiv') && plotSwitch.runSummaryImMeanSubDiv
   for channel_i = 1:length(channelNames)
     fh = figure();
@@ -1987,8 +1986,6 @@ if isfield(plotSwitch,'singleTrialAnalogInByCategory') && plotSwitch.singleTrial
     end
   end
 end
-
-
 
 % other to-do: one epoch for each peak of trial ave evoked potential, ideally set automatically
 % todo: across-peak latency within and across channels
@@ -2514,7 +2511,7 @@ for calc_i = 1:length(calcSwitches)
   end
 end
   
-% image-wise time-frequency plots, spikes and lfp
+%% image-wise time-frequency plots, spikes and lfp
 % todo: put in option for just preferred image
 tfCalcSwitchNames = {'evokedImageTF', 'inducedImageTF'};
 tfCalcSwitchTitleSuffixes = {'',', induced'}; % appended to titles
@@ -2643,7 +2640,7 @@ for calc_i = 1:length(tfCalcSwitches)
 end
   
   
-% category-wise time-frequency plots, spikes and lfp
+%% category-wise time-frequency plots, spikes and lfp
 tfCalcSwitchNames = {'evokedCatTF', 'inducedCatTF'};
 tfCalcSwitchTitleSuffixes = {'',', induced'}; % appended to titles
 tfCalcSwitchFnameSuffixes = {'','_induced'}; % appended to filenames
@@ -2883,7 +2880,7 @@ for calc_i = 1:length(tfCalcSwitches)
   end
 end
 
-%%% coupling across channels and modalities (units/unsorted/mua, fields)
+%% coupling across channels and modalities (units/unsorted/mua, fields)
 tfCalcSwitchNames = {'evokedCatTF', 'inducedCatTF'}; % todo: make separate switch for coherence?
 tfCalcSwitchTitleSuffixes = {'',', induced'}; % appended to titles
 tfCalcSwitchFnameSuffixes = {'','_induced'}; % appended to filenames

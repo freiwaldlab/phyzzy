@@ -12,15 +12,15 @@ machine = machine(~isspace(machine));
 
 switch machine
   case 'kekean-pc'
-      ephysVolume = 'Z:/';
-      stimulusLogVolume = 'Y:/SocialvNonSocial - random';
-      outputVolume = 'C:/Users/Farid/Desktop/phyzzy/Analysis';
-      stimParamsFilename = 'C:/Users/Farid/Desktop/phyzzy/StimParamFileSocialVids_V2.mat';                  %#ok
+    ephysVolume = 'Z:/';
+    stimulusLogVolume = 'Y:/SocialvNonSocial - random';
+    outputVolume = 'C:/Users/Farid/Desktop/phyzzy/Analysis';
+    stimParamsFilename = 'C:/Users/Farid/Desktop/phyzzy/StimParamFileSocialVids_V2.mat';                  %#ok
   case 'Alienware_FA'
-    ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data_Dec'; 
+    ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data_Dec';
     stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data_Dec';
     outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
-    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Decomp.mat';   %#ok  
+    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Decomp.mat';   %#ok
     stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
