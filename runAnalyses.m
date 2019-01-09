@@ -2261,7 +2261,16 @@ for calc_i = 1:length(calcSwitches)
               close(fh);
             end
           end
-          % time domain autocorrelation 
+        end
+      end
+    end
+    % time domain autocorrelation
+    if (isfield(plotSwitch,'lfpAutocorrelTfByItem') && plotSwitch.lfpAutocorrelTfByItem) || (isfield(plotSwitch,'lfpAutocorrelByItem') && plotSwitch.lfpAutocorrelByItem)
+      for group_i = 1:length(analysisGroups.spectraByCategory.groups)
+        group = analysisGroups.spectraByCategory.groups{group_i};
+        groupName = analysisGroups.spectraByCategory.names{group_i};
+        groupColors = analysisGroups.spectraByCategory.colors{group_i};
+        for channel_i = 1:length(channelNames)
           for item_i = 1:length(group)
             if isfield(catInds,group{item_i})
               lfpByItem = lfpByCategory;
@@ -2283,45 +2292,48 @@ for calc_i = 1:length(calcSwitches)
             specErrs(item_i,:,:) = confC;  
             shifts(item_i,:) = shiftList';
             t = -psthPre:psthImDur+psthPost;
-
-            fh = figure(); 
-            imagesc(t,t,Cgram); axis xy  
-            xlabel('Time (ms)'); 
-            ylabel('Time(ms)');
-            c = colorbar();
-            ylabel(c,'Correlation');
-            hold on
-            draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
-            line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
-            title(sprintf('%s LFP autocorrelation, %s%s',channelNames{channel_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+            if isfield(plotSwitch,'lfpAutocorrelTfByItem') && plotSwitch.lfpAutocorrelTfByItem
+              fh = figure(); 
+              imagesc(t,t,Cgram); axis xy  
+              xlabel('Time (ms)'); 
+              ylabel('Time(ms)');
+              c = colorbar();
+              ylabel(c,'Correlation');
+              hold on
+              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
+              line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
+              title(sprintf('%s LFP autocorrelation, %s%s',channelNames{channel_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+              clear figData
+              figData.x = t;
+              figData.y = 1;
+              figData.z = Cgram;
+              drawnow;
+              saveFigure(outDir,sprintf('autocorrel_TF_%s_LFP_%s%s_Run%s',channelNames{channel_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              if closeFig
+                close(fh);
+              end
+            end
+          end
+          if isfield(plotSwitch,'lfpAutocorrelByItem') && plotSwitch.lfpAutocorrelByItem
+            fh = figure();
+            lineProps.width = 3;
+            lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+            mseb(shifts,spectra,specErrs,lineProps);
+            legend(group);
+            xlabel('time (ms)');
+            ylabel('correlation');
+            title(sprintf('%s LFP autocorrelation %s',channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
             clear figData
-            figData.x = t;
-            figData.y = 1;
-            figData.z = Cgram;
+            figData.x = shifts; 
+            figData.y = spectra;
+            figData.e = specErrs;
             drawnow;
-            saveFigure(outDir,sprintf('autocorrel_TF_%s_LFP_%s%s_Run%s',channelNames{channel_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+            saveFigure(outDir,sprintf('autocorrel_%s_LFP_%s%s_Run%s',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
             if closeFig
               close(fh);
             end
-          end
-          fh = figure();
-          lineProps.width = 3;
-          lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
-          mseb(shifts,spectra,specErrs,lineProps);
-          legend(group);
-          xlabel('time (ms)');
-          ylabel('correlation');
-          title(sprintf('%s LFP autocorrelation %s',channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-          clear figData
-          figData.x = shifts; 
-          figData.y = spectra;
-          figData.e = specErrs;
-          drawnow;
-          saveFigure(outDir,sprintf('autocorrel_%s_LFP_%s%s_Run%s',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-          if closeFig
-            close(fh);
           end
         end
       end
@@ -2487,8 +2499,17 @@ for calc_i = 1:length(calcSwitches)
                 close(fh);
               end
             end
+          end
+        end
+      end
             
-             % time domain autocorrelation
+      % time domain autocorrelation
+      if (isfield(plotSwitch,'spikeAutocorrelTfByItem') && plotSwitch.spikeAutocorrelTfByItem) || (isfield(plotSwitch,'spikeAutocorrelByItem') && plotSwitch.spikeAutocorrelByItem)
+        for group_i = 1:length(analysisGroups.spectraByCategory.groups)
+          group = analysisGroups.spectraByCategory.groups{group_i};
+          groupName = analysisGroups.spectraByCategory.names{group_i};
+          groupColors = analysisGroups.spectraByCategory.colors{group_i};
+          for channel_i = 1:length(channelNames)
             if calcSwitch.spikeTimes
               disp('Requested time-domain spike autocorrelation analysis for non-binned spikes. Not implemented. Skipping');
             else
@@ -2515,45 +2536,48 @@ for calc_i = 1:length(calcSwitches)
                 specErrs(item_i,:,:) = confC;  
                 shifts(item_i,:) = shiftList';
                 t = -psthPre:psthImDur+psthPost;
-
-                fh = figure(); 
-                imagesc(t,t,Cgram); axis xy
-                xlabel('Time (ms)'); 
-                ylabel('Time (ms)');
-                c = colorbar();
-                ylabel(c,'Correlation');
-                hold on
-                draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
-                line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
-                title(sprintf('%s %s autocorrelation, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                if isfield(plotSwitch,'spikeAutocorrelTfByItem') && plotSwitch.spikeAutocorrelTfByItem 
+                  fh = figure(); 
+                  imagesc(t,t,Cgram); axis xy
+                  xlabel('Time (ms)'); 
+                  ylabel('Time (ms)');
+                  c = colorbar();
+                  ylabel(c,'Correlation');
+                  hold on
+                  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  line(xlim,[0 0],'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  line(xlim,[psthImDur psthImDur],'Color',[0.8,0.8,0.9],'LineWidth',4);
+                  title(sprintf('%s %s autocorrelation, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
+                  clear figData
+                  figData.x = t;
+                  figData.y = t;
+                  figData.z = Cgram;
+                  drawnow;
+                  saveFigure(outDir,sprintf('autocorrel_TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                  if closeFig
+                    close(fh);
+                  end
+                end
+              end
+              if isfield(plotSwitch,'spikeAutocorrelByItem') && plotSwitch.spikeAutocorrelByItem
+                fh = figure();
+                lineProps.width = 3;
+                lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
+                mseb(shifts,spectra,specErrs,lineProps);
+                legend(group);
+                xlabel('time (ms)');
+                ylabel('correlation');
+                title(sprintf('%s %s autocorrelation %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 clear figData
-                figData.x = t;
-                figData.y = t;
-                figData.z = Cgram;
+                figData.x = shifts; 
+                figData.y = spectra;
+                figData.e = specErrs;
                 drawnow;
-                saveFigure(outDir,sprintf('autocorrel_TF_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+                saveFigure(outDir,sprintf('autocorrel_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
                 if closeFig
                   close(fh);
                 end
-              end
-              fh = figure();
-              lineProps.width = 3;
-              lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
-              mseb(shifts,spectra,specErrs,lineProps);
-              legend(group);
-              xlabel('time (ms)');
-              ylabel('correlation');
-              title(sprintf('%s %s autocorrelation %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-              clear figData
-              figData.x = shifts; 
-              figData.y = spectra;
-              figData.e = specErrs;
-              drawnow;
-              saveFigure(outDir,sprintf('autocorrel_%s_%s_%s%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-              if closeFig
-                close(fh);
               end
             end
           end
