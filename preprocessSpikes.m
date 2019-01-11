@@ -26,14 +26,12 @@ spikesByChannel = repmat(struct('times',[],'units',[],'waveforms',[]),length(par
 unitNames = {'unsorted', 'unit 1','unit 2','unit 3','unit 4','unit 5', 'unit 6','unit 7','unit 8','unit 9','unit 10'};
 channelUnitNames = cell(length(params.spikeChannels),1);
 
+[spikeFilePath, spikeFile, ~] = fileparts(spikeFilename);
+
 %Checks for resorted spikes, overwrites NEV structure with new unit
 %assignments and time stamps.
 if isfield(params,'offlineSorted') && params.offlineSorted == 1
-    tmpString = split(spikeFilename,'/');
-    tmpFilename = strsplit(tmpString{end}, '.');
-    sortedFilename = [tmpFilename{1} '.xls'];
-    tmpString{end} = sortedFilename;
-    spikeFilenameSorted = strjoin(tmpString,'/');
+    spikeFilenameSorted = [spikeFilePath '/' spikeFile '.xls'];
     assert(logical(exist(spikeFilenameSorted,'file')),'The Offline sorted spike file you requested does not exist.');
     spikeMat = xlsread(spikeFilenameSorted);
     %Overwrite NEV fields
@@ -48,8 +46,7 @@ if isfield(params, 'waveClus') && params.waveClus
     addpath(genpath('dependencies/wave_clus'))
   
     %use the typical naming convention to find the contious trace (ns5)
-    [A, B, ~] = fileparts(spikeFilename);
-    lfpFilename = [A '/' B '.ns5'];
+    lfpFilename = [spikeFilePath '/' spikeFile '.ns5'];
     
     %parse the ns5.
     parsedData = parse_data_NSx(lfpFilename, 2); %(filename,max_memo_GB)
@@ -90,7 +87,7 @@ if isfield(params, 'waveClus') && params.waveClus
     %Save figures
     if isfield(params, 'saveFig') && params.saveFig
       figHandles = findobj('Type', 'figure');
-      savefig(figHandles, [params.outDir B '_waveClus'], 'compact') %Will save files 
+      savefig(figHandles, [params.outDir spikeFile '_waveClus'], 'compact') %Will save files 
     end
     
     %Append waveClus params to the AnalysisParams file in the outDir.
@@ -99,7 +96,7 @@ if isfield(params, 'waveClus') && params.waveClus
     
     %Clean up - Remove added paths, delete folder with files.
     rmpath(genpath('dependencies/wave_clus'))
-    rmdir([A '/' B '_parsed'], 's');
+    rmdir([spikeFilePath '/' spikeFile '_parsed'], 's');
 end
 
 for channel_i = 1:length(params.spikeChannels)
@@ -266,7 +263,7 @@ if params.plotSpikeWaveforms
     drawnow;
     if isfield(params, 'saveFig') && params.saveFig
       figHandles = findobj('Type', 'figure');
-      savefig(figHandles(1), [params.outDir B '_SpikeWaveforms'], 'compact')
+      savefig(figHandles(1), [params.outDir spikeFile '_SpikeWaveforms'], 'compact')
     end
     if params.plotSpikeWaveforms == 1
       close(fh);

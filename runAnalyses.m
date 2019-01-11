@@ -317,6 +317,28 @@ end
 
 trialDatabaseStruct(eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
 
+if isfield(plotSwitch, 'clusterFixBin') && plotSwitch.clusterFixBin
+  %Implement clusterFix algorithm to break apart events which display very
+  %distinct eye paths.
+  
+  %Initialize an array of the size and type of "byEvent" array, with logical 1's in each spot. 
+  %Cycle through events
+  %Step 1 - get fixation statistics on each trial of a given event
+  %Step 2 - put them into some feature space.
+  %Step 3 - use some clustering algorithm to see if they are seperable,
+  %perhaps using k-means, or SVM.
+  %Step 4 - If they are seperable, store an index showing this, update the
+  %"byEvent" array to reflect new Event and subsequent trial membership.
+  % Ex. Event4 - 1 1 1 1 1 --> Event4A - 1 0 0 1 0 , Event4B - 0 1 1 0 1
+  %End cycle
+  %Process changes - for every Event detected to have distinct eye paths...
+  %Either modify the global variable and divide the events into subsections 
+  %based on the "byEye" arrangement. OR
+  %Create a copy of the global variables, adding "ByEye" at the end, to
+  %reflect that new organization.
+  % end
+end
+
 if isfield(plotSwitch,'imageEyeMap') && plotSwitch.imageEyeMap
   imageEyeMap(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, translationTable, colors)
 end
@@ -4331,57 +4353,6 @@ end
 
 %% Individual Analysis Functions
 
-function trialDatabaseStruct(eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
-%Quick Temporary Structure to find out peak times during analysis, save to
-%a file where it can be retrieved easily by Monkeylogic.
-trialDatabaseStruct = struct();
-trialDatabaseStruct.images = eventLabels;
-translationTable = cell(length(eventLabels),1);
-for ii = 1:length(eventLabels)
-  translationTable{ii} = paramArray{strcmp(pictureLabels,eventLabels(ii))}{1};
-end
-trialDatabaseStruct.translationTable = translationTable;
-psthPeaksByImageTmp = psthByImage;
-
-for ii = 1:length(psthPeaksByImageTmp)
-  for jj = 1:length(psthPeaksByImageTmp{ii})
-    psthPeaksByImageTmp{ii}{jj} = psthPeaksByImageTmp{ii}{jj}(:,psthPre+1:(end-psthPost-1));
-    %Zero regions not interested in, making sure to not add
-    %anything in the front to mess up index.
-    psthPeaksByImageTmp{ii}{jj}(1:frEpochs(1,1)) = 0;
-    [psthPeaksByImage{ii}{jj},  psthPeaksIndByImage{ii}{jj}] = max(psthPeaksByImageTmp{ii}{jj},[],2);
-  end
-end
-trialDatabaseStruct.psthPeaksIndByImage = psthPeaksIndByImage;
-trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage;
-
-save([outDir 'trialDatabase'], 'trialDatabaseStruct')
-end
-
-function spikesByStimBinned = calcSpikeTimes(spikesByStim, movingWin, smoothingWidth, channelNames, channelUnitNames, psthPre, psthImDur, psthPost)
-%Wrapper which cycles through a particular Stimulus tier (Catagory or
-%Event/Image) and feeds it into the chronux binspikes function with bin
-%sizes of 1 ms.
-assert((movingWin(1)/2 > 3*smoothingWidth),'Error: current implementation assumes that movingWin/2 > 3*psthSmoothingWidth. Not true here');
-
-spikesByStimBinned = cell(size(spikesByStim));
-for image_i = 1:length(spikesByStim)
-  spikesByStimBinned{image_i} = cell(length(channelNames),1);
-  for channel_i = 1:length(channelNames)
-    spikesByStimBinned{image_i}{channel_i} = cell(length(channelUnitNames{channel_i}),1);
-    for unit_i = 1:length(channelUnitNames{channel_i})
-      % this tmp variable fixes a Chronux bug that leads the last entry in the binned spike array to be zero when it shouldn't be
-      spikesTmp = binspikes(spikesByStim{image_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+1+psthPost+movingWin(1)/2])';
-      spikesByStimBinned{image_i}{channel_i}{unit_i} = spikesTmp(:,1:end-1);
-      %         for trial_i = 1:size(spikesByEventBinned{image_i}{channel_i}{unit_i},1)
-      %           fieldName = sprintf('spikesBinned.%s_%s',channelNames{channel_i}(~isspace(channelNames{channel_i})),channelUnitNames{channel_i}{unit_i}(~isspace(channelUnitNames{channel_i}{unit_i})));
-      %           trialDB = trialDatabaseSetField(fieldName,spikesByEventBinned{image_i}{channel_i}{unit_i}(trial_i,:),trialDB,trialIDsByEvent{image_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
-      %         end
-    end
-  end
-end
-end
-
 function imageEyeMap(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, translationTable, colors)
 
 % Add Colors to each Line
@@ -4442,6 +4413,59 @@ for ii = 1:length(analogInByEvent)
   end
   drawnow % draw final frame
   
+end
+end
+
+%function clusterFixBin(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, translationTable, colors)
+
+function trialDatabaseStruct(eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
+%Quick Temporary Structure to find out peak times during analysis, save to
+%a file where it can be retrieved easily by Monkeylogic.
+trialDatabaseStruct = struct();
+trialDatabaseStruct.images = eventLabels;
+translationTable = cell(length(eventLabels),1);
+for ii = 1:length(eventLabels)
+  translationTable{ii} = paramArray{strcmp(pictureLabels,eventLabels(ii))}{1};
+end
+trialDatabaseStruct.translationTable = translationTable;
+psthPeaksByImageTmp = psthByImage;
+
+for ii = 1:length(psthPeaksByImageTmp)
+  for jj = 1:length(psthPeaksByImageTmp{ii})
+    psthPeaksByImageTmp{ii}{jj} = psthPeaksByImageTmp{ii}{jj}(:,psthPre+1:(end-psthPost-1));
+    %Zero regions not interested in, making sure to not add
+    %anything in the front to mess up index.
+    psthPeaksByImageTmp{ii}{jj}(1:frEpochs(1,1)) = 0;
+    [psthPeaksByImage{ii}{jj},  psthPeaksIndByImage{ii}{jj}] = max(psthPeaksByImageTmp{ii}{jj},[],2);
+  end
+end
+trialDatabaseStruct.psthPeaksIndByImage = psthPeaksIndByImage;
+trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage;
+
+save([outDir 'trialDatabase'], 'trialDatabaseStruct')
+end
+
+function spikesByStimBinned = calcSpikeTimes(spikesByStim, movingWin, smoothingWidth, channelNames, channelUnitNames, psthPre, psthImDur, psthPost)
+%Wrapper which cycles through a particular Stimulus tier (Catagory or
+%Event/Image) and feeds it into the chronux binspikes function with bin
+%sizes of 1 ms.
+assert((movingWin(1)/2 > 3*smoothingWidth),'Error: current implementation assumes that movingWin/2 > 3*psthSmoothingWidth. Not true here');
+
+spikesByStimBinned = cell(size(spikesByStim));
+for image_i = 1:length(spikesByStim)
+  spikesByStimBinned{image_i} = cell(length(channelNames),1);
+  for channel_i = 1:length(channelNames)
+    spikesByStimBinned{image_i}{channel_i} = cell(length(channelUnitNames{channel_i}),1);
+    for unit_i = 1:length(channelUnitNames{channel_i})
+      % this tmp variable fixes a Chronux bug that leads the last entry in the binned spike array to be zero when it shouldn't be
+      spikesTmp = binspikes(spikesByStim{image_i}{channel_i}{unit_i},1,[-1*(psthPre+movingWin(1)/2), psthImDur+1+psthPost+movingWin(1)/2])';
+      spikesByStimBinned{image_i}{channel_i}{unit_i} = spikesTmp(:,1:end-1);
+      %         for trial_i = 1:size(spikesByEventBinned{image_i}{channel_i}{unit_i},1)
+      %           fieldName = sprintf('spikesBinned.%s_%s',channelNames{channel_i}(~isspace(channelNames{channel_i})),channelUnitNames{channel_i}{unit_i}(~isspace(channelUnitNames{channel_i}{unit_i})));
+      %           trialDB = trialDatabaseSetField(fieldName,spikesByEventBinned{image_i}{channel_i}{unit_i}(trial_i,:),trialDB,trialIDsByEvent{image_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
+      %         end
+    end
+  end
 end
 end
 

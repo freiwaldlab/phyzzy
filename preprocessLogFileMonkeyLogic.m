@@ -79,8 +79,10 @@ mklTrialStarts = [data(trueTrialArray).AbsoluteTrialStartTime];
 tmpStruct = [data(trueTrialArray).BehavioralCodes];
 rwdTimes = [data(trueTrialArray).RewardRecord];
 
+%initialize everything
 [taskEventStartTimesLog, taskEventEndTimesLog, juiceOnTimesLog, juiceOffTimesLog] = deal(zeros(sum(trueTrialArray), 1));
 
+%Collect trialEventIDs.
 taskEventIDsLog = TrialRecord.ConditionsPlayed(trueTrialArray)';
   
 for ii = 1:length(mklTrialStarts)
@@ -113,14 +115,13 @@ packetData = double(taskTriggers.UnparsedData);
 
 if ~isempty(packetData) % Means Blackrock/MKL Communication was intact, correct
   %Code to get rid of any markers prior to the first trial beginning (means
-  % blackrock turned on AFTER beginning MKL.
+  % blackrock turned on AFTER beginning MKL).
   lol = find(packetData == trialStartMarker);
   packetData = packetData(lol(1):end);
   packetTimes = packetTimes(lol(1):end);
   
-  %Comb through the Blackrock data and pull codes/times associated w/ valid
-  %trials.
-  [taskEventStartTimesBlk, taskEventEndTimesBlk, juiceOnTimesBlk, juiceOffTimesBlk, taskEventIDsBlk] = deal(zeros(sum(packetData == 40), 1));
+  %Comb through the Blackrock data and pull codes/times associated w/ valid trials.
+  [taskEventStartTimesBlk, taskEventEndTimesBlk, juiceOnTimesBlk, juiceOffTimesBlk, taskEventIDsBlk] = deal(zeros(sum(packetData == rewardMarker), 1));
   trueTrialcount = 1;
   
   for ii = 1:length(packetData)
@@ -193,6 +194,9 @@ else % Means Blackrock/MKL Communication was not correctly connected.
   %is collected.
 end
 
+assert(sum(packetData == rewardMarker) == sum(trueTrialArray), 'Blackrock and MonkeyLogic report different numbers of correct trials.')
+assert(sum(taskEventIDsLog == taskEventIDsBlk) == sum(trueTrialArray), 'Blackrock and MonkeyLogic do not have matching Event numbers.')
+
 %We now have the start of trials, Blackrock.Eventmarkers. We want to move
 %that to Blackrock.Strobe, which we believe is more accurate. This will be done by finding the transitions for the
 %strobe from High (white) to low (black) closest to the time stamp.
@@ -200,8 +204,9 @@ end
 %What is the discrepency?
 offsets = zeros(sum(packetData == rewardMarker),1);
 
-%Using Photodiode instead of linear model 
+%Using Photodiode to define true start times.
 if params.usePhotodiode
+  taskEventStartTimesBlkPreStrobe = taskEventStartTimesBlk; %Saving these for Eye signal related processing.
   if length(diodeTriggers.low) < length(diodeTriggers.mid)
     % For each of the event start times, find the closest transition in
     % the photodiode and overwrite the time stamp with this time.
@@ -230,50 +235,36 @@ if params.usePhotodiode
 end
 
 %% Now, calculate stimulation log to ephys clock conversion 
-  %Prelim Model - All Trial start times
-  trialStartTimesBlk = packetTimes(packetData == 9);
-  trialStartTimesBlk = trialStartTimesBlk(trueTrialArray);
-  trialStartTimesLog = [data(trueTrialArray).AbsoluteTrialStartTime]';
-  tmpStruct = [data(trueTrialArray).BehavioralCodes]';
-  for ii = 1:length(trialStartTimesLog)
-    trialStartTimesLog(ii) = trialStartTimesLog(ii) + tmpStruct(ii).CodeTimes(1);
-  end
-  
-  logVsBlkModelTrial = fitlm(trialStartTimesBlk, trialStartTimesLog);
-  disp(logVsBlkModelTrial);
-
   %Make the Model by comparing Blackrock event start times to monkeylogic.
-  logVsBlkModel = fitlm(taskEventStartTimesBlk, taskEventStartTimesLog);
+  logVsBlkModel = fitlm(taskEventStartTimesLog, taskEventStartTimesBlkPreStrobe);
   disp(logVsBlkModel)
-  
-  m = logVsBlkModel.Coefficients.Estimate(2);
-  y0 = logVsBlkModel.Coefficients.Estimate(1);
-  taskEventStartTimesFit = (1/m)*(taskEventStartTimesLog - y0);
-  
-  disp(strcat('Max magnitude fit residual, msec: ',num2str(max(abs(taskEventStartTimesBlk-taskEventStartTimesFit)))));
+
+  taskEventStartTimesFit = predict(logVsBlkModel, taskEventStartTimesLog);
+
   %Shift over all the events, using the calculated line.
-  eventTimeAdjustments = taskEventStartTimesFit-taskEventStartTimesBlk;
+  eventTimeAdjustments = taskEventStartTimesFit-taskEventStartTimesBlkPreStrobe;
+  disp(strcat('Max magnitude fit residual, msec: ',num2str(max(abs(eventTimeAdjustments)))));
   
-%   figure();
-%   hist(eventTimeAdjustments,40);
-%   title('Sync adjustments from photodiode');
-%   xlabel('offset (adjusted - original) (ms)');
-%   ylabel('count');
-%   disp(median(eventTimeAdjustments));
-%   [~,adjSortInds] = sort(abs(eventTimeAdjustments-median(eventTimeAdjustments)), 'descend');
-%   disp('worst alignments, log file times');
-%   disp(taskEventStartTimesLog(adjSortInds(1:min(5,length(adjSortInds)))));
-%   disp('worst alignments, adjusted times');
-%   disp(taskEventStartTimesBlk(adjSortInds(1:min(5,length(adjSortInds)))));
-%   disp('worst alignments, adjustment values (ms)');
-%   disp(eventTimeAdjustments(adjSortInds(1:min(5,length(adjSortInds)))));
+  figure();
+  hist(eventTimeAdjustments,40);
+  title('Sync adjustments from model fitting');
+  xlabel('offset (adjusted - original) (ms)');
+  ylabel('count');
+  disp(median(eventTimeAdjustments));
+  [~,adjSortInds] = sort(abs(eventTimeAdjustments-median(eventTimeAdjustments)), 'descend');
+  disp('worst alignments, log file times');
+  disp(taskEventStartTimesLog(adjSortInds(1:min(5,length(adjSortInds)))));
+  disp('worst alignments, adjusted times');
+  disp(taskEventStartTimesBlk(adjSortInds(1:min(5,length(adjSortInds)))));
+  disp('worst alignments, adjustment values (ms)');
+  disp(eventTimeAdjustments(adjSortInds(1:min(5,length(adjSortInds)))));
   
   %Assuming you're happy with this model, shift values only in the log to
   %Blackrock time.
-  juiceOnTimesBlk = (1/m)*(juiceOnTimesLog - y0);
-  juiceOffTimesBlk = (1/m)*(juiceOffTimesLog - y0);
+  juiceOnTimesBlk = predict(logVsBlkModel, juiceOnTimesLog);
+  juiceOffTimesBlk = predict(logVsBlkModel, juiceOffTimesLog);
   %Not doing this for event start times, since I trust the photodiode more
-  %than the eventmarker on either machine. 
+  %than the eventmarker as a metric of true stim start time.
   
   fprintf('average offset %s ms\n', num2str(mean(offsets)));
   fprintf('range of offset %d ms - %d ms \n', [min(offsets), max(offsets)])
@@ -290,7 +281,10 @@ taskData.taskEventIDs = taskEventIDs';
 %taskData.stimJumps = stimJumps;
 %taskData.stimFramesLost = stimFramesLost;
 taskData.taskEventStartTimes = taskEventStartTimesBlk;
+taskData.taskEventStartTimesFit = taskEventStartTimesFit;
 taskData.taskEventEndTimes = taskEventEndTimesBlk;
+taskData.trialStartTimesMkl = mklTrialStarts';
+taskData.logVsBlkModel = logVsBlkModel;
 taskData.fixationInTimes = fixationInTimesBlk;
 taskData.fixationOutTimes = fixationOutTimesBlk;
 taskData.juiceOnTimes = juiceOnTimesBlk;
@@ -303,9 +297,6 @@ taskData.eyeData = tmpEye;
 taskData.screenStats = screenStats;
 taskData.eyeCal.origin = MLConfig.EyeTransform{2}.origin;
 taskData.eyeCal.gain = MLConfig.EyeTransform{2}.gain;
-taskData.mklTrialStarts = mklTrialStarts;
-taskData.NEVTrialTimes = trialStartTimesBlk;
-
 
 end
 %

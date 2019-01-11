@@ -4,8 +4,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '003';
-dateSubject = '20181205Mo';
+runNum = '001';
+dateSubject = '20181024Mo';
 
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
@@ -17,8 +17,8 @@ switch machine
     outputVolume = 'C:/Users/Farid/Desktop/phyzzy/Analysis';
     stimParamsFilename = 'C:/Users/Farid/Desktop/phyzzy/StimParamFileSocialVids_V2.mat';                  %#ok
   case 'Alienware_FA'
-    ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data_Dec';
-    stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data_Dec';
+    ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data October';
+    stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data October';
     outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Decomp.mat';   %#ok
     stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
@@ -50,7 +50,7 @@ ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be th
 ephysParams.lfpChannels = [1]; 
 ephysParams.channelNames = {'8Bm'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
-ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. In wave_clus folder.
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
 ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
@@ -259,8 +259,9 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
 plotSwitch.imageEyeMap = 0;
+plotSwitch.clusterFixBin = 1;
 plotSwitch.imagePsth = 1;
-plotSwitch.categoryPsth = 1;
+plotSwitch.categoryPsth = 0;
 plotSwitch.prefImRaster = 0;
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 0;
@@ -293,10 +294,10 @@ plotSwitch.lfpPowerAcrossChannels = 0;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 0;
-plotSwitch.lfpSpectraByCategory = 1;
+plotSwitch.lfpSpectraByCategory = 0;
 plotSwitch.lfpAutocorrelTfByItem = 0;
 plotSwitch.lfpAutocorrelByItem = 0;
-plotSwitch.spikeSpectraByCategory = 1;
+plotSwitch.spikeSpectraByCategory = 0;
 plotSwitch.spikeAutocorrelTfByItem = 0;
 plotSwitch.spikeAutocorrelByItem = 0;
 plotSwitch.spikeSpectraTfByImage = 0;

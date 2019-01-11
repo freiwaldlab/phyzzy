@@ -122,11 +122,16 @@ fixInD = eyeD(fixInInds == 1);
 % artificial vectors from monkeyLogic's eye data, placing it at the event
 % start times on Blackrock.
 if isfield(params, 'monkeyLogicShift') && params.monkeyLogicShift
+  %Move MonkeyLogic trial start times using model based on disparities in
+  %markers.
+  trialStartTimesBlk = predict(taskData.logVsBlkModel, taskData.trialStartTimesMkl);
+  
+  %initialize arrays
   [eyeXBLK, eyeYBLK] = deal(nan(size(eyeY)));
   samPerMS = 1;
-  for ii = 1:length(taskData.NEVTrialTimes) %for every trial start
+  for ii = 1:length(trialStartTimesBlk) %for every trial start
     %Find the spot in the vector to go (and end) - Mkl times already in ms.
-    startInd = round(samPerMS*taskData.NEVTrialTimes(ii));
+    startInd = round(samPerMS*trialStartTimesBlk(ii)); %POSSIBLE SOURCE OF ISSUE
     if startInd == 0
       startInd = 1;
     end
@@ -138,30 +143,36 @@ if isfield(params, 'monkeyLogicShift') && params.monkeyLogicShift
   end
   
   figure()
-  plot(eyeY)
+  plot(eyeY, 'k')
   hold on
-  plot(eyeYBLK)
+  plot(eyeYBLK, 'r')
+  
+  %adjust with finddelay.
+  eyeYBLK(isnan(eyeYBLK)) = 0;
+  lag = finddelay(eyeYBLK, eyeY);
+  eyeYBLK = padarray(eyeYBLK, [0,lag], 0, 'pre');
+  eyeYBLK = eyeYBLK(1:end-lag);
   
   %Create a better fit by using an lm
-  eyeYModel = eyeY;
-  eyeYModel(isnan(eyeYBLK)) = nan;
-  eyeYBLKModel = eyeYBLK;
+  eyeYModel = eyeY';
+  eyeYBLK(eyeYBLK == 0) = nan;
+  eyeYBLKModel = eyeYBLK';
   
-  logVsBlkModel = fitlm(eyeYModel, eyeYBLKModel);
-  disp(logVsBlkModel)
-  
-  m = logVsBlkModel.Coefficients.Estimate(2);
-  y0 = logVsBlkModel.Coefficients.Estimate(1);
-  eyeYBLK = (1/m)*(eyeYBLK - y0);
-  plot(eyeYBLK);
+  logVsBlkModel = fitlm(eyeYBLKModel, eyeYModel);
+  eyeYBLKModel = predict(logVsBlkModel, eyeYBLKModel);
+  plot(eyeYBLKModel, 'b')
   
   legend('Blackrock Y Signal','Reconstructed Y signal','Reconstructed and Fit Y signal')
   
-  %If the fit looks alright, swap in these newly constructed arrays
-  eyeXBLK = (1/m)*(eyeXBLK - y0);
+  %Assuming the fit is good, now re-create the missing x array.
+  eyeXBLK = padarray(eyeXBLK, [0,lag], 0, 'pre');
+  eyeXBLK = eyeXBLK(1:end-lag);
+  eyeXBLKModel = predict(logVsBlkModel, eyeXBLK');
+
+  %and overwrite the Blackrock values.
+  eyeY = eyeYBLKModel;
+  eyeX = eyeXBLKModel;
   
-  eyeY = eyeYBLK;
-  eyeX = eyeXBLK;
 end
 
 %% Plots and Output
