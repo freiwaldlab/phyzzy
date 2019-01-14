@@ -4,24 +4,24 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '001';
-dateSubject = '20181024Mo';
+runNum = '003';
+dateSubject = '180628Mo';
 
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
 
 switch machine
+  case 'Alienware_FA'
+    ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
+    stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
+    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
+    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
+    stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'kekean-pc'
     ephysVolume = 'Z:/';
     stimulusLogVolume = 'Y:/SocialvNonSocial - random';
     outputVolume = 'C:/Users/Farid/Desktop/phyzzy/Analysis';
     stimParamsFilename = 'C:/Users/Farid/Desktop/phyzzy/StimParamFileSocialVids_V2.mat';                  %#ok
-  case 'Alienware_FA'
-    ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data October';
-    stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data October';
-    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
-    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Decomp.mat';   %#ok
-    stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     stimulusLogVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
@@ -50,7 +50,7 @@ ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be th
 ephysParams.lfpChannels = [1]; 
 ephysParams.channelNames = {'8Bm'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
-ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. In wave_clus folder.
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
 ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
@@ -169,6 +169,7 @@ eyeCalParams.makePlots = 1;
 eyeCalParams.eyeXChannelInd = 1;
 eyeCalParams.eyeYChannelInd = 2;
 eyeCalParams.eyeDChannelInd = 3;
+eyeCalParams.samplingRate = 120; %Sampling rate in Hz of equipment
 eyeCalParams.gainX = 0;
 eyeCalParams.gainY = 0;
 eyeCalParams.flipX = 0;
@@ -259,7 +260,7 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
 plotSwitch.imageEyeMap = 0;
-plotSwitch.clusterFixBin = 1;
+plotSwitch.eyeCorralogram = 1;
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
 plotSwitch.prefImRaster = 0;
@@ -419,7 +420,7 @@ end
 analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
 lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        
 spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
-taskFilename = sprintf('%s/%s/%s%s.bhv2',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
+taskFilename = sprintf('%s/%s/%s%s.mat',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
 photodiodeFilename = lfpFilename;                %#ok
 lineNoiseTriggerFilename = lfpFilename; %#ok
 outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
