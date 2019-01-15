@@ -29,7 +29,7 @@ assert(logical(exist(lfpFilename,'file')),'The LFP file you requested does not e
 tmp = openNSx(lfpFilename,'report','read');
 lfpHeader = tmp.MetaTags;
 assert(lfpHeader.SamplingFreq/(decimateFactorPass1*decimateFactorPass2) == 1000, 'error: expected lfp data to decimate to 1ks/sec');
-lfpDataRaw = tmp.Data; %note: returns each channel as a row
+lfpDataRaw = double(tmp.Data); %note: returns each channel as a row
 
 % sort lfp data so channel indexing matches indexing in lfpChannels array
 lfpChannelMap = zeros(length(lfpChannels),1);
