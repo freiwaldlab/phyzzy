@@ -11,6 +11,12 @@ dateSubject = '180628Mo';
 machine = machine(~isspace(machine));
 
 switch machine
+  case {'turing.rockefeller.edu','hopper.rockefeller.edu'}
+    ephysVolume = '/Freiwald/lab_files/raw_data/EPHYS/Farid_ESINRec/Data2018';
+    stimulusLogVolume = '/Freiwald/lab_files/raw_data/EPHYS/Farid_ESINRec/Data2018';
+    outputVolume = '/Freiwald/faboharb/analysis/Analyzed';
+    stimParamsFilename = '/Freiwald/faboharb/analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
+    %stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'Alienware_FA'
     ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
     stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
@@ -306,7 +312,7 @@ plotSwitch.lfpSpectraTfByImage = 0;
 plotSwitch.couplingPhasesUnwrapped = 0;
 plotSwitch.couplingPhasesAsOffsets = 0;
 plotSwitch.couplingPhasesPolar = 0;
-plotSwitch.tfSpectraByCategory = 0;
+plotSwitch.tfSpectraByCategory = 1;
 plotSwitch.tfErrs = 0;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
@@ -400,12 +406,14 @@ calcSwitch.faceSelectIndex = 0;
 calcSwitch.faceSelectIndexEarly = 0;
 calcSwitch.faceSelectIndexLate = 0;
 calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 1;
+calcSwitch.evokedSpectra = 0;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
 calcSwitch.evokedCatTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
 calcSwitch.inducedCatTF = 0;
+calcSwitch.evokedCoupling = 0;
+calcSwitch.inducedCoupling = 0;
 calcSwitch.meanEvokedTF = 0;
 calcSwitch.trialMeanSpectra = 0;
 calcSwitch.coherenceByCategory = 0;

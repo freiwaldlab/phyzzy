@@ -98,7 +98,7 @@ chColors = [{'b'}, {[0 .6 0]} , {'m'}];
 
 %% check calcSwitch definitions, set defaults, and apply field name updates as needed
 calcSwitchFields = {'categoryPSTH';'imagePSTH';'faceSelectIndex';'faceSelectIndexEarly';'faceSelectIndexLate';'inducedTrialMagnitudeCorrection';...
-  'evokedSpectra';'inducedSpectra';'evokedImageTF';'inducedImageTF';'evokedCatTF';'inducedCatTF';'meanEvokedTF';'trialMeanSpectra';'coherenceByCategory';...
+  'evokedSpectra';'inducedSpectra';'evokedImageTF';'inducedImageTF';'evokedCatTF';'inducedCatTF';'evokedCoupling';'inducedCoupling';'meanEvokedTF';'trialMeanSpectra';'coherenceByCategory';...
   'useJacknife'};
 % update deprecated fieldnames: syntax is:
 % {{{'oldName1_1';'oldName1_2';...};'newName1'};{{'oldName2_1';'oldName2_2';...};'newName2'};...}
@@ -1102,7 +1102,7 @@ if (calcSwitch.inducedSpectra || calcSwitch.inducedImageTF) && ~calcSwitch.spike
 end
 
 % by category
-if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF) && ~calcSwitch.spikeTimes && ~calcSwitch.inducedTrialMagnitudeCorrection
+if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF || calcSwitch.inducedCoupling) && ~calcSwitch.spikeTimes && ~calcSwitch.inducedTrialMagnitudeCorrection
   % subtract the category mean psth from every trial to obtain induced psth
   spikesByCategoryBinnedInduced = spikesByCategoryBinned;
   for cat_i = 1:length(spikesByCategoryBinned)
@@ -1154,7 +1154,7 @@ if (calcSwitch.inducedSpectra || calcSwitch.inducedImageTF) && ~calcSwitch.spike
   end
 end
 % by cat
-if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF) && ~calcSwitch.spikeTimes && calcSwitch.inducedTrialMagnitudeCorrection
+if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF || calcSwitch.inducedCoupling) && ~calcSwitch.spikeTimes && calcSwitch.inducedTrialMagnitudeCorrection
   % subtract the category mean psth from every trial to obtain induced psth
   spikesByCategoryBinnedInduced = spikesByCategoryBinned;
   for cat_i = 1:length(spikesByCategoryBinned)
@@ -3066,13 +3066,13 @@ for calc_i = 1:length(tfCalcSwitches)
 end
 
 %% coupling across channels and modalities (units/unsorted/mua, fields)
-tfCalcSwitchNames = {'evokedCatTF', 'inducedCatTF'}; % todo: make separate switch for coherence?
+tfCalcSwitchNames = {'evokedCoupling', 'inducedCoupling'}; % todo: make separate switch for coherence?
 tfCalcSwitchTitleSuffixes = {'',', induced'}; % appended to titles
 tfCalcSwitchFnameSuffixes = {'','_induced'}; % appended to filenames
-tfCalcSwitches = [calcSwitch.evokedCatTF, calcSwitch.inducedCatTF];
+tfCalcSwitches = [calcSwitch.evokedCoupling, calcSwitch.inducedCoupling];
 for calc_i = 1:length(tfCalcSwitches)
   if tfCalcSwitches(calc_i)
-    if strcmp(tfCalcSwitchNames{calc_i},'inducedCatTF')
+    if strcmp(tfCalcSwitchNames{calc_i},'inducedCoupling')
       if calcSwitch.spikeTimes
         disp('induced TF not yet implemented for spike times; change to spike bins using calcSwitch.spikeTimes = 0');
         continue
@@ -4466,7 +4466,7 @@ for calc_i = 1:length(tfCalcSwitches)
     end
                   
     % clean up temporary variables and restore stable variables
-    if strcmp(tfCalcSwitchNames{calc_i},'inducedCatTF')
+    if strcmp(tfCalcSwitchNames{calc_i},'inducedCoupling')
       spikesByCategoryBinned = spikesByCategoryBinnedEvokedTmp;
       lfpByCategory =  lfpByCategoryEvokedTmp;
     end
