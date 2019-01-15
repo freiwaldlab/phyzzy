@@ -301,7 +301,7 @@ plotSwitch.lfpPowerAcrossChannels = 0;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 0;
-plotSwitch.lfpSpectraByCategory = 0;
+plotSwitch.lfpSpectraByCategory = 1;
 plotSwitch.lfpAutocorrelTfByItem = 0;
 plotSwitch.lfpAutocorrelByItem = 0;
 plotSwitch.spikeSpectraByCategory = 0;
@@ -410,7 +410,7 @@ calcSwitch.evokedSpectra = 0;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
+calcSwitch.evokedCatTF = 1; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
 calcSwitch.inducedCatTF = 0;
 calcSwitch.evokedCoupling = 0;
 calcSwitch.inducedCoupling = 0;

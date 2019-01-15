@@ -21,7 +21,7 @@ par.maxtemp = 0.251;                 % maximum temperature for SPC
 par.tempstep = 0.01;                 % temperature steps
 par.SWCycles = 100;                  % SPC iterations for each temperature (default 100)
 par.KNearNeighb = 11;                % number of nearest neighbors for SPC
-par.min_clus = 100;                  % minimum size of a cluster (default 20)
+par.min_clus = 200;                  % minimum size of a cluster (default 20)
 par.max_clus = 33;                   % maximum number of clusters allowed (default 200)
 par.randomseed = 0;                  % if 0, random seed is taken as the clock value (default 0)
 %par.randomseed = 147;               % If not 0, random seed
@@ -61,8 +61,8 @@ par.interpolation = 'y';             % interpolation with cubic splines (default
 par.min_inputs = 10;         % number of inputs to the clustering
 par.max_inputs = 0.75;       % number of inputs to the clustering. if < 1 it will the that proportion of the maximum.
 par.scales = 4;                        % number of scales for the wavelet decomposition
-%par.features = 'wav';                % type of feature ('wav' or 'pca')
-par.features = 'pca';
+par.features = 'wav';                % type of feature ('wav' or 'pca')
+%par.features = 'pca';
 
 
 % FORCE MEMBERSHIP PARAMETERS
