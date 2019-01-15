@@ -5,8 +5,8 @@ function [analysisGroups] = applyAnalysisGroupMacros(analysisGroups, categoryLab
 %     - ALL_EVENTS
 %     - ALL_EVENTS_SPLIT
 %     - ALL_EVENTS_IN_* (where * is a category label; e.g. ALL_EVENTS_IN_face)
-%     - ALL_EVENTS_BY_CAT_WITH_CAT_AVE
-%     - ALL_EVENTS_BY_CAT
+%     - ALL_EVENTS_IN_ALL_CATS_WITH_CAT_AVE
+%     - ALL_EVENTS_IN_ALL_CATS
 %
 %     ALL_CATS, ALL_EVENTS, and ALL_EVENTS_IN_* add items to the group
 %       in which they appear. The new items are inserted in place of the
@@ -16,14 +16,14 @@ function [analysisGroups] = applyAnalysisGroupMacros(analysisGroups, categoryLab
 %     ALL_CATS_SPLIT and ALL_EVENTS_SPLIT create a new group for each event/category. 
 %       Insertion occurs as in ALL_CATS and ALL_EVENTS
 %
-%     ALL_EVENTS_BY_CAT_WITH_CAT_AVE and ALL_EVENTS_BY_CAT make new groups,
+%     ALL_EVENTS_IN_ALL_CATS_WITH_CAT_AVE and ALL_EVENTS_IN_ALL_CATS make new groups,
 %       one group per category. Each group contains the elements of the
 %       original group, wtih the new entries inserted in place of the macro
 %       as in ALL_CATS etc. 
 %     
 %     Macros can appear in any combination and number within the group
 %       structure. They will be unpacked from left-to-right. So, for
-%       instance, {ALL_CATS,ALL_EVENTS_BY_CAT} would lead to one group per
+%       instance, {ALL_CATS,ALL_EVENTS_IN_ALL_CATS} would lead to one group per
 %       category, and each group would consist of all the categories
 %       followed by all the events in one category.
 %
@@ -120,7 +120,7 @@ for field_i = 1:length(analysisGroupsFields)
         field.groups{group_i} = newGroup;
         field.colors{group_i} = newColors;
 
-      elseif strcmp(item,'ALL_EVENTS_BY_CAT_WITH_CAT_AVE')         
+      elseif strcmp(item,'ALL_EVENTS_IN_ALL_CATS_WITH_CAT_AVE')         
         newGroupPrefix = field.groups{group_i}(1:item_i-1);
         newColorPrefix = field.colors{group_i}(1:item_i-1);
         if item_i < length(field.groups{group_i})
@@ -165,7 +165,7 @@ for field_i = 1:length(analysisGroupsFields)
         field.colors = newColors;
         field.names = newNames;
      
-      elseif strcmp(item,'ALL_EVENTS_BY_CAT')
+      elseif strcmp(item,'ALL_EVENTS_IN_ALL_CATS')
         newGroupPrefix = field.groups{group_i}(1:item_i-1);
         newColorPrefix = field.colors{group_i}(1:item_i-1);
         if item_i < length(field.groups{group_i})

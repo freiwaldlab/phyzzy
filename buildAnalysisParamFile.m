@@ -34,7 +34,7 @@ switch machine
     outputVolume = '/Freiwald/sserene/ephys/ALAN_DATA/Analyzed';
     stimParamsFilename = '/Freiwald/sserene/ephys/AnalysisSerene/StimParamFileLib/StimParamsFullFOB3.mat';   
 end
-analysisLabel = '181224';
+analysisLabel = '190114';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 saveFig = 1;           %#ok
@@ -369,7 +369,7 @@ calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
 calcSwitch.evokedCatTF = 1;
 calcSwitch.inducedCatTF = 0;
-calcSwitch.evokedCoupling = 0;
+calcSwitch.evokedCoupling = 1;
 calcSwitch.inducedCoupling = 0;
 calcSwitch.meanEvokedTF = 0;
 calcSwitch.trialMeanSpectra = 0;
