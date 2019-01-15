@@ -29,7 +29,7 @@ for i = 1:length(analogInChannels)
   analogInChannelMap(i) = find(analogInHeader.ChannelID == analogInChannels(i));
 end
 analogInChannelMap = analogInChannelMap(analogInChannelMap > 0);
-analogInData = analogInDataRaw(analogInChannelMap,:);
+analogInData = double(analogInDataRaw(analogInChannelMap,:));
 clear analogInDataRaw
 
 % filter the analogIn data using 2 step process.

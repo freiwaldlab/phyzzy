@@ -130,7 +130,7 @@ if strcmp(inputDataType, 'blackrockFilename')
   tmp = openNSx(inputDataSource,'report','read');
   samplingFreq = tmp.MetaTags.SamplingFreq;
   dataChannelIndex = find(tmp.MetaTags.ChannelID == dataChannel);
-  dataTrace = tmp.Data(dataChannelIndex,:); %#ok
+  dataTrace = double(tmp.Data(dataChannelIndex,:)); %#ok
   assert(size(dataTrace,1) == 1, 'Invalid data channel; requested channel not recorded in file provided');
   clear tmp
 elseif strcmp(inputDataType, 'otherFilename')

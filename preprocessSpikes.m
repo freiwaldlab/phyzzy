@@ -12,7 +12,7 @@ function [ spikesByChannel, taskTriggers, channelUnitNames ] = preprocessSpikes(
 %     
 Output.VERBOSE('loading blackrock event file');
 assert(logical(exist(spikeFilename,'file')),'The spike-event file you requested does not exist.');
-NEV = openNEV(spikeFilename,'read','nosave','noparse'); %note: add param 'report' for verbose
+NEV = openNEV(spikeFilename,'read','nosave'); %note: add param 'report' for verbose
 Output.VERBOSE('parsing serial IO packets');
 taskTriggers = NEV.Data.SerialDigitalIO;
 if ~params.needSpikes
@@ -37,7 +37,7 @@ if isfield(params,'offlineSorted') && params.offlineSorted == 1
     %Overwrite NEV fields
     NEV.Data.Spikes.Electrode = spikeMat(:,1);
     NEV.Data.Spikes.Unit = spikeMat(:,2);
-    NEV.Data.Spikes.Timestamps = spikeMat(:,3)*30e3; %Sampling Freq should likely be a variable pulled from elsewhere.
+    NEV.Data.Spikes.TimeStamp = spikeMat(:,3)*30e3; %Sampling Freq should likely be a variable pulled from elsewhere.
     NEV.Data.Spikes.Waveform = spikeMat(:,4:end);
 end
 
@@ -69,17 +69,17 @@ if isfield(params, 'waveClus') && params.waveClus
 
     %Cycle through cluster results (done per electrode) and load them into
     %a temporary NEV structure.
-    [tmpSpikes.Timestamps, tmpSpikes.Electrode, tmpSpikes.Unit, tmpSpikes.Waveform] = deal([]);
+    [tmpSpikes.TimeStamp, tmpSpikes.Electrode, tmpSpikes.Unit, tmpSpikes.Waveform] = deal([]);
     for ii=1:length(clusterResults)
       WC = load(clusterResults{ii});
       tmpSpikes.Unit = vertcat(tmpSpikes.Unit, WC.cluster_class(:,1));
-      tmpSpikes.Timestamps = vertcat(tmpSpikes.Timestamps, WC.cluster_class(:,2));
+      tmpSpikes.TimeStamp = vertcat(tmpSpikes.TimeStamp, WC.cluster_class(:,2));
       tmpSpikes.Waveform = vertcat(tmpSpikes.Waveform, WC.spikes);
       tmpSpikes.Electrode = vertcat(tmpSpikes.Electrode, ones(length(WC.cluster_class), 1)*ii);
     end
     
-    %Timestamps are already in ms, so unscale them so later code works.
-    tmpSpikes.Timestamps = tmpSpikes.Timestamps/params.cPtCal;
+    %TimeStamp are already in ms, so unscale them so later code works.
+    tmpSpikes.TimeStamp = tmpSpikes.TimeStamp/params.cPtCal;
     
     %Overwrite the NEV data.
     NEV.Data.Spikes = tmpSpikes; 
@@ -101,7 +101,7 @@ end
 
 for channel_i = 1:length(params.spikeChannels)
   %change units from sample index to ms; type from int32 to double
-  tmp.times = params.cPtCal*double(NEV.Data.Spikes.Timestamps(NEV.Data.Spikes.Electrode == params.spikeChannels(channel_i)));
+  tmp.times = params.cPtCal*double(NEV.Data.Spikes.TimeStamp(NEV.Data.Spikes.Electrode == params.spikeChannels(channel_i)));
   tmp.units = NEV.Data.Spikes.Unit(NEV.Data.Spikes.Electrode == params.spikeChannels(channel_i));
   tmp.waveforms = NEV.Data.Spikes.Waveform(NEV.Data.Spikes.Electrode == params.spikeChannels(channel_i),:);
   if min(tmp.units) > 0 && isempty(params.unitsToUnsort{channel_i})
