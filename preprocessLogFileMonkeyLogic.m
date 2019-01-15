@@ -36,6 +36,15 @@ function [ taskData, stimTiming ] = preprocessLogFileMonkeyLogic(logfile, taskTr
 %% Process MonkeyLogic File
 %Parse the Log file
 disp('Loading MonkeyLogic log file');
+if ~logical(exist(logfile,'file'))
+  [A, B, C] = fileparts(logfile);
+  switch C
+    case '.mat'
+      logfile = [A '/' B '.bhv2'];
+    case '.bhv2'
+      logfile = [A '/' B '.mat'];
+  end
+end
 assert(logical(exist(logfile,'file')),'The logfile you requested does not exist.');
 [data,MLConfig,TrialRecord] = mlread(logfile);
 
@@ -194,12 +203,48 @@ else % Means Blackrock/MKL Communication was not correctly connected.
   %is collected.
 end
 
-assert(sum(packetData == rewardMarker) == sum(trueTrialArray), 'Blackrock and MonkeyLogic report different numbers of correct trials.')
-assert(sum(taskEventIDsLog == taskEventIDsBlk) == sum(trueTrialArray), 'Blackrock and MonkeyLogic do not have matching Event numbers.')
+%% Run some checks comparing data collected from Blackrock, MonkeyLogic.
+if (sum(packetData == rewardMarker) ~= sum(trueTrialArray))
+  warning('Blackrock and MonkeyLogic report different numbers of correct trials. Attempting to find best alignment')
+  %Odd situation, likely due to hitting runAnalyses prior to the MKL being
+  %stopped. Seems like MKL doesn't have the complete record, Blackrock
+  %does. In these cases, use the shorter of the two.
+  LogLen = length(taskEventIDsLog);
+  BlkLen = length(taskEventIDsBlk);
+  if LogLen < BlkLen %monkeyLogic stopped early.
+    %Chop the Blackrock events down to the size of what Mkl has stored
+    taskEventIDsBlk = taskEventIDsBlk(1:LogLen);
+    if sum(taskEventIDsBlk == taskEventIDsLog) == length(taskEventIDsLog) %If They are now a match
+      taskEventStartTimesBlk = taskEventStartTimesBlk(1:LogLen);
+      taskEventEndTimesBlk = taskEventEndTimesBlk(1:LogLen);
+      juiceOnTimesBlk = juiceOnTimesBlk(1:LogLen);
+      juiceOffTimesBlk = juiceOffTimesBlk(1:LogLen);
+      taskEventIDs = taskEventIDs(1:LogLen);
+    else
+      error("Simple alignment failed - Blackrock and MonkeyLogic logs still don't match")
+    end
+  else %Blackrock stopped early.
+    %Blackrock shut off before monkeyLogic was done.
+    taskEventIDsLog = taskEventIDsLog(1:BlkLen);
+    if sum(taskEventIDsBlk == taskEventIDsLog) == length(taskEventIDsLog) %If They are now a match
+      %do the same chopping to monkeyLogic related structures
+      %Collect trialEventIDs.
+        taskEventStartTimesLog = taskEventStartTimesLog(1:BlkLen);
+        taskEventEndTimesLog = taskEventEndTimesLog(1:BlkLen);
+        juiceOnTimesLog = juiceOnTimesLog(1:BlkLen);
+        juiceOffTimesLog = juiceOffTimesLog(1:BlkLen);
+        tmpEye = tmpEye(1:BlkLen);
+    else
+      error("Simple alignment failed - Blackrock and MonkeyLogic logs still don't match")
+    end
+  end
+end
+assert(sum(taskEventIDsLog == taskEventIDsBlk) == length(taskEventIDsLog), 'Blackrock and MonkeyLogic do not have matching Event numbers.')
 
-%We now have the start of trials, Blackrock.Eventmarkers. We want to move
-%that to Blackrock.Strobe, which we believe is more accurate. This will be done by finding the transitions for the
-%strobe from High (white) to low (black) closest to the time stamp.
+%% The strobe is the most reliable marker that the stimuli has begun - use this for event start times.
+%We now have the start of trials, Blackrock.Eventmarkers. We want to move that to Blackrock.Strobe, which we 
+%believe is more accurate. This will be done by finding the transitions for
+%the strobe from High (white) to low (black) closest to the time stamp.
 
 %What is the discrepency?
 offsets = zeros(sum(packetData == rewardMarker),1);
@@ -278,6 +323,7 @@ fixationOutTimesBlk = taskEventEndTimesBlk(1);
 
 % finally, build the output structure
 taskData.taskEventIDs = taskEventIDs';
+taskData.translationTable = translationTable;
 %taskData.stimJumps = stimJumps;
 %taskData.stimFramesLost = stimFramesLost;
 taskData.taskEventStartTimes = taskEventStartTimesBlk;

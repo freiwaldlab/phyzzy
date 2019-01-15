@@ -17,7 +17,7 @@ analysisParamFilename = inputs.analysisParamFilename;
 spikesByChannel = inputs.spikesByChannel;
 lfpData = inputs.lfpData;
 analogInData = inputs.analogInData; 
-taskEventIDs = inputs.taskData;
+taskEventIDs = inputs.taskData.taskEventIDs;
 taskData = inputs.taskData; 
 taskDataAll = inputs.taskDataAll; 
 psthImDur = inputs.psthImDur; 
@@ -317,12 +317,137 @@ end
 
 trialDatabaseStruct(eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
 
-if isfield(plotSwitch, 'clusterFixBin') && plotSwitch.clusterFixBin
-  %Implement clusterFix algorithm to break apart events which display very
-  %distinct eye paths.
+%FA
+
+if isfield(plotSwitch, 'eyeCorralogram') && plotSwitch.eyeCorralogram 
+  stimStartInd = lfpAlignParams.msPreAlign;
+  stimEndInd = stimStartInd + psthImDur;
+  %sampRate = 1/eyeCalParams.samplingRate;
+  sampRate = 1/1000;
+  eventCorr = nan(length(analogInByEvent), 1);
+  trialPerEvent = nan(length(analogInByEvent), 1);
   
-  %Initialize an array of the size and type of "byEvent" array, with logical 1's in each spot. 
-  %Cycle through events
+  %Cycle through "by Event" eye data"
+  for event_i = 1:length(analogInByEvent)
+    assert(size(analogInByEvent{event_i}, 3) > 1, 'Not enough trials to do correlation')
+    eyeInByEvent = squeeze(analogInByEvent{event_i}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
+    trialPerEvent(event_i) = size(eyeInByEvent, 2);
+    eyeInByEvent(isnan(eyeInByEvent)) = 0;
+    eyedat = cell(1, size(eyeInByEvent,2));
+    [eyeXMat, eyeYMat] = deal(nan(size(eyeInByEvent,3), size(eyeInByEvent,2)));
+    
+    for trial_i = 1:size(eyeInByEvent, 2)
+      eyedat{trial_i} = [squeeze(eyeInByEvent(1,trial_i,:))' ; squeeze(eyeInByEvent(2,trial_i,:))'];
+      eyeXMat(:,trial_i) = squeeze(eyeInByEvent(1,trial_i,:));
+      eyeYMat(:,trial_i) = squeeze(eyeInByEvent(2,trial_i,:));
+    end
+    
+    %Get rid of blinks
+    eyeXMat(eyeXMat > 12) = nan;
+    eyeYMat(eyeYMat > 12) = nan;
+    
+    %Calculate intertrial corr for this stimulus
+    eyeXCorr = corr(eyeXMat,'rows', 'complete');
+    eyeYCorr = corr(eyeYMat,'rows', 'complete');
+
+    %Store correlation
+    eventCorr(event_i) = (mean(mean(eyeXCorr)) + mean(mean(eyeYCorr)))/2;
+
+    %Store for large correlation map.
+    if event_i == 1
+      eyeXMatTot = eyeXMat;
+      eyeYMatTot = eyeYMat;
+    else
+      eyeXMatTot = [eyeXMatTot eyeXMat];
+      eyeYMatTot = [eyeYMatTot eyeYMat];
+    end
+  end
+  
+  eyeXMatCorr = corr(eyeXMatTot,'rows', 'complete');
+  eyeYMatCorr = corr(eyeYMatTot,'rows', 'complete');
+  
+  eyeMatCorr =(eyeXMatCorr + eyeYMatCorr)/2;
+  
+  
+  %Plotting Time
+  figure
+  imagesc(eyeMatCorr)
+  title('Eye signal inter-trial correlation')
+  colorbar
+  
+  %Chop it up
+  tLen = length(eyeMatCorr);
+  for event_i = 1:length(trialPerEvent)
+    lineInd = sum(trialPerEvent(1:event_i)) + .5;
+    %Draw vertical line
+    line([lineInd lineInd], [0 tLen], 'Linewidth',.5, 'color', 'k')
+    %Draw horzontal line
+    line([0 tLen], [lineInd lineInd], 'Linewidth',.5, 'color', 'k')
+  end
+  axis off
+  
+  % Label each row
+  for event_i = 1:length(trialPerEvent)
+    labelYInd = sum(trialPerEvent(1:event_i)) - (trialPerEvent(event_i)/2);
+    labelXInd = trialPerEvent(1)*2;
+    str = [num2str(event_i) ':' eventLabels{event_i}];
+    %Draw vertical line
+    text(-labelXInd,labelYInd,str)
+  end
+  
+  % Label the Columns
+  for event_i = 1:length(trialPerEvent)
+    labelYInd = sum(trialPerEvent)+3;
+    labelXInd = sum(trialPerEvent(1:event_i)) - (trialPerEvent(event_i)/2);
+    str = num2str(event_i);
+    text(labelXInd,labelYInd,str,'FontSize',12)
+  end
+  
+  if saveFig
+    figData = eyeMatCorr;
+    saveFigure(outDir, sprintf('EyeCorr_Run%s',runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+  end
+  
+  %Simpiler map
+  corrVec = nan(length(trialPerEvent));
+  for event_i = 1:length(trialPerEvent)
+    startXInd = 1 + sum(trialPerEvent(1:event_i-1));
+    endXInd = sum(trialPerEvent(1:event_i));
+    for event_j = 1:length(trialPerEvent)
+      startYInd = 1 + sum(trialPerEvent(1:event_j-1));
+      endYInd = sum(trialPerEvent(1:event_j));
+      corrVec(event_i,event_j) = mean(mean(eyeMatCorr(startXInd:endXInd,startYInd:endYInd)));
+    end
+  end
+  
+  figure
+  imagesc(corrVec)
+  title('Eye signal inter-trial correlation, Averaged across stimuli')
+  colorbar
+  axis off
+  
+  % Label each row
+  for event_i = 1:length(trialPerEvent)
+    labelYInd = event_i;
+    labelXInd = -3;
+    str = [num2str(event_i) ':' eventLabels{event_i}];
+    text(labelXInd,labelYInd,str,'FontSize',12)
+  end
+  
+  % Label the Columns
+  for event_i = 1:length(trialPerEvent)
+    labelYInd = length(trialPerEvent)+1;
+    labelXInd = event_i;
+    str = num2str(event_i);
+    text(labelXInd,labelYInd,str,'FontSize',12)
+  end
+  
+  if saveFig
+    figData = corrVec;
+    saveFigure(outDir, sprintf('EyeCorrAvg_Run%s',runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+  end
+end
+
   %Step 1 - get fixation statistics on each trial of a given event
   %Step 2 - put them into some feature space.
   %Step 3 - use some clustering algorithm to see if they are seperable,
@@ -337,7 +462,6 @@ if isfield(plotSwitch, 'clusterFixBin') && plotSwitch.clusterFixBin
   %Create a copy of the global variables, adding "ByEye" at the end, to
   %reflect that new organization.
   % end
-end
 
 if isfield(plotSwitch,'imageEyeMap') && plotSwitch.imageEyeMap
   imageEyeMap(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, translationTable, colors)

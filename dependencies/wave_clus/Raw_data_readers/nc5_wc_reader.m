@@ -30,7 +30,6 @@ classdef nc5_wc_reader < handle
             [tmpPath, filename_end, ext] = fileparts(raw_filename);
             filesplit = split(filename_end, '_');
             load([tmpPath filesep  filesplit{1} '_NSX_TimeStamps.mat'],'lts', 'sr');
-
             obj.sr = sr;
             
             if strcmp(par.tmax,'all')
@@ -44,10 +43,10 @@ classdef nc5_wc_reader < handle
             end
             
             obj.opened_file = fopen(raw_filename,'r','l');
-			fseek(obj.opened_file,initial_index*2,'bof');
+            fseek(obj.opened_file,initial_index*2,'bof');
             
             obj.segmentLength = floor (lts/obj.max_segments);
-             
+            
             obj.t0_segments = zeros(1,obj.max_segments);
             obj.t0_segments(1) = initial_index / obj.sr *1e3;
             for i = 2:obj.max_segments

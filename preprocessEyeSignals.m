@@ -121,58 +121,86 @@ fixInD = eyeD(fixInInds == 1);
 % If for whatever reason eye signal on Blackrock is unreliable, create
 % artificial vectors from monkeyLogic's eye data, placing it at the event
 % start times on Blackrock.
-if isfield(params, 'monkeyLogicShift') && params.monkeyLogicShift
-  %Move MonkeyLogic trial start times using model based on disparities in
-  %markers.
-  trialStartTimesBlk = predict(taskData.logVsBlkModel, taskData.trialStartTimesMkl);
-  
-  %initialize arrays
-  [eyeXBLK, eyeYBLK] = deal(nan(size(eyeY)));
-  samPerMS = 1;
-  for ii = 1:length(trialStartTimesBlk) %for every trial start
-    %Find the spot in the vector to go (and end) - Mkl times already in ms.
-    startInd = round(samPerMS*trialStartTimesBlk(ii)); %POSSIBLE SOURCE OF ISSUE
-    if startInd == 0
-      startInd = 1;
-    end
-    endInd = startInd + length(taskData.eyeData(ii).Eye(:,1)') - 1;
+if std(eyeX) < 1 || std(eyeY) < 1
+  if isfield(params, 'monkeyLogicShift') && params.monkeyLogicShift
+    disp('Low variance in eye signal suggests problem with signal collection - using monkeyLogic eye signal instead')
+    %Move MonkeyLogic trial start times using model based on disparities in
+    %markers.
+    trialStartTimesBlk = predict(taskData.logVsBlkModel, taskData.trialStartTimesMkl);
     
-    %Place the data in the vector
-    eyeXBLK(startInd:endInd) = taskData.eyeData(ii).Eye(:,1)';
-    eyeYBLK(startInd:endInd) = taskData.eyeData(ii).Eye(:,2)';
+    %initialize arrays
+    [eyeXBLK, eyeYBLK] = deal(nan(size(eyeY)));
+    samPerMS = 1;
+    for ii = 1:length(trialStartTimesBlk) %for every trial start
+      %Find the spot in the vector to go (and end) - Mkl times already in ms.
+      startInd = round(samPerMS*trialStartTimesBlk(ii)); %POSSIBLE SOURCE OF ISSUE
+      if startInd == 0
+        startInd = 1;
+      end
+      endInd = startInd + length(taskData.eyeData(ii).Eye(:,1)) - 1;
+      
+      %Place the data in the vector
+      eyeXBLK(startInd:endInd) = taskData.eyeData(ii).Eye(:,1);
+      eyeYBLK(startInd:endInd) = taskData.eyeData(ii).Eye(:,2);
+    end
+    
+    if std(eyeX) < 1
+      eyeCorrect = eyeY;
+      eyeCorrectBLK = eyeYBLK;
+      eyeWrong = eyeXBLK;
+      plotTitle = 'eyeY-based model creation, used to make eyeX';
+    else
+      eyeCorrect = eyeX;
+      eyeCorrectBLK = eyeXBLK;
+      eyeWrong = eyeYBLK;
+      plotTitle = 'eyeX-based model creation, used to make eyeY';
+    end
+    
+    plotStartInd = round(length(eyeY)/2);
+    plotEndInd = plotStartInd + min(1e5, plotStartInd/2);
+    
+%     figure()
+%     plot(eyeCorrect(plotStartInd:plotEndInd), 'k')
+%     hold on
+%     plot(eyeCorrectBLK(plotStartInd:plotEndInd), 'r')
+    
+    %adjust with finddelay.
+    eyeCorrectBLK(isnan(eyeCorrectBLK)) = 0;
+    lag = finddelay(eyeCorrectBLK, eyeY);
+    eyeCorrectBLK = padarray(eyeCorrectBLK, [0,lag], 0, 'pre');
+    eyeCorrectBLK = eyeCorrectBLK(1:end-lag);
+    
+    %Create a better fit by using an lm
+    eyeCorrectBLK(eyeCorrectBLK == 0) = nan;
+    eyeCorrectBLKModel = eyeCorrectBLK;
+    eyeCorrectModel = eyeCorrect;
+    
+    logVsBlkModel = fitlm(eyeCorrectBLKModel, eyeCorrectModel);
+    eyeCorrectBLKModel = predict(logVsBlkModel, eyeCorrectBLKModel');
+    
+    %Add results to existing plot
+%     plot(eyeCorrectBLKModel(plotStartInd:plotEndInd), 'b')
+%     title(plotTitle);
+%     legend('Blackrock Signal','Reconstructed signal','Reconstructed signal, shifted and fit')
+    
+    %Assuming the fit is good, now re-create the missing array.
+    eyeWrong = padarray(eyeWrong, [0,lag], 0, 'pre');
+    eyeWrong = eyeWrong(1:end-lag);
+    eyeWrongModel = predict(logVsBlkModel, eyeWrong');
+    
+    %and overwrite the Blackrock values.
+    if std(eyeX) < 1
+      eyeY = eyeCorrectBLKModel';
+      eyeX = eyeWrongModel';
+    else
+      eyeY = eyeWrongModel';
+      eyeX = eyeCorrectBLKModel';
+    end
+  else
+    error('Low variance in eye signal suggests problem with signal collection - suggest using monkeyLogic eye signals (set params.monkeyLogicShift to 1)')
   end
-  
-  figure()
-  plot(eyeY, 'k')
-  hold on
-  plot(eyeYBLK, 'r')
-  
-  %adjust with finddelay.
-  eyeYBLK(isnan(eyeYBLK)) = 0;
-  lag = finddelay(eyeYBLK, eyeY);
-  eyeYBLK = padarray(eyeYBLK, [0,lag], 0, 'pre');
-  eyeYBLK = eyeYBLK(1:end-lag);
-  
-  %Create a better fit by using an lm
-  eyeYModel = eyeY';
-  eyeYBLK(eyeYBLK == 0) = nan;
-  eyeYBLKModel = eyeYBLK';
-  
-  logVsBlkModel = fitlm(eyeYBLKModel, eyeYModel);
-  eyeYBLKModel = predict(logVsBlkModel, eyeYBLKModel);
-  plot(eyeYBLKModel, 'b')
-  
-  legend('Blackrock Y Signal','Reconstructed Y signal','Reconstructed and Fit Y signal')
-  
-  %Assuming the fit is good, now re-create the missing x array.
-  eyeXBLK = padarray(eyeXBLK, [0,lag], 0, 'pre');
-  eyeXBLK = eyeXBLK(1:end-lag);
-  eyeXBLKModel = predict(logVsBlkModel, eyeXBLK');
-
-  %and overwrite the Blackrock values.
-  eyeY = eyeYBLKModel;
-  eyeX = eyeXBLKModel;
-  
+elseif std(eyeX) < .1 && std(eyeY) < .1
+  error('Low variance in both eye signals suggests problem with signal collection. Blackrock inputs not plugged in')
 end
 
 %% Plots and Output

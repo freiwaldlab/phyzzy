@@ -8,7 +8,9 @@ origfname = fname;
 origfname_in = fname_in;
 [~, fname_in, ~] = fileparts(fname_in);
 [tmpDir, fname, ~] = fileparts(fname);
-oldDir = cd(tmpDir);
+if ~isempty(tmpDir)
+  oldDir = cd(tmpDir);
+end
 
 % DELETE PREVIOUS FILES
 if exist([fname '.dg_01.lab'],'file')
@@ -139,4 +141,7 @@ if exist([fname '.knn'],'file')
 end
 
 delete(fname_in);
-cd(oldDir);
+
+if ~isempty(tmpDir)
+  cd(oldDir);
+end

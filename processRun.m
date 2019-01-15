@@ -224,12 +224,13 @@ if ~usePreprocessed
   end
 
   assert(~(sum(eventsNotObserved) == length(eventsNotObserved)),'No Events observed. Confirm correct stimulus Param file is in use.');
+  assert(sum(eventsNotObserved == 0) == length(unique(taskData.taskEventIDs)), 'Not all Events observed are represented in stimParamFile.')
   
   % todo: need defense against image with onset but no offset? 
   % todo: add similar defense for rf map locations here?
   if ~taskData.RFmap
     disp('No presentations of the following images survived exclusion:');
-    disp(eventIDs(eventsNotObserved == 1));
+    %disp(eventIDs(eventsNotObserved == 1));
   end
   if ~keepItemsNotPresented
     onsetsByEvent = onsetsByEvent(eventsNotObserved == 0);

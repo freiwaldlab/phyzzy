@@ -158,9 +158,9 @@ cla(handles.cont_data);
 clear functions % reset functions, force to reload set_parameters next
 handles.par = set_parameters();
 
-cd(pathname);
+%cd(pathname);
 
-handles.par.filename = filename;
+handles.par.filename = [pathname filename];
 
 for i = 1:3
     si = num2str(i);

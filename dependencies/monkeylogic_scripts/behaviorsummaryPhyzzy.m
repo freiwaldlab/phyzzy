@@ -23,8 +23,15 @@ blockswitch = find(diff(block));
 blockorder = block([1 blockswitch+1]);
 errortype = [data.TrialError];
 ntrial = length(trial);
-userVars = data(end).UserVars;
-userVars2 = data(end).VariableChanges;
+userVars = struct();
+
+try
+  ind = 1;
+  while ~isfield(userVars,'clipDuration')
+    userVars = data(ind).UserVars;
+    userVars2 = data(ind).VariableChanges;
+    ind = ind + 1;
+  end
 
 if ~isfield(userVars,'clipDuration')
     filebits = strsplit(filepath, '/');
