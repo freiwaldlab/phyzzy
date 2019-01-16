@@ -1,18 +1,15 @@
 function [clu, tree] = run_cluster(par, multi_files)
 dim = par.inputs;
 %fname = [par.file_path filesep par.fnamespc];
-fname = par.fnamespc;
 %fname_in = [par.file_path filesep par.fname_in];
+
+fname = par.fnamespc;
 fname_in = par.fname_in;
 
 %temporary path shorting (SPC seems to have issue w/ longer paths)
-origfname = fname;
-origfname_in = fname_in;
 [~, fname_in, ~] = fileparts(fname_in);
 [tmpDir, fname, ~] = fileparts(fname);
-if ~isempty(tmpDir)
-  oldDir = cd(tmpDir);
-end
+oldDir = cd(tmpDir);
 
 % DELETE PREVIOUS FILES
 if exist([fname '.dg_01.lab'],'file')
@@ -20,9 +17,9 @@ if exist([fname '.dg_01.lab'],'file')
     delete([fname '.dg_01']);
 end
 
-dat = load(fname_in);
+dat = load(par.fname_in); %Don't add path here, it needs to be added before.
 n = length(dat);
-fid = fopen(sprintf('%s.run',fname),'wt');
+fid = fopen(sprintf('%s.run',[par.file_path filesep fname]),'wt');
 fprintf(fid,'NumberOfPoints: %s\n',num2str(n));
 fprintf(fid,'DataFile: %s\n',fname_in);
 fprintf(fid,'OutFile: %s\n',fname);
@@ -122,28 +119,27 @@ if exist('multi_files','var') && multi_files==true
 	fprintf(f,result);
 	fclose(f);
 else
-	log_name = 'spc_log.txt';
+  [A B C] = fileparts(par.filename);
+	log_name = [A filesep B '_spc_log.txt'];
 	f = fopen(log_name,'w');
 	fprintf(f,result);
 	fclose(f);
 end
 
-clu = load([fname '.dg_01.lab']);
-tree = load([fname '.dg_01']); 
+clu = load([A filesep fname '.dg_01.lab']);
+tree = load([A filesep fname '.dg_01']); 
 
 try
-delete(sprintf('%s.run',fname));    
-delete([fname '*.mag']);
-delete([fname '*.edges']);
-delete([fname '*.param']);
+  delete(sprintf('%s.run',fname));
+  delete([A filesep fname '*.mag']);
+  delete([A filesep fname '*.edges']);
+  delete([A filesep fname '*.param']);
 end
 
-if exist([fname '.knn'],'file')
-    delete([fname '.knn']);
+if exist([A filesep fname '.knn'],'file')
+    delete([A filesep fname '.knn']);
 end
 
-delete(fname_in);
+delete([A filesep fname_in]);
 
-if ~isempty(tmpDir)
-  cd(oldDir);
-end
+cd(oldDir);

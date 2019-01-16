@@ -147,6 +147,7 @@ for field_i = 1:length(analysisGroupFields)
   itemDelimitedSubfield_i = 0;
   for subfield_i = 1:length(itemDelimitedSubfields)
     subfield = subfields{subfield_i};
+    %If the subfield is the groups subfield
     if length(analysisGroups.(field).(subfield)) == length(analysisGroups.(field).groups) ...
         && length(analysisGroups.(field).(subfield){1}) == length(analysisGroups.(field).groups{1})...
         && ((iscell(analysisGroups.(field).(subfield){1}) || isnumeric(analysisGroups.(field).(subfield){1})))
@@ -192,8 +193,8 @@ for field_i = 1:length(analysisGroupFields)
         newStruct.(subfields{subfield_i})(validGroups) = analysisGroups.(field).(subfields{subfield_i})(group_i);
       end
     else
-      fprintf('The analsysGroups.%s group with index %d was removed because no item had a valid trial\n',field,group_i);
-      disp(analysisGroups.(field).groups{group_i});
+      fprintf('The analysisGroups.%s group with index %d was removed because no item had a valid trial\n',field,group_i);
+      disp(analysisGroups.(field).groups{group_i})
       disp('If you think there should be valid trials, check that the item naming convention in the task log file matches that in stimulusParamFile.');
     end
   end
@@ -543,7 +544,7 @@ if ~isempty(spikesByCategory)
     trialCountsByCategory(cat_i) = length(spikesByCategory{cat_i}{1}{1});
   end
   
-save(analysisOutFilename,'firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch', 'catFr','catFrErr','catSpikeCounts','trialCountsByCategory', '-append');
+  save(analysisOutFilename,'firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch', 'catFr','catFrErr','catSpikeCounts','trialCountsByCategory', '-append');
   
   groupLabelsByImage = zeros(length(eventLabels),length(analysisGroups.stimulusLabelGroups));
   groupLabelColorsByImage = ones(length(eventLabels),3,length(analysisGroups.stimulusLabelGroups));
@@ -556,26 +557,26 @@ save(analysisOutFilename,'firingRatesByCategoryByEpoch','firingRateErrsByCategor
         % this silly line converts from colorspec letters to the corresponding rgb values
         % Silly line now checks to see if conversion is needed.
         if ischar(groupColors{item_i})
-            colorArray(item_i,:) = rem(floor((strfind('kbgcrmyw', groupColors{item_i}) - 1) * [0.25 0.5 1]), 2);
+          colorArray(item_i,:) = rem(floor((strfind('kbgcrmyw', groupColors{item_i}) - 1) * [0.25 0.5 1]), 2);
         else
-            colorArray(item_i,:) = groupColors{item_i};
+          colorArray(item_i,:) = groupColors{item_i};
         end
       end
       groupColors = colorArray;
       analysisGroups.stimulusLabelGroups.colors{group_i} = groupColors;
     end
     
-%Maybe just make the above colors into cells?    
-%Swap colors defined above to numbers
-      colors_tmp = zeros(length(colors),3);
-      for item_i = 1:length(colors)
-        if ischar(colors{item_i})
-          colors_tmp(item_i,:) = rem(floor((strfind('kbgcrmyw', colors{item_i}) - 1) * [0.25 0.5 1]), 2);
-        else
-          colors_tmp(item_i,:) = colors{item_i};
-        end
+    %Maybe just make the above colors into cells?
+    %Swap colors defined above to numbers
+    colors_tmp = zeros(length(colors),3);
+    for item_i = 1:length(colors)
+      if ischar(colors{item_i})
+        colors_tmp(item_i,:) = rem(floor((strfind('kbgcrmyw', colors{item_i}) - 1) * [0.25 0.5 1]), 2);
+      else
+        colors_tmp(item_i,:) = colors{item_i};
       end
-      colors = colors_tmp;  
+    end
+    colors = colors_tmp;
     
     
     for image_i = 1:length(eventLabels)

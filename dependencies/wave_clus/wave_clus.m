@@ -188,12 +188,14 @@ end
 data_handler = readInData(handles.par);
 handles.par = data_handler.par;
 
+tmpParts = split(data_handler.nick_name, 'Ch');
+
 handles.par.file_path = data_handler.file_path;
-handles.par.fname_in = 'tmp_data_wc';                       % temporary filename used as input for SPC
+handles.par.fname_in = [data_handler.file_path filesep 'tmp_data_wc' tmpParts{end}];                        % temporary filename used as input for SPC
 handles.par.fname = ['data_' data_handler.nick_name];
 handles.par.nick_name = data_handler.nick_name;
-handles.par.fnamesave = handles.par.fname;                  %filename if "save clusters" button is pressed
-handles.par.fnamespc = 'data_wc';
+handles.par.fnamesave = [data_handler.file_path filesep handles.par.fname];                  %filename if "save clusters" button is pressed
+handles.par.fnamespc = [data_handler.file_path filesep 'data_wc' tmpParts{end}];
 
 handles.par = data_handler.update_par(handles.par);
 check_WC_params(handles.par)
@@ -257,7 +259,7 @@ else
     set(handles.file_name,'string','Running SPC ...'); drawnow
     fname_in = handles.par.fname_in;
     
-    save([handles.par.file_path filesep fname_in],'inspk_aux','-ascii');                      %Input file for SPC
+    save(fname_in,'inspk_aux','-ascii');                      %Input file for SPC
     [clu,tree] = run_cluster(handles.par);
     forced = false(size(spikes,1) ,1);
     rejected = false(1, size(spikes,1));

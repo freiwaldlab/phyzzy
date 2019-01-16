@@ -4,8 +4,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '003';
-dateSubject = '180628Mo';
+runNum = '005';
+dateSubject = '20180710Mo';
 
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
@@ -318,17 +318,16 @@ plotSwitch.tfErrs = 0;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 %Defined for Groups of 2, A-B/A+B type index.
-analysisGroups.selectivityIndex.groups = {{'socialInteraction';'nonInteraction'},{'twoMonkeys';'twoHumans'},{'socialInteraction';'goalDirected'}};
+analysisGroups.selectivityIndex.groups = {{'socialInteraction';'nonInteraction'},{'socialInteraction';'goalDirectedOrMoving'}};
 
 %Barplots showing average activity across all members of a catagory
-analysisGroups.stimPrefBarPlot.groups = {{{'socialInteraction';'nonInteraction';'goalDirected';'idle';'scene';'scramble'}}};
+analysisGroups.stimPrefBarPlot.groups = {{{'socialInteraction';'nonInteraction';'goalDirectedOrMoving';'idle';'scene';'scramble'}}};
 analysisGroups.stimPrefBarPlot.colors  = {{{'b';[0 .7 0];'r';[0 .7 0];'r';[0 .7 0]}}};
 analysisGroups.stimPrefBarPlot.names = {'Barplots per label'};
 analysisGroups.stimPrefBarPlot.groupDepth = 2; %2 subplots, each figure is defined by a cell array in the first item (groups).
 
-%Relevant for things like Scatterplots, where you want a color for each
-%stimulus.
-analysisGroups.stimulusLabelGroups.groups = {{'socialInteraction';'nonInteraction';'goalDirected';'idle';'scene';'scramble'}};
+%
+analysisGroups.stimulusLabelGroups.groups = {{'socialInteraction';'nonInteraction';'goalDirectedOrMoving';'idle';'scene';'scramble'}};
 analysisGroups.stimulusLabelGroups.names = {'Preferred Stimulus'};
 analysisGroups.stimulusLabelGroups.colors = {{'b';[0 .7 0];'r';[0 .7 0];'m';[0 .7 0]}};
 
@@ -339,21 +338,21 @@ analysisGroups.evokedPotentials.colors = {{'b';[0 .7 0];'r'};{'b';[0 .7 0];'r'}}
 
 %Looks like evokedpotentials, but pulls from a different analog channels
 %(like pupul or eye).
-analysisGroups.analogInPotentials.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.analogInPotentials.groups = {};
 analysisGroups.analogInPotentials.channels = {[1; 2]};
 analysisGroups.analogInPotentials.names = {'eyePositions,fobPlus'};
 analysisGroups.analogInPotentials.units = {'degrees visual angle'};
 analysisGroups.analogInPotentials.colors = {{'b';'r';'k';[0 .7 0];'m';'r';'k'}};
 
 %Same thing, but derivatives.
-analysisGroups.analogInDerivatives.groups = {{'humanFace';'monkeyFace';'place';'fruit';'humanBody';'monkeyBody';'techno'}};
+analysisGroups.analogInDerivatives.groups = {};
 analysisGroups.analogInDerivatives.channels = {[1; 2]};
 analysisGroups.analogInDerivatives.names = {'eyeVelocity,fobPlus'};
 analysisGroups.analogInDerivatives.units = {'degrees visual angle/sec'};
 analysisGroups.analogInDerivatives.colors = {{'b';[0 .7 0];'r';[0 .7 0];'m';'r';'k'}};
 
 %Makes subplots w/ PSTH on top and evoked potential on the bottom
-analysisGroups.colorPsthEvoked.groups = {{'socialInteraction';'nonInteraction';'objects'}};
+analysisGroups.colorPsthEvoked.groups = {{'socialInteraction';'nonInteraction';'objects';'landscapes'}};
 analysisGroups.colorPsthEvoked.names = {'socVobj'};
 analysisGroups.colorPsthEvoked.colors = {{'b';[0 .6 0];'r'}};
 
@@ -364,13 +363,12 @@ analysisGroups.linePsthEvoked.names = {'socVobj'};
 analysisGroups.linePsthEvoked.colors = {{'b';[0 .6 0];'r'}};
 
 %Same as above, but everything ontop of eachother in 1 panel.
-analysisGroups.evokedPsthOnePane.groups = {{'face';'nonface'}};
+analysisGroups.evokedPsthOnePane.groups = {};
 analysisGroups.evokedPsthOnePane.names = {'faceVnon'};
 
 %Creates tuning curves for units, you should have some meaningful numeric
 %descriptor.
-analysisGroups.tuningCurves.groups = {{'humanFaceL90','humanFaceL45','humanFaceFront','humanFaceR45','humanFaceR90'},...
-  {'monkeyFaceL90','monkeyFaceL45','monkeyFaceFront','monkeyFaceR45','monkeyFaceR90'}}; %can be images or categories
+analysisGroups.tuningCurves.groups = {}; %can be images or categories
 analysisGroups.tuningCurves.paramValues = {[-90 -45 0 45 90], [-90 -45 0 45 90]};
 analysisGroups.tuningCurves.paramLabels = {'viewing angle (degrees)','viewing angle (degrees)'};
 analysisGroups.tuningCurves.names = {'Human face view','Monkey face view'};
@@ -398,7 +396,7 @@ analysisGroups.coherenceByCategory.colors = {{'r';'b'}};
 analysisGroups.coherenceByCategory.names = {'Interaction V Scrambles'}; %'fob';'slimCats'
 
 %Calculates the same as above but in sliding windows.
-analysisGroups.tfCouplingByCategory.groups = {{'socialInteraction'};{'nonInteraction';};{'objects'};{'goalDirected'}}; %#ok
+analysisGroups.tfCouplingByCategory.groups = {{'socialInteraction'};{'nonInteraction';};{'objects'};{'goalDirectedOrMoving'}}; %#ok
 %%%%%
 
 calcSwitch.categoryPSTH = 1;
@@ -411,9 +409,9 @@ calcSwitch.evokedSpectra = 0;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatSpikeTF = 1; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
+calcSwitch.evokedCatSpikeTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
 calcSwitch.inducedCatSpikeTF = 0;
-calcSwitch.evokedCatLFPTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
+calcSwitch.evokedCatLFPTF = 1; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
 calcSwitch.inducedCatLFPTF = 0;
 calcSwitch.evokedCoupling = 0;
 calcSwitch.inducedCoupling = 0;
@@ -427,7 +425,7 @@ if calcSwitch.useJacknife
   chronuxParams.err(1) = 2; %#ok
 end
 
-%%% set paths and directories, EDIT RARELY %%%
+%% set paths and directories, EDIT RARELY %%
 analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
 lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        
 spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
