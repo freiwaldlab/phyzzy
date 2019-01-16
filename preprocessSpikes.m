@@ -48,7 +48,7 @@ if isfield(params, 'waveClus') && params.waveClus
     %use the typical naming convention to find the contious trace (ns5)
     lfpFilename = [spikeFilePath '/' spikeFile '.ns5'];
     
-    %parse the ns5.
+    %parse the ns5, or see if they are already parsed.
     parsedData = parse_data_NSx(lfpFilename, 2); %(filename,max_memo_GB)
     
     %Find spikes in the files which matter
@@ -57,6 +57,8 @@ if isfield(params, 'waveClus') && params.waveClus
       tmpCut = split(tmpFilename, ["_","."]);
       if str2double(tmpCut{end-1}(3:end)) < 129 %Connector Banks on Blackrock are channels 1 - 128.
        output_paths = Get_spikes(parsedData{ii});
+      else
+        delete(parsedData{ii})
       end
     end
     
@@ -96,7 +98,9 @@ if isfield(params, 'waveClus') && params.waveClus
     
     %Clean up - Remove added paths, delete folder with files.
     rmpath(genpath('dependencies/wave_clus'))
-    rmdir([spikeFilePath '/' spikeFile '_parsed'], 's');
+    if params.waveClusClear
+      rmdir([spikeFilePath '/' spikeFile '_parsed'], 's');
+    end
 end
 
 for channel_i = 1:length(params.spikeChannels)

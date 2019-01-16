@@ -1,7 +1,9 @@
 function [clu, tree] = run_cluster(par, multi_files)
 dim = par.inputs;
-fname = [par.file_path filesep par.fnamespc];
-fname_in = [par.file_path filesep par.fname_in];
+%fname = [par.file_path filesep par.fnamespc];
+fname = par.fnamespc;
+%fname_in = [par.file_path filesep par.fname_in];
+fname_in = par.fname_in;
 
 %temporary path shorting (SPC seems to have issue w/ longer paths)
 origfname = fname;

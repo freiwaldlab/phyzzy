@@ -57,6 +57,7 @@ ephysParams.lfpChannels = [1];
 ephysParams.channelNames = {'8Bm'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
+ephysParams.waveClusClear = 0; %Deletes the parsed ns5 file - quicker to not do this if you have the space.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. In wave_clus folder.
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
 ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
