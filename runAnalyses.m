@@ -2825,14 +2825,14 @@ for calc_i = 1:length(tfCalcSwitches)
 end
   
   
-%% category-wise time-frequency plots, spikes and lfp
-tfCalcSwitchNames = {'evokedCatTF', 'inducedCatTF'};
+%% category-wise time-frequency plots, spikes
+tfCalcSwitchNames = {'evokedCatSpikeTF', 'inducedCatSpikeTF'};
 tfCalcSwitchTitleSuffixes = {'',', induced'}; % appended to titles
 tfCalcSwitchFnameSuffixes = {'','_induced'}; % appended to filenames
-tfCalcSwitches = [calcSwitch.evokedCatTF, calcSwitch.inducedCatTF];
+tfCalcSwitches = [calcSwitch.evokedCatSpikeTF, calcSwitch.inducedCatSpikeTF];
 for calc_i = 1:length(tfCalcSwitches)
   if tfCalcSwitches(calc_i)
-    if strcmp(tfCalcSwitchNames{calc_i},'inducedCatTF')
+    if strcmp(tfCalcSwitchNames{calc_i},'inducedCatSpikeTF')
       if calcSwitch.spikeTimes
         disp('induced TF not yet implemented for spike times; change to spike bins using calcSwitch.spikeTimes = 0');
         continue
@@ -2850,7 +2850,6 @@ for calc_i = 1:length(tfCalcSwitches)
         groupName = analysisGroups.tfSpectraByCategory.names{group_i};
         for channel_i = 1:length(channelNames)
           if channel_i == 1
-            lfpTfFig = figure();
             muaTfFig = figure();
           end
           for item_i = 1:length(group) %note that cat_i here refers to an index into the group
@@ -2906,6 +2905,8 @@ for calc_i = 1:length(tfCalcSwitches)
                 forTitle = sprintf('%s MUA TF, %s%s',categoryList{catInds.(group{item_i})},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i});
                 imagesc(t,f,S'); axis xy; c = colorbar(); ylabel(c,'Power (dB)'); %todo: fix unit when row-normalizing
                 hold on
+                yyaxis right
+                plot(t,totalPower,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 title(sprintf('%s LFP Time-Frequency, %s%s',channelNames{channel_i},eventLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
@@ -2956,43 +2957,99 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
               end
             end
-            % lfp
-            [S,t,f]=mtspecgramc(squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,:))',movingWin,chronuxParams);
+                        
+            if calcSwitch.trialMeanSpectra
+              [S,t,f]=mtspecgramc(squeeze(mean(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,:),3)),movingWin,chronuxParams);
+              t = t - lfpAlignParams.msPreAlign;
+              f = 1000*f;
+              totalPower = sum(S,2)';
+              
+              fh = figure();
+              if specgramRowAve
+                for i = 1:size(S,2)
+                  S(:,i) = S(:,i)/mean(S(:,i));
+                end
+                imagesc(t,f,S'); axis xy; c = colorbar();
+                ylabel(c,'Row-Normalized Power');
+              else
+                S = 10*log10(S);
+                imagesc(t,f,S'); axis xy; c = colorbar();
+                ylabel(c,'Power (dB)');
+              end
+              xlabel('Time (ms)'); 
+              ylabel('Frequency (Hz)');
+              hold on
+              draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              yyaxis right
+              plot(t,totalPower,'Color',[0.8,0.8,0.9],'LineWidth',4);
+              ylabel('Integrated Power');
+              hold off
+              title(sprintf('%s mean LFP Time-Frequency, %s%s',channelNames{channel_i},categoryList{catInds.(group{item_i})},tfCalcSwitchTitleSuffixes{calc_i}));
+              clear figData
+              figData.x = t;
+              figData.y = f;
+              figData.z = S';
+              drawnow;
+              saveFigure(outDir,sprintf('TF_mean_%s_LFP_%s%s_Run%s',channelNames{channel_i},categoryList{catInds.(group{item_i})},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+              if closeFig
+                close(fh);
+              end
+            end
+          end
+          drawnow;
+          if channel_i == length(lfpChannels) && item_i == length(group)
+            figure(muaTfFig);
+            saveFigure(outDir,sprintf('TF_MUA_%s_%s%s.fig',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
+            if closeFig
+              close(muaTfFig);
+            end
+          end
+        end
+      end
+    end
+    if strcmp(tfCalcSwitchNames{calc_i},'inducedCatTF')
+      spikesByCategoryBinned = spikesByCategoryBinnedEvokedTmp;
+      lfpByCategory = lfpByCategoryEvokedTmp;
+    end
+  end
+end
+
+%% LFP Catagory comparison
+tfCalcSwitchNames = {'evokedCatLFPTF', 'inducedCatLFPTF'};
+tfCalcSwitchTitleSuffixes = {'',', induced'}; % appended to titles
+tfCalcSwitchFnameSuffixes = {'','_induced'}; % appended to filenames
+tfCalcSwitches = [calcSwitch.evokedCatLFPTF, calcSwitch.inducedCatLFPTF];
+for calc_i = 1:length(tfCalcSwitches)
+  if tfCalcSwitches(calc_i)
+    if strcmp(tfCalcSwitchNames{calc_i},'inducedCatLFPTF')
+      if calcSwitch.spikeTimes
+        disp('induced TF not yet implemented for spike times; change to spike bins using calcSwitch.spikeTimes = 0');
+        continue
+      end
+      disp('switching spikes and lfps to induced for categorywise coupling computation');
+      spikesByCategoryBinnedEvokedTmp = spikesByCategoryBinned;
+      spikesByCategoryBinned = spikesByCategoryBinnedInduced;
+      lfpByCategoryEvokedTmp = lfpByCategory;
+      lfpByCategory = lfpByCategoryInduced;
+    end
+    
+    if isfield(plotSwitch,'tfSpectraByCategory') && plotSwitch.tfSpectraByCategory %plots spectra individually by category/channel, and as nChannels x nCategories in group subplot
+      for group_i = 1:length(analysisGroups.tfSpectraByCategory.groups)
+        group = analysisGroups.tfSpectraByCategory.groups{group_i};
+        groupName = analysisGroups.tfSpectraByCategory.names{group_i};
+        for channel_i = 1:length(channelNames)
+          if channel_i == 1
+            lfpTfFig = figure();
+            muaTfFig = figure();
+          end
+          for item_i = 1:length(group) %note that cat_i here refers to an index into the group
+            % LFP
+            [S,t,f] = mtspecgramc(squeeze(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,:))',movingWin,chronuxParams);
             t = t - lfpAlignParams.msPreAlign;
             f = 1000*f;
             totalPower = sum(S,2)';
-
-            fh = figure();
-            if specgramRowAve
-              for i = 1:size(S,2)
-                S(:,i) = S(:,i)/mean(S(:,i));
-              end
-              imagesc(t,f,S'); axis xy; c = colorbar();
-              ylabel(c,'Row-Normalized Power');
-            else
-              S = 10*log10(S);
-              imagesc(t,f,S'); axis xy; c = colorbar();
-              ylabel(c,'Power (dB)');
-            end
-            xlabel('Time (ms)'); 
-            ylabel('Frequency (Hz)');
-            hold on
-            draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            yyaxis right
-            plot(t,totalPower,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            ylabel('Integrated Power');
-            hold off
-            title(sprintf('%s LFP Time-Frequency, %s%s',channelNames{channel_i},categoryList{catInds.(group{item_i})},tfCalcSwitchTitleSuffixes{calc_i}));
-            clear figData
-            figData.x = t;
-            figData.y = f;
-            figData.z = S';
-            drawnow;
-            saveFigure(outDir,sprintf('TF_%s_LFP_%s%s_Run%s',channelNames{channel_i},categoryList{catInds.(group{item_i})},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            if closeFig
-              close(fh);
-            end
+            
             % contribute to shared figure
             figure(lfpTfFig);
             subplot(length(channelNames),length(group),length(group)*(channel_i-1)+item_i);
@@ -3001,6 +3058,8 @@ for calc_i = 1:length(tfCalcSwitches)
             hold on
             draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
             draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
+            yyaxis right
+            plot(t,totalPower,'Color',[0.8,0.8,0.9],'LineWidth',4);
             xlabel('Time (ms)'); 
             ylabel('Frequency (Hz)');
             title(forTitle);

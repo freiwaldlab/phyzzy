@@ -35,6 +35,7 @@ for dateSubj_i = 1:length(runList)
         taskFilename = sprintf('%s/%s/%s%s.bhv2',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
         outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
         stimSyncParams.outDir = outDir;
+        ephysParams.outDir = outDir;
         photodiodeFilename = lfpFilename;                %#ok
         lineNoiseTriggerFilename = lfpFilename; %#ok        
         analysisParamFilename = strcat(outDir,analysisParamFilenameStem);

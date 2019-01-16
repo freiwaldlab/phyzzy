@@ -18,9 +18,9 @@ switch machine
     stimParamsFilename = '/Freiwald/faboharb/analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
     %stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'Alienware_FA'
-    ephysVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
-    stimulusLogVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
-    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
+    ephysVolume = 'C:/Data 2018';
+    stimulusLogVolume = 'C:/Data 2018';
+    outputVolume = 'C:/Data 2018/Analyzed';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
     stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'kekean-pc'
@@ -410,8 +410,10 @@ calcSwitch.evokedSpectra = 0;
 calcSwitch.inducedSpectra = 0;
 calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatTF = 1; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
-calcSwitch.inducedCatTF = 0;
+calcSwitch.evokedCatSpikeTF = 1; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
+calcSwitch.inducedCatSpikeTF = 0;
+calcSwitch.evokedCatLFPTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
+calcSwitch.inducedCatLFPTF = 0;
 calcSwitch.evokedCoupling = 0;
 calcSwitch.inducedCoupling = 0;
 calcSwitch.meanEvokedTF = 0;

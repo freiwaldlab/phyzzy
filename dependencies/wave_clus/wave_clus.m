@@ -188,6 +188,7 @@ end
 data_handler = readInData(handles.par);
 handles.par = data_handler.par;
 
+handles.par.file_path = data_handler.file_path;
 handles.par.fname_in = 'tmp_data_wc';                       % temporary filename used as input for SPC
 handles.par.fname = ['data_' data_handler.nick_name];
 handles.par.nick_name = data_handler.nick_name;
@@ -255,8 +256,8 @@ else
     %Interaction with SPC
     set(handles.file_name,'string','Running SPC ...'); drawnow
     fname_in = handles.par.fname_in;
-    save(fname_in,'inspk_aux','-ascii');                      %Input file for SPC
-
+    
+    save([handles.par.file_path filesep fname_in],'inspk_aux','-ascii');                      %Input file for SPC
     [clu,tree] = run_cluster(handles.par);
     forced = false(size(spikes,1) ,1);
     rejected = false(1, size(spikes,1));
