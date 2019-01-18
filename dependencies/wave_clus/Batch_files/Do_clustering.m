@@ -256,6 +256,7 @@ if make_plots
             noise_std_detect = median(abs(xd_sub))/0.6745;
             xlim([0 lx/sr_sub])
             thr = par.stdmin * noise_std_detect;
+            par.thr = thr;
             plotmax = 15 * noise_std_detect; %thr*par.stdmax/par.stdmin;
 
             if strcmp(par.detection,'pos')

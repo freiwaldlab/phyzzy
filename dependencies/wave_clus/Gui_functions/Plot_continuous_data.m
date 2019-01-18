@@ -1,4 +1,4 @@
-function Plot_continuous_data(xf_detect, sr_sub,handles)
+function handles = Plot_continuous_data(xf_detect, sr_sub,handles)
 % Function that plot the segment of continuous data. 
 % It will try to plot a minute, maximun.
 
@@ -11,6 +11,7 @@ lx = length(xf_detect);
 noise_std_detect = median(abs(xf_detect))/0.6745;
 
 thr = stdmin * noise_std_detect;        %thr for detection is based on detect settings.
+handles.par.thr = thr;
 throut  = stdmax * noise_std_detect;    %thrmax
 max_ylim = 15 * noise_std_detect;     %ylim for plotting. aprox thrmax
 

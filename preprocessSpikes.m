@@ -68,7 +68,14 @@ if isfield(params, 'waveClus') && params.waveClus
     else
       clusterResults = Do_clustering(output_paths);
     end
-
+    
+    tmp = load(output_paths{1},'par');
+    threshold = mean(tmp.par.threshold);
+    if strcmp(tmp.par.detection,'neg')
+      threshold = -1*threshold;
+    end
+    clear tmp
+    
     %Cycle through cluster results (done per electrode) and load them into
     %a temporary NEV structure.
     [tmpSpikes.TimeStamp, tmpSpikes.Electrode, tmpSpikes.Unit, tmpSpikes.Waveform] = deal([]);
@@ -83,6 +90,51 @@ if isfield(params, 'waveClus') && params.waveClus
     %TimeStamp are already in ms, so unscale them so later code works.
     tmpSpikes.TimeStamp = tmpSpikes.TimeStamp/params.cPtCal;
     
+    %Conservative measure - if the mean waveform is too close to the
+    %threshold, merge into MUA. First, find the mean waveform of each
+    %cluster class.
+    if params.waveClusReclass
+      clusters = unique(tmpSpikes.Unit);
+      mean_wave = nan(length(clusters)-1,size(tmpSpikes.Waveform,2));
+      for cluster_i = 2:length(clusters) %start @ 2 to ignore 0th cluster.
+        cluster_id = clusters(cluster_i);
+        mean_wave(cluster_id,:) = mean(tmpSpikes.Waveform(tmpSpikes.Unit == cluster_id, :));
+      end
+      
+      %Plot Average waveforms, and threshold for detection
+      figure()
+      title('Average Waveforms, thresholds for detection and reclustering')
+      hold on
+      for wave_i = 1:size(mean_wave,1)
+        plot(mean_wave(wave_i,:),'LineWidth',3)
+      end
+      plot([0 length(mean_wave)], [threshold threshold],'Linewidth',3,'color','r')
+      
+      %Reassignment the clusters within a certain fraction of the threshold
+      %back to MUA (cluster 0).
+      waveform_trough = min(mean_wave, [], 2);
+      MUA_threshold = threshold * params.waveClusMUAThreshold;
+      plot([0 length(mean_wave)], [MUA_threshold MUA_threshold],'Linewidth',3,'color','b')
+      clusters_to_MUA = find(waveform_trough > MUA_threshold); %Cluster numbers that need to be 0 now.
+      for ii = 1:length(clusters_to_MUA)
+        tmpSpikes.Unit(tmpSpikes.Unit == clusters_to_MUA(ii)) = 0;
+      end
+      WC.par.unsortedClusters = clusters_to_MUA;
+      
+      %Now re-assign clusters as to not skip numbers.
+      [sd,r] = sort(unique(tmpSpikes.Unit),'ascend');
+      new_clusters = r - 1;
+      for ii = 1:length(unique(tmpSpikes.Unit))
+        tmpSpikes.Unit(tmpSpikes.Unit == sd(ii)) = new_clusters(ii);
+      end
+    end
+     
+%     if params.waveClusProjPlot
+%       WC.inspk - variable contains all the dimensions used for clusters,
+%       may be important for demonstration.
+%     end
+%     
+%     
     %Overwrite the NEV data.
     NEV.Data.Spikes = tmpSpikes; 
     

@@ -58,6 +58,8 @@ ephysParams.channelNames = {'8Bm'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
 ephysParams.waveClusClear = 0; %Deletes the parsed ns5 file - quicker to not do this if you have the space.
+ephysParams.waveClusReclass = 1; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
+ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. In wave_clus folder.
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
 ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
@@ -327,9 +329,9 @@ analysisGroups.stimPrefBarPlot.names = {'Barplots per label'};
 analysisGroups.stimPrefBarPlot.groupDepth = 2; %2 subplots, each figure is defined by a cell array in the first item (groups).
 
 %
-analysisGroups.stimulusLabelGroups.groups = {{'socialInteraction';'nonInteraction';'goalDirectedOrMoving';'idle';'scene';'scramble'}};
+analysisGroups.stimulusLabelGroups.groups = {{'socialInteraction';'goalDirectedOrMoving';'idle';'scene';'scramble'}};
 analysisGroups.stimulusLabelGroups.names = {'Preferred Stimulus'};
-analysisGroups.stimulusLabelGroups.colors = {{'b';[0 .7 0];'r';[0 .7 0];'m';[0 .7 0]}};
+analysisGroups.stimulusLabelGroups.colors = {{'b';[0 .7 0];'r';[0.25, 0.25, 0.25];[0.25, 0.25, 0.25]}};
 
 %Essentially LFP selectivity/strength/quality
 analysisGroups.evokedPotentials.groups = {{'socialInteraction';'nonInteraction';'objects'};{'socialInteraction';'nonInteraction'}};

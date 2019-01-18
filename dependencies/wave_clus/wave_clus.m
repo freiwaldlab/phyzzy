@@ -238,7 +238,7 @@ else
     handles.par.inputs = size(inspk,2);                       % number of inputs to the clustering
 
     if handles.par.permut == 'y'
-        if handles.par.match == 'y';
+        if handles.par.match == 'y'
             naux = min(handles.par.max_spk,size(inspk,1));
             ipermut = randperm(length(inspk));
             ipermut(naux+1:end) = [];
@@ -247,7 +247,7 @@ else
         end
         inspk_aux = inspk(ipermut,:);
     else
-        if handles.par.match == 'y';
+        if handles.par.match == 'y'
             naux = min(handles.par.max_spk,size(inspk,1));
             inspk_aux = inspk(1:naux,:);
         else
@@ -270,7 +270,7 @@ handles.par.file_name_to_show = [pathname filename];
 
 if (data_handler.with_raw || data_handler.with_psegment) && handles.par.cont_segment         %raw exists
     [xd_sub, sr_sub] = data_handler.get_signal_sample();
-    Plot_continuous_data(xd_sub, sr_sub, handles); drawnow
+    handles = Plot_continuous_data(xd_sub, sr_sub, handles); drawnow
     clear xd_sub
 end
 

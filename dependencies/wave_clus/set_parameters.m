@@ -8,8 +8,6 @@ par.segments_length = 5;             % length (in minutes) of segments in which 
 par.sr = 30000;                      % sampling rate (in Hz). This parameter will be only used if the data file don't have a sr. 
  
  
-%FaridCheesecake 
- 
  
 % PLOTTING PARAMETERS 
  
@@ -76,7 +74,7 @@ par.w_post = 44;                     % number of post-event data points stored (
  
 par.alignment_window = 10;           % number of points around the sample expected to be the maximum 
  
-par.stdmin = 5;                      % minimum threshold for detection 
+par.stdmin = 4;                      % minimum threshold for detection 
  
 par.stdmax = 50;                     % maximum threshold for detection 
  
@@ -132,7 +130,7 @@ par.features = 'wav';                % type of feature ('wav' or 'pca')
  
 % FORCE MEMBERSHIP PARAMETERS 
  
-par.template_sdnum = 3;           % max radius of cluster in std devs. 
+par.template_sdnum = 2;             % max radius of cluster in std devs. 
  
 par.template_k = 100;               % # of nearest neighbors 
  
