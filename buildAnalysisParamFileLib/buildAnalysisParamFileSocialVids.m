@@ -5,7 +5,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '001';
-dateSubject = '20180703Mo';
+dateSubject = '180630Mo';
 
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
@@ -20,7 +20,7 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = 'C:/Data 2018'; 
     stimulusLogVolume = 'C:/Data 2018'; 
-    outputVolume = 'C:/Data 2018/Analyzed';
+    outputVolume = 'C:/Data 2018/Analyzed2';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
     stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'kekean-pc'

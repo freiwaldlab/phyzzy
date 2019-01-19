@@ -318,6 +318,18 @@ categoryLabels = {'agents', 'objects', 'scramble', 'scene', 'interaction', 'nonI
   
 paramArray = stimList;
 
+%% Remove replicates
+eventIDs = cell(size(paramArray,1),1);
+for event_i = 1:length(paramArray)
+  eventIDs{event_i} = paramArray{event_i}{1}; %per the stimParamFile spec, this is the event ID
+end
+
+[~, uInd, ~] = unique(eventIDs,'stable');
+
+paramArray = paramArray(uInd);
+pictureLabels = pictureLabels(uInd);
+
+
 % pictureLabels = {}    %labelscheme
 %     %loop through stimList, maybe move to loop above
 %     %If the name is 3 long (inc .avi), name + 4th code number

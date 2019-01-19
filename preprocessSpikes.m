@@ -12,7 +12,19 @@ function [ spikesByChannel, taskTriggers, channelUnitNames ] = preprocessSpikes(
 %     
 Output.VERBOSE('loading blackrock event file');
 assert(logical(exist(spikeFilename,'file')),'The spike-event file you requested does not exist.');
-NEV = openNEV(spikeFilename,'read','nosave'); %note: add param 'report' for verbose
+NEV = openNEV(spikeFilename,'nosave','nomat'); %note: add param 'report' for verbose
+
+%Check to see if new openNEV (where Spikes struct has been flipped), and if
+%so, flip it back.
+if isfield(NEV.Data.Spikes,'WaveformUnit')
+  NEV.Data.Spikes.TimeStamp = NEV.Data.Spikes.TimeStamp';
+  NEV.Data.Spikes.Electrode = NEV.Data.Spikes.Electrode';
+  NEV.Data.Spikes.Unit = NEV.Data.Spikes.Unit';
+  NEV.Data.Spikes.Waveform = NEV.Data.Spikes.Waveform';
+  NEV.Data.SerialDigitalIO.TimeStamp = NEV.Data.SerialDigitalIO.TimeStamp';
+  NEV.Data.SerialDigitalIO.TimeStampSec = NEV.Data.SerialDigitalIO.TimeStampSec';
+end
+
 Output.VERBOSE('parsing serial IO packets');
 taskTriggers = NEV.Data.SerialDigitalIO;
 if ~params.needSpikes
@@ -133,7 +145,6 @@ if isfield(params, 'waveClus') && params.waveClus
 %       WC.inspk - variable contains all the dimensions used for clusters,
 %       may be important for demonstration.
 %     end
-%     
 %     
     %Overwrite the NEV data.
     NEV.Data.Spikes = tmpSpikes; 

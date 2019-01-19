@@ -5,29 +5,7 @@ function [outfile_path] = parse_data_NSx(filename,max_memo_GB)
 % stored in RAM, so it is used to compute the number of segments in which
 % the data should be split for processing
 
-with_memory=true;
-try
-  memory;
-catch
-  with_memory=false;
-end
-if with_memory
-  [userview,systemview] = memory;
-  memo_avaible = floor(systemview.PhysicalMemory.Available*0.80);
-  if exist('max_memo_GB','var') && ~isempty(max_memo_GB)
-    max_memo = max_memo_GB*(1024)^3;
-    if max_memo > memo_avaible
-      error('max_memo_GB > 80% of Physical Memory Available')
-    end
-  else
-    max_memo = memo_avaible;
-  end
-else
-  max_memo = max_memo_GB*(1024)^3;
-end
-
-tcum=0;
-
+%% Process filename
 if length(filename)<3 || (~strcmpi(filename(2:3),':\') && ...
     ~strcmpi(filename(2:3),':/') && ...
     ~strcmpi(filename(1),'/') && ...
@@ -36,12 +14,42 @@ if length(filename)<3 || (~strcmpi(filename(2:3),':\') && ...
   filename= [pwd filesep filename];
 end
 
-%% Check to see if the file has already been parsed, if not, do it.
+
 [filepath, file, ~] = fileparts(filename);
 parsedFolder = [filepath '/' file '_parsed'];
 outDirPath = dir([parsedFolder '/'  file '_NSX_Ch*.NC5']);
 
-if isempty(outDirPath)
+%% If the file is already parsed, return this path, otherwise, parse the file.
+if ~isempty(outDirPath)
+  for i = 1:length(outDirPath)
+    outfile_path{i} = [outDirPath(i).folder filesep outDirPath(i).name];
+  end
+  disp('Data already processed - returning appropriate paths')
+  return
+else
+  with_memory=true;
+  try
+    memory;
+  catch
+    with_memory=false;
+  end
+  if with_memory
+    [userview,systemview] = memory;
+    memo_avaible = floor(systemview.PhysicalMemory.Available*0.80);
+    if exist('max_memo_GB','var') && ~isempty(max_memo_GB)
+      max_memo = max_memo_GB*(1024)^3;
+      if max_memo > memo_avaible
+        error('max_memo_GB > 80% of Physical Memory Available')
+      end
+    else
+      max_memo = memo_avaible;
+    end
+  else
+    max_memo = max_memo_GB*(1024)^3;
+  end
+  
+  tcum=0;
+  
   mkdir(parsedFolder);
   NSx = openNSx(filename, 'report','noread');
   nchan = NSx.MetaTags.ChannelCount;   % number of channels
@@ -77,14 +85,9 @@ if isempty(outDirPath)
   
   fclose('all');
   tcum = tcum + toc;
-  fprintf('Total time spent in parsing the data was %s secs.\n',num2str(tcum, '%0.1f')); 
-else
-  for i = 1:length(outDirPath)
-    outfile_path{i} = [outDirPath(i).folder filesep outDirPath(i).name];
-  end
-  disp('Data already processed - returning appropriate paths')
+  fprintf('Total time spent in parsing the data was %s secs.\n',num2str(tcum, '%0.1f'));
 end
 
 
-%fprintf('BE AWARE THAT THE RAW DATA IN THE NS5 AND NC5 IS SCALED UP BY A FACTOR OF 4.\n'); 
+%fprintf('BE AWARE THAT THE RAW DATA IN THE NS5 AND NC5 IS SCALED UP BY A FACTOR OF 4.\n');
 

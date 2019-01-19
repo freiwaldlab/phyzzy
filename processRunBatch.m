@@ -77,7 +77,6 @@ if license('test','Distrib_Computing_Toolbox')
     clc; close all;
     fprintf('Done! \n');
   end
-  toc
 else
   for run_ind = 1:length(analysisParamFileList)
     fprintf('Processing %s... \n', analysisParamFileList{run_ind});
