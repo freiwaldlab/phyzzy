@@ -148,10 +148,17 @@ if isfield(params, 'waveClus') && params.waveClus
     waveClusParams = WC.par;
     save([params.outDir 'AnalysisParams.mat'], 'waveClusParams', '-append');
     
-    %Clean up - Remove added paths, delete folder with files.
+    %Clean up - Remove added paths, delete folder with files if requested.
     rmpath(genpath('dependencies/wave_clus'))
-    if params.waveClusClear
-      rmdir([spikeFilePath '/' spikeFile '_parsed'], 's');
+    switch params.waveClusClear
+      case 1
+        delete([spikeFilePath '/' spikeFile '_parsed' '/times*'])
+        delete([spikeFilePath '/' spikeFile '_parsed' '/*dg*'])
+        delete([spikeFilePath '/' spikeFile '_parsed' '/*.txt'])
+        delete([spikeFilePath '/' spikeFile '_parsed' '/*.png'])
+        delete([spikeFilePath '/' spikeFile '_parsed' '/*spikes.mat'])
+      case 2
+        rmdir([spikeFilePath '/' spikeFile '_parsed'], 's');
     end
 end
 

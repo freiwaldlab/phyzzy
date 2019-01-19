@@ -38,8 +38,8 @@ function [ runAnalysisInputs ] = processRun( varargin )
 %   - R2016a (or later) if joint psth-evoked potential plots desired
 %   - Signal Processing Toolbox (for dpss taper calculation, LFP filters)
 
-addpath(genpath('dependencies/genpath_exclude'));
-addpath(genpath_exclude('dependencies',{'*mvgc_v1.0'})); %note: use this to exclude libraries that overwrite matlab builtin namespaces, until they're needed
+addpath(genpath('dependencies'));
+rmpath(genpath('dependencies/mvgc_v1.0')); %note: Not sure if this is appropriate replacement for genpath_exclude. previous line caused issues in parallel runs.
 addpath('buildAnalysisParamFileLib');
 
 %% load analysis parameters

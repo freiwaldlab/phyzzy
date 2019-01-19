@@ -4,8 +4,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '005';
-dateSubject = '20180710Mo';
+runNum = '001';
+dateSubject = '20180703Mo';
 
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
@@ -18,8 +18,8 @@ switch machine
     stimParamsFilename = '/Freiwald/faboharb/analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
     %stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'Alienware_FA'
-    ephysVolume = 'C:/Data 2018';
-    stimulusLogVolume = 'C:/Data 2018';
+    ephysVolume = 'C:/Data 2018'; 
+    stimulusLogVolume = 'C:/Data 2018'; 
     outputVolume = 'C:/Data 2018/Analyzed';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
     stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
@@ -56,12 +56,12 @@ ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be th
 ephysParams.lfpChannels = [1]; 
 ephysParams.channelNames = {'8Bm'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
+ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
 ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
-ephysParams.waveClusClear = 0; %Deletes the parsed ns5 file - quicker to not do this if you have the space.
+ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
 ephysParams.waveClusReclass = 1; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
-ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. In wave_clus folder.
-ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
+ephysParams.waveClusClear = 1; %1 deletes all files associated with analysis (leaves processed NSX files), 2 deletes the entire associated '_parsed' folder.
 ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
 ephysParams.cPtCal = 1/30; % conversion from spike sample indices to timestep of decimated LFP

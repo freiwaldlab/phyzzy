@@ -327,6 +327,7 @@ if isfield(plotSwitch, 'eyeCorralogram') && plotSwitch.eyeCorralogram
   sampRate = 1/1000;
   eventCorr = nan(length(analogInByEvent), 1);
   trialPerEvent = nan(length(analogInByEvent), 1);
+  eventPower = nan(length(analogInByEvent), 1);
   
   %Cycle through "by Event" eye data"
   for event_i = 1:length(analogInByEvent)
@@ -343,6 +344,8 @@ if isfield(plotSwitch, 'eyeCorralogram') && plotSwitch.eyeCorralogram
       eyeYMat(:,trial_i) = squeeze(eyeInByEvent(2,trial_i,:));
     end
     
+    eventPower(event_i) = (mean(bandpower(eyeXMat)) + mean(bandpower(eyeYMat)))/2;
+   
     %Get rid of blinks
     eyeXMat(eyeXMat > 12) = nan;
     eyeYMat(eyeYMat > 12) = nan;
@@ -351,8 +354,9 @@ if isfield(plotSwitch, 'eyeCorralogram') && plotSwitch.eyeCorralogram
     eyeXCorr = corr(eyeXMat,'rows', 'complete');
     eyeYCorr = corr(eyeYMat,'rows', 'complete');
 
-    %Store correlation
+    %Store correlations across trials and variance in each signal.
     eventCorr(event_i) = (mean(mean(eyeXCorr)) + mean(mean(eyeYCorr)))/2;
+
 
     %Store for large correlation map.
     if event_i == 1
@@ -390,18 +394,24 @@ if isfield(plotSwitch, 'eyeCorralogram') && plotSwitch.eyeCorralogram
   % Label each row
   for event_i = 1:length(trialPerEvent)
     labelYInd = sum(trialPerEvent(1:event_i)) - (trialPerEvent(event_i)/2);
-    labelXInd = trialPerEvent(1)*2;
+    labelXInd = -trialPerEvent(1)*1.5;
     str = [num2str(event_i) ':' eventLabels{event_i}];
     %Draw vertical line
-    text(-labelXInd,labelYInd,str)
+    text(labelXInd,labelYInd,str)
   end
+  
+  %Label the row of power signals.
+  labelYInd = sum(trialPerEvent(1:event_i)) + sum(trialPerEvent(event_i))/2;
+  text(labelXInd,labelYInd,'Power in Eye Signal','FontSize',14)
   
   % Label the Columns
   for event_i = 1:length(trialPerEvent)
     labelYInd = sum(trialPerEvent)+3;
     labelXInd = sum(trialPerEvent(1:event_i)) - (trialPerEvent(event_i)/2);
     str = num2str(event_i);
+    pwr = num2str(eventPower(event_i));
     text(labelXInd,labelYInd,str,'FontSize',12)
+    text(labelXInd,labelYInd+5,pwr,'FontSize',12)
   end
   
   if saveFig
@@ -440,7 +450,9 @@ if isfield(plotSwitch, 'eyeCorralogram') && plotSwitch.eyeCorralogram
     labelYInd = length(trialPerEvent)+1;
     labelXInd = event_i;
     str = num2str(event_i);
+    pwr = num2str(eventPower(event_i));
     text(labelXInd,labelYInd,str,'FontSize',12)
+    text(labelXInd,labelYInd+3,pwr,'FontSize',12)
   end
   
   if saveFig
