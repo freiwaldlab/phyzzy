@@ -4,8 +4,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '001';
-dateSubject = '180630Mo';
+runNum = '006';
+dateSubject = '20181206Mo';
 
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
@@ -20,7 +20,7 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = 'C:/Data 2018'; 
     stimulusLogVolume = 'C:/Data 2018'; 
-    outputVolume = 'C:/Data 2018/Analyzed2';
+    outputVolume = 'C:/Data 2018/Analyzed3';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
     stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'kekean-pc'
@@ -61,6 +61,7 @@ ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
 ephysParams.waveClusReclass = 1; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
+ephysParams.waveClusProjPlot = 1; %Plots all the clusters in higher dimensional space (defined in type and number in wave_clus parameters).
 ephysParams.waveClusClear = 1; %1 deletes all files associated with analysis (leaves processed NSX files), 2 deletes the entire associated '_parsed' folder.
 ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
 ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
@@ -209,7 +210,7 @@ excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 
 psthParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
-psthParams.psthPost = 300;
+psthParams.psthPost = 500;
 psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
 psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show

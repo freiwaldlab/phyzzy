@@ -224,8 +224,16 @@ if ~usePreprocessed
   end
 
   assert(~(sum(eventsNotObserved) == length(eventsNotObserved)),'No Events observed. Confirm correct stimulus Param file is in use.');
-  assert(sum(eventsNotObserved == 0) == length(unique(taskData.taskEventIDs)), 'Not all Events observed are represented in stimParamFile.')
-  
+  if ~(sum(eventsNotObserved == 0) == length(unique(taskData.taskEventIDs)))
+    uni = unique(taskData.taskEventIDs);
+    for ii = 1:length(uni)
+      chck = sum(strcmp(eventIDs,uni(ii)));
+      if ~chck
+        fprintf('Event %s missing from stimParamFile \n', uni{ii});
+      end
+    end
+    error('Not all Events observed are represented in stimParamFile.')
+  end
   % todo: need defense against image with onset but no offset? 
   % todo: add similar defense for rf map locations here?
   if ~taskData.RFmap

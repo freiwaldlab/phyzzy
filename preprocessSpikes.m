@@ -54,6 +54,7 @@ if isfield(params,'offlineSorted') && params.offlineSorted == 1
 end
 
 if isfield(params, 'waveClus') && params.waveClus
+  try
     %Temporarily add directories needed for wave_clus
     addpath(genpath('dependencies/wave_clus'))
   
@@ -92,7 +93,7 @@ if isfield(params, 'waveClus') && params.waveClus
     %a temporary NEV structure.
     [tmpSpikes.TimeStamp, tmpSpikes.Electrode, tmpSpikes.Unit, tmpSpikes.Waveform] = deal([]);
     for ii=1:length(clusterResults)
-      WC = load(clusterResults{ii});
+      WC = load(clusterResults{ii}); %Electrode should actually parse the name of the file. 
       tmpSpikes.Unit = vertcat(tmpSpikes.Unit, WC.cluster_class(:,1));
       tmpSpikes.TimeStamp = vertcat(tmpSpikes.TimeStamp, WC.cluster_class(:,2));
       tmpSpikes.Waveform = vertcat(tmpSpikes.Waveform, WC.spikes);
@@ -140,12 +141,14 @@ if isfield(params, 'waveClus') && params.waveClus
         tmpSpikes.Unit(tmpSpikes.Unit == sd(ii)) = new_clusters(ii);
       end
     end
-     
-%     if params.waveClusProjPlot
-%       WC.inspk - variable contains all the dimensions used for clusters,
-%       may be important for demonstration.
-%     end
-%     
+    
+    % the high dimensional feature space used to cluster can be visualized,
+    % assuming the switch is selected and there are at least 2 clusters to
+    % see. 
+    if params.waveClusProjPlot && (length(unique(tmpSpikes.Unit)) > 2)
+      PlotAllFeatures(WC);
+    end
+    
     %Overwrite the NEV data.
     NEV.Data.Spikes = tmpSpikes; 
     
@@ -158,7 +161,10 @@ if isfield(params, 'waveClus') && params.waveClus
     %Append waveClus params to the AnalysisParams file in the outDir.
     waveClusParams = WC.par;
     save([params.outDir 'AnalysisParams.mat'], 'waveClusParams', '-append');
-    
+  catch
+    warning('waveClus failure - proceeding unsorted')
+    continue
+  end
     %Clean up - Remove added paths, delete folder with files if requested.
     rmpath(genpath('dependencies/wave_clus'))
     switch params.waveClusClear
@@ -171,6 +177,7 @@ if isfield(params, 'waveClus') && params.waveClus
       case 2
         rmdir([spikeFilePath '/' spikeFile '_parsed'], 's');
     end
+    
 end
 
 for channel_i = 1:length(params.spikeChannels)

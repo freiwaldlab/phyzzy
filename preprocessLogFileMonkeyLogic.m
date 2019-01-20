@@ -97,8 +97,8 @@ taskEventIDsLog = TrialRecord.ConditionsPlayed(trueTrialArray)';
 for ii = 1:length(mklTrialStarts)
   taskEventStartTimesLog(ii) = mklTrialStarts(ii) + tmpStruct(ii).CodeTimes(tmpStruct(ii).CodeNumbers == stimStartMarker);
   taskEventEndTimesLog(ii) = mklTrialStarts(ii) + tmpStruct(ii).CodeTimes(tmpStruct(ii).CodeNumbers == stimEndMarker);
-  juiceOnTimesLog(ii) = mklTrialStarts(ii) + rwdTimes(ii).StartTimes;
-  juiceOffTimesLog(ii) = mklTrialStarts(ii) + rwdTimes(ii).EndTimes;
+  juiceOnTimesLog(ii) = mklTrialStarts(ii) + rwdTimes(ii).StartTimes(end);
+  juiceOffTimesLog(ii) = mklTrialStarts(ii) + rwdTimes(ii).EndTimes(end);
 end
 
 % Process the Eye data into a structure which can be used later to line up
