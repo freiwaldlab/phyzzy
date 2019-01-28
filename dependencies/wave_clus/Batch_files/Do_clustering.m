@@ -206,8 +206,8 @@ end
 if make_plots
     disp('Creating figures...')
     numfigs = length(filenames);
-    curr_fig = figure('Visible','On');
-    curr_fig2 = figure('Visible','On');
+    curr_fig = figure('Name','waveClusResult_GUIPanel','Visible','On','NumberTitle','off');
+    curr_fig2 = figure('Name','waveClusResult_GUIPanel2','Visible','On','NumberTitle','off');
     set(curr_fig, 'PaperUnits', 'inches', 'PaperType', 'A4', 'PaperPositionMode', 'auto','units','normalized','outerposition',[0 0 1 1],'RendererMode','manual','Renderer','painters')
     set(curr_fig2, 'PaperUnits', 'inches', 'PaperType', 'A4', 'PaperPositionMode', 'auto','units','normalized','outerposition',[0 0 1 1],'RendererMode','manual','Renderer','painters')
     if isfield(get(curr_fig),'GraphicsSmoothing')
@@ -469,11 +469,13 @@ if make_plots
         end
         fprintf('%d ',fnum);
     end
-%     close(curr_fig)
-%     close(curr_fig2)
-    disp(' ')
+    figHandles = findobj('Type', 'figure');
+    for ii = 1:length(figHandles)
+      if isempty(figHandles(ii).Children)
+        close(figHandles(ii))
+      end      
+    end
 end
-
 toc
 
 end

@@ -22,7 +22,7 @@ if strcmp(plotType,'color')
     imagesc(psthAxes, xrange, yrange, psthArray);
   end
   h = colorbar; 
-  ylabel(h,'Hz','FontSize',14);
+  ylabel(h,'Firing Rate [Hz]','FontSize',14);
   colormap(psthColormap);
   ylimits= ylim();
   yRange = ylimits(2) - ylimits(1);  %todo: remove egregious use of this variable twice, but with different caps
@@ -32,8 +32,9 @@ if strcmp(plotType,'color')
   else
     stimDurLineWidth = 4;
   end
-  draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',stimDurLineWidth);
-  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',stimDurLineWidth);
+  vertLineColor = [0.5, 0.5, 0.5];
+  draw_vert_line(0,'Color',vertLineColor,'LineWidth',stimDurLineWidth);
+  draw_vert_line(psthImDur,'Color',vertLineColor,'LineWidth',stimDurLineWidth);
   set(gca,'YTick',linspace(ylimits(1)+yRange/(2*nrows),ylimits(2)-yRange/(2*nrows),nrows),'YTicklabel',ylabels,...
     'box','off','TickDir','out','FontSize',14,'TickLength',[.012 .012],'LineWidth',1.3);
 else

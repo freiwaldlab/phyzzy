@@ -21,7 +21,7 @@ taskEventIDs = inputs.taskData.taskEventIDs;
 taskData = inputs.taskData; 
 taskDataAll = inputs.taskDataAll; 
 psthImDur = inputs.psthImDur; 
-preAlign = inputs.preAlign; 
+preAlign = inputs.preAlign;
 postAlign = inputs.postAlign;
 categoryList = inputs.categoryList; 
 eventLabels = inputs.eventLabels; 
@@ -147,10 +147,9 @@ for field_i = 1:length(analysisGroupFields)
   itemDelimitedSubfield_i = 0;
   for subfield_i = 1:length(itemDelimitedSubfields)
     subfield = subfields{subfield_i};
-    %If the subfield is the groups subfield
     if length(analysisGroups.(field).(subfield)) == length(analysisGroups.(field).groups) ...
-        && length(analysisGroups.(field).(subfield){1}) == length(analysisGroups.(field).groups{1})...
-        && ((iscell(analysisGroups.(field).(subfield){1}) || isnumeric(analysisGroups.(field).(subfield){1})))
+        && length(analysisGroups.(field).(subfield){1}) == length(analysisGroups.(field).groups{1})... 
+        && (iscell(analysisGroups.(field).(subfield){1}) || isnumeric(analysisGroups.(field).(subfield){1}))
       itemDelimitedSubfield_i = itemDelimitedSubfield_i + 1;
       itemDelimitedSubfields{itemDelimitedSubfield_i} = subfield;
     end
@@ -316,9 +315,7 @@ elseif calcSwitch.categoryPSTH
   save(analysisOutFilename,'psthByCategory','psthErrByCategory', '-append');
 end
 
-trialDatabaseStruct(eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
-
-%FA
+trialDatabaseStruct(taskData, eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
 
 if isfield(plotSwitch, 'eyeCorralogram') && plotSwitch.eyeCorralogram 
   stimStartInd = lfpAlignParams.msPreAlign;
@@ -373,11 +370,11 @@ if isfield(plotSwitch, 'eyeCorralogram') && plotSwitch.eyeCorralogram
   
   eyeMatCorr =(eyeXMatCorr + eyeYMatCorr)/2;
   
-  
   %Plotting Time
-  figure
+  eyeTitle = sprintf('Eye signal intertrial correlation');
+  eyeSig = figure('Name',eyeTitle,'NumberTitle','off');
   imagesc(eyeMatCorr)
-  title('Eye signal inter-trial correlation')
+  title(eyeTitle)
   colorbar
   
   %Chop it up
@@ -402,7 +399,7 @@ if isfield(plotSwitch, 'eyeCorralogram') && plotSwitch.eyeCorralogram
   
   %Label the row of power signals.
   labelYInd = sum(trialPerEvent(1:event_i)) + sum(trialPerEvent(event_i))/2;
-  text(labelXInd,labelYInd,'Power in Eye Signal','FontSize',14)
+  text(labelXInd*1.5,labelYInd,'Power in Eye Signal','FontSize',14)
   
   % Label the Columns
   for event_i = 1:length(trialPerEvent)
@@ -419,7 +416,7 @@ if isfield(plotSwitch, 'eyeCorralogram') && plotSwitch.eyeCorralogram
     saveFigure(outDir, sprintf('EyeCorr_Run%s',runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
   end
   
-  %Simpiler map
+  %Simpiler map  
   corrVec = nan(length(trialPerEvent));
   for event_i = 1:length(trialPerEvent)
     startXInd = 1 + sum(trialPerEvent(1:event_i-1));
@@ -431,9 +428,10 @@ if isfield(plotSwitch, 'eyeCorralogram') && plotSwitch.eyeCorralogram
     end
   end
   
-  figure
+  eyeAvgTitle = sprintf('Eye signal inter-trial correlation, Averaged across stimuli');
+  eyeSigAvg = figure('Name',eyeAvgTitle,'NumberTitle','off');
   imagesc(corrVec)
-  title('Eye signal inter-trial correlation, Averaged across stimuli')
+  title(eyeAvgTitle)
   colorbar
   axis off
   
@@ -483,12 +481,17 @@ end
 if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
   for channel_i = 1:length(channelNames)
     for unit_i = 1:length(channelUnitNames{channel_i})
+      %Calculate Baseline in PSTH by taking the average of all bins in the
+      %Pre-stimulus period
+      preStimBaseline = mean(mean(psthByImage{channel_i}{unit_i}(:,times < 0))); %Baseline Subtraction.
+      psthByImage{channel_i}{unit_i} = psthByImage{channel_i}{unit_i} - preStimBaseline; %Baseline subtraction.
       if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
         continue;
       end
       psthTitle = sprintf('Per Image PSTH %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
       figure('Name',psthTitle,'NumberTitle','off');
-      plotPSTH(psthByImage{channel_i}{unit_i}, [], psthPre, psthPost, psthImDur, 'color', psthTitle, eventLabels, psthColormap );
+      plotPSTH(psthByImage{channel_i}{unit_i}, [], psthPre, psthPost, psthImDur, 'color', psthTitle, eventLabels, psthColormap);
+      %caxis([mean(mean(psthByImage{channel_i}{unit_i})) max(psthByImage{channel_i}{unit_i})])
       clear figData
       title(psthTitle);
       figData.z = psthByImage{channel_i}{unit_i};
@@ -615,6 +618,7 @@ if ~taskData.RFmap
         continue;
       end
       [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');  %todo: write the firing rates to file
+      imSpikeCountsSorted = imSpikeCounts{channel_i}{unit_i}(imageSortOrder);
       imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
       sortedImageLabels = eventLabels(imageSortOrder);
       trialCountsByImageSorted = trialCountsByImage(imageSortOrder);
@@ -638,8 +642,8 @@ if ~taskData.RFmap
       if isfield(plotSwitch,'prefImRaster') && plotSwitch.prefImRaster
         prefImRasterTitle = sprintf('Preferred Image Raster - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
         fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
-        raster(spikesByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors); %FA temporary to see all
-        title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+        raster(spikesByEvent(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
+         title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         if closeFig
           close(fh);
@@ -681,26 +685,52 @@ if ~taskData.RFmap
       % image preference barplot
       if isfield(plotSwitch,'imageTuningSorted') && plotSwitch.imageTuningSorted
         for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
-          imageTuningSortedTitle = sprintf('Image Tuning, Sorted - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
-          fh = figure('Name',imageTuningSortedTitle,'NumberTitle','off');
-          groupName = analysisGroups.stimulusLabelGroups.names{group_i};
-          superbar(imageSortedRates,'E',imFrErrSorted,'BarFaceColor',sortedGroupLabelColors(:,:,group_i));
-          set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(eventLabels),'TickDir','out');
+          %Calculate the Null model
           mu = mean(imageSortedRates);
           rawSigmas = imFrErrSorted(trialCountsByImageSorted > 1).*sqrt(trialCountsByImageSorted(trialCountsByImageSorted > 1))';
           mixSigmas = horzcat(imFrErrSorted(trialCountsByImageSorted > 1),randsample(rawSigmas,sum(trialCountsByImageSorted == 1),true));
-          nullDistSortsMix = zeros(100,length(imageSortedRates));
+          nulltrials = 100;
+          nullDistSortsMix = zeros(nulltrials,length(imageSortedRates));
           for i = 1:length(imageSortedRates)
-            nullDistSortsMix(:,i) = normrnd(mu,mixSigmas(i),100,1);
+            nullDistSortsMix(:,i) = normrnd(mu,mixSigmas(i),nulltrials,1);
           end
           nullDistSortsMix = sort(nullDistSortsMix,2,'descend');
+          nullDistSortsMix(nullDistSortsMix < 0) = 0;
           hold on
           lineProps.col = {'k'};
-          h = mseb(1:length(imageSortedRates),mean(nullDistSortsMix,1),std(nullDistSortsMix,1),lineProps);
+          lineProps.width = 1;
+          tintNull = tinv([0.025  0.975],length(nullDistSortsMix)-1);
+          nullDistSortsMixSE = (std(nullDistSortsMix,1)/sqrt(length(nullDistSortsMix)));
+          nullDistSortsMixCI =  nullDistSortsMixSE * tintNull(2);
+          muNull = mean(nullDistSortsMix);
+          %Calculate significance
+          estimatedDiff = imageSortedRates - muNull;
+          zScore = estimatedDiff./imFrErrSorted;
+          nullModelPvalues{channel_i}{unit_i}{group_i} = exp(-0.717.*zScore-0.416*(zScore.^2));
+          %Try 2
+          for event_i = 1:length(imSpikeCountsSorted)
+            [H{channel_i}{unit_i}{group_i}(event_i),pVect{channel_i}{unit_i}{group_i}(event_i)] = ztest(imSpikeCountsSorted{event_i}.counts, mu, mixSigmas(event_i));
+          end
+          %Plot Everything
+          imageTuningSortedTitle = sprintf('Image Tuning, Sorted - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+          fh = figure('Name',imageTuningSortedTitle,'NumberTitle','off');
+          groupName = analysisGroups.stimulusLabelGroups.names{group_i};
+          %tint = tinv([0.025  0.975],length(imSpikeCountsSorted.counts)-1); %Calcule CIs for stimBars.
+          %imFrCISorted = imFrErrSorted*tint(2);
+          [HB, HE, ~, ~, ~] = superbar(imageSortedRates,'E',imFrErrSorted,'P',nullModelPvalues{channel_i}{unit_i}{group_i}, 'PStarShowNS', 0,'BarFaceColor',sortedGroupLabelColors(:,:,group_i), 'ErrorbarLineWidth', 1.5, 'ErrorbarColor', [0 0 .1]);
+          set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(eventLabels),'TickDir','out');
+          h = mseb(1:length(imageSortedRates),mean(nullDistSortsMix,1), std(nullDistSortsMix,1),lineProps);
+          h.patch.FaceAlpha = '0.5';
           ylim(max(ylim(),0));
-          legend(h.mainLine,{'flat tuning null model, gaussian mix'});
-          ylabel('Firing rate, Hz');
+          ylabel('Firing rate [Hz]');
+          xlabel('Stimulus Video Title');
           title(sprintf('Image tuning, sorted, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+          %Legends are made, not born
+          [~, firstgroupMember] = unique(groupLabelsByImage(imageSortOrder)); %Get the right handles to put in the legend
+          legendHandleArray = [HB(firstgroupMember); h.mainLine; HE(firstgroupMember(end))];
+          legendHandleLabel = [analysisGroups.stimulusLabelGroups.groups{group_i}(:)' {'Flat Tuning Null model'} {sprintf('SD Error Bars, n = %d', mode(trialCountsByImageSorted))}]';
+          legend(legendHandleArray,legendHandleLabel);
+          legend('boxoff');
           clear figData
           figData.y = imageSortedRates;
           figData.e = imFrErrSorted;
@@ -709,9 +739,11 @@ if ~taskData.RFmap
             close(fh);
           end
         end
+        save(analysisOutFilename,'nullModelPvalues','-append');
       end
     end
   end
+  
 
 
   % multi-channel MUA image preference 
@@ -838,7 +870,7 @@ if ~taskData.RFmap
       group = analysisGroups.stimPrefBarPlot.groups{group_i};
       groupName = analysisGroups.stimPrefBarPlot.names{group_i};
       for channel_i = 1:length(spikeChannels)
-        fh = figure();
+        fh = figure('Name','Catagory Preference Bar plot','NumberTitle','off');
         for subgroup_i = 1:length(group)
           itemInds = zeros(length(group{subgroup_i}),1);
           itemNames = cell(length(group{subgroup_i}),1);
@@ -3052,9 +3084,9 @@ for calc_i = 1:length(tfCalcSwitches)
         group = analysisGroups.tfSpectraByCategory.groups{group_i};
         groupName = analysisGroups.tfSpectraByCategory.names{group_i};
         for channel_i = 1:length(channelNames)
+          forTitle = sprintf('LFP Time Frequency Analysis, %s, Run%s',channelNames{channel_i},runNum);
           if channel_i == 1
-            lfpTfFig = figure();
-            muaTfFig = figure();
+            lfpTfFig = figure('Name',forTitle,'NumberTitle','off');
           end
           for item_i = 1:length(group) %note that cat_i here refers to an index into the group
             % LFP
@@ -3066,7 +3098,6 @@ for calc_i = 1:length(tfCalcSwitches)
             % contribute to shared figure
             figure(lfpTfFig);
             subplot(length(channelNames),length(group),length(group)*(channel_i-1)+item_i);
-            forTitle = sprintf('%s LFP TF, %s%s',categoryList{catInds.(group{item_i})},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i});
             imagesc(t,f,S'); axis xy; c = colorbar(); ylabel(c,'Power (dB)'); %todo: fix unit when row-normalizing
             hold on
             draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
@@ -3074,6 +3105,7 @@ for calc_i = 1:length(tfCalcSwitches)
             yyaxis right
             plot(t,totalPower,'Color',[0.8,0.8,0.9],'LineWidth',4);
             xlabel('Time (ms)'); 
+            yyaxis left
             ylabel('Frequency (Hz)');
             title(forTitle);
             
@@ -3118,9 +3150,6 @@ for calc_i = 1:length(tfCalcSwitches)
           end
           drawnow;
           if channel_i == length(lfpChannels) && item_i == length(group)
-            figure(muaTfFig);
-            saveFigure(outDir,sprintf('TF_MUA_%s_%s%s.fig',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
-            close(muaTfFig);
             figure(lfpTfFig);
             saveFigure(outDir,sprintf('TF_LFP_%s_%s%s.fig',channelNames{channel_i},groupName,tfCalcSwitchFnameSuffixes{calc_i}), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
             if closeFig
@@ -4614,16 +4643,12 @@ end
 
 %function clusterFixBin(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, translationTable, colors)
 
-function trialDatabaseStruct(eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
+function trialDatabaseStruct(taskData, eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
 %Quick Temporary Structure to find out peak times during analysis, save to
 %a file where it can be retrieved easily by Monkeylogic.
 trialDatabaseStruct = struct();
 trialDatabaseStruct.images = eventLabels;
-translationTable = cell(length(eventLabels),1);
-for ii = 1:length(eventLabels)
-  translationTable{ii} = paramArray{strcmp(pictureLabels,eventLabels(ii))}{1};
-end
-trialDatabaseStruct.translationTable = translationTable;
+trialDatabaseStruct.translationTable = taskData.translationTable;
 psthPeaksByImageTmp = psthByImage;
 
 for ii = 1:length(psthPeaksByImageTmp)
@@ -4723,4 +4748,3 @@ end
 psthByStim = psthByItem;
 psthErrByStim = psthErrByItem;
 end
-

@@ -115,7 +115,7 @@ if isfield(params, 'waveClus') && params.waveClus
       end
       
       %Plot Average waveforms, and threshold for detection
-      figure()
+      figure('Name','waveClusResult - AverageWaveform','Visible','On','NumberTitle','off');
       title('Average Waveforms, thresholds for detection and reclustering')
       hold on
       for wave_i = 1:size(mean_wave,1)
@@ -155,15 +155,19 @@ if isfield(params, 'waveClus') && params.waveClus
     %Save figures
     if isfield(params, 'saveFig') && params.saveFig
       figHandles = findobj('Type', 'figure');
-      savefig(figHandles, [params.outDir spikeFile '_waveClus'], 'compact') %Will save files 
+      for ii = 1:length(figHandles)
+        if strncmp(figHandles(ii).Name, 'waveClus', 8)
+          savefig(figHandles(ii), [params.outDir spikeFile '_' figHandles(ii).Name], 'compact') %Will save files
+        end
+      end
     end
+
     
     %Append waveClus params to the AnalysisParams file in the outDir.
     waveClusParams = WC.par;
     save([params.outDir 'AnalysisParams.mat'], 'waveClusParams', '-append');
   catch
     warning('waveClus failure - proceeding unsorted')
-    continue
   end
     %Clean up - Remove added paths, delete folder with files if requested.
     rmpath(genpath('dependencies/wave_clus'))
@@ -177,7 +181,6 @@ if isfield(params, 'waveClus') && params.waveClus
       case 2
         rmdir([spikeFilePath '/' spikeFile '_parsed'], 's');
     end
-    
 end
 
 for channel_i = 1:length(params.spikeChannels)
@@ -264,7 +267,7 @@ if params.plotSpikeWaveforms
   halfTime = endTime/2;
   for channel_i = 1:length(params.spikeChannels)
     tmp = spikesByChannel(channel_i);
-    fh = figure();
+    fh = figure('Name','Spike Waveform Development','NumberTitle','off');
     numPlotColumns = length(unique(tmp.units)) + 1; %extra is for MUA plot
     %initialize top row 
     for subplot_i = 1:numPlotColumns-1

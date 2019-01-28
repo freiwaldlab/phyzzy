@@ -4,8 +4,10 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '006';
-dateSubject = '20181206Mo';
+runNum = '003';
+dateSubject = '180628Mo';
+
+assert(~isempty(str2num(runNum)), 'Run number had letters, likely not normal run')
 
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
@@ -20,7 +22,7 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = 'C:/Data 2018'; 
     stimulusLogVolume = 'C:/Data 2018'; 
-    outputVolume = 'C:/Data 2018/Analyzed3';
+    outputVolume = 'C:/Data 2018/AnalyzedJan26';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
     stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'kekean-pc'
@@ -57,9 +59,9 @@ ephysParams.lfpChannels = [1];
 ephysParams.channelNames = {'8Bm'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
-ephysParams.waveClusReclass = 1; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
+ephysParams.waveClusReclass = 0; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
 ephysParams.waveClusProjPlot = 1; %Plots all the clusters in higher dimensional space (defined in type and number in wave_clus parameters).
 ephysParams.waveClusClear = 1; %1 deletes all files associated with analysis (leaves processed NSX files), 2 deletes the entire associated '_parsed' folder.
@@ -211,7 +213,7 @@ excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 psthParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
 psthParams.psthPost = 500;
-psthParams.smoothingWidth = 10;  %psth smoothing width, in ms
+psthParams.smoothingWidth = 50;  %psth smoothing width, in ms
 psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;
@@ -270,15 +272,15 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {260, @(stimDur) stimDur+60}}; %#ok
 
 plotSwitch.imageEyeMap = 0;
-plotSwitch.eyeCorralogram = 1;
+plotSwitch.eyeCorralogram = 1; %Eye Gram
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
-plotSwitch.prefImRaster = 0;
+plotSwitch.prefImRaster = 1; % Raster
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
 plotSwitch.imageTuningSorted = 1; %Barplot per image
-plotSwitch.stimPrefBarPlot = 0;
+plotSwitch.stimPrefBarPlot = 1; %Per event bar graph.
 plotSwitch.stimPrefBarPlotEarly = 0;
 plotSwitch.stimPrefBarPlotLate = 0;
 plotSwitch.tuningCurves = 0;
@@ -305,7 +307,7 @@ plotSwitch.lfpPowerAcrossChannels = 0;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 0;
-plotSwitch.lfpSpectraByCategory = 1;
+plotSwitch.lfpSpectraByCategory = 0; %LFP Comparison 
 plotSwitch.lfpAutocorrelTfByItem = 0;
 plotSwitch.lfpAutocorrelByItem = 0;
 plotSwitch.spikeSpectraByCategory = 0;
@@ -316,28 +318,28 @@ plotSwitch.lfpSpectraTfByImage = 0;
 plotSwitch.couplingPhasesUnwrapped = 0;
 plotSwitch.couplingPhasesAsOffsets = 0;
 plotSwitch.couplingPhasesPolar = 0;
-plotSwitch.tfSpectraByCategory = 1;
+plotSwitch.tfSpectraByCategory = 0; %Do I want this?
 plotSwitch.tfErrs = 0;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 %Defined for Groups of 2, A-B/A+B type index.
-analysisGroups.selectivityIndex.groups = {{'socialInteraction';'nonInteraction'},{'socialInteraction';'goalDirectedOrMoving'}};
+analysisGroups.selectivityIndex.groups = {{'socialInteraction';'nonInteraction'},{'socialInteraction';'goalDirected'}};
 
 %Barplots showing average activity across all members of a catagory
-analysisGroups.stimPrefBarPlot.groups = {{{'socialInteraction';'nonInteraction';'goalDirectedOrMoving';'idle';'scene';'scramble'}}};
-analysisGroups.stimPrefBarPlot.colors  = {{{'b';[0 .7 0];'r';[0 .7 0];'r';[0 .7 0]}}};
+analysisGroups.stimPrefBarPlot.groups = {{{'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble'}}};
+analysisGroups.stimPrefBarPlot.colors  = {{{[0.55 0.13 0.16];[0.93 .2 0.15];[.98 0.65 0.13];[0 0.55 0.25];[0.15, 0.20, 0.5];[0.15, 0.20, 0.5]}}};
 analysisGroups.stimPrefBarPlot.names = {'Barplots per label'};
 analysisGroups.stimPrefBarPlot.groupDepth = 2; %2 subplots, each figure is defined by a cell array in the first item (groups).
 
 %
-analysisGroups.stimulusLabelGroups.groups = {{'socialInteraction';'goalDirectedOrMoving';'idle';'scene';'scramble'}};
+analysisGroups.stimulusLabelGroups.groups = {{'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble'}};
 analysisGroups.stimulusLabelGroups.names = {'Preferred Stimulus'};
-analysisGroups.stimulusLabelGroups.colors = {{'b';[0 .7 0];'r';[0.25, 0.25, 0.25];[0.25, 0.25, 0.25]}};
+analysisGroups.stimulusLabelGroups.colors = {{[0.55 0.13 0.16];[0.93 .2 0.15];[.98 0.65 0.13];[0 0.55 0.25];[0.15, 0.20, 0.5];[0.15, 0.20, 0.5]}};
 
 %Essentially LFP selectivity/strength/quality
 analysisGroups.evokedPotentials.groups = {{'socialInteraction';'nonInteraction';'objects'};{'socialInteraction';'nonInteraction'}};
 analysisGroups.evokedPotentials.names = {'socVobj';'Social v Non-Soc'};
-analysisGroups.evokedPotentials.colors = {{'b';[0 .7 0];'r'};{'b';[0 .7 0];'r'}};
+analysisGroups.evokedPotentials.colors = {{[0.1 0.1 1];[0.1 .7 0.1];[1 0.1 0.1]};{[0.1 0.1 1];[0.1 .7 0.1];[1 0.1 0.1]}};
 
 %Looks like evokedpotentials, but pulls from a different analog channels
 %(like pupul or eye).
@@ -345,25 +347,25 @@ analysisGroups.analogInPotentials.groups = {};
 analysisGroups.analogInPotentials.channels = {[1; 2]};
 analysisGroups.analogInPotentials.names = {'eyePositions,fobPlus'};
 analysisGroups.analogInPotentials.units = {'degrees visual angle'};
-analysisGroups.analogInPotentials.colors = {{'b';'r';'k';[0 .7 0];'m';'r';'k'}};
+analysisGroups.analogInPotentials.colors = {{[0.1 0.1 1];[1 0.1 0.1];'k';[0.1 .7 0.1];'m';[1 0.1 0.1];'k'}};
 
 %Same thing, but derivatives.
 analysisGroups.analogInDerivatives.groups = {};
 analysisGroups.analogInDerivatives.channels = {[1; 2]};
 analysisGroups.analogInDerivatives.names = {'eyeVelocity,fobPlus'};
 analysisGroups.analogInDerivatives.units = {'degrees visual angle/sec'};
-analysisGroups.analogInDerivatives.colors = {{'b';[0 .7 0];'r';[0 .7 0];'m';'r';'k'}};
+analysisGroups.analogInDerivatives.colors = {{[0.1 0.1 1];[0.1 .7 0.1];[1 0.1 0.1];[0.1 .7 0.1];'m';[1 0.1 0.1];'k'}};
 
 %Makes subplots w/ PSTH on top and evoked potential on the bottom
 analysisGroups.colorPsthEvoked.groups = {{'socialInteraction';'nonInteraction';'objects';'landscapes'}};
 analysisGroups.colorPsthEvoked.names = {'socVobj'};
-analysisGroups.colorPsthEvoked.colors = {{'b';[0 .6 0];'r'}};
+analysisGroups.colorPsthEvoked.colors = {{[0.1 0.1 1];[0 .6 0];[1 0.1 0.1]}};
 
 %same as above, but shows error bars, harder to see catagory selectivity
 %though
 analysisGroups.linePsthEvoked.groups = {{'socialInteraction';'nonInteraction';'objects'}};
 analysisGroups.linePsthEvoked.names = {'socVobj'};
-analysisGroups.linePsthEvoked.colors = {{'b';[0 .6 0];'r'}};
+analysisGroups.linePsthEvoked.colors = {{[0.1 0.1 1];[0 .6 0];[1 0.1 0.1]}};
 
 %Same as above, but everything ontop of eachother in 1 panel.
 analysisGroups.evokedPsthOnePane.groups = {};
@@ -380,7 +382,7 @@ analysisGroups.tuningCurves.names = {'Human face view','Monkey face view'};
 %Used for both Spikes and LFPs.
 analysisGroups.spectraByCategory.groups = {{'interaction';'scrambles';}};  %todo: add spectra diff?
 analysisGroups.spectraByCategory.names = {'Interaction V Scrambles'};
-analysisGroups.spectraByCategory.colors = {{'r';'b'}};
+analysisGroups.spectraByCategory.colors = {{[1 0.1 0.1];[0.1 0.1 1]}};
 
 %Calculates the same spectra, but w/ sliding windows. sometimes the Power
 %spectrum changes overtime.
@@ -395,11 +397,11 @@ analysisGroups.lfpSingleTrialsByCategory.names = {'SocialVNonSocial'};
 %channel. Does this on a trial by trial basis, and then averages across all
 %members of each group. 
 analysisGroups.coherenceByCategory.groups = {{'interaction';'scrambles';}};
-analysisGroups.coherenceByCategory.colors = {{'r';'b'}}; 
+analysisGroups.coherenceByCategory.colors = {{[1 0.1 0.1];[0.1 0.1 1]}}; 
 analysisGroups.coherenceByCategory.names = {'Interaction V Scrambles'}; %'fob';'slimCats'
 
 %Calculates the same as above but in sliding windows.
-analysisGroups.tfCouplingByCategory.groups = {{'socialInteraction'};{'nonInteraction';};{'objects'};{'goalDirectedOrMoving'}}; %#ok
+analysisGroups.tfCouplingByCategory.groups = {{'socialInteraction'};{'nonInteraction';};{'objects'};{'goalDirected'}}; %#ok
 %%%%%
 
 calcSwitch.categoryPSTH = 1;
@@ -438,10 +440,10 @@ lineNoiseTriggerFilename = lfpFilename; %#ok
 outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
 analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
 preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
-%
+
 load('cocode2.mat');
 psthColormap = map;  %#ok
-%
+
 if ~exist(outDir,'dir')
   mkdir(outDir);
 end
@@ -450,7 +452,4 @@ if isempty(varargin)
 elseif strcmp(varargin,'saveNoPreprocParams')
   save(analysisParamFilename,'calcSwitch','analysisGroups','plotSwitch','-append');
 end
-
-
 end
-

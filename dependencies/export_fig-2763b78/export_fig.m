@@ -1,4 +1,4 @@
-function [imageData, alpha] = export_fig(varargin)
+function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
 %EXPORT_FIG  Exports figures in a publication-quality format
 %
 % Examples:
@@ -24,6 +24,9 @@ function [imageData, alpha] = export_fig(varargin)
 %   export_fig ... -clipboard
 %   export_fig ... -update
 %   export_fig ... -nofontswap
+%   export_fig ... -font_space <char>
+%   export_fig ... -linecaps
+%   export_fig ... -noinvert
 %   export_fig(..., handle)
 %
 % This function saves a figure or single axes to one or more vector and/or
@@ -35,10 +38,11 @@ function [imageData, alpha] = export_fig(varargin)
 %   - Improved line and grid line styles
 %   - Anti-aliased graphics (bitmap formats)
 %   - Render images at native resolution (optional for bitmap formats)
-%   - Transparent background supported (pdf, eps, png, tif)
-%   - Semi-transparent patch objects supported (png & tif only)
+%   - Transparent background supported (pdf, eps, png, tiff)
+%   - Semi-transparent patch objects supported (png, tiff)
 %   - RGB, CMYK or grayscale output (CMYK only with pdf, eps, tiff)
 %   - Variable image compression, including lossless (pdf, eps, jpg)
+%   - Optional rounded line-caps (pdf, eps)
 %   - Optionally append to file (pdf, tiff)
 %   - Vector formats: pdf, eps
 %   - Bitmap formats: png, tiff, jpg, bmp, export to workspace
@@ -70,8 +74,12 @@ function [imageData, alpha] = export_fig(varargin)
 % on your system. You can download this from:
 %   http://www.ghostscript.com
 % When exporting to eps it additionally requires pdftops, from the Xpdf
-% suite of functions. You can download this from:
-%   http://www.foolabs.com/xpdf
+% suite of functions. You can download this from: http://xpdfreader.com
+%
+% SVG output uses the fig2svg (https://github.com/kupiqu/fig2svg) or plot2svg
+% (https://github.com/jschwizer99/plot2svg) utilities, or Matlab's built-in
+% SVG export if neither of these utilities are available on Matlab's path.
+% Note: cropping/padding are not supported in export_fig's SVG output.
 %
 % Inputs:
 %   filename - string containing the name (optionally including full or
@@ -83,9 +91,9 @@ function [imageData, alpha] = export_fig(varargin)
 %              and the figure saved in that format.
 %   -format1, -format2, etc. - strings containing the extensions of the
 %                              file formats the figure is to be saved as.
-%                              Valid options are: '-pdf', '-eps', '-png',
-%                              '-tif', '-jpg' and '-bmp'. All combinations
-%                              of formats are valid.
+%                              Valid options: '-pdf', '-eps', '-svg', '-png',
+%                              '-tif', '-jpg', '-bmp'.
+%                              All combinations of formats are valid.
 %   -nocrop - option indicating that the borders of the output are not to
 %             be cropped.
 %   -c[<val>,<val>,<val>,<val>] - option indicating crop amounts. Must be
@@ -152,6 +160,11 @@ function [imageData, alpha] = export_fig(varargin)
 %   -nofontswap - option to avoid font swapping. Font swapping is automatically
 %             done in vector formats (only): 11 standard Matlab fonts are
 %             replaced by the original figure fonts. This option prevents this.
+%   -font_space <char> - option to set a spacer character for font-names that
+%             contain spaces, used by EPS/PDF. Default: ''
+%   -linecaps - option to create rounded line-caps (vector formats only).
+%   -noinvert - option to avoid setting figure's InvertHardcopy property to
+%             'off' during output (this solves some problems of empty outputs).
 %   handle -  The handle of the figure, axes or uipanels (can be an array of
 %             handles, but the objects must be in the same figure) to be
 %             saved. Default: gcf.
@@ -233,7 +246,7 @@ function [imageData, alpha] = export_fig(varargin)
 % 11/09/15: Fixed issue #103: magnification must never become negative; also fixed reported error msg in parsing input params
 % 26/09/15: Alert if trying to export transparent patches/areas to non-PNG outputs (issue #108)
 % 04/10/15: Do not suggest workarounds for certain errors that have already been handled previously
-% 01/11/15: Fixed issue #112: use same renderer in print2eps as export_fig (thanks to Jesús Pestana Puerta)
+% 01/11/15: Fixed issue #112: use same renderer in print2eps as export_fig (thanks to JesÃºs Pestana Puerta)
 % 10/11/15: Custom GS installation webpage for MacOS. Thanks to Andy Hueni via FEX
 % 19/11/15: Fixed clipboard export in R2015b (thanks to Dan K via FEX)
 % 21/02/16: Added -c option for indicating specific crop amounts (idea by Cedric Noordam on FEX)
@@ -242,6 +255,28 @@ function [imageData, alpha] = export_fig(varargin)
 % 08/08/16: Enabled exporting transparency to TIF, in addition to PNG/PDF (issue #168)
 % 11/12/16: Added alert in case of error creating output PDF/EPS file (issue #179)
 % 13/12/16: Minor fix to the commit for issue #179 from 2 days ago
+% 22/03/17: Fixed issue #187: only set manual ticks when no exponent is present
+% 09/04/17: Added -linecaps option (idea by Baron Finer, issue #192)
+% 15/09/17: Fixed issue #205: incorrect tick-labels when Ticks number don't match the TickLabels number
+% 15/09/17: Fixed issue #210: initialize alpha map to ones instead of zeros when -transparent is not used
+% 18/09/17: Added -font_space option to replace font-name spaces in EPS/PDF (workaround for issue #194)
+% 18/09/17: Added -noinvert option to solve some export problems with some graphic cards (workaround for issue #197)
+% 08/11/17: Fixed issue #220: axes exponent is removed in HG1 when TickMode is 'manual' (internal Matlab bug)
+% 08/11/17: Fixed issue #221: alert if the requested folder does not exist
+% 19/11/17: Workaround for issue #207: alert when trying to use transparent bgcolor with -opengl
+% 29/11/17: Workaround for issue #206: warn if exporting PDF/EPS for a figure that contains an image
+% 11/12/17: Fixed issue #230: use OpenGL renderer when exported image contains transparency (also see issue #206)
+% 30/01/18: Updated SVG message to point to https://github.com/kupiqu/plot2svg and display user-selected filename if available
+% 27/02/18: Fixed issue #236: axes exponent cropped from output if on right-hand axes
+% 29/05/18: Fixed issue #245: process "string" inputs just like 'char' inputs
+% 13/08/18: Fixed issue #249: correct black axes color to off-black to avoid extra cropping with -transparent
+% 27/08/18: Added a possible file-open reason in EPS/PDF write-error message (suggested by "craq" on FEX page)
+% 22/09/18: Xpdf website changed to xpdfreader.com
+% 23/09/18: Fixed issue #243: only set non-bold font (workaround for issue #69) in R2015b or earlier; warn if changing font
+% 23/09/18: Workaround for issue #241: don't use -r864 in EPS/PDF outputs when -native is requested (solves black lines problem)
+% 18/11/18: Issue #261: Added informative alert when trying to export a uifigure (which is not currently supported)
+% 13/12/18: Issue #261: Fixed last commit for cases of specifying axes/panel handle as input, rather than a figure handle
+% 13/01/19: Issue #72: Added basic SVG output support
 %}
 
     if nargout
@@ -263,6 +298,13 @@ function [imageData, alpha] = export_fig(varargin)
         return;  % silent bail-out
     elseif isempty(fig)
         error('No figure found');
+    else
+        oldWarn = warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
+        try jf = get(handle(ancestor(fig,'figure')),'JavaFrame'); catch, jf=1; end
+        warning(oldWarn);
+        if isempty(jf)
+            error('Figures created using the uifigure command or App Designer are not supported by export_fig. See <a href="https://github.com/altmany/export_fig/issues/261">issue #261</a> for details.');
+        end
     end
 
     % Isolate the subplot, if it is one
@@ -331,9 +373,16 @@ function [imageData, alpha] = export_fig(varargin)
         if using_hg2(fig) && isvector(options)
             % Set the FontWeight of axes labels/titles to 'normal'
             % Fix issue #69: set non-bold font only if the string contains symbols (\beta etc.)
-            texLabels = findall(fig, 'type','text', 'FontWeight','bold');
-            symbolIdx = ~cellfun('isempty',strfind({texLabels.String},'\'));
-            set(texLabels(symbolIdx), 'FontWeight','normal');
+            % Issue #243: only set non-bold font (workaround for issue #69) in R2015b or earlier
+            try isPreR2016a = verLessThan('matlab','8.7'); catch, isPreR2016a = true; end
+            if isPreR2016a
+                texLabels = findall(fig, 'type','text', 'FontWeight','bold');
+                symbolIdx = ~cellfun('isempty',strfind({texLabels.String},'\'));
+                if ~isempty(symbolIdx)
+                    set(texLabels(symbolIdx), 'FontWeight','normal');
+                    warning('export_fig:BoldTexLabels', 'Bold labels with Tex symbols converted into non-bold in export_fig (fix for issue #69)');
+                end
+            end
         end
     catch
         % ignore
@@ -344,7 +393,7 @@ function [imageData, alpha] = export_fig(varargin)
     try
         if ~using_hg2(fig)
             annotationHandles = findall(fig,'Type','hggroup','-and','-property','Units','-and','-not','Units','norm');
-            try  % suggested by Jesús Pestana Puerta (jespestana) 30/9/2015
+            try  % suggested by JesÃºs Pestana Puerta (jespestana) 30/9/2015
                 originalUnits = get(annotationHandles,'Units');
                 set(annotationHandles,'Units','norm');
             catch
@@ -359,7 +408,10 @@ function [imageData, alpha] = export_fig(varargin)
     set(fig,'Units','pixels');
 
     % Set to print exactly what is there
-    set(fig, 'InvertHardcopy', 'off');
+    if options.invert_hardcopy
+        try set(fig, 'InvertHardcopy', 'off'); catch, end  % fail silently in uifigures
+    end
+
     % Set the renderer
     switch options.renderer
         case 1
@@ -371,6 +423,8 @@ function [imageData, alpha] = export_fig(varargin)
         otherwise
             renderer = '-opengl'; % Default for bitmaps
     end
+
+    hImages = findall(fig,'type','image');
 
     % Handle transparent patches
     hasTransparency = ~isempty(findall(fig,'-property','FaceAlpha','-and','-not','FaceAlpha',1));
@@ -384,6 +438,15 @@ function [imageData, alpha] = export_fig(varargin)
             warning('export_fig:transparency', '%s\nTo export transparent patches/areas to PDF, use the print command:\n print(gcf, ''-dpdf'', ''%s.pdf'');', msg, options.name);
         elseif ~options.png && ~options.tif  % issue #168
             warning('export_fig:transparency', '%s\nTo export the transparency correctly, try using the ScreenCapture utility on the Matlab File Exchange: http://bit.ly/1QFrBip', msg);
+        end
+    elseif ~isempty(hImages)
+        % Fix for issue #230: use OpenGL renderer when exported image contains transparency
+        for idx = 1 : numel(hImages)
+            cdata = get(hImages(idx),'CData');
+            if any(isnan(cdata(:)))
+                hasTransparency = true;
+                break
+            end
         end
     end
 
@@ -422,6 +485,11 @@ function [imageData, alpha] = export_fig(varargin)
                 % Correct the colorbar axes colours
                 set(hCB(yCol==0), 'YColor', [0 0 0]);
                 set(hCB(xCol==0), 'XColor', [0 0 0]);
+                % Correct black axes color to off-black (issue #249)
+                hAxes = findall(fig, 'Type','axes');
+                hXs = fixBlackAxle(hAxes, 'XColor');
+                hYs = fixBlackAxle(hAxes, 'YColor');
+                hZs = fixBlackAxle(hAxes, 'ZColor');
 
                 % The following code might cause out-of-memory errors
                 try
@@ -439,6 +507,10 @@ function [imageData, alpha] = export_fig(varargin)
                 % Correct the colorbar axes colours
                 set(hCB(yCol==3), 'YColor', [1 1 1]);
                 set(hCB(xCol==3), 'XColor', [1 1 1]);
+                % Revert the black axes colors
+                set(hXs, 'XColor', [0,0,0]);
+                set(hYs, 'YColor', [0,0,0]);
+                set(hZs, 'ZColor', [0,0,0]);
 
                 % The following code might cause out-of-memory errors
                 try
@@ -538,7 +610,7 @@ function [imageData, alpha] = export_fig(varargin)
                 end
                 if options.alpha
                     imageData = A;
-                    alpha = zeros(size(A, 1), size(A, 2), 'single');
+                    alpha = ones(size(A, 1), size(A, 2), 'single');
                 end
             end
             % Save the images
@@ -618,28 +690,56 @@ function [imageData, alpha] = export_fig(varargin)
                 pdf_nam = pdf_nam_tmp;
             end
             % Generate the options for print
-            p2eArgs = {renderer, sprintf('-r%d', options.resolution)};
+            printArgs = {renderer};
+            if ~isempty(options.resolution)  % issue #241
+                printArgs{end+1} = sprintf('-r%d', options.resolution);
+            end
             if options.colourspace == 1  % CMYK
                 % Issue #33: due to internal bugs in Matlab's print() function, we can't use its -cmyk option
-                %p2eArgs{end+1} = '-cmyk';
+                %printArgs{end+1} = '-cmyk';
             end
             if ~options.crop
                 % Issue #56: due to internal bugs in Matlab's print() function, we can't use its internal cropping mechanism,
                 % therefore we always use '-loose' (in print2eps.m) and do our own cropping (in crop_borders)
-                %p2eArgs{end+1} = '-loose';
+                %printArgs{end+1} = '-loose';
             end
             if any(strcmpi(varargin,'-depsc'))
                 % Issue #45: lines in image subplots are exported in invalid color.
                 % The workaround is to use the -depsc parameter instead of the default -depsc2
-                p2eArgs{end+1} = '-depsc';
+                printArgs{end+1} = '-depsc';
             end
             try
-                % Generate an eps
-                print2eps(tmp_nam, fig, options, p2eArgs{:});
-                % Remove the background, if desired
-                if options.transparent && ~isequal(get(fig, 'Color'), 'none')
-                    eps_remove_background(tmp_nam, 1 + using_hg2(fig));
+                % Remove background if requested (issue #207)
+                [hXs, hYs, hZs] = deal([]);
+                if options.transparent %&& ~isequal(get(fig, 'Color'), 'none')
+                    if options.renderer == 1  % OpenGL
+                        warning('export_fig:openglTransparentBG', '-opengl sometimes fails to produce transparent backgrounds; try -painters instead');
+                    else
+                        originalBgColor = get(fig, 'Color');
+                        set(fig,'Color','none');
+
+                        % Correct black axes color to off-black (issue #249)
+                        hAxes = findall(fig, 'Type','axes');
+                        hXs = fixBlackAxle(hAxes, 'XColor');
+                        hYs = fixBlackAxle(hAxes, 'YColor');
+                        hZs = fixBlackAxle(hAxes, 'ZColor');
+                    end
                 end
+                % Generate an eps
+                print2eps(tmp_nam, fig, options, printArgs{:});
+                % {
+                % Remove the background, if desired
+                if options.transparent %&& ~isequal(get(fig, 'Color'), 'none')
+                    eps_remove_background(tmp_nam, 1 + using_hg2(fig));
+
+                    % Revert the black axes colors
+                    set(hXs, 'XColor', [0,0,0]);
+                    set(hYs, 'YColor', [0,0,0]);
+                    set(hZs, 'ZColor', [0,0,0]);
+                end
+                %}
+                % Restore the figure's previous background color (if modified)
+                try set(fig,'Color',originalBgColor); drawnow; catch, end
                 % Fix colorspace to CMYK, if requested (workaround for issue #33)
                 if options.colourspace == 1  % CMYK
                     % Issue #33: due to internal bugs in Matlab's print() function, we can't use its -cmyk option
@@ -665,7 +765,8 @@ function [imageData, alpha] = export_fig(varargin)
                 catch
                     % Alert in case of error creating output PDF/EPS file (issue #179)
                     if exist(pdf_nam_tmp, 'file')
-                        error(['Could not create ' pdf_nam ' - perhaps the folder does not exist, or you do not have write permissions']);
+                        errMsg = ['Could not create ' pdf_nam ' - perhaps the folder does not exist, or you do not have write permissions, or the file is open in another application'];
+                        error(errMsg);
                     else
                         error('Could not generate the intermediary EPS file.');
                     end
@@ -677,13 +778,28 @@ function [imageData, alpha] = export_fig(varargin)
             end
             % Delete the eps
             delete(tmp_nam);
-            if options.eps
+            if options.eps || options.linecaps
                 try
                     % Generate an eps from the pdf
                     % since pdftops can't handle relative paths (e.g., '..\'), use a temp file
                     eps_nam_tmp = strrep(pdf_nam_tmp,'.pdf','.eps');
                     pdf2eps(pdf_nam, eps_nam_tmp);
-                    movefile(eps_nam_tmp,  [options.name '.eps'], 'f');
+
+                    % Issue #192: enable rounded line-caps
+                    if options.linecaps
+                        fstrm = read_write_entire_textfile(eps_nam_tmp);
+                        fstrm = regexprep(fstrm, '[02] J', '1 J');
+                        read_write_entire_textfile(eps_nam_tmp, fstrm);
+                        if options.pdf
+                            eps2pdf(eps_nam_tmp, pdf_nam, 1, options.append, options.colourspace==2, options.quality, options.gs_options);
+                        end
+                    end
+
+                    if options.eps
+                        movefile(eps_nam_tmp, [options.name '.eps'], 'f');
+                    else  % if options.pdf
+                        try delete(eps_nam_tmp); catch, end
+                    end
                 catch ex
                     if ~options.pdf
                         % Delete the pdf
@@ -697,6 +813,56 @@ function [imageData, alpha] = export_fig(varargin)
                     delete(pdf_nam);
                 end
             end
+            % Issue #206: warn if the figure contains an image
+            if ~isempty(hImages) && strcmpi(renderer,'-opengl')  % see addendum to issue #206
+                warnMsg = ['exporting images to PDF/EPS may result in blurry images on some viewers. ' ...
+                           'If so, try to change viewer, or increase the image''s CData resolution, or use -opengl renderer, or export via the print function. ' ...
+                           'See <a href="matlab:web(''https://github.com/altmany/export_fig/issues/206'',''-browser'');">issue #206</a> for details.'];
+                warning('export_fig:pdf_eps:blurry_image', warnMsg);
+            end
+        end
+
+        % SVG format
+        if options.svg
+            oldUnits = get(fig,'Units');
+            filename = [options.name '.svg'];
+            % Adapted from Dan Joshea's https://github.com/djoshea/matlab-save-figure :
+            try %if verLessThan('matlab', '8.4')
+                % Try using the fig2svg/plot2svg utilities
+                try
+                    fig2svg(filename, fig);  %https://github.com/kupiqu/fig2svg
+                catch
+                    plot2svg(filename, fig); %https://github.com/jschwizer99/plot2svg
+                    warning('export_fig:SVG:plot2svg', 'export_fig used the plot2svg utility for SVG output. Better results may be gotten via the fig2svg utility (https://github.com/kupiqu/fig2svg).');
+                end
+            catch %else  % (neither fig2svg nor plot2svg are available)
+                % Try Matlab's built-in svg engine (from Batik Graphics2D for java)
+                try
+                    set(fig,'Units','pixels');   % All data in the svg-file is saved in pixels
+                    printArgs = {renderer};
+                    if ~isempty(options.resolution)
+                        printArgs{end+1} = sprintf('-r%d', options.resolution);
+                    end
+                    print(fig, '-dsvg', printArgs{:}, filename);
+                    warning('export_fig:SVG:print', 'export_fig used Matlab''s built-in SVG output engine. Better results may be gotten via the fig2svg utility (https://github.com/kupiqu/fig2svg).');
+                catch err
+                    set(fig,'Units',oldUnits);
+                    filename = strrep(filename,'export_fig_out','filename');
+                    msg = ['SVG output is not supported for your figure: ' err.message '\n' ...
+                        'Try one of the following alternatives:\n' ...
+                        '  1. saveas(gcf,''' filename ''')\n' ...
+                        '  2. fig2svg utility: https://github.com/kupiqu/fig2svg\n' ...  % Note: replaced defunct https://github.com/jschwizer99/plot2svg with up-to-date fork on https://github.com/kupiqu/fig2svg
+                        '  3. export_fig to EPS/PDF, then convert to SVG using non-Matlab tools\n'];
+                    error(sprintf(msg)); %#ok<SPERR>
+                end
+            end
+            % SVG output was successful if we reached this point
+            % Restore original figure units
+            set(fig,'Units',oldUnits);
+            % Add warning about unsupported export_fig options with SVG output
+            if any(~isnan(options.crop_amounts)) || any(options.bb_padding)
+                warning('export_fig:SVG:options', 'export_fig''s SVG output does not [currently] support cropping/padding.');
+            end
         end
 
         % Revert the figure or close it (if requested)
@@ -705,7 +871,7 @@ function [imageData, alpha] = export_fig(varargin)
             close(fig);
         else
             % Reset the hardcopy mode
-            set(fig, 'InvertHardcopy', old_mode);
+            try set(fig, 'InvertHardcopy', old_mode); catch, end  % fail silently in uifigures
             % Reset the axes limit and tick modes
             for a = 1:numel(Hlims)
                 try
@@ -754,7 +920,7 @@ function [imageData, alpha] = export_fig(varargin)
             try
                 error(javachk('awt', 'export_fig -clipboard output'));
             catch
-                warning('export_fig -clipboard output failed: requires Java to work');
+                warning('export_fig:clipboardJava', 'export_fig -clipboard output failed: requires Java to work');
                 return;
             end
             try
@@ -800,7 +966,7 @@ function [imageData, alpha] = export_fig(varargin)
                 % Set clipboard content to the image
                 cb.setContents(imSelection, []);
             catch
-                warning('export_fig -clipboard output failed: %s', lasterr); %#ok<LERR>
+                warning('export_fig:clipboardFailed', 'export_fig -clipboard output failed: %s', lasterr); %#ok<LERR>
             end
         end
 
@@ -821,7 +987,7 @@ function [imageData, alpha] = export_fig(varargin)
             end
             try
                 if options.eps
-                    fprintf(2, '  and that you have <a href="http://www.foolabs.com/xpdf">pdftops</a> installed\n');
+                    fprintf(2, '  and that you have <a href="http://xpdfreader.com/download.html">pdftops</a> installed\n');
                 end
             catch
                 % ignore - probably an error in parse_args
@@ -852,6 +1018,7 @@ function options = default_options()
         'renderer',     0, ...         % 0: default, 1: OpenGL, 2: ZBuffer, 3: Painters
         'pdf',          false, ...
         'eps',          false, ...
+        'svg',          false, ...
         'png',          false, ...
         'tif',          false, ...
         'jpg',          false, ...
@@ -870,11 +1037,17 @@ function options = default_options()
         'quality',      [], ...
         'update',       false, ...
         'fontswap',     true, ...
+        'font_space',   '', ...
+        'linecaps',     false, ...
+        'invert_hardcopy', true, ...
         'gs_options',   {{}});
 end
 
 function [fig, options] = parse_args(nout, fig, varargin)
     % Parse the input arguments
+
+    % Convert strings => chars
+    varargin = cellfun(@str2char,varargin,'un',false);
 
     % Set the defaults
     native = false; % Set resolution to native of an image
@@ -909,6 +1082,8 @@ function [fig, options] = parse_args(nout, fig, varargin)
                         options.pdf = true;
                     case 'eps'
                         options.eps = true;
+                    case 'svg'
+                        options.svg = true;
                     case 'png'
                         options.png = true;
                     case {'tif', 'tiff'}
@@ -935,12 +1110,6 @@ function [fig, options] = parse_args(nout, fig, varargin)
                         options.clipboard = true;
                         options.im = true;
                         options.alpha = true;
-                    case 'svg'
-                        msg = ['SVG output is not supported by export_fig. Use one of the following alternatives:\n' ...
-                               '  1. saveas(gcf,''filename.svg'')\n' ...
-                               '  2. plot2svg utility: http://github.com/jschwizer99/plot2svg\n' ...
-                               '  3. export_fig to EPS/PDF, then convert to SVG using generic (non-Matlab) tools\n'];
-                        error(sprintf(msg)); %#ok<SPERR>
                     case 'update'
                         % Download the latest version of export_fig into the export_fig folder
                         try
@@ -960,6 +1129,13 @@ function [fig, options] = parse_args(nout, fig, varargin)
                         end
                     case 'nofontswap'
                         options.fontswap = false;
+                    case 'font_space'
+                        options.font_space = varargin{a+1};
+                        skipNext = true;
+                    case 'linecaps'
+                        options.linecaps = true;
+                    case 'noinvert'
+                        options.invert_hardcopy = false;
                     otherwise
                         try
                             wasError = false;
@@ -1020,6 +1196,8 @@ function [fig, options] = parse_args(nout, fig, varargin)
             else
                 [p, options.name, ext] = fileparts(varargin{a});
                 if ~isempty(p)
+                    % Issue #221: alert if the requested folder does not exist
+                    if ~exist(p,'dir'),  error(['Folder ' p ' does not exist!']);  end
                     options.name = [p filesep options.name];
                 end
                 switch lower(ext)
@@ -1048,11 +1226,7 @@ function [fig, options] = parse_args(nout, fig, varargin)
                             return
                         end
                     case '.svg'
-                        msg = ['SVG output is not supported by export_fig. Use one of the following alternatives:\n' ...
-                               '  1. saveas(gcf,''filename.svg'')\n' ...
-                               '  2. plot2svg utility: http://github.com/jschwizer99/plot2svg\n' ...
-                               '  3. export_fig to EPS/PDF, then convert to SVG using generic (non-Matlab) tools\n'];
-                        error(sprintf(msg)); %#ok<SPERR>
+                        options.svg = true;
                     otherwise
                         options.name = varargin{a};
                 end
@@ -1103,47 +1277,58 @@ function [fig, options] = parse_args(nout, fig, varargin)
 
     % If requested, set the resolution to the native vertical resolution of the
     % first suitable image found
-    if native && isbitmap(options)
-        % Find a suitable image
-        list = findall(fig, 'Type','image', 'Tag','export_fig_native');
-        if isempty(list)
-            list = findall(fig, 'Type','image', 'Visible','on');
-        end
-        for hIm = list(:)'
-            % Check height is >= 2
-            height = size(get(hIm, 'CData'), 1);
-            if height < 2
-                continue
+    if native
+        if isbitmap(options)
+            % Find a suitable image
+            list = findall(fig, 'Type','image', 'Tag','export_fig_native');
+            if isempty(list)
+                list = findall(fig, 'Type','image', 'Visible','on');
             end
-            % Account for the image filling only part of the axes, or vice versa
-            yl = get(hIm, 'YData');
-            if isscalar(yl)
-                yl = [yl(1)-0.5 yl(1)+height+0.5];
-            else
-                yl = [min(yl), max(yl)];  % fix issue #151 (case of yl containing more than 2 elements)
-                if ~diff(yl)
+            for hIm = list(:)'
+                % Check height is >= 2
+                height = size(get(hIm, 'CData'), 1);
+                if height < 2
                     continue
                 end
-                yl = yl + [-0.5 0.5] * (diff(yl) / (height - 1));
+                % Account for the image filling only part of the axes, or vice versa
+                yl = get(hIm, 'YData');
+                if isscalar(yl)
+                    yl = [yl(1)-0.5 yl(1)+height+0.5];
+                else
+                    yl = [min(yl), max(yl)];  % fix issue #151 (case of yl containing more than 2 elements)
+                    if ~diff(yl)
+                        continue
+                    end
+                    yl = yl + [-0.5 0.5] * (diff(yl) / (height - 1));
+                end
+                hAx = get(hIm, 'Parent');
+                yl2 = get(hAx, 'YLim');
+                % Find the pixel height of the axes
+                oldUnits = get(hAx, 'Units');
+                set(hAx, 'Units', 'pixels');
+                pos = get(hAx, 'Position');
+                set(hAx, 'Units', oldUnits);
+                if ~pos(4)
+                    continue
+                end
+                % Found a suitable image
+                % Account for stretch-to-fill being disabled
+                pbar = get(hAx, 'PlotBoxAspectRatio');
+                pos = min(pos(4), pbar(2)*pos(3)/pbar(1));
+                % Set the magnification to give native resolution
+                options.magnify = abs((height * diff(yl2)) / (pos * diff(yl)));  % magnification must never be negative: issue #103
+                break
             end
-            hAx = get(hIm, 'Parent');
-            yl2 = get(hAx, 'YLim');
-            % Find the pixel height of the axes
-            oldUnits = get(hAx, 'Units');
-            set(hAx, 'Units', 'pixels');
-            pos = get(hAx, 'Position');
-            set(hAx, 'Units', oldUnits);
-            if ~pos(4)
-                continue
-            end
-            % Found a suitable image
-            % Account for stretch-to-fill being disabled
-            pbar = get(hAx, 'PlotBoxAspectRatio');
-            pos = min(pos(4), pbar(2)*pos(3)/pbar(1));
-            % Set the magnification to give native resolution
-            options.magnify = abs((height * diff(yl2)) / (pos * diff(yl)));  % magnification must never be negative: issue #103
-            break
+        elseif options.resolution == 864  % don't use -r864 in vector mode if user asked for -native
+            options.resolution = []; % issue #241 (internal Matlab bug produces black lines with -r864)
         end
+    end
+end
+
+% Convert a possible string => char (issue #245)
+function value = str2char(value)
+    if isa(value,'string')
+        value = char(value);
     end
 end
 
@@ -1271,9 +1456,35 @@ function set_tick_mode(Hlims, ax)
     if ~iscell(M)
         M = {M};
     end
-    M = cellfun(@(c) strcmp(c, 'linear'), M);
-    set(Hlims(M), [ax 'TickMode'], 'manual');
-    %set(Hlims(M), [ax 'TickLabelMode'], 'manual');  % this hides exponent label in HG2!
+    %idx = cellfun(@(c) strcmp(c, 'linear'), M);
+    idx = find(strcmp(M,'linear'));
+    %set(Hlims(idx), [ax 'TickMode'], 'manual');  % issue #187
+    %set(Hlims(idx), [ax 'TickLabelMode'], 'manual');  % this hides exponent label in HG2!
+    for idx2 = 1 : numel(idx)
+        try
+            % Fix for issue #187 - only set manual ticks when no exponent is present
+            hAxes = Hlims(idx(idx2));
+            props = {[ax 'TickMode'],'manual', [ax 'TickLabelMode'],'manual'};
+            tickVals = get(hAxes,[ax 'Tick']);
+            tickStrs = get(hAxes,[ax 'TickLabel']);
+            try % Fix issue #236
+                exponents = [hAxes.([ax 'Axis']).SecondaryLabel];
+            catch
+                exponents = [hAxes.([ax 'Ruler']).SecondaryLabel];
+            end
+            if isempty([exponents.String])
+                % Fix for issue #205 - only set manual ticks when the Ticks number match the TickLabels number
+                if numel(tickVals) == numel(tickStrs)
+                    set(hAxes, props{:});  % no exponent and matching ticks, so update both ticks and tick labels to manual
+                end
+            end
+        catch  % probably HG1
+            % Fix for issue #220 - exponent is removed in HG1 when TickMode is 'manual' (internal Matlab bug)
+            if isequal(tickVals, str2num(tickStrs)') %#ok<ST2NM>
+                set(hAxes, props{:});  % revert back to old behavior
+            end
+        end
+    end
 end
 
 function change_rgb_to_cmyk(fname)  % convert RGB => CMYK within an EPS file
@@ -1294,4 +1505,16 @@ function change_rgb_to_cmyk(fname)  % convert RGB => CMYK within an EPS file
     catch
         % never mind - leave as is...
     end
+end
+
+function hBlackAxles = fixBlackAxle(hAxes, axleName)
+    hBlackAxles = [];
+    for idx = 1 : numel(hAxes)
+        ax = hAxes(idx);
+        axleColor = get(ax, axleName);
+        if isequal(axleColor,[0,0,0]) || isequal(axleColor,'k')
+            hBlackAxles(end+1) = ax; %#ok<AGROW>
+        end
+    end
+    set(hBlackAxles, axleName, [0,0,0.01]);  % off-black
 end

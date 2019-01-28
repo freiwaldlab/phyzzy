@@ -206,21 +206,21 @@ end
 %% Plots and Output
 
 if params.makePlots
-  figure()
+  figure('Name','Fix In Scatter Plot','NumberTitle','off')
   scatter(fixInX,fixInY,1,'b');
   hold on
   scatter(eyeX(~fixInInds),eyeY(~fixInInds),1,'r')
-  figure()
+  figure('Name','Fixation transitions','NumberTitle','off')
   scatter(eyeX(transitionInInds == 1),eyeY(transitionInInds == 1),20,'b');
   hold on
   scatter(eyeX(transitionOutInds == 1),eyeY(transitionOutInds == 1),20,'r');
-  figure()
+  figure('Name','Eye dilation vs Fixation Histogram','NumberTitle','off')
   histogram(fixInD,100,'Normalization','pdf');
   hold on
   histogram(eyeD(~fixInInds),100,'Normalization','pdf');
   title('eyeD')
   legend({'In','Out'});
-  figure()
+  figure('Name','Eye Signal Probability Distribution','NumberTitle','off')
   a1 = subplot(1,2,1);
   histogram2(fixInX',fixInY',[50 50],'Normalization','probability','DisplayStyle','tile','BinMethod','integer');
   a2 = subplot(1,2,2);

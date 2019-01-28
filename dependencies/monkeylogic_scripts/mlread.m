@@ -11,7 +11,7 @@ MLConfig = [];
 TrialRecord = [];
 
 if ~exist('filename','var') || 2~=exist(filename,'file')
-    [n,p] = uigetfile({'*.bhv2;*.h5;*.bhv','MonkeyLogic Datafile (*.bhv2;*.h5;*.bhv)';'*.mat','MonkeyLogic Datafile (*.mat)'});
+    [n,p] = uigetfile({'*.bhv2;*.mat','MonkeyLogic Datafile (*.bhv2;*.h5;*.bhv)';'*.mat','MonkeyLogic Datafile (*.mat)'});
     if isnumeric(n), error('File not selected'); end
     filename = [p n];
 end

@@ -23,103 +23,99 @@ blockswitch = find(diff(block));
 blockorder = block([1 blockswitch+1]);
 errortype = [data.TrialError];
 ntrial = length(trial);
-userVars = struct();
-
-try
-  ind = 1;
-  while ~isfield(userVars,'clipDuration')
-    userVars = data(ind).UserVars;
-    userVars2 = data(ind).VariableChanges;
-    ind = ind + 1;
-  end
+corrInd = find(errortype == 0, 1);
+userVars = data(corrInd).UserVars;
+userVars2 = data(corrInd).VariableChanges;
 
 if ~isfield(userVars,'clipDuration')
     filebits = strsplit(filepath, '/');
     filebits = cell2mat(fullfile(filebits(1:end-1),'/'));
     xlsxLog = dir([filebits 'Recordings*.xlsx']);
-    [num, txt, raw] = xlsread([xlsxLog.folder filesep xlsxLog.name]);
+    [~, ~, raw] = xlsread([xlsxLog.folder filesep xlsxLog.name]);
     
     %Find the index for data based on the titles of the columns
-    electrodeInd = find(strcmp(raw(1,:),'impedance (MOhms)'));
+    electrodeInd = strcmp(raw(1,:),'impedance (MOhms)');
     holeMLInd = find(strcmp(raw(1,:),'ML'));
     holeAPInd = find(strcmp(raw(1,:),'AP'));
-    recordingInd = find(strcmp(raw(1,:),'putative distance'));
-    thresInd = find(strcmp(raw(1,:),'threshold (microVolts)'));
-    recActComInd = find(strcmp(raw(1,:),'comments on signal'));
-    recID = find(strcmp(raw(1,:),'recording'));
-    regionInd = find(strcmp(raw(1,:),'putative region'));
-    commInd = find(strcmp(raw(1,:),'online analysis'));
-    rowID = find(strcmp(raw(:,recID),n));
-    
-    %Pull the data from those columns, using the "Recording" column to
-    %match days to runs.
+    recordingInd = strcmp(raw(1,:),'putative distance');
+    thresInd = strcmp(raw(1,:),'threshold (microVolts)');
+    recActComInd = strcmp(raw(1,:),'comments on signal');
+    recID = strcmp(raw(1,:),'recording');
+    regionInd = strcmp(raw(1,:),'putative region');
+    commInd = strcmp(raw(1,:),'online analysis');    
     try
-        userVars.clipDuration = num2str(data(1).ObjectStatusRecord.SceneParam(2).AdapterArgs{1,3}{3});
+      rowID = find(strcmp(raw(:,recID),n));
+      assert(~isempty(rowID),' no matching row found in xls')
+      %Pull the data from those columns, using the "Recording" column to
+      %match days to runs.
+      userVars.rewardSD = 0;
+      userVars.rewardTimeMean = MLConfig.RewardFuncArgs.Duration;
+      userVars.clipDuration = num2str(data(corrInd).ObjectStatusRecord.SceneParam(2).AdapterArgs{1,3}{3});
+      userVars2.comments = num2str(raw{rowID,commInd});
+      userVars2.gridHole = [ num2str(raw{rowID,holeMLInd}) '-' num2str(raw{rowID,holeAPInd})]; %#ok<FNDSB>
+      userVars2.electrodeImp = num2str(raw{rowID,electrodeInd});
+      userVars2.recordingDepth = num2str(raw{rowID,recordingInd});
+      userVars2.putativeRegion = num2str(raw{rowID,regionInd});
+      userVars2.thresholdSetting = num2str(raw{rowID,thresInd});
+      userVars2.activityComments = num2str(raw{rowID,recActComInd});
     catch
-        userVars.clipDuration = num2str(data(10).ObjectStatusRecord.SceneParam(2).AdapterArgs{3}{1,2});
+      warning('MonkeyLogic xls lacks fields to populate fields')
+      userVars.rewardSD = 0;
+      [userVars.rewardTimeMean, userVars2.comments, userVars2.gridHole, userVars2.electrodeImp,...
+       userVars2.recordingDepth, userVars2.putativeRegion, userVars2.thresholdSetting,userVars2.activityComments] = deal('Not Found');
     end
-    userVars.rewardSD = '0';
-    userVars.rewardTimeMean = MLConfig.RewardFuncArgs.Duration;
-    userVars2.comments = num2str(raw{rowID,commInd});
-    userVars2.gridHole = [ num2str(raw{rowID,holeMLInd}) '-' num2str(raw{rowID,holeAPInd})]; %#ok<FNDSB>
-    userVars2.electrodeImp = num2str(raw{rowID,electrodeInd});
-    userVars2.recordingDepth = num2str(raw{rowID,recordingInd});
-    userVars2.putativeRegion = num2str(raw{rowID,regionInd});
-    userVars2.thresholdSetting = num2str(raw{rowID,thresInd});
-    userVars2.activityComments = num2str(raw{rowID,recActComInd});
-    
 end
-
-% constants
-colororder = [0 1 0; 0 1 1; 1 1 0; 0 0 1; 0.5 0.5 0.5; 1 0 1; 1 0 0; .3 .7 .5; .7 .2 .5; .5 .5 1; .75 .75 .5];
-corder(1,1:11,1:3) = colororder(1:11,1:3);
-figure_bgcolor = [.65 .70 .80];
-
-% create figure
-% fw = 800;
-% fh = 600;
-% screen_pos = GetMonitorPosition(mglgetcommandwindowrect);
-% h = findobj('tag','mlmainmenu');
-% if isempty(h), pos = screen_pos; else pos = get(h,'position'); end
-% fx = pos(1) + 0.5 * (pos(3) - fw);
-% if fx < screen_pos(1), fx = screen_pos(1) + 8; end
-% fy = min(pos(2) + 0.5 * (pos(4) - fh),screen_pos(2) + screen_pos(4) - fh - 85);
-% fig_pos = [fx fy fw fh];
-hFig = figure;
-set(hFig, 'tag','behaviorsummary', 'numbertitle','off', 'name',filename); %'color',figure_bgcolor);
-
-% performance plot
-subplot('position',[0 0.5 1 0.5]);
-set(gca, 'ylim',[0 1], 'position',[0.08 0.65 0.88 0.3], 'box','on');
-
-hold on;
-h = title(filename,'interpreter','none');
-set(h,'fontsize',10,'fontweight','bold');
-xlabel('Trial number');
-ylabel('Fraction correct');
-
-smoothwin = 10;
-if ntrial < 5*smoothwin  % histogram when the number of trials is <50
-    x = 1:ntrial;
-    for m=0:9
+    
+    % constants
+    colororder = [0 1 0; 0 1 1; 1 1 0; 0 0 1; 0.5 0.5 0.5; 1 0 1; 1 0 0; .3 .7 .5; .7 .2 .5; .5 .5 1; .75 .75 .5];
+    corder(1,1:11,1:3) = colororder(1:11,1:3);
+    %figure_bgcolor = [.65 .70 .80];
+    
+    % create figure
+    % fw = 800;
+    % fh = 600;
+    % screen_pos = GetMonitorPosition(mglgetcommandwindowrect);
+    % h = findobj('tag','mlmainmenu');
+    % if isempty(h), pos = screen_pos; else pos = get(h,'position'); end
+    % fx = pos(1) + 0.5 * (pos(3) - fw);
+    % if fx < screen_pos(1), fx = screen_pos(1) + 8; end
+    % fy = min(pos(2) + 0.5 * (pos(4) - fh),screen_pos(2) + screen_pos(4) - fh - 85);
+    % fig_pos = [fx fy fw fh];
+    hFig =   figure('Name','MonkeyLogic Behavioral Summary','NumberTitle','off');
+    set(hFig, 'tag','behaviorsummary', 'numbertitle','off'); %'color',figure_bgcolor);
+    
+    % performance plot
+    subplot('position',[0 0.5 1 0.5]);
+    set(gca, 'ylim',[0 1], 'position',[0.08 0.65 0.88 0.3], 'box','on');
+    
+    hold on;
+    h = title(filename,'interpreter','none');
+    set(h,'fontsize',10,'fontweight','bold');
+    xlabel('Trial number');
+    ylabel('Fraction correct');
+    
+    smoothwin = 10;
+    if ntrial < 5*smoothwin  % histogram when the number of trials is <50
+      x = 1:ntrial;
+      for m=0:9
         y = double(m==errortype);
         h = bar(x,y,1);
         set(h,'facecolor',colororder(m+1,:),'edgecolor',[1 1 1]);
-    end
-    set(gca,'xlim',[0.5 ntrial+0.5],'xtick',1:ntrial);
-else                     % smoothe the performance curve if there are 50 trials or more
-    kernel = [0.0047 0.0087 0.0151 0.0245 0.0371 0.0525 0.0693 0.0853 0.0979 0.1050 ...
-              0.1050 0.0979 0.0853 0.0693 0.0525 0.0371 0.0245 0.0151 0.0087 0.0047]; % gaussian window 
-    yarray1 = zeros(ntrial, 12);
-    for m = 0:10
+      end
+      set(gca,'xlim',[0.5 ntrial+0.5],'xtick',1:ntrial);
+    else                     % smoothe the performance curve if there are 50 trials or more
+      kernel = [0.0047 0.0087 0.0151 0.0245 0.0371 0.0525 0.0693 0.0853 0.0979 0.1050 ...
+        0.1050 0.0979 0.0853 0.0693 0.0525 0.0371 0.0245 0.0151 0.0087 0.0047]; % gaussian window
+      yarray1 = zeros(ntrial, 12);
+      for m = 0:10
         r = conv(double(m==errortype),kernel,'same')';
         yarray1(:,m+2) = yarray1(:,m+1) + r;
-    end
-    xarray1 = (1:ntrial)';
-    xarray1 = repmat(xarray1,1,12);
-    xarray2 = flipud(xarray1);
-    yarray2 = flipud(yarray1);
-    x = cat(1,xarray1(:,1:11),xarray2(:,2:12));
+      end
+      xarray1 = (1:ntrial)';
+      xarray1 = repmat(xarray1,1,12);
+      xarray2 = flipud(xarray1);
+      yarray2 = flipud(yarray1);
+      x = cat(1,xarray1(:,1:11),xarray2(:,2:12));
     y = cat(1,yarray1(:,1:11),yarray2(:,2:12));
     patch(x, y, corder);
     set(gca,'xlim',[1 ntrial],'ytick',0:0.25:1);
@@ -196,13 +192,13 @@ end
 
 % task info
 x = 45; y = 220; w = 270; lineinterval = 19; fontsize = 10;
-uicontrol('parent',hFig,'style','text','position',[x y w-60 25],'string',['Experiment: ' MLConfig.ExperimentName], 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
+uicontrol('parent',hFig,'style','text','position',[x y w-60 25],'string',['Exp: ' MLConfig.ExperimentName], 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
 %,'units','pixel'
 if isfield(MLConfig,'MLPath') && isfield(MLConfig.MLPath, 'ConditionsFile')
     [~,Conditions] = fileparts(MLConfig.MLPath.ConditionsFile);
     y = y - lineinterval;
-    uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',['Conditions: ' Conditions], 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
+    uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',['Condition: ' Conditions], 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 end
 
 y = y - lineinterval;

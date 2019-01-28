@@ -1,4 +1,4 @@
-function [ spikeCounts, spikeCountTrialAve, spikeCountTrialErr ] = spikeCounter( spikesByItem, pre, post )
+function [ spikeCounts, spikeCountTrialAve, spikeCountTrialErr] = spikeCounter( spikesByItem, pre, post )
 %spikeCounter counts spikes within (pre, post) of the trial alignment time
 %   input:
 %   - spikesByItem, as returned by alignSpikes; pre and post in ms
@@ -17,11 +17,11 @@ spikeCountTrialAve = cell(numChannels);
 spikeCountTrialErr = cell(numChannels);
 
 for channel_i = 1:numChannels
-  channelSpikeCounts = cell(length(spikesByItem{1}{channel_i}));
+  channelSpikeCounts = cell(length(spikesByItem{1}{channel_i}),1);
   channelSpikeCountsTrialAve = zeros(length(spikesByItem{1}{channel_i}),length(spikesByItem));
   channelSpikeCountsTrialErr = zeros(length(spikesByItem{1}{channel_i}),length(spikesByItem));
   for unit_i = 1:length(spikesByItem{1}{channel_i})
-    unitSpikeCounts = cell(length(spikesByItem));
+    unitSpikeCounts = cell(length(spikesByItem),1);
     for item_i = 1:length(spikesByItem)
       s.counts = zeros(length(spikesByItem{item_i}{channel_i}{unit_i}),1); 
       for trial_i = 1:length(spikesByItem{item_i}{channel_i}{unit_i})

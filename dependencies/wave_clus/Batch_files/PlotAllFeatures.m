@@ -7,16 +7,17 @@ inspk = WaveClusResults.inspk;
 classes = WaveClusResults.cluster_class(:,1);
 
 colors = [[0 0 0]; [0.0 0.0 1.0];[1.0 0.0 0.0];[0.0 0.5 0.0];[0.620690 0.0 0.0];[0.413793 0.0 0.758621];[0.965517 0.517241 0.034483];
-    [0.448276 0.379310 0.241379];[1.0 0.103448 0.724138];[0.545 0.545 0.545];[0.586207 0.827586 0.310345];
-    [0.965517 0.620690 0.862069];[0.620690 0.758621 1.]]; 
+  [0.448276 0.379310 0.241379];[1.0 0.103448 0.724138];[0.545 0.545 0.545];[0.586207 0.827586 0.310345];
+  [0.965517 0.620690 0.862069];[0.620690 0.758621 1.]];
 
 maxc = size(colors,1);
 
-for ii = 1:length(par.unsortedClusters)
-  colors(par.unsortedClusters(ii)+1,:) = [0 0 0];
+if isfield(par, 'unsortedClusters')
+  for ii = 1:length(par.unsortedClusters)
+    colors(par.unsortedClusters(ii)+1,:) = [0 0 0];
+  end
 end
-
-figure()
+figure('Name','waveClus Feature Space','Visible','On','NumberTitle','off');
 nclasses = max(classes);
 inputs = size(inspk,2);
 for i=1:inputs
