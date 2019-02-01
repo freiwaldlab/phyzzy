@@ -61,8 +61,8 @@ if ~isfield(userVars,'clipDuration')
     catch
       warning('MonkeyLogic xls lacks fields to populate fields')
       userVars.rewardSD = 0;
-      [userVars.rewardTimeMean, userVars2.comments, userVars2.gridHole, userVars2.electrodeImp,...
-       userVars2.recordingDepth, userVars2.putativeRegion, userVars2.thresholdSetting,userVars2.activityComments] = deal('Not Found');
+      [userVars.rewardTimeMean, userVars.clipDuration, userVars2.comments, userVars2.gridHole, userVars2.electrodeImp,...
+        userVars2.recordingDepth, userVars2.putativeRegion, userVars2.thresholdSetting,userVars2.activityComments] = deal('Not Found');
     end
 end
     

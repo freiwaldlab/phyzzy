@@ -1,4 +1,4 @@
-function [  ] = runAnalyses( inputs )
+function [analysisOutFilename] = runAnalyses( inputs )
 % runAnalyses should be the main site for customization
 % - inputs is a struct, which will be unpacked
 %  this version of runAnalyses does the following:
@@ -16,30 +16,31 @@ function [  ] = runAnalyses( inputs )
 analysisParamFilename = inputs.analysisParamFilename;
 spikesByChannel = inputs.spikesByChannel;
 lfpData = inputs.lfpData;
-analogInData = inputs.analogInData; 
+analogInData = inputs.analogInData;
 taskEventIDs = inputs.taskData.taskEventIDs;
-taskData = inputs.taskData; 
-taskDataAll = inputs.taskDataAll; 
-psthImDur = inputs.psthImDur; 
+taskData = inputs.taskData;
+taskDataAll = inputs.taskDataAll;
+psthImDur = inputs.psthImDur;
 preAlign = inputs.preAlign;
 postAlign = inputs.postAlign;
-categoryList = inputs.categoryList; 
-eventLabels = inputs.eventLabels; 
-jumpsByImage = inputs.jumpsByImage; 
-spikesByEvent = inputs.spikesByEvent; 
-psthEmptyByEvent = inputs.psthEmptyByEvent;  
-spikesByCategory = inputs.spikesByCategory; 
-psthEmptyByCategory = inputs.psthEmptyByCategory; 
-spikesByEventForTF = inputs.spikesByEventForTF;  
-spikesByCategoryForTF = inputs.spikesByCategoryForTF;  
-lfpByEvent = inputs.lfpByEvent;  
-lfpByCategory = inputs.lfpByCategory;  
-analogInByEvent = inputs.analogInByEvent; 
-analogInByCategory = inputs.analogInByCategory;  
-channelUnitNames = inputs.channelUnitNames; 
-stimTiming = inputs.stimTiming;  
-eventCategories = inputs.eventCategories;  
-onsetsByEvent = inputs.onsetsByEvent;  
+categoryList = inputs.categoryList;
+eventLabels = inputs.eventLabels;
+eventIDs = inputs.eventIDs;
+jumpsByImage = inputs.jumpsByImage;
+spikesByEvent = inputs.spikesByEvent;
+psthEmptyByEvent = inputs.psthEmptyByEvent;
+spikesByCategory = inputs.spikesByCategory;
+psthEmptyByCategory = inputs.psthEmptyByCategory;
+spikesByEventForTF = inputs.spikesByEventForTF;
+spikesByCategoryForTF = inputs.spikesByCategoryForTF;
+lfpByEvent = inputs.lfpByEvent;
+lfpByCategory = inputs.lfpByCategory;
+analogInByEvent = inputs.analogInByEvent;
+analogInByCategory = inputs.analogInByCategory;
+channelUnitNames = inputs.channelUnitNames;
+stimTiming = inputs.stimTiming;
+eventCategories = inputs.eventCategories;
+onsetsByEvent = inputs.onsetsByEvent;
 trialIDsByEvent = inputs.trialIDsByEvent;
 onsetsByCategory = inputs.onsetsByCategory;
 trialIDsByCategory = inputs.trialIDsByCategory;
@@ -86,7 +87,7 @@ end
 analysisOutFilename = strcat(outDir,'analyzedData.mat');
 save(analysisOutFilename,'dateSubject','runNum','analysisParamFilename');
 
-colors = [{'b'}, {[0 .6 0]}, {'m'} ,{'r'}, {'k'}];
+colors = {[0.55 0.13 0.16];[0.93 .2 0.15];[.98 0.65 0.13];[0 0.55 0.25];[0.15, 0.20, 0.5]};
 chColors = [{'b'}, {[0 .6 0]} , {'m'}];
 
 % trialDB = trialDatabaseInit(dateSubject, runNum, length(taskData.taskEventStartTimes));
@@ -475,7 +476,7 @@ end
   % end
 
 if isfield(plotSwitch,'imageEyeMap') && plotSwitch.imageEyeMap
-  imageEyeMap(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, translationTable, colors)
+  imageEyeMap(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, eventIDs, colors)
 end
 
 if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
@@ -483,15 +484,36 @@ if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
     for unit_i = 1:length(channelUnitNames{channel_i})
       %Calculate Baseline in PSTH by taking the average of all bins in the
       %Pre-stimulus period
-      preStimBaseline = mean(mean(psthByImage{channel_i}{unit_i}(:,times < 0))); %Baseline Subtraction.
-      psthByImage{channel_i}{unit_i} = psthByImage{channel_i}{unit_i} - preStimBaseline; %Baseline subtraction.
+%       for ii = 1:size(psthByImage{channel_i}{unit_i},1)
+%         preStimBaseline = mean(psthByImage{channel_i}{unit_i}(ii,:)); %Baseline Subtraction.
+%         psthByImage{channel_i}{unit_i}(ii,:) = psthByImage{channel_i}{unit_i}(ii,:) - preStimBaseline; %Baseline subtraction.
+%       end
       if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
         continue;
       end
       psthTitle = sprintf('Per Image PSTH %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
       figure('Name',psthTitle,'NumberTitle','off');
-      plotPSTH(psthByImage{channel_i}{unit_i}, [], psthPre, psthPost, psthImDur, 'color', psthTitle, eventLabels, psthColormap);
-      %caxis([mean(mean(psthByImage{channel_i}{unit_i})) max(psthByImage{channel_i}{unit_i})])
+      if isfield(psthParams, 'sortStim') && psthParams.sortStim
+        if ~exist('NewStimOrder')
+          sortOrder = psthParams.sortOrder;
+          %Copied from below, gives each stim a group membership.
+          for image_i = 1:length(eventLabels)
+            for item_i = 1:length(sortOrder)
+              if any(strcmp(eventCategories{image_i},sortOrder{item_i})) || strcmp(eventLabels{image_i},sortOrder{item_i})
+                groupLabelsByImage(image_i,group_i) = item_i;
+              end
+            end
+            if groupLabelsByImage(image_i,group_i) == 0
+              Output.VERBOSE(sprintf('no stim category match found for %s\n',eventLabels{image_i}));
+            end
+          end
+          %Sorts based on group membership.
+          [~, NewStimOrder] = sort(groupLabelsByImage);
+        end
+        plotPSTH(psthByImage{channel_i}{unit_i}(NewStimOrder,:), [], psthPre, psthPost, psthImDur, 'color', psthTitle, eventLabels(NewStimOrder), psthColormap);
+      else
+        plotPSTH(psthByImage{channel_i}{unit_i}, [], psthPre, psthPost, psthImDur, 'color', psthTitle, eventLabels, psthColormap);
+      end
       clear figData
       title(psthTitle);
       figData.z = psthByImage{channel_i}{unit_i};
@@ -603,7 +625,7 @@ if ~isempty(spikesByCategory)
         end
       end
       if groupLabelsByImage(image_i,group_i) == 0
-        Output.VERBOSE(sprintf('no slim category match found for %s\n',eventLabels{image_i}));
+        Output.VERBOSE(sprintf('no stim category match found for %s\n',eventLabels{image_i}));
       end
     end
   end
@@ -627,7 +649,6 @@ if ~taskData.RFmap
       else
         sortedGroupLabelColors = ones(length(eventLabels),3);
       end
-
       save(analysisOutFilename,'imageSortedRates','sortedImageLabels','imFrErrSorted','trialCountsByImageSorted','-append');
 
       fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
@@ -640,10 +661,14 @@ if ~taskData.RFmap
       end
       % preferred images raster plot
       if isfield(plotSwitch,'prefImRaster') && plotSwitch.prefImRaster
+        topStimToPlot = 5;
+        if isfield(plotSwitch,'topStimToPlot')
+          topStimToPlot = plotSwitch.topStimToPlot;
+        end
         prefImRasterTitle = sprintf('Preferred Image Raster - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
         fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
-        raster(spikesByEvent(imageSortOrder(1:10)), sortedImageLabels(1:10), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
-         title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+        raster(spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedImageLabels(1:topStimToPlot), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
+        title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, sprintf('%s, Run %s',dateSubject,runNum) );
         if closeFig
           close(fh);
@@ -685,6 +710,7 @@ if ~taskData.RFmap
       % image preference barplot
       if isfield(plotSwitch,'imageTuningSorted') && plotSwitch.imageTuningSorted
         for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
+          imageSortOrderAll{channel_i}{unit_i}{group_i} = imageSortOrder;
           %Calculate the Null model
           mu = mean(imageSortedRates);
           rawSigmas = imFrErrSorted(trialCountsByImageSorted > 1).*sqrt(trialCountsByImageSorted(trialCountsByImageSorted > 1))';
@@ -701,7 +727,6 @@ if ~taskData.RFmap
           lineProps.width = 1;
           tintNull = tinv([0.025  0.975],length(nullDistSortsMix)-1);
           nullDistSortsMixSE = (std(nullDistSortsMix,1)/sqrt(length(nullDistSortsMix)));
-          nullDistSortsMixCI =  nullDistSortsMixSE * tintNull(2);
           muNull = mean(nullDistSortsMix);
           %Calculate significance
           estimatedDiff = imageSortedRates - muNull;
@@ -728,7 +753,7 @@ if ~taskData.RFmap
           %Legends are made, not born
           [~, firstgroupMember] = unique(groupLabelsByImage(imageSortOrder)); %Get the right handles to put in the legend
           legendHandleArray = [HB(firstgroupMember); h.mainLine; HE(firstgroupMember(end))];
-          legendHandleLabel = [analysisGroups.stimulusLabelGroups.groups{group_i}(:)' {'Flat Tuning Null model'} {sprintf('SD Error Bars, n = %d', mode(trialCountsByImageSorted))}]';
+          legendHandleLabel = [analysisGroups.stimulusLabelGroups.groups{group_i}(:)' {'Flat Tuning Null model'} {sprintf('SE Bars, n = %d', mode(trialCountsByImageSorted))}]';
           legend(legendHandleArray,legendHandleLabel);
           legend('boxoff');
           clear figData
@@ -743,8 +768,6 @@ if ~taskData.RFmap
       end
     end
   end
-  
-
 
   % multi-channel MUA image preference 
   %(todo: all these, but with mean-sigma as the sort criterion)
@@ -989,6 +1012,11 @@ if ~taskData.RFmap
   end
 end
 
+if isfield(plotSwitch, 'stimPSTHoverlay') && plotSwitch.stimPSTHoverlay
+  %stimPSTHoverlay(psthByImage, imageSortingMatrix, inclusionMask, stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, taskData.translationTable, outDir)
+  sigStruct = stimPSTHoverlay(psthByImage, imageSortOrderAll, nullModelPvalues, stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, eventIDs, outDir);
+  save(analysisOutFilename,'sigStruct','-append');
+end
 
 % firing rate RF color plot
 if taskData.RFmap
@@ -4573,7 +4601,6 @@ for calc_i = 1:length(tfCalcSwitches)
     end
   end
 end
-%save(strcat(outDir,'/','trialDatabase.mat'),'trialDB');
 end
 
 %% Individual Analysis Functions
@@ -4637,8 +4664,114 @@ for ii = 1:length(analogInByEvent)
     end
   end
   drawnow % draw final frame
-  
 end
+
+end
+
+function sigStruct = stimPSTHoverlay(psthByImage, sortMask, inclusionMask, stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, translationTable, outDir)
+%Rearrange PSTH due to sorting which takes place w/ signifiance bars
+
+%Creates a copy of the video of the stimulus with the PSTH traced below.
+times = -psthPre:psthImDur+psthPost;
+stimStartInd = psthPre+lfpPaddedBy + 1;
+stimEndInd = stimStartInd + psthImDur - 1;
+
+%initialize outputs
+sigStruct.sigUnits = cell(0);
+sigStruct.sigStim = cell(0);
+
+for channel_i = 1:length(psthByImage)
+  sigStruct.totalUnits{channel_i} = length(psthByImage{channel_i});
+  for unit_i = 1:length(psthByImage{channel_i})
+    unitPSTH = psthByImage{channel_i}{unit_i};
+    for group_i = 1:length(sortMask{channel_i}{unit_i})
+      yMax = max(max(unitPSTH));
+      yMin = min(min(unitPSTH));
+      unitPSTHSorted = unitPSTH(sortMask{channel_i}{unit_i}{group_i},:);
+      translationTableSorted = translationTable(sortMask{channel_i}{unit_i}{group_i});
+      %Get the trials we care about
+      runMask = (inclusionMask{channel_i}{unit_i}{group_i} < 0.05);
+      pMask = (inclusionMask{channel_i}{unit_i}{group_i} < 0.1);
+      PSTHtoPlot = unitPSTHSorted(runMask,:);
+      %Grab the stimuli names for these events.
+      stimtoPlot = translationTableSorted(runMask,:);
+      stimtoSave = translationTableSorted(pMask,:);
+      if ~isempty(stimtoPlot)
+        sigStruct.sigUnits = [sigStruct.sigUnits, {sprintf('Channel %d, Unit %d, Group %d',[channel_i, unit_i, group_i])}];
+        sigStruct.sigStim = [sigStruct.sigStim {stimtoPlot}];
+      end
+      if ~isempty(stimtoPlot)
+        for ii = 1:length(stimtoPlot)
+          %Isolate the stimuli, its name, and path.
+          stimInfo = dir(strcat(stimDir, '/**/', stimtoPlot{ii})); %use the translationTable to find the file
+          stimPath = [stimInfo(1).folder filesep stimInfo(1).name]; %create its path.
+          
+          %Open the Video, Get some Info on it
+          stimVid = VideoReader(stimPath);
+          
+          %Draw the PSTH video to be added.
+          psthTrace = PSTHtoPlot(ii, psthPre:psthPre+psthImDur);
+          timeInd = 1:psthImDur;
+          PSTHVideoPath =  [outDir 'tmpPSTH_' stimInfo(1).name];
+          outputVideoPath = [outDir sprintf('PSTH_Ch%d_U%d_G%d_%s', [channel_i, unit_i, group_i, stimInfo(1).name])];
+          
+          % new video
+          PSTHVideo = VideoWriter(PSTHVideoPath);
+          PSTHVideo.FrameRate = stimVid.FrameRate;%
+          framesPerSecond = round(1000/stimVid.FrameRate);
+          open(PSTHVideo);
+          
+          %Initialize the line, make the figure plot the right size for later
+          %adjoining to the stimulus.
+          currFig = figure();
+          an = animatedline('color',[1 0 0],'LineWidth',2);
+          currFig.Children.Color = [0 0 0];
+          currFig.Children.Units = 'pixels';
+          currFig.Children.Position = [0 0 stimVid.Width stimVid.Height/5];
+          currFig.Position(3:4) = [stimVid.Width stimVid.Height/5];
+          axis([timeInd(1), timeInd(end), yMin, yMax])
+          
+          for time_ind = 1:timeInd(end)
+            if mod(time_ind,framesPerSecond) == 0
+              addpoints(an, timeInd(time_ind), psthTrace(time_ind));
+              frame = getframe(gcf);
+              writeVideo(PSTHVideo, frame.cdata);
+            end
+          end
+          
+          close(currFig);
+          close(PSTHVideo);
+          
+          %Open the stimulus video, play it frame by frame with the PSTH, and save
+          %as a new movie.
+          
+          PSTHVideo = VideoReader(PSTHVideoPath);
+          
+          videoPlayer = vision.VideoPlayer;
+          outputVideo = VideoWriter(outputVideoPath);
+          outputVideo.FrameRate = stimVid.FrameRate;
+          open(outputVideo);
+          
+          while hasFrame(stimVid) && hasFrame(PSTHVideo)
+            img1 = readFrame(stimVid);
+            img2 = readFrame(PSTHVideo);
+            imgt = vertcat(img1, img2);
+            % play video
+            step(videoPlayer, imgt);
+            % record new video
+            writeVideo(outputVideo, imgt);
+          end
+          
+          release(videoPlayer);
+          close(outputVideo);
+          clear PSTHVideo
+          delete(PSTHVideoPath);
+        end
+      end
+    end
+  end
+end
+
 end
 
 %function clusterFixBin(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, translationTable, colors)

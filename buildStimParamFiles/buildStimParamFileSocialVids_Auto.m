@@ -135,9 +135,9 @@ for ii = 1:length(stimList)
         eventTag = 'Chase';
       end
     end
-    pictureLabels{ii} = [eventTag '_' speciesTag stimParts{2}(end) modWord label];
+    pictureLabels{ii} = [eventTag '_' speciesTag '_' stimParts{2}(end) modWord label];
   else
-    pictureLabels{ii} = [stimParts{1} stimParts{2}(end) modWord label];
+    pictureLabels{ii} = [stimParts{1} '_' stimParts{2}(end) modWord label];
   end
 end
 

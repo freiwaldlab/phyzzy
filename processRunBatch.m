@@ -29,8 +29,8 @@ end
 
 %% Create all of the appropriate AnalysisParamFiles as a cell array.
 load(feval(analysisParamFile));
-rmdir(outDir, 's'); %The analysis file is overwritten, so if it isn't a run you're about to do, this file is no longer correct. 
-analysisParamFileList = cell(0);
+%rmdir(outDir, 's'); %The analysis file is overwritten, so if it isn't a run you're about to do, this file is no longer correct. 
+[analysisParamFileList, analysisParamFileName] = deal(cell(0));
 meta_ind = 1;
 
 for dateSubj_i = 1:length(runList)
@@ -53,19 +53,20 @@ for dateSubj_i = 1:length(runList)
         end
         save(analysisParamFilename);
         analysisParamFileList{meta_ind} = analysisParamFilename;
+        analysisParamFileName{meta_ind} = [dateSubject runNum];
         meta_ind = meta_ind + 1;
     end
 end
 
 %% Process the runs
-[errorsMsg, startTimes, endTimes] = deal(cell(length(analysisParamFileList),1));
+[errorsMsg, startTimes, endTimes, analysisOutFilename] = deal(cell(length(analysisParamFileList),1));
 
 if license('test','Distrib_Computing_Toolbox')
   parfor run_ind = 1:length(analysisParamFileList)
     fprintf('Processing %s... \n', analysisParamFileList{run_ind});
     startTimes{run_ind} = datetime('now');
     try
-      processRun('paramFile', analysisParamFileList{run_ind})
+      [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
       errorsMsg{run_ind} = 'None';
       endTimes{run_ind} = datetime('now');
     catch MyErr
@@ -82,7 +83,7 @@ else
     fprintf('Processing %s... \n', analysisParamFileList{run_ind});
     startTimes{run_ind} = datetime('now');
     try
-      processRun('paramFile', analysisParamFileList{run_ind})
+      [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
       errorsMsg{run_ind} = 'None';
       endTimes{run_ind} = datetime('now');
     catch MyErr
@@ -96,10 +97,28 @@ else
   end
 end
 
+%analysisOutFilename is now a cell array of the filepaths to the outputs of
+%runAnalyses. Cycle through them and extract desired information (# of
+%units, significance), which you can add to the output file.
+[UnitCount, sigUnits, sigStim, sigStimLen] = deal(cell(size(analysisOutFilename)));
+
+for ii = 1:length(analysisOutFilename)
+  if ~isempty((analysisOutFilename{ii}))
+    tmp = load(analysisOutFilename{ii}, 'sigStruct'); %Relies on psth Overlay function in runAnalyses.
+    UnitCount{ii} = tmp.sigStruct.totalUnits{1};
+    sigUnits{ii} = length(tmp.sigStruct.sigUnits);
+    sigStim{ii} = unique(cat(1, tmp.sigStruct.sigStim{:}));
+    sigStimLen{ii} = length(sigStim{ii});
+    if ~isempty(sigStim{ii})
+      sigStim{ii} = strjoin(sigStim{ii}, ' ');
+    end
+  end
+end
+
 %Save Batch Run Results
-errorReport = [analysisParamFileList' errorsMsg startTimes endTimes];
+errorReport = [analysisParamFileName' startTimes endTimes errorsMsg UnitCount sigUnits sigStimLen sigStim ];
 T = cell2table(errorReport);
-T.Properties.VariableNames = {'File_Analyzed', 'Error', 'Start_Time', 'End_time'};
+T.Properties.VariableNames = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Unit_Count', 'Signifiant_Unit_count', 'Stimuli_count', 'Stimuli'};
 writetable(T,sprintf('%s/BatchRunResults.csv',outputVolume))
 
 end

@@ -1,4 +1,4 @@
-function [ runAnalysisInputs ] = processRun( varargin )
+function [runAnalysisInputs, analysisOutFilename] = processRun( varargin )
 %processRun loads, preprocesses, and aligns task events, lfps, muas, units, and analog signals (eg eye, accelerometer,photodiodes)
 %   - handles single-channel and multi-channel sessions
 %   - relies only on raw task log and physiology fiels: currently visiko (.log) and blackrock (.ns5,.ns2)
@@ -315,7 +315,7 @@ if ~usePreprocessed
 
   if savePreprocessed
     save(preprocessedDataFilename,'analysisParamFilename', 'spikesByChannel', 'lfpData', 'analogInData', 'taskData', 'taskDataAll', 'psthImDur', 'preAlign', 'postAlign',...
-      'categoryList', 'eventLabels', 'jumpsByImage', 'spikesByEvent', 'psthEmptyByEvent', 'spikesByCategory', 'psthEmptyByCategory',...
+      'categoryList', 'eventLabels', 'eventIDs', 'jumpsByImage', 'spikesByEvent', 'psthEmptyByEvent', 'spikesByCategory', 'psthEmptyByCategory',...
       'spikesByEventForTF', 'spikesByCategoryForTF', 'lfpByEvent', 'lfpByCategory', 'analogInByEvent','analogInByCategory','channelUnitNames', ...
       'stimTiming', 'eventCategories', 'onsetsByEvent', 'offsetsByEvent', 'onsetsByCategory', 'offsetsByCategory', 'trialIDsByEvent','trialIDsByCategory', 'excludeStimParams');
   end
@@ -334,6 +334,7 @@ runAnalysisInputs.preAlign = preAlign;
 runAnalysisInputs.postAlign = postAlign;
 runAnalysisInputs.categoryList = categoryList; 
 runAnalysisInputs.eventLabels = eventLabels; 
+runAnalysisInputs.eventIDs = eventIDs;
 runAnalysisInputs.jumpsByImage = jumpsByImage; 
 runAnalysisInputs.spikesByEvent = spikesByEvent; 
 runAnalysisInputs.psthEmptyByEvent = psthEmptyByEvent;  
@@ -357,7 +358,7 @@ runAnalysisInputs.trialIDsByCategory = trialIDsByCategory;
 runAnalysisInputs.excludeStimParams = excludeStimParams;
 
 if ~exist('analyzer','var')
-  runAnalyses(runAnalysisInputs);
+  [analysisOutFilename] = runAnalyses(runAnalysisInputs);
 else
   feval(analyzer,runAnalysisInputs);
 end
