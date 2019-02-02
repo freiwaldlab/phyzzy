@@ -49,7 +49,6 @@ assert(logical(exist(logfile,'file')),'The logfile you requested does not exist.
 [data,MLConfig,TrialRecord] = mlread(logfile);
 assert(length(unique(TrialRecord.ConditionsPlayed)) < ceil((length(TrialRecord.ConditionsPlayed))/2) , 'MonkeyLogic file reports each condition was not repeated at least 2 times')
 
-
 %Find stimulus timing range - in ML, we have no range within valid trials.
 stimTiming.shortest = 2800; %Making this 0 for now
 stimTiming.longest = 2800; %setting this to 2800 for now, but maybe save as an editable variable.
@@ -76,11 +75,13 @@ behavioralCodes = TrialRecord.TaskInfo.BehavioralCodes;
 fixCueMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Fix Cue'));
 trialStartMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Start trial'));
 stimStartMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Stimuli On'));
-stimEndMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Stimuli Off'));
+stimEndMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Stimuli Off')); %Also means fixation off.
 rewardMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Reward'));
 frameSkipMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Frame skipped'));
 trialEndMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'End trial'));
 manualRewardMarker = behavioralCodes.CodeNumbers(strcmp(behavioralCodes.CodeNames,'Manual reward'));
+fixFailMarker = 4;
+stimFailMarker = 3;
 
 %MonkeyLogic's output has an absolute trial start (time within entire run)
 %and additional time stamps within trials, relative to that start. Collect

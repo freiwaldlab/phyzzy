@@ -177,7 +177,7 @@ if ~usePreprocessed
   excludeStimParams.ephysDuration = ephysDuration;
   
   taskDataAll = taskData;
-  taskData = excludeTrials( taskData, excludeStimParams); %exclude trials for lost fixation etc. 
+  taskData = excludeTrials(taskData, excludeStimParams); %exclude trials for lost fixation etc. 
   
 
 %% find Stimulus length

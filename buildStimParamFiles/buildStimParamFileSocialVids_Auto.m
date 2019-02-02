@@ -122,6 +122,7 @@ for ii = 1:length(stimList)
         end
     end
   end
+  stimLabels = horzcat(stimLabels, 'allStim');
   stimList{ii} = horzcat(stimList{ii}, stimLabels);
   %Make the picture Label
   if (strcmp(code(1),'1'))
@@ -146,7 +147,7 @@ end
 
 categoryLabels = {'agents', 'objects', 'scramble', 'scene', 'interaction', 'nonInteraction', 'idle', 'socialInteraction','nonSocialInteraction'...
   'goalDirected', 'chasing', 'fighting', 'mounting', 'grooming', 'holding', 'following', 'observing',...
-  'foraging','sitting','faces','bodies','hands','background'};
+  'foraging','sitting','faces','bodies','hands','background','allStim'};
   
 paramArray = stimList;
 
