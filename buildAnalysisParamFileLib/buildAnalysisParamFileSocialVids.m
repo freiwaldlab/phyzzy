@@ -4,8 +4,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '001';
-dateSubject = '20181205Mo';
+runNum = '003';
+dateSubject = '180628Mo';
 
 assert(~isempty(str2num(runNum)), 'Run number had letters, likely not normal run')
 
@@ -200,7 +200,10 @@ accelParams.calFiles = {''}; %if method is 'calFile', an ns2 filename
 
 % parameters for excludeStimuli, see function for details
 %excludeStimParams.excludeTrials = @excludeTrialsMonkeyLogic;
-excludeStimParams.needExcludeTrials = 0;
+excludeStimParams.excludeProcessor = @excludeTrialsMonkeyLogic;
+excludeStimParams.needExcludeTrials = 1;
+excludeStimParams.excludeFailed = 1;
+excludeStimParams.frameDropThreshold = 5;
 excludeStimParams.fixPre = 100; %ms
 excludeStimParams.fixPost = 100; %ms
 excludeStimParams.flashPre = 0;  %ms
@@ -276,13 +279,13 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
 plotSwitch.imageEyeMap = 0;
 plotSwitch.eyeCorralogram = 0; %Eye Gram
 plotSwitch.stimPSTHoverlay = 0; %grabs stimuli and overlays PSTH on it. 
-plotSwitch.imagePsth = 0;
-plotSwitch.categoryPsth = 1;
+plotSwitch.imagePsth = 1;
+plotSwitch.categoryPsth = 0;
 plotSwitch.prefImRaster = 1; % Raster
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-plotSwitch.imageTuningSorted = 0; %Barplot per image
+plotSwitch.imageTuningSorted = 1; %Barplot per image
 plotSwitch.stimPrefBarPlot = 0; %Per event bar graph.
 plotSwitch.stimPrefBarPlotEarly = 0;
 plotSwitch.stimPrefBarPlotLate = 0;

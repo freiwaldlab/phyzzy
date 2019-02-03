@@ -61,13 +61,14 @@ translationTable = cell(length(allConditions),1); %Initialize translation table
 trial_ind = 1;
 
 %Check for empty members of the translation table.
-  while sum(find(cellfun('isempty', translationTable))) ~= 0
-    trialHolder = data(trial_ind);
-    stimName = trialHolder.TaskObject.Attribute(2).Name; %Pull the string containing the stimulus name.
-    translationTable{trialHolder.Condition} = stimName(~isspace(stimName));
-    trial_ind = trial_ind + 1;
-  end
+while sum(find(cellfun('isempty', translationTable))) ~= 0
+  trialHolder = data(trial_ind);
+  stimName = trialHolder.TaskObject.Attribute(2).Name; %Pull the string containing the stimulus name.
+  translationTable{trialHolder.Condition} = stimName(~isspace(stimName));
+  trial_ind = trial_ind + 1;
+end
 
+assert(sum(strcmp(TrialRecord.TaskInfo.Stimuli,translationTable)) == length(translationTable), 'Stim table from MonkeyLogic doesnt match collected table');
 
 %Pull Behavioral codes for other events
 behavioralCodes = TrialRecord.TaskInfo.BehavioralCodes;
@@ -87,27 +88,41 @@ stimFailMarker = 3;
 %and additional time stamps within trials, relative to that start. Collect
 %all the start times, then create subsequent ones through the addition of
 %the right amount. Step below removes failed trials.
-trueTrialArray = (TrialRecord.TrialErrors == 0);
-mklTrialStarts = [data(trueTrialArray).AbsoluteTrialStartTime];
-tmpStruct = [data(trueTrialArray).BehavioralCodes];
-rwdTimes = [data(trueTrialArray).RewardRecord];
+errorArray = TrialRecord.TrialErrors';
+correctTrialArray = (errorArray == 0);
+mklTrialStarts = [data.AbsoluteTrialStartTime];
+tmpStruct = [data.BehavioralCodes];
+rwdTimes = [data.RewardRecord];
 
 %initialize everything
-[taskEventStartTimesLog, taskEventEndTimesLog, juiceOnTimesLog, juiceOffTimesLog] = deal(zeros(sum(trueTrialArray), 1));
+[taskEventStartTimesLog, taskEventEndTimesLog, juiceOnTimesLog, juiceOffTimesLog, stimFramesLost] = deal(zeros(sum(correctTrialArray), 1));
 
 %Collect trialEventIDs.
-taskEventIDsLog = TrialRecord.ConditionsPlayed(trueTrialArray)';
+taskEventIDsLog = TrialRecord.ConditionsPlayed';
   
+%Note - the below setup pulls trials which fail during the stimuli, but not
+%during the fixation period. for those trials, both start and end are NaN,
+%for stim failures, the numbers are meaningful.
 for ii = 1:length(mklTrialStarts)
-  taskEventStartTimesLog(ii) = mklTrialStarts(ii) + tmpStruct(ii).CodeTimes(tmpStruct(ii).CodeNumbers == stimStartMarker);
-  taskEventEndTimesLog(ii) = mklTrialStarts(ii) + tmpStruct(ii).CodeTimes(tmpStruct(ii).CodeNumbers == stimEndMarker);
-  juiceOnTimesLog(ii) = mklTrialStarts(ii) + rwdTimes(ii).StartTimes(end);
-  juiceOffTimesLog(ii) = mklTrialStarts(ii) + rwdTimes(ii).EndTimes(end);
+  if ~isempty(tmpStruct(ii).CodeTimes(tmpStruct(ii).CodeNumbers == stimStartMarker))
+    taskEventStartTimesLog(ii) = mklTrialStarts(ii) + tmpStruct(ii).CodeTimes(tmpStruct(ii).CodeNumbers == stimStartMarker);
+    taskEventEndTimesLog(ii) = mklTrialStarts(ii) + tmpStruct(ii).CodeTimes(tmpStruct(ii).CodeNumbers == stimEndMarker);
+  else
+    taskEventStartTimesLog(ii) = nan;
+    taskEventEndTimesLog(ii) = nan;
+  end
+  if ~isempty(rwdTimes(ii).StartTimes)
+    juiceOnTimesLog(ii) = mklTrialStarts(ii) + rwdTimes(ii).StartTimes(end);
+    juiceOffTimesLog(ii) = mklTrialStarts(ii) + rwdTimes(ii).EndTimes(end);
+  else
+    juiceOnTimesLog(ii) = nan;
+    juiceOffTimesLog(ii) = nan;
+  end
 end
 
 % Process the Eye data into a structure which can be used later to line up
 % with Blackrock signals.
-tmpEye = [data(trueTrialArray).AnalogData];
+tmpEye = [data.AnalogData];
 tmpEye = rmfield(tmpEye, {'SampleInterval', 'EyeExtra','Joystick','Mouse','PhotoDiode','General','Button'});
 
 %Package the information necessary for proper eye/stimuli relationship.
@@ -118,6 +133,11 @@ screenStats.DiagonalSize = MLConfig.DiagonalSize;
 
 %Translations - Function changes the name of stimuli from an Old convention
 translationTable = updateTranslationTable(translationTable);
+
+%Create Frame lost array
+for ii = 1:length(data)
+    stimFramesLost(ii) = sum(data(ii).BehavioralCodes.CodeNumbers == frameSkipMarker);
+end
 
 % Behavioral summary of performance during recording
 behaviorsummaryPhyzzy(logfile)
@@ -130,41 +150,60 @@ packetTimes = double(taskTriggers.TimeStampSec)*1000; %convert seconds to millis
 packetData = double(taskTriggers.UnparsedData);
 
 if ~isempty(packetData) % Means Blackrock/MKL Communication was intact, correct
-  %Code to get rid of any markers prior to the first trial beginning (means
-  % blackrock turned on AFTER beginning MKL).
-  lol = find(packetData == trialStartMarker);
-  packetData = packetData(lol(1):end);
-  packetTimes = packetTimes(lol(1):end);
+  %Code to get rid of any markers prior to the first trial beginning, or after the final trial end.
+  trueStart = find(packetData == trialStartMarker,1);
+  trueEnd = find(packetData == trialEndMarker,1,'last');
+  packetData = packetData(trueStart:trueEnd);
+  packetTimes = packetTimes(trueStart:trueEnd);
   
-  %Comb through the Blackrock data and pull codes/times associated w/ valid trials.
-  [taskEventStartTimesBlk, taskEventEndTimesBlk, juiceOnTimesBlk, juiceOffTimesBlk, taskEventIDsBlk] = deal(zeros(sum(packetData == rewardMarker), 1));
-  trueTrialcount = 1;
+  %Below are things which should happen every trial  
+  trialStartInds = find(packetData == trialStartMarker); 
+  trialEndInds = find(packetData == trialEndMarker); 
+  condNumbers = packetData(packetData > 100)-100; 
+  fixStartInds = find(packetData == fixCueMarker);
+  stimFixEndInds = find(packetData == stimEndMarker);
   
-  for ii = 1:length(packetData)
-    if packetData(ii) > 100
-      stimCondTemp = packetData(ii);
-    elseif packetData(ii) == stimStartMarker
-      stimStartTemp = packetTimes(ii);
-    elseif packetData(ii) == stimEndMarker
-      stimEndTemp = packetTimes(ii);
-    elseif packetData(ii) == rewardMarker %This assumes the "juice end time" is right after this marker.
-      taskEventIDsBlk(trueTrialcount) = stimCondTemp;
-      taskEventStartTimesBlk(trueTrialcount) = stimStartTemp;
-      taskEventEndTimesBlk(trueTrialcount) = stimEndTemp;
-      juiceOnTimesBlk(trueTrialcount) = packetTimes(ii);
-      juiceOffTimesBlk(trueTrialcount) = packetTimes(ii + 1);
-      trueTrialcount = trueTrialcount + 1;
-    end
-  end
+  assert(length(trialStartInds) == length(condNumbers), 'Every trial doesnt have a condition number - this may be due to changes in when the marker is sent.')
   
-  %for every trial, find the conditions number and convert it to the
-  %appropriate filename for the stimulus, based on the translation table created earlier.
-  taskEventIDsBlk = taskEventIDsBlk - 100; %This is a number I set in my timing script.
-  taskEventIDs = cell(1, length(taskEventIDsBlk));
-  for ii = 1:length(taskEventIDsBlk)
-    taskEventIDs(ii) = translationTable(taskEventIDsBlk(ii)); %Reference the translation table w/ the condition ID as an index
-  end
+  %Now, use the correct trial array from MKL to pick out only the correct
+  %trials from the whole array. Assign them them to the correct vectors. 
+  [taskEventStartTimesBlk, taskEventEndTimesBlk, juiceOnTimesBlk, juiceOffTimesBlk, taskEventIDsBlk] = deal(nan(length(trialStartInds), 1));
   
+  %Construct Error array from Blackrock files only, if you want
+%   errorArray = zeros(sum(packetData == trialStartMarker), 1);
+%   for ii = 1:length(trialStartInds) %for every trial
+%     %Go through packet data, starting at that stim, and see if you hit a
+%     %40, 3, or 4 first.
+%     found = 0;
+%     stepsAhead = 1;
+%     while ~found
+%       switch packetData(trialStartInds(ii)+stepsAhead)
+%         case fixFailMarker
+%           errorArray(ii) = fixFailMarker;
+%           found = 1;
+%         case stimFailMarker
+%           errorArray(ii) = stimFailMarker;
+%           found = 1;
+%         case rewardMarker
+%           errorArray(ii) = 0;
+%           found = 1;
+%         otherwise
+%           stepsAhead = stepsAhead + 1;
+%       end
+%     end
+%   end
+  
+  %packetData is directly referenced for events which only happen
+  %sometimes.
+  taskEventIDsBlk = condNumbers;
+  taskEventStartTimesBlk(errorArray ~= 4) = packetTimes(packetData == stimStartMarker); %Stores every trial where stim started (no fail during fix);
+  taskEventEndTimesBlk(errorArray ~= 4) = packetTimes(stimFixEndInds(errorArray ~= 4));
+  juiceOnTimesBlk(errorArray == 0) = packetTimes(packetData == rewardMarker);
+  juiceOffTimesBlk(errorArray == 0) = packetTimes(trialEndInds(errorArray == 0));
+  
+  %use the condition number to fill out the taskEventsIDs using the
+  %translation table.
+  taskEventIDs = translationTable(condNumbers);
   
 else % Means Blackrock/MKL Communication was not correctly connected.
   error('The Blackrock Digital inputs are empty. Digital inputs may have not been plugged in.');
@@ -211,7 +250,7 @@ else % Means Blackrock/MKL Communication was not correctly connected.
 end
 
 %% Run some checks comparing data collected from Blackrock, MonkeyLogic.
-if (sum(packetData == rewardMarker) ~= sum(trueTrialArray))
+if (sum(packetData == rewardMarker) ~= sum(correctTrialArray))
   warning('Blackrock and MonkeyLogic report different numbers of correct trials. Attempting to find best alignment')
   %Odd situation, likely due to hitting runAnalyses prior to the MKL being
   %stopped. Seems like MKL doesn't have the complete record, Blackrock
@@ -353,12 +392,13 @@ fixationInTimesBlk = taskEventStartTimesBlk(1);
 fixationOutTimesBlk = taskEventEndTimesBlk(1);
 
 % finally, build the output structure
-taskData.taskEventIDs = taskEventIDs';
+taskData.errorArray = errorArray;
+taskData.taskEventIDs = taskEventIDs;
 taskData.translationTable = translationTable;
 %taskData.stimJumps = stimJumps;
-%taskData.stimFramesLost = stimFramesLost;
+taskData.stimFramesLost = stimFramesLost;
 taskData.taskEventStartTimes = taskEventStartTimesBlk;
-taskData.taskEventStartTimesFit = taskEventStartTimesFit;
+%taskData.taskEventStartTimesFit = taskEventStartTimesFit;
 taskData.taskEventEndTimes = taskEventEndTimesBlk;
 taskData.trialStartTimesMkl = mklTrialStarts';
 taskData.logVsBlkModel = logVsBlkModel;

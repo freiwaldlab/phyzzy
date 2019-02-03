@@ -16,7 +16,12 @@ function [ taskDataValid ] = excludeTrials( taskData, params )
 %   - minStimDuration (ms)
 %   todo: exclude stimuli shorter than minStimDuration (for arrythmic runs)
 
-if isfield(params,'needExcludeTrials') && params.needExcludeTrials == 0
+if isfield(params,'excludeProcessor')
+  [taskDataValid] = params.excludeProcessor( taskData, params );
+  return
+end
+
+if isfield(params,'needExcludeTrials') && ~params.needExcludeTrials
   taskDataValid = taskData;
   return
 end
@@ -24,15 +29,11 @@ fixPre = params.fixPre;
 fixPost = params.fixPost; 
 flashPre = params.flashPre;  
 flashPost = params.flashPost;
-if isfield(params,'ephysDataDuration')
+if isfield(params,'ephysDuration')
   ephysDuration = params.ephysDuration;
 else
   ephysDuration = max(taskData.taskEventStartTimes);
-  disp('No ephysDataDuration supplied to excludeParams; using final task event start time as duration lower bound.');
-end
-if isfield(params,'needExcludeTrials') && ~params.needExcludeTrials
-  taskDataValid = taskData;
-  return
+  disp('No ephysDuration supplied to excludeParams; using final task event start time as duration lower bound.');
 end
 if isfield(params, 'juicePre') && isfield(params, 'juicePost')
   juicePre = params.juicePre;

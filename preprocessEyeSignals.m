@@ -156,11 +156,10 @@ if std(eyeX) < 1 || std(eyeY) < 1
       plotTitle = 'eyeX-based model creation, used to make eyeY';
     end
     
-    plotStartInd = round(length(eyeY)/2);
-    plotEndInd = plotStartInd + min(1e5, plotStartInd/2);
-    
+%     plotStartInd = round(length(eyeY)/10);
+%     plotEndInd = plotStartInd + min(1e5, plotStartInd/2);
 %     figure()
-%     plot(eyeCorrect(plotStartInd:plotEndInd), 'k')
+%     plot(eyeCorrect(plotStartInd:plotEndInd) , 'k')
 %     hold on
 %     plot(eyeCorrectBLK(plotStartInd:plotEndInd), 'r')
     
