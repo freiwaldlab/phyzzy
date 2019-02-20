@@ -7,7 +7,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 runNum = '003';
 dateSubject = '180628Mo';
 
-assert(~isempty(str2num(runNum)), 'Run number had letters, likely not normal run')
+assert(~isempty(str2num(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
@@ -44,7 +44,7 @@ end
 analysisLabel = 'Basic';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 preprocessedDataFilenameStem = 'preprocessedData.mat';
-saveFig = 1;                %#ok
+saveFig = 1;                
 closeFig = 0;               %#ok
 exportFig = 0;              %#ok
 saveFigData = 0;            %#ok
@@ -59,7 +59,7 @@ ephysParams.lfpChannels = [1];
 ephysParams.channelNames = {'8Bm'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
 ephysParams.waveClusReclass = 0; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
@@ -213,10 +213,11 @@ excludeStimParams.juicePost = 0; % optional, ms
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
 
+psthParams.type = 'normal'; %options are 'normal', 'baselineSub', 'meanWhite'
 psthParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
 psthParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
 psthParams.psthPost = 500;
-psthParams.smoothingWidth = 35;  %psth smoothing width, in ms
+psthParams.smoothingWidth = 25;  %psth smoothing width, in ms
 psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;
@@ -281,7 +282,7 @@ plotSwitch.eyeCorralogram = 0; %Eye Gram
 plotSwitch.stimPSTHoverlay = 0; %grabs stimuli and overlays PSTH on it. 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
-plotSwitch.prefImRaster = 1; % Raster
+plotSwitch.prefImRaster = 0; % Raster
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;

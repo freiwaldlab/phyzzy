@@ -162,7 +162,6 @@ if isfield(params, 'waveClus') && params.waveClus
       end
     end
 
-    
     %Append waveClus params to the AnalysisParams file in the outDir.
     waveClusParams = WC.par;
     save([params.outDir 'AnalysisParams.mat'], 'waveClusParams', '-append');
