@@ -349,6 +349,22 @@ if params.usePhotodiode
   end
 end
 
+%% In cases where the stimuli are .avi's, we should check for the appropriate frameMotion data (representing)
+if any(strfind(translationTable{1},'.avi'))
+  %assumes filename below sitting in directory with stimuli
+  frameMotionFile = [params.stimDir '/frameMotion_complete.mat'];
+  load(frameMotionFile,'frameMotionData'); 
+  %go through the translation table, comparing to frameMotionData.stimVid
+  frameMotionNames = [{frameMotionData(:).stimVid}'];
+  for table_i = 1:length(translationTable)
+    dataInd = find(strcmp(frameMotionNames, translationTable{table_i}));
+    if ~isempty(dataInd)
+      tmpFrameMotionData(table_i) = frameMotionData(dataInd);
+    else
+      tmpFrameMotionData(table_i).stimVid = translationTable{table_i};
+    end
+  end
+end
 %% Now, calculate stimulation log to ephys clock conversion 
   %Make the Model by comparing Blackrock event start times to monkeylogic.
   logVsBlkModel = fitlm(taskEventStartTimesLog, taskEventStartTimesBlkPreStrobe);
@@ -391,10 +407,12 @@ fixSpotFlashEndTimesBlk = taskEventEndTimesBlk(1);
 fixationInTimesBlk = taskEventStartTimesBlk(1);
 fixationOutTimesBlk = taskEventEndTimesBlk(1);
 
-% finally, build the output structure
+% finally, build the output structure - This Structure is rebuilt
+% selectively in the 
 taskData.errorArray = errorArray;
 taskData.taskEventIDs = taskEventIDs;
 taskData.translationTable = translationTable;
+taskData.frameMotionData = tmpFrameMotionData';
 %taskData.stimJumps = stimJumps;
 taskData.stimFramesLost = stimFramesLost;
 taskData.taskEventStartTimes = taskEventStartTimesBlk;

@@ -24,7 +24,7 @@ switch machine
     stimulusLogVolume = 'C:/Data 2018'; 
     outputVolume = 'C:/Data 2018/Analyzed_V4';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
-    stimDir = "G:/StimuliForFaridfromJulia/SocialCategories";
+    stimDir = 'G:/StimuliForFaridfromJulia/SocialCategories';
   case 'kekean-pc'
     ephysVolume = 'Z:/';
     stimulusLogVolume = 'Y:/SocialvNonSocial - random';
@@ -59,7 +59,7 @@ ephysParams.lfpChannels = [1];
 ephysParams.channelNames = {'8Bm'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
 ephysParams.waveClusReclass = 0; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
@@ -171,7 +171,8 @@ stimSyncParams.logProcessor = @preprocessLogFileMonkeyLogic;
 stimSyncParams.tryPreparsedLogFile = 1;
 stimSyncParams.keepTriggersAndSubTriggers = 0;
 stimSyncParams.subTriggerArrayFilenames = {'socialSceneConcatSubTriggers.mat'};
-stimSyncParams.usePhotodiode = 1;        
+stimSyncParams.usePhotodiode = 1;
+stimSyncParams.stimDir = stimDir;
 stimSyncParams.outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum); %#ok
 %
 eyeCalParams.needEyeCal = 1;
@@ -279,6 +280,7 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
 
 plotSwitch.imageEyeMap = 0;
 plotSwitch.eyeCorralogram = 0; %Eye Gram
+plotSwitch.eyeObjectTrace = 1; %Vectors to distinguish where subject is looking.
 plotSwitch.stimPSTHoverlay = 0; %grabs stimuli and overlays PSTH on it. 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;

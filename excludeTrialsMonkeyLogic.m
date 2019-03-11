@@ -80,6 +80,8 @@ fprintf('Percent of trials excluded: %f\n', sum(trialValid)/length(trialValid)*1
 fprintf('Percent of trials excluded: %d\n', sum(trialValid))
 trialValid = logical(trialValid);
 taskDataValid = struct; %taskDataValid = taskData;
+taskDataValid.translationTable = taskData.translationTable;
+taskDataValid.frameMotionData = taskData.frameMotionData;
 taskDataValid.taskEventIDs = taskData.taskEventIDs(trialValid);
 taskDataValid.stimFramesLost = taskData.stimFramesLost(trialValid);
 taskDataValid.taskEventStartTimes = taskData.taskEventStartTimes(trialValid);
@@ -88,6 +90,8 @@ taskDataValid.taskEventStartTimes = taskData.taskEventStartTimes(trialValid);
 taskDataValid.juiceOnTimes = taskData.juiceOnTimes(trialValid);
 taskDataValid.juiceOffTimes = taskData.juiceOffTimes(trialValid);
 taskDataValid.RFmap = taskData.RFmap;
+taskDataValid.RFmap = taskData.RFmap;
+
 
 if params.DEBUG
   figure();

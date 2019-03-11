@@ -325,6 +325,10 @@ if isfield(plotSwitch,'imageEyeMap') && plotSwitch.imageEyeMap
   imageEyeMap(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, eventIDs, colors)
 end
 
+if isfield(plotSwitch,'eyeObjectTrace') && plotSwitch.eyeObjectTrace
+  eyeObjectTrace = calcEyeObjectTrace(stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, analogInByEvent, eventIDs, taskData.frameMotionData, colors);
+end
+
 %trialDatabaseStruct(taskData, eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
 
 if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
@@ -4655,6 +4659,48 @@ if saveFig
   figData = corrVec;
   saveFigure(outDir, sprintf('EyeCorrAvg_Run%s',runNum), figData, saveFig, exportFig, saveFigData, figTag );
 end
+end
+
+function eyeObjectTrace = calcEyeObjectTrace(stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, analogInByEvent, eventIDs, frameMotionData, colors)
+stimStartInd = psthPre+lfpPaddedBy + 1;
+stimEndInd = stimStartInd + psthImDur - 1;
+%What this would do, ideally.
+%Run each stimuli presented
+frameMotionDataNames = {frameMotionData(:).stimVid}';
+for stim_i = 1:length(eventIDs)
+  stimVidStruct = dir([stimDir '/**/' eventIDs{stim_i}]);
+  stimVidPath = [stimVidStruct(1).folder filesep stimVidStruct(1).name];
+  stimVid = VideoReader(stimVidPath);
+  stimFs = stimVid.FrameRate;
+  clear stimVid;
+  %Find each trial of the stimuli presented
+  frameMotionDataStruct = frameMotionData(find(strcmp(eventIDs(stim_i),frameMotionDataNames)));
+  %Take the eye trace of each of these trials,
+  eyeInByEvent = squeeze(analogInByEvent{stim_i}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
+  %Downsample the signal
+  Fs = 1000; %I want the signal to match the stim video's, so I have to downsample it.
+  [P,Q] = rat(stimFs/Fs);
+  for trial_ind = 1:size(eyeInByEvent, 2)
+    for axis_ind = 1:size(eyeInByEvent,1)
+      eyeInByEventDownsampled(axis_ind, trial_ind,:) = resample(eyeInByEvent(axis_ind,trial_ind,:), P, Q);
+    end
+  end
+  eyeInByEvent = eyeInByEventDownsampled;
+  
+  %Make sure eye signal and shapes are in the correct space (eye signal
+  %includes space around videos). means changing coordinates of eye values
+  
+  %Determine whether the signal is in each shape.
+  for trial_ind = 1:size(eyeInByEvent,2)
+    %use inpolygon for rectangles.
+    %use MATLAB Answers 322542 for circles.
+  end
+    
+end
+  
+
+  %position of the object in each frame - ideally.
+  %Produce 1*objects number of these, package them.
 end
 
 function sigStruct = stimPSTHoverlay(psthByImage, sortMask, inclusionMask, stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, translationTable, outDir)
