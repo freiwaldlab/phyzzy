@@ -25,6 +25,7 @@ fixPre = params.fixPre;
 fixPost = params.fixPost; 
 flashPre = params.flashPre;  
 flashPost = params.flashPost;
+
 if isfield(params,'ephysDuration')
   ephysDuration = params.ephysDuration;
 else
@@ -71,6 +72,19 @@ end
 %exclude trials where too many frames are dropped;
 if isfield(params, 'frameDropThreshold')
   trialValid = trialValid + floor(taskData.stimFramesLost/params.frameDropThreshold);
+end
+
+%exclude the x trial(s) after a failed trial
+if isfield(params, 'excludeAfterFailed') && ~(params.excludeAfterFailed == 0)
+    errorIndVector = find(trialValid);
+    ind2Add = zeros(length(errorIndVector),params.excludeAfterFailed);
+    for ii = 1:params.excludeAfterFailed
+      ind2Add(:,ii) = errorIndVector + ii;
+    end
+    ind2Add = unique(ind2Add);
+    ind2Add = ind2Add(ind2Add <= length(trialValid));
+    %Add to the indices calculated
+    trialValid(ind2Add) = trialValid(ind2Add) + 1;
 end
 
 trialValid = (trialValid == 0);

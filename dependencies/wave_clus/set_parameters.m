@@ -63,7 +63,7 @@ par.features = 'wav';                % type of feature ('wav' or 'pca')
  
  
 % FORCE MEMBERSHIP PARAMETERS 
-par.template_sdnum = 1.5;             % max radius of cluster in std devs. 
+par.template_sdnum = 3;             % max radius of cluster in std devs. 
 par.template_k = 100;               % # of nearest neighbors 
 par.template_k_min = 50;            % min # of nn for vote 
 %par.template_type = 'mahal';       % nn, center, ml, mahal 

@@ -322,7 +322,7 @@ if isfield(plotSwitch, 'eyeCorrelogram') && plotSwitch.eyeCorrelogram
 end
 
 if isfield(plotSwitch,'imageEyeMap') && plotSwitch.imageEyeMap
-  imageEyeMap(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, eventIDs, colors)
+  imageEyeMap(stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, analogInByEvent, eventIDs, colors)
 end
 
 if isfield(plotSwitch,'eyeObjectTrace') && plotSwitch.eyeObjectTrace
@@ -4457,7 +4457,7 @@ end
 
 %% Individual Analysis Functions
 
-function imageEyeMap(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, translationTable, colors)
+function imageEyeMap(stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, analogInByEvent, translationTable, colors)
 
 % Add Colors to each Line
 % Add footage underneath
@@ -4473,33 +4473,37 @@ for ii = 1:length(analogInByEvent)
   
   %Open the Video, Get some Info on it
   stimVid = VideoReader(stimPath); %#ok<TNMLP> %Open the file.
-  TotalFrames = stimVid.Duration*stimVid.FrameRate;
-  samplesPerFrame = floor(psthImDur/TotalFrames);
+  stimFs = stimVid.FrameRate;
+%   TotalFrames = int16(stimVid.Duration*stimFs);
+%   samplesPerFrame = floor(psthImDur/TotalFrames);
   
   %Down sample eye signal so that we have one point per frame.
-  eyeInByEventDownsampled = zeros(2, size(eyeInByEvent,2), TotalFrames);
-  for jj = 1:size(eyeInByEventDownsampled, 2)
-    for kk = 1:TotalFrames
-      startInd = 1 + ((kk - 1) * samplesPerFrame);
-      endInd =  startInd + samplesPerFrame;
-      eyeInByEventDownsampled(1,jj,kk) = mean(eyeInByEvent(1,jj,startInd:endInd));
-      eyeInByEventDownsampled(2,jj,kk) = mean(eyeInByEvent(2,jj,startInd:endInd));
+  Fs = 1000; %I want the signal to match the stim video's, so I have to downsample it.
+  [P,Q] = rat(stimFs/Fs);
+  for trial_ind = 1:size(eyeInByEvent, 2)
+    for axis_ind = 1:size(eyeInByEvent,1)
+      eyeInByEventDownsampled(axis_ind, trial_ind,:) = resample(eyeInByEvent(axis_ind,trial_ind,:), P, Q);
     end
   end
+  eyeInByEvent = eyeInByEventDownsampled;
   
-  %Draw each Frame with its Eye signal, from all trials. Cycle through
-  %all the Frames, adding the appropriate points to each line.
+
   hf = figure;
   set(hf, 'position', [100 100 stimVid.Width stimVid.Height])
   stimVid.CurrentTime = 0;
   while hasFrame(stimVid)
+    %Draw the Frame
     image(readFrame(stimVid)); %Seems likle this is working slow.
-    pause(1/stimVid.FrameRate);
+    %Draw the eye traces on frame
+    
+    %Pause the video for a bit
+    pause(1/stimFs);
   end
   
   xlim([-24 24])
   ylim([-24 24])
   title(sprintf('%s eye signal', translationTable{ii}));
+  
   hold on
   for jj = 1:size(eyeInByEventDownsampled,2)
     x = squeeze(eyeInByEventDownsampled(1,jj,:));
@@ -4674,7 +4678,6 @@ for stim_i = 1:length(eventIDs)
   stimFs = stimVid.FrameRate;
   clear stimVid;
   %Find each trial of the stimuli presented
-  frameMotionDataStruct = frameMotionData(find(strcmp(eventIDs(stim_i),frameMotionDataNames)));
   %Take the eye trace of each of these trials,
   eyeInByEvent = squeeze(analogInByEvent{stim_i}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
   %Downsample the signal
@@ -4689,7 +4692,8 @@ for stim_i = 1:length(eventIDs)
   
   %Make sure eye signal and shapes are in the correct space (eye signal
   %includes space around videos). means changing coordinates of eye values
-  
+  frameMotionDataStruct = frameMotionData(find(strcmp(eventIDs(stim_i),frameMotionDataNames)));
+
   %Determine whether the signal is in each shape.
   for trial_ind = 1:size(eyeInByEvent,2)
     %use inpolygon for rectangles.

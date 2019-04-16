@@ -68,7 +68,14 @@ while sum(find(cellfun('isempty', translationTable))) ~= 0
   trial_ind = trial_ind + 1;
 end
 
-assert(sum(strcmp(TrialRecord.TaskInfo.Stimuli,translationTable)) == length(translationTable), 'Stim table from MonkeyLogic doesnt match collected table');
+%Clean up the stim table in the logfile. 
+for ii = 1:length(TrialRecord.TaskInfo.Stimuli)
+  logFileStimTable{ii,1} = TrialRecord.TaskInfo.Stimuli{ii}(~isspace(TrialRecord.TaskInfo.Stimuli{ii}));
+end
+
+%Check to see if what you collected by cycling through the stim matches
+%this table.
+assert(sum(strcmp(logFileStimTable,translationTable)) == length(translationTable), 'Stim table from MonkeyLogic doesnt match collected table');
 
 %Pull Behavioral codes for other events
 behavioralCodes = TrialRecord.TaskInfo.BehavioralCodes;
@@ -356,6 +363,7 @@ if any(strfind(translationTable{1},'.avi'))
   load(frameMotionFile,'frameMotionData'); 
   %go through the translation table, comparing to frameMotionData.stimVid
   frameMotionNames = [{frameMotionData(:).stimVid}'];
+  tmpFrameMotionData = struct('stimVid',[],'objNames',[],'objShapes',[],'objRadii',[],'vidB_XShift',[],'objLoc',[]);
   for table_i = 1:length(translationTable)
     dataInd = find(strcmp(frameMotionNames, translationTable{table_i}));
     if ~isempty(dataInd)
