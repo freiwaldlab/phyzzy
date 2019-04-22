@@ -393,14 +393,12 @@ if isfield(plotSwitch,'categoryPsth') && plotSwitch.categoryPsth
   end
 end
 
-firingRatesByImageByEpoch = cell(size(frEpochs,1),1);
-firingRateErrsByImageByEpoch = cell(size(frEpochs,1),1);
-spikeCountsByImageByEpoch = cell(size(frEpochs,1),1);
+[spikeCountsByImageByEpoch, firingRatesByImageByEpoch, firingRateErrsByImageByEpoch] = deal(cell(size(frEpochs,1),1));
 for epoch_i = 1:size(frEpochs,1)
   [spikeCounts, fr, frErr] = spikeCounter(spikesByEvent, frEpochs(epoch_i,1), frEpochs(epoch_i,2));
+  spikeCountsByImageByEpoch{epoch_i} = spikeCounts;
   firingRatesByImageByEpoch{epoch_i} = fr;
   firingRateErrsByImageByEpoch{epoch_i} = frErr;
-  spikeCountsByImageByEpoch{epoch_i} = spikeCounts;
 end
 
 imFr = firingRatesByImageByEpoch{1};
@@ -586,7 +584,7 @@ if ~taskData.RFmap
           nullModelPvalues{channel_i}{unit_i}{group_i} = exp(-0.717.*zScore-0.416*(zScore.^2));
           %Try 2
           for event_i = 1:length(imSpikeCountsSorted)
-            [H{channel_i}{unit_i}{group_i}(event_i),pVect{channel_i}{unit_i}{group_i}(event_i)] = ztest(imSpikeCountsSorted{event_i}.counts, mu, mixSigmas(event_i));
+            [H{channel_i}{unit_i}{group_i}(event_i),pVect{channel_i}{unit_i}{group_i}(event_i)] = ztest(imSpikeCountsSorted{event_i}.rates, mu, mixSigmas(event_i));
           end
           %Plot Everything
           imageTuningSortedTitle = sprintf('Image Tuning, Sorted - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
@@ -878,6 +876,12 @@ if isfield(plotSwitch, 'stimCatANOVA') && plotSwitch.stimCatANOVA
   % correct in cases with multiple groupings.
   stimCatANOVATable = stimCatANOVA(spikeCountsByImageByEpoch, eventIDs, groupLabelsByImage, group, 'socialInteraction');
   save(analysisOutFilename,'stimCatANOVATable','-append');
+end
+
+plotSwitch.spikeCorr = 1;
+if isfield(plotSwitch, 'spikeCorr') && plotSwitch.spikeCorr
+  spikeCorrTraces = spikeCorr(spikesByEvent);
+  save(analysisOutFilename,'spikeCorrTraceMat','-append');
 end
 
 % firing rate RF color plot
@@ -1810,7 +1814,7 @@ if isfield(plotSwitch,'lfpPowerMuaScatter') && plotSwitch.lfpPowerMuaScatter
               spikeCountsByTrial = spikeCountsByCategoryByEpoch{epoch_i}{channel_i}{unit_i}{catInds.(group{item_i})}.counts;
             else
               lfpByTrial = squeeze(lfpByEvent{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
-              spikeCountsByTrial = spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}{imInds.(group{item_i})}.counts;
+              spikeCountsByTrial = spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}{imInds.(group{item_i})}.rates;
             end
             lfpMeanSubByTrial = lfpByTrial - mean(lfpByTrial,2);
             lfpPowerByTrial = sqrt(sum(lfpMeanSubByTrial.^2,2));
@@ -1852,7 +1856,7 @@ if isfield(plotSwitch,'lfpPeakToPeakMuaScatter') && plotSwitch.lfpPeakToPeakMuaS
               spikeCountsByTrial = spikeCountsByCategoryByEpoch{epoch_i}{channel_i}{unit_i}{catInds.(group{item_i})}.counts;
             else
               lfpByTrial = squeeze(lfpByEvent{imInds.(group{item_i})}(1,channel_i,:,lfpPaddedBy+1+psthPre+frEpochs(epoch_i,1):lfpPaddedBy+1+psthPre+frEpochs(epoch_i,2)));
-              spikeCountsByTrial = spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}{imInds.(group{item_i})}.counts;
+              spikeCountsByTrial = spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}{imInds.(group{item_i})}.rates;
             end
             h = scatter(max(lfpByTrial,[],2)-min(lfpByTrial,[],2),spikeCountsByTrial,36,groupColors(item_i,:),'filled');
             handlesForLegend(item_i) = h;
@@ -4895,6 +4899,7 @@ preAlign = spikeAlignParams.preAlign;
 postAlign = spikeAlignParams.postAlign;
 
 smoothingWidth = psthParams.smoothingWidth;
+movingWin = psthParams.movingWin;
 times = -psthParams.psthPre:(psthParams.psthImDur+psthParams.psthPost);
 psthErrorType = psthParams.errorType;
 psthErrorRangeZ = psthParams.errorRangeZ;
@@ -4903,7 +4908,7 @@ spikesByItem = spikesByStim;
 psthEmptyByItem = psthEmptyByStim;
 numItems = length(stimLabels);
 
-if spikeTimes
+if ~spikeTimes
   filterPoints = -3*smoothingWidth:3*smoothingWidth;
   smoothingFilter = exp(-1*filterPoints.^2/(2*smoothingWidth^2));
   smoothingFilter = smoothingFilter/sum(smoothingFilter);
@@ -4959,7 +4964,7 @@ function frEpochsANOVA = stimCatANOVA(spikeCountsByImageByEpoch, eventIDs, group
 %Epoch for all members of "target" and all members of the rest of the
 %groups. Returns the ANOVA table for each such comparison.
 
-%spikeCountsByImageByEpoch{epoch}{channel}{unit}{event}.counts = trials*1
+%spikeCountsByImageByEpoch{epoch}{channel}{unit}{event}.rates = trials*1
 
 %Will likely need changes in the future with respect to group variable 
 %will lead to errors on cases with more than one group.
@@ -4984,7 +4989,7 @@ for epoch_i = 1:length(spikeCountsByImageByEpoch)
         for group_i = 1:length(spikeGroups)
           tmp = spikeGroups{group_i};
           tmp = [tmp{:}];
-          dataVec = vertcat(tmp.counts);
+          dataVec = vertcat(tmp.rates);
           labelVec = repmat(spikeGroupLabels(group_i), length(dataVec),1);
           trialSpikes = vertcat(trialSpikes,dataVec);
           trialLabels = vertcat(trialLabels, labelVec);
@@ -5009,3 +5014,33 @@ for epoch_i = 1:length(spikeCountsByImageByEpoch)
 end
 end
 
+function spikeCorrTraces = spikeCorr(spikesByEvent)
+%functions performs a two-way ANOVA, comparing the firing rates for each
+%Epoch for all members of "target" and all members of the rest of the
+%groups. Returns the ANOVA table for each such comparison.
+
+%spikesByEvent{event}{channel}{unit}.times = spikes*1
+
+%Cycle through structure, concatonating the correct events.
+for event_i = 1:length(spikesByEvent)
+  for channel_i = 1:length(spikesByEvent{event_i})
+    for unit_i = 1:length(spikesByEvent{event_i}{channel_i})
+      spikeTimes = spikesByEvent{event_i}{channel_i}{unit_i};
+      trialSpikes = [];
+      trialLabels = [];
+      %Target behaves as a switch. If there is a target, it becomes Target
+      spikeLabels = eventIDs;
+      for group_i = 1:length(spikeTimes)
+        tmp = spikeGroups{group_i};
+        tmp = [tmp{:}];
+        trialSpikes = vertcat(trialSpikes,spikeTimes{group_i}.counts);
+        trialLabels = vertcat(trialLabels, repmat(spikeLabels(group_i),length(spikeTimes{group_i}.counts),1));
+      end
+    end
+    % Run the test
+
+    % Construct the output for the unit
+  spikeCorrTraces
+  end
+end
+end

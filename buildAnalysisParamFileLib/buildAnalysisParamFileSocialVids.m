@@ -215,18 +215,6 @@ excludeStimParams.juicePost = 0; % optional, ms
 excludeStimParams.DEBUG = 0; % makes exclusion criterion plots if true
 % additional optional excludeStimParams: accel1, accel2, minStimDur (ms)
 
-psthParams.type = 'normal'; %options are 'normal', 'baselineSub', 'meanWhite'
-psthParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
-psthParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
-psthParams.psthPost = 500;
-psthParams.smoothingWidth = 25;  %psth smoothing width, in ms
-psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
-psthParams.errorRangeZ = 1; %how many standard errors to show
-psthParams.bootstrapSamples = 100;
-psthParams.sortStim = 1;
-psthParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble'};
-psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
-
 % TW=3 with T=.2, then W = 15 Hz (5 tapers)
 % TW=1.5 with T=.1, then W = 15 Hz (2 tapers)
 % TW = 1.5 with T=.2, then W = 7.5 Hz (2 tapers)
@@ -238,6 +226,19 @@ chronuxParams.err = [1 .05];  %note: first entry will be automatically switched 
 chronuxParams.fpass = [0 .1]; 
 tfParams.movingWin = [200 5]; 
 tfParams.specgramRowAve = 0;
+
+psthParams.type = 'normal'; %options are 'normal', 'baselineSub', 'meanWhite'
+psthParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
+psthParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
+psthParams.psthPost = 500;
+psthParams.movingWin = tfParams.movingWin;
+psthParams.smoothingWidth = 25;  %psth smoothing width, in ms
+psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
+psthParams.errorRangeZ = 1; %how many standard errors to show
+psthParams.bootstrapSamples = 100;
+psthParams.sortStim = 1;
+psthParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble'};
+psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
 
 correlParams.maxShift = []; % a number, or empty
 correlParams.matchTimeRanges = 1;
