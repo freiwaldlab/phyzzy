@@ -59,7 +59,7 @@ ephysParams.lfpChannels = [1];
 ephysParams.channelNames = {'8B'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
 ephysParams.waveClusReclass = 0; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
@@ -204,7 +204,7 @@ accelParams.calFiles = {''}; %if method is 'calFile', an ns2 filename
 excludeStimParams.excludeProcessor = @excludeTrialsMonkeyLogic;
 excludeStimParams.needExcludeTrials = 1;
 excludeStimParams.excludeFailed = 1;
-excludeStimParams.excludeAfterFailed = 1;
+excludeStimParams.excludeAfterFailed = 0;
 excludeStimParams.frameDropThreshold = 5;
 excludeStimParams.fixPre = 100; %ms
 excludeStimParams.fixPost = 100; %ms
@@ -276,8 +276,8 @@ end
 % or function handle, which will receive the minimum stimulus duration in
 % the run as an input.
 frEpochsCell = {{60, @(stimDur) stimDur+60};...
-                {60, 260}; ...
-                {260, @(stimDur) stimDur+60}}; %#ok
+                {-800, 60}; ...
+                {@(stimDur) stimDur+60, @(stimDur) stimDur+260}}; %#ok
 
 plotSwitch.imageEyeMap = 0;
 plotSwitch.eyeCorralogram = 0; %Eye Gram
@@ -285,6 +285,7 @@ plotSwitch.eyeObjectTrace = 0; %Vectors to distinguish where subject is looking.
 plotSwitch.stimPSTHoverlay = 0; %grabs stimuli and overlays PSTH on it. 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
+plotSwitch.stimCatANOVA = 1;
 plotSwitch.prefImRaster = 0; % Raster
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 0;

@@ -870,6 +870,16 @@ if isfield(plotSwitch, 'stimPSTHoverlay') && plotSwitch.stimPSTHoverlay
   save(analysisOutFilename,'sigStruct','-append');
 end
 
+%likely should be a Calc switch, but not sure of what filters exist b/t
+%buildparamfile script and here.
+if isfield(plotSwitch, 'stimCatANOVA') && plotSwitch.stimCatANOVA
+  % will use the stimulus wide average PSTH value for now, but may need to
+  % get closer to raw spikes to do correctly. "group" variable will not be
+  % correct in cases with multiple groupings.
+  stimCatANOVATable = stimCatANOVA(spikeCountsByImageByEpoch, eventIDs, groupLabelsByImage, group, 'socialInteraction');
+  save(analysisOutFilename,'stimCatANOVATable','-append');
+end
+
 % firing rate RF color plot
 if taskData.RFmap
   load AkinoriColormap.mat;
@@ -4943,3 +4953,59 @@ end
 psthByStim = psthByItem;
 psthErrByStim = psthErrByItem;
 end
+
+function frEpochsANOVA = stimCatANOVA(spikeCountsByImageByEpoch, eventIDs, groupLabelsByImage, group, target)
+%functions performs a two-way ANOVA, comparing the firing rates for each
+%Epoch for all members of "target" and all members of the rest of the
+%groups. Returns the ANOVA table for each such comparison.
+
+%spikeCountsByImageByEpoch{epoch}{channel}{unit}{event}.counts = trials*1
+
+%Will likely need changes in the future with respect to group variable 
+%will lead to errors on cases with more than one group.
+%Cycle through structure, concatonating the correct events.
+for epoch_i = 1:length(spikeCountsByImageByEpoch)
+  for channel_i = 1:length(spikeCountsByImageByEpoch{epoch_i})
+    for unit_i = 1:length(spikeCountsByImageByEpoch{epoch_i}{channel_i})
+      unitResponsePerEvent = spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i};
+      trialSpikes = [];
+      trialLabels = [];
+      %Target behaves as a switch. If there is a target, it becomes Target
+      %v All ANOVA, if not, each eventID is considered.
+      if target
+        %grab the relevant events
+        targetInd = groupLabelsByImage == find(strcmp(group,target));
+        targetSpikes = unitResponsePerEvent(targetInd);
+        otherSpikes = unitResponsePerEvent(~targetInd);
+        %Initialize relevant vecotrs
+        spikeGroups = {targetSpikes otherSpikes};
+        spikeGroupLabels ={(target) (['non-' target])};
+        %Cluster and reshape the arrays properly
+        for group_i = 1:length(spikeGroups)
+          tmp = spikeGroups{group_i};
+          tmp = [tmp{:}];
+          dataVec = vertcat(tmp.counts);
+          labelVec = repmat(spikeGroupLabels(group_i), length(dataVec),1);
+          trialSpikes = vertcat(trialSpikes,dataVec);
+          trialLabels = vertcat(trialLabels, labelVec);
+        end
+      else
+        spikes = unitResponsePerEvent;
+        spikeLabels = eventIDs;
+        for group_i = 1:length(spikes)
+          trialSpikes = vertcat(trialSpikes,spikes{group_i}.counts);
+          trialLabels = vertcat(trialLabels, repmat(spikeLabels(group_i),length(spikes{group_i}.counts),1));
+        end
+      end
+      % Run the test
+      [p, tbl, stats] = anovan(trialSpikes,{trialLabels},'model',1,'varnames',{'trialLabels'});
+      % Construct the output for the unit
+      frEpochsANOVA{epoch_i}{channel_i}{unit_i}.ANOVA.p = p;
+      frEpochsANOVA{epoch_i}{channel_i}{unit_i}.ANOVA.tbl = tbl;
+      frEpochsANOVA{epoch_i}{channel_i}{unit_i}.ANOVA.stats = stats;
+      frEpochsANOVA{epoch_i}{channel_i}{unit_i}.target = target;
+    end
+  end
+end
+end
+
