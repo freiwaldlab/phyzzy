@@ -104,8 +104,7 @@ taskDataValid.taskEventStartTimes = taskData.taskEventStartTimes(trialValid);
 taskDataValid.juiceOnTimes = taskData.juiceOnTimes(trialValid);
 taskDataValid.juiceOffTimes = taskData.juiceOffTimes(trialValid);
 taskDataValid.RFmap = taskData.RFmap;
-taskDataValid.RFmap = taskData.RFmap;
-
+taskDataValid.eyeCal = taskData.eyeCal;
 
 if params.DEBUG
   figure();

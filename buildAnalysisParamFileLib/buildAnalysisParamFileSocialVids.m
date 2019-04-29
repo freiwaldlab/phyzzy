@@ -40,6 +40,12 @@ switch machine
     stimulusLogVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     outputVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok
+  case 'SurfaceBook2FA'
+    ephysVolume = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
+    stimulusLogVolume = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
+    outputVolume = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
+    stimParamsFilename = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok
+    stimDir = 'G:/StimuliForFaridfromJulia/SocialCategories';
 end
 analysisLabel = 'Basic';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
@@ -59,7 +65,7 @@ ephysParams.lfpChannels = [1];
 ephysParams.channelNames = {'8B'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
 ephysParams.waveClusReclass = 0; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
@@ -104,7 +110,7 @@ analogInParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to analogIn 
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
 butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 120, 'StopbandFrequency', 480, 'PassbandRipple', 1,...
   'StopbandAttenuation', 60, 'SampleRate', 1000, 'MatchExactly', 'passband');  %this returns a 3rd order iir filter
-analogInParams.filters = {0,0,0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
+analogInParams.filters = {0, 0, 0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
 analogInParams.plotFilterResult = 1; %#ok
 
 photodiodeParams.needStrobe = 1;
@@ -192,6 +198,7 @@ eyeCalParams.offsetY = 0;
 eyeCalParams.calFile = ''; %note: needed only when method = fromFile
 eyeCalParams.fixOutLag = 10; 
 eyeCalParams.minFixZeroTime = 1000; %#ok
+eyeCalParams.analogInParams = analogInParams;
 
 accelParams.needAccelCal = 0;
 accelParams.accelChannels = {[4;5;6]};
@@ -282,7 +289,7 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
 
 plotSwitch.imageEyeMap = 0;
 plotSwitch.eyeCorralogram = 0; %Eye Gram
-plotSwitch.eyeObjectTrace = 0; %Vectors to distinguish where subject is looking.
+plotSwitch.eyeObjectTrace = 1; %Vectors to distinguish where subject is looking.
 plotSwitch.stimPSTHoverlay = 0; %grabs stimuli and overlays PSTH on it. 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;

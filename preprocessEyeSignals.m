@@ -123,6 +123,7 @@ fixInD = eyeD(fixInInds == 1);
 % start times on Blackrock.
 if std(eyeX) < 1 || std(eyeY) < 1
   if isfield(params, 'monkeyLogicShift') && params.monkeyLogicShift
+    plotShift = 1; %If you want to plot what this part does, switch to 1.
     disp('Low variance in eye signal suggests problem with signal collection - using monkeyLogic eye signal instead')
     %Move MonkeyLogic trial start times using model based on disparities in
     %markers.
@@ -156,15 +157,17 @@ if std(eyeX) < 1 || std(eyeY) < 1
       plotTitle = 'eyeX-based model creation, used to make eyeY';
     end
     
-%     plotStartInd = round(length(eyeY)/10);
-%     plotEndInd = plotStartInd + min(1e5, plotStartInd/2);
-%     figure()
-%     plot(eyeCorrect(plotStartInd:plotEndInd) , 'k')
-%     hold on
-%     plot(eyeCorrectBLK(plotStartInd:plotEndInd), 'r')
+    if plotShift
+      plotStartInd = round(length(eyeY)/10);
+      plotEndInd = plotStartInd + min(1e5, plotStartInd/2);
+      figure()
+      plot(eyeCorrect(plotStartInd:plotEndInd) , 'k')
+      hold on
+      plot(eyeCorrectBLK(plotStartInd:plotEndInd), 'r')
+    end
     
     %adjust with finddelay.
-    eyeCorrectBLK(isnan(eyeCorrectBLK)) = 0;
+    eyeCorrectBLK(isnan(eyeCorrectBLK)) = 0; %finddelay doesn't like NaN.
     lag = finddelay(eyeCorrectBLK, eyeY);
     eyeCorrectBLK = padarray(eyeCorrectBLK, [0,lag], 0, 'pre');
     eyeCorrectBLK = eyeCorrectBLK(1:end-lag);
@@ -177,10 +180,12 @@ if std(eyeX) < 1 || std(eyeY) < 1
     logVsBlkModel = fitlm(eyeCorrectBLKModel, eyeCorrectModel);
     eyeCorrectBLKModel = predict(logVsBlkModel, eyeCorrectBLKModel');
     
-    %Add results to existing plot
-%     plot(eyeCorrectBLKModel(plotStartInd:plotEndInd), 'b')
-%     title(plotTitle);
-%     legend('Blackrock Signal','Reconstructed signal','Reconstructed signal, shifted and fit')
+    if plotShift
+      %Add results to existing plot
+      plot(eyeCorrectBLKModel(plotStartInd:plotEndInd), 'b')
+      title(plotTitle);
+      legend('Blackrock Signal','Reconstructed signal','Reconstructed signal, shifted and fit')
+    end
     
     %Assuming the fit is good, now re-create the missing array.
     eyeWrong = padarray(eyeWrong, [0,lag], 0, 'pre');
@@ -195,6 +200,36 @@ if std(eyeX) < 1 || std(eyeY) < 1
       eyeY = eyeWrongModel';
       eyeX = eyeCorrectBLKModel';
     end
+    
+    %Refilter the data based on some of the params of analogInParams. (What
+    %follows is copied from preprocessAnalogIn, modified to be appropriate
+    %here.
+    reFilterEyes = [eyeX; eyeY];
+    reFilterEyes(isnan(reFilterEyes)) = 0;
+    filterPad = params.analogInParams.filterPad;
+    reFilterEyesDecPadded = zeros(size(reFilterEyes,1),ceil(size(reFilterEyes,2)/(params.analogInParams.decimateFactorPass1*params.analogInParams.decimateFactorPass2))+2*filterPad);
+    
+    for i = 1:size(reFilterEyes,1)
+      reFilterEyesDecPadded(i,filterPad+1:end-filterPad) = decimate(decimate(reFilterEyes(i,:),params.analogInParams.decimateFactorPass1),params.analogInParams.decimateFactorPass2);
+      %analogInDataDecPadded(i,1:filterPad) = analogInDataDecPadded(i,filterPad+1)*analogInDataDecPadded(i,1:filterPad);
+      %analogInDataDecPadded(i,end-(filterPad-1):end) = analogInDataDecPadded(i,end-filterPad)*analogInDataDecPadded(i,end-(filterPad-1):end);
+      analogInFilter = params.analogInParams.filters{i};
+      if isa(analogInFilter,'digitalFilter')
+        disp('using digital filter object');
+        reFilterEyesDecPadded(i,:) = filtfilt(analogInFilter, reFilterEyesDecPadded(i,:));
+      elseif length(analogInFilter) == 2
+        reFilterEyesDecPadded(i,:) = filtfilt(analogInFilter(1),analogInFilter(2),reFilterEyesDecPadded(i,:));
+      end
+      if plotShift && (isa(analogInFilter,'digitalFilter')) && i == 2
+        plot(reFilterEyesDecPadded(i,filterPad+plotStartInd:filterPad+plotEndInd),'color','g');
+        legend('Blackrock Signal','Reconstructed signal','Recon signal, shifted and fit','Recon signal, shifted, fit, and filt')
+        drawnow;
+      end
+    end
+    reFilterEyes = reFilterEyesDecPadded(:,filterPad+1:end-filterPad);
+    eyeX = reFilterEyes(1,:);
+    eyeY = reFilterEyes(2,:);
+    
   else
     error('Low variance in eye signal suggests problem with signal collection - suggest using monkeyLogic eye signals (set params.monkeyLogicShift to 1)')
   end

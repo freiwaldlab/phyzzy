@@ -326,7 +326,7 @@ if isfield(plotSwitch,'imageEyeMap') && plotSwitch.imageEyeMap
 end
 
 if isfield(plotSwitch,'eyeObjectTrace') && plotSwitch.eyeObjectTrace
-  eyeObjectTrace = calcEyeObjectTrace(stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, analogInByEvent, eventIDs, taskData.frameMotionData, colors);
+  eyeObjectTrace = avgEyeSigOnStim(stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, analogInByEvent, eventIDs, taskData, colors);
 end
 
 %trialDatabaseStruct(taskData, eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
@@ -4679,33 +4679,98 @@ if saveFig
 end
 end
 
-function eyeObjectTrace = calcEyeObjectTrace(stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, analogInByEvent, eventIDs, frameMotionData, colors)
-stimStartInd = psthPre+lfpPaddedBy + 1;
-stimEndInd = stimStartInd + psthImDur - 1;
+function stimEyeOverlay = avgEyeSigOnStim(stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, analogInByEvent, eventIDs, taskData, colors)
+%Function will visualize eye signal at point where animal is looking
+PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
+frameMotionData = taskData.frameMotionData;
+colors = {'red','green','blue'};
+
+stimStartInd = psthPre+lfpPaddedBy;
+stimEndInd = stimStartInd + psthImDur;
 %What this would do, ideally.
 %Run each stimuli presented
-frameMotionDataNames = {frameMotionData(:).stimVid}';
 for stim_i = 1:length(eventIDs)
   stimVidStruct = dir([stimDir '/**/' eventIDs{stim_i}]);
   stimVidPath = [stimVidStruct(1).folder filesep stimVidStruct(1).name];
   stimVid = VideoReader(stimVidPath);
   stimFs = stimVid.FrameRate;
-  clear stimVid;
-  %Find each trial of the stimuli presented
-  %Take the eye trace of each of these trials,
+  frames  = ceil((psthImDur/1000)*stimFs);
+  sampFreq = psthImDur/frames;
+  frameIndArray = round((1:frames)*sampFreq);
+  Fs = 1000; %I want the signal to match the stim video's, so I have to downsample it.
+  %Find each trial of the stimuli presented, Take the eye trace of each of these trials,
   eyeInByEvent = squeeze(analogInByEvent{stim_i}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
   %Downsample the signal
-  Fs = 1000; %I want the signal to match the stim video's, so I have to downsample it.
-  [P,Q] = rat(stimFs/Fs);
+  eyeInByEvent = eyeInByEvent(:,:,frameIndArray);
+  
+  %Transform these eye signals from Dva from the middle, to pixels from the
+  %upper left corner of the stimuli. basically Origin/Gain into a new
+  %space.
+  pixelOrigin = [stimVid.Width/2 stimVid.Height/2];
+  for eye_ind = 1:size(eyeInByEvent,1)
+    eyeInByEvent(eye_ind, :, :) = (eyeInByEvent(eye_ind, :, :)*PixelsPerDegree(eye_ind)) - pixelOrigin(eye_ind);
+  end
+
+  %Open a new video to save the results
+  outputVideo = VideoWriter(['onlay_' stimVidStruct(1).name]);
+  outputVideo.FrameRate = stimVid.FrameRate;
+  open(outputVideo);
+  frame_ind = 1;
+  
+  while hasFrame(stimVid) && frame_ind <= size(eyeInByEvent,3)
+    %Pull a frame from the video
+    img1 = readFrame(stimVid);
+    %Add the eye signal
+    for trial_i = 1:size(eyeInByEvent, 2)
+      coords = (eyeInByEvent(:, trial_i, frame_ind))*-1;
+      img1 = insertShape(img1, 'Circle',[coords(1) coords(2) 1],'LineWidth',2,'Color',colors{mod(trial_i-1,length(colors))+1});
+    end
+    % step the video
+    frame_ind = frame_ind + 1;
+
+    %Add the new Frame
+    writeVideo(outputVideo, img1);
+  end
+  close(outputVideo);
+  
+end
+  %position of the object in each frame - ideally.
+  %Produce 1*objects number of these, package them.
+end
+
+function attendedObj = calcEyeObjectTrace(stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, analogInByEvent, eventIDs, taskData, colors)
+% Functions goal is to return a vector, of the same structure as
+% "analogInByEvent", replacing the {event}(1*Channels*Trials*Millseconds)
+% structure with a {event}{trial}{frame*1}, where ever item is the
+% name of what is being fixated on. 
+
+PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
+frameMotionData = taskData.frameMotionData;
+
+% Though using frame instead of millisecond will complicate indexing later,
+% I think its important for the sake of this being efficient and not mostly
+% High Frequency noise.
+
+stimStartInd = psthPre+lfpPaddedBy + 1;
+stimEndInd = stimStartInd + psthImDur - 1;
+trialTotal = size(analogInByEvent{1},4);
+
+frameMotionDataNames = {frameMotionData(:).stimVid}';
+for stim_i = 1:length(eventIDs)
+  %Downsample the eye trace to 30 S/sec (despite human vids being 60 fps).
+  eyeInByEvent = squeeze(analogInByEvent{stim_i}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
+  Fs = 1000; % Orig Eye vector frequency
+  [P,Q] = rat(30/Fs);  %Assuming a 30 FPS video. Use these numbers to downsample
+  eyeInByEventDownsampled = zeros(size(eyeInByEvent,1), size(eyeInByEvent, 2), size(eyeInByEvent, 3)/(Q/P));
   for trial_ind = 1:size(eyeInByEvent, 2)
-    for axis_ind = 1:size(eyeInByEvent,1)
+    for axis_ind = 1:size(eyeInByEvent, 1)
       eyeInByEventDownsampled(axis_ind, trial_ind,:) = resample(eyeInByEvent(axis_ind,trial_ind,:), P, Q);
     end
   end
   eyeInByEvent = eyeInByEventDownsampled;
   
-  %Make sure eye signal and shapes are in the correct space (eye signal
-  %includes space around videos). means changing coordinates of eye values
+  %frameMotion data is in the space of pixels, w/ the origin at the top
+  %left of the frame. Convert eye signal to this space.
   frameMotionDataStruct = frameMotionData(find(strcmp(eventIDs(stim_i),frameMotionDataNames)));
 
   %Determine whether the signal is in each shape.
@@ -4713,10 +4778,7 @@ for stim_i = 1:length(eventIDs)
     %use inpolygon for rectangles.
     %use MATLAB Answers 322542 for circles.
   end
-    
 end
-  
-
   %position of the object in each frame - ideally.
   %Produce 1*objects number of these, package them.
 end

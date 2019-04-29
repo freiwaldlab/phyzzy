@@ -49,21 +49,19 @@ for i = 1:size(analogInData,1)
   analogInFilter = analogInFilters{i};
   if params.plotFilterResult && (isa(analogInFilter,'digitalFilter') || length(analogInFilter) == 2)
     figure();
-    plot(analogInDataDecPadded(1,filterPad+100000:filterPad+105000),'color','r');
+    plot(analogInDataDecPadded(i,filterPad+100000:filterPad+105000),'color','r');
     hold on
   end
   if isa(analogInFilter,'digitalFilter')
     disp('using digital filter object');
     analogInDataDecPadded(i,:) = filtfilt(analogInFilter, analogInDataDecPadded(i,:));
-  else
-    if length(analogInFilter) == 2
-      analogInDataDecPadded(i,:) = filtfilt(analogInFilter(1),analogInFilter(2),analogInDataDecPadded(i,:));
-    end
-    if params.plotFilterResult && (isa(analogInFilter,'digitalFilter') || length(analogInFilter) == 2)
-      plot(analogInData(i,filterPad+100000:filterPad+105000),'color','b');
-      legend({'raw','filtered'});
-      drawnow;
-    end
+  elseif length(analogInFilter) == 2
+    analogInDataDecPadded(i,:) = filtfilt(analogInFilter(1),analogInFilter(2),analogInDataDecPadded(i,:));
+  end
+  if params.plotFilterResult && (isa(analogInFilter,'digitalFilter') || length(analogInFilter) == 2)
+    plot(analogInDataDecPadded(i,filterPad+100000:filterPad+105000),'color','b');
+    legend({'raw','filtered'});
+    drawnow;
   end
 end
 analogInData = analogInDataDecPadded(:,filterPad+1:end-filterPad);

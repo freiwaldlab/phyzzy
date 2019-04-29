@@ -438,6 +438,7 @@ taskData.stimParams = 0;
 taskData.RFmap = 0;
 taskData.eyeData = tmpEye;
 taskData.screenStats = screenStats;
+taskData.eyeCal.PixelsPerDegree = MLConfig.PixelsPerDegree;
 taskData.eyeCal.origin = MLConfig.EyeTransform{2}.origin;
 taskData.eyeCal.gain = MLConfig.EyeTransform{2}.gain;
 
