@@ -289,7 +289,8 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
 
 plotSwitch.imageEyeMap = 0;
 plotSwitch.eyeCorralogram = 0; %Eye Gram
-plotSwitch.eyeObjectTrace = 1; %Vectors to distinguish where subject is looking.
+plotSwitch.eyeStimOverlay = 1; %Visualize eye traces on stimuli.
+plotSwitch.attendedObject = 1; %Vectors to distinguish where subject is looking.
 plotSwitch.stimPSTHoverlay = 0; %grabs stimuli and overlays PSTH on it. 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
