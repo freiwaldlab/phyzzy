@@ -65,7 +65,7 @@ ephysParams.lfpChannels = [1];
 ephysParams.channelNames = {'8B'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
 ephysParams.waveClusReclass = 0; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
@@ -111,7 +111,7 @@ analogInParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to analogIn 
 butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 120, 'StopbandFrequency', 480, 'PassbandRipple', 1,...
   'StopbandAttenuation', 60, 'SampleRate', 1000, 'MatchExactly', 'passband');  %this returns a 3rd order iir filter
 analogInParams.filters = {0, 0, 0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
-analogInParams.plotFilterResult = 1; %#ok
+analogInParams.plotFilterResult = 1;
 
 photodiodeParams.needStrobe = 1;
 photodiodeParams.inputDataType = 'blackrockFilename';
@@ -246,6 +246,8 @@ psthParams.bootstrapSamples = 100;
 psthParams.sortStim = 1;
 psthParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble'};
 psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
+load(psthParams.psthColormapFilename);
+psthParams.colormap = map;
 
 correlParams.maxShift = []; % a number, or empty
 correlParams.matchTimeRanges = 1;
@@ -289,8 +291,8 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
 
 plotSwitch.imageEyeMap = 0;
 plotSwitch.eyeCorralogram = 0; %Eye Gram
-plotSwitch.eyeStimOverlay = 1; %Visualize eye traces on stimuli.
 plotSwitch.attendedObject = 1; %Vectors to distinguish where subject is looking.
+plotSwitch.eyeStimOverlay = 0; %Visualize eye traces on stimuli.
 plotSwitch.stimPSTHoverlay = 0; %grabs stimuli and overlays PSTH on it. 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
@@ -451,7 +453,7 @@ if calcSwitch.useJacknife
 end
 
 %% set paths and directories, EDIT RARELY %%
-analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
+analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);
 lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        
 spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
 taskFilename = sprintf('%s/%s/%s%s.mat',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
@@ -463,9 +465,6 @@ preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);         
 
 % Check if the file exists
 assert(logical(exist(analogInFilename,'file')),'The analog input file you requested does not exist.');
-
-load('cocode2.mat');
-psthColormap = map;  %#ok
 
 if ~exist(outDir,'dir')
   mkdir(outDir);

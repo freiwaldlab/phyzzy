@@ -116,36 +116,36 @@ end
       xarray2 = flipud(xarray1);
       yarray2 = flipud(yarray1);
       x = cat(1,xarray1(:,1:11),xarray2(:,2:12));
-    y = cat(1,yarray1(:,1:11),yarray2(:,2:12));
-    patch(x, y, corder);
-    set(gca,'xlim',[1 ntrial],'ytick',0:0.25:1);
-    
-    hline(1) = line([0 ntrial],[0.5 0.5]);
-    hline(2) = line([0 ntrial],[0.25 0.25]);
-    hline(3) = line([0 ntrial],[0.75 0.75]);
-    set(hline,'color',[0.7 0.7 0.7],'linewidth',1);
-
-    nblock = length(blockswitch);
-    h = zeros(nblock,1);
-    ht = h;
-    texty = 0.05;
-    for m = 1:nblock
+      y = cat(1,yarray1(:,1:11),yarray2(:,2:12));
+      patch(x, y, corder);
+      set(gca,'xlim',[1 ntrial],'ytick',0:0.25:1);
+      
+      hline(1) = line([0 ntrial],[0.5 0.5]);
+      hline(2) = line([0 ntrial],[0.25 0.25]);
+      hline(3) = line([0 ntrial],[0.75 0.75]);
+      set(hline,'color',[0.7 0.7 0.7],'linewidth',1);
+      
+      nblock = length(blockswitch);
+      h = zeros(nblock,1);
+      ht = h;
+      texty = 0.05;
+      for m = 1:nblock
         x1 = blockswitch(m);
         h(m) = line([x1 x1], [0 1]);
         if 1<m, x2 = blockswitch(m-1); else x2 = 0; end
         xm = (x1 + x2)/2;
         ht(m) = text(xm, texty, num2str(blockorder(m)));
-    end
-    if ~isempty(h)
+      end
+      if ~isempty(h)
         xm = (blockswitch(m) + length(trial))/2;
         ht(m+1) = text(xm, texty, num2str(blockorder(m+1)));
         set(h,'color',[1 1 1],'linewidth',1);
-    else
+      else
         xm = ntrial/2;
         ht = text(xm, texty, num2str(blockorder));
+      end
+      set(ht, 'horizontalalignment','center', 'color',[1 1 1], 'fontweight','bold', 'fontsize',14);
     end
-    set(ht, 'horizontalalignment','center', 'color',[1 1 1], 'fontweight','bold', 'fontsize',14);
-end
 
 % rt plot
 % subplot('position',[0.5 0 0.5 0.5]);

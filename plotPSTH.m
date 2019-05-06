@@ -1,10 +1,15 @@
-function [ psthAxes ] = plotPSTH( psthArray, psthAxes, psthPre, psthPost, psthImDur, plotType, psthTitle, ylabels, psthColormap )
+function [ psthAxes ] = plotPSTH(psthArray, psthAxes, psthParams, plotType, psthTitle, ylabels)
 %UNTITLED10 Summary of this function goes here
 %   Detailed explanation goes here
 
+ 
+psthPre = psthParams.psthPre;
+psthImDur = psthParams.psthImDur;
+psthPost = psthParams.psthPost;
+
 xrange= [-psthPre psthImDur+psthPost]; 
 nrows = size(psthArray,1);
-yrange= [1 nrows];
+yaxis = [1 nrows];
 title(psthTitle); 
 if strcmp(plotType,'color')
   try
@@ -17,15 +22,15 @@ if strcmp(plotType,'color')
     return
   end
   if isempty(psthAxes)
-    psthAxes = imagesc(xrange, yrange, psthArray);
+    psthAxes = imagesc(xrange, yaxis, psthArray);
   else
-    imagesc(psthAxes, xrange, yrange, psthArray);
+    imagesc(psthAxes, xrange, yaxis, psthArray);
   end
   h = colorbar; 
   ylabel(h,'Firing Rate [Hz]','FontSize',14);
-  colormap(psthColormap);
+  colormap(psthParams.colormap);
   ylimits= ylim();
-  yRange = ylimits(2) - ylimits(1);  %todo: remove egregious use of this variable twice, but with different caps
+  yRange = ylimits(2) - ylimits(1);
   hold on
   if (psthPre+psthPost)/psthImDur > 20
     stimDurLineWidth = 0.1;

@@ -321,16 +321,12 @@ if isfield(plotSwitch, 'eyeCorrelogram') && plotSwitch.eyeCorrelogram
   eyeCorrelogram(analogInByEvent, lfpAlignParams, psthImDur, eventLabels, outDir, dateSubject, runNum, saveFig, exportFig, saveFigData)
 end
 
-if isfield(plotSwitch,'imageEyeMap') && plotSwitch.imageEyeMap
-  imageEyeMap(stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, analogInByEvent, eventIDs, colors)
-end
-
 if isfield(plotSwitch, 'attendedObject') && plotSwitch.attendedObject
-  attendedObj = calcEyeObjectTrace(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, eventIDs, taskData);
+  attendedObj = calcEyeObjectTrace(psthByImage, psthParams, stimDir, lfpPaddedBy, analogInByEvent, eventIDs, taskData);
 end
 
-if isfield(plotSwitch,'eyeStimOverlay') && plotSwitch.eyeObjectTrace
-  eyeStimOverlay(stimDir, outDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, eventIDs, taskData, colors);
+if isfield(plotSwitch,'eyeStimOverlay') && plotSwitch.eyeStimOverlay
+  eyeStimOverlay(stimDir, outDir, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData, colors);
 end
 
 %trialDatabaseStruct(taskData, eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
@@ -366,9 +362,9 @@ if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
           %Sorts based on group membership.
           [~, NewStimOrder] = sort(groupLabelsByImage);
         end
-        plotPSTH(psthByImage{channel_i}{unit_i}(NewStimOrder,:), [], psthPre, psthPost, psthImDur, 'color', psthTitle, eventLabels(NewStimOrder), psthColormap);
+        plotPSTH(psthByImage{channel_i}{unit_i}(NewStimOrder,:), [], psthParams, 'color', psthTitle, eventLabels(NewStimOrder));
       else
-        plotPSTH(psthByImage{channel_i}{unit_i}, [], psthPre, psthPost, psthImDur, 'color', psthTitle, eventLabels, psthColormap);
+        plotPSTH(psthByImage{channel_i}{unit_i}, [], psthParams, 'color', psthTitle, eventLabels);
       end
       clear figData
       title(psthTitle);
@@ -387,7 +383,7 @@ if isfield(plotSwitch,'categoryPsth') && plotSwitch.categoryPsth
       end
       psthTitle = sprintf('Per Catagory PSTH %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
       figure('Name',psthTitle,'NumberTitle','off');
-      plotPSTH(psthByCategory{channel_i}{unit_i}, [], psthPre, psthPost, psthImDur, 'color', psthTitle, categoryList, psthColormap );
+      plotPSTH(psthByCategory{channel_i}{unit_i}, [], psthParams, 'color', psthTitle, categoryList);
       clear figData
       title(psthTitle);
       figData.z = psthByCategory{channel_i}{unit_i};
@@ -1362,7 +1358,7 @@ for channel_i = 1:length(lfpChannels)
       fh = figure();
       ah1 = subplot(2,1,1);
       psthTitle = sprintf('%s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{end});
-      plotPSTH(spkResponses, [], psthPre, psthPost, psthImDur, 'color', psthTitle, group, psthColormap );
+      plotPSTH(spkResponses, [], psthParams, 'color', psthTitle, group);
 %       yyaxis right
 %       plot(times,mean(spkResponses,1),'Color',[0.8,0.8,0.9],'LineWidth',2); %todo: this mean should probably be weighted by number of images per category
 %       ylabel('Mean PSTH (Hz)');
@@ -1519,7 +1515,7 @@ if isfield(plotSwitch,'colorPsthItemMarginals') && plotSwitch.colorPsthItemMargi
         end
         fh = figure();
         psthTitle = '';%suptitle(sprintf('%s PSTH and Evoked Potentials',channelNames{channel_i}));
-        plotPsthMarginal(spkResponses, psthPre, psthPost, psthImDur,[frCalcOn,frCalcOff], psthTitle, group, psthColormap );
+        plotPsthMarginal(spkResponses, psthPre, psthPost, psthImDur,[frCalcOn,frCalcOff], psthTitle, group);
         drawnow;
         figData = spkResponses;
         saveFigure(outDir,sprintf('PSTH_itemMarginals_%s_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,runNum), figData, saveFig, exportFig, saveFigData,'');
@@ -4475,73 +4471,6 @@ end
 
 %% Individual Analysis Functions
 
-function imageEyeMap(stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, analogInByEvent, translationTable, colors)
-
-% Add Colors to each Line
-% Add footage underneath
-times = -psthPre:psthImDur+psthPost;
-stimStartInd = psthPre+lfpPaddedBy + 1;
-stimEndInd = stimStartInd + psthImDur - 1;
-
-for ii = 1:length(analogInByEvent)
-  %Isolate the eye data for a stimuli, its name, and path.
-  eyeInByEvent = squeeze(analogInByEvent{ii}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
-  stimInfo = dir(strcat(stimDir, '/**/', translationTable{ii})); %use the translationTable to find the file
-  stimPath = [stimInfo(1).folder filesep stimInfo(1).name]; %create its path.
-  
-  %Open the Video, Get some Info on it
-  stimVid = VideoReader(stimPath); %#ok<TNMLP> %Open the file.
-  stimFs = stimVid.FrameRate;
-%   TotalFrames = int16(stimVid.Duration*stimFs);
-%   samplesPerFrame = floor(psthImDur/TotalFrames);
-  
-  %Down sample eye signal so that we have one point per frame.
-  Fs = 1000; %I want the signal to match the stim video's, so I have to downsample it.
-  [P,Q] = rat(stimFs/Fs);
-  for trial_ind = 1:size(eyeInByEvent, 2)
-    for axis_ind = 1:size(eyeInByEvent,1)
-      eyeInByEventDownsampled(axis_ind, trial_ind,:) = resample(eyeInByEvent(axis_ind,trial_ind,:), P, Q);
-    end
-  end
-  eyeInByEvent = eyeInByEventDownsampled;
-  
-
-  hf = figure;
-  set(hf, 'position', [100 100 stimVid.Width stimVid.Height])
-  stimVid.CurrentTime = 0;
-  while hasFrame(stimVid)
-    %Draw the Frame
-    image(readFrame(stimVid)); %Seems likle this is working slow.
-    %Draw the eye traces on frame
-    
-    %Pause the video for a bit
-    pause(1/stimFs);
-  end
-  
-  xlim([-24 24])
-  ylim([-24 24])
-  title(sprintf('%s eye signal', translationTable{ii}));
-  
-  hold on
-  for jj = 1:size(eyeInByEventDownsampled,2)
-    x = squeeze(eyeInByEventDownsampled(1,jj,:));
-    y = squeeze(eyeInByEventDownsampled(2,jj,:));
-    h = animatedline(x(1), y(1),'color' ,colors{mod(jj,length(colors))+1});
-    a = tic; % start timer
-    for k = 2:length(x)
-      b = toc(a); % check timer
-      if b > (1/30)
-        addpoints(h,x(k),y(k))
-        drawnow % update screen every 1/30 seconds
-        a = tic; % reset timer after updating
-      end
-    end
-  end
-  drawnow % draw final frame
-end
-
-end
-
 function eyeCorrelogram(analogInByEvent, lfpAlignParams, psthImDur, eventLabels, outDir, dateSubject, runNum, saveFig, exportFig, saveFigData)
 stimStartInd = lfpAlignParams.msPreAlign;
 stimEndInd = stimStartInd + psthImDur;
@@ -4683,30 +4612,58 @@ if saveFig
 end
 end
 
-function eyeStimOverlay(stimDir, outDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, eventIDs, taskData, colors)
-%Function will visualize eye signal at point where animal is looking
-PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
-%frameMotionData = taskData.frameMotionData;
+function eyeStimOverlay(stimDir, outDir, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData, colors)
+%Function will visualize eye signal (and objects) on top of stimulus.
+shapeOverlay = 1; %Switch to turn on and off shape overlay.
+
+if shapeOverlay
+  PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
+  frameMotionData = taskData.frameMotionData;
+  frameMotionDataNames = {frameMotionData(:).stimVid}';
+end
+
 colors = {'red','green','blue'};
+shapeColors = {[1. 0. 0.];[0 .4 1.];[.1 .8 .1];[.1 .8 .1];[0 0 0];[1 .4 0]; ...
+  [.7 0 0];[0 0 .7];[0 .5 0];[0 .5 0];[0 0 0];[1 .6 0]}; %Faces, Bodies, Hands, Obj, bkg
+
+psthImDur = psthParams.psthImDur;
+psthPre = psthParams.psthPre;
 
 stimStartInd = psthPre+lfpPaddedBy;
 stimEndInd = stimStartInd + psthImDur;
 
 %Run each stimuli presented
 for stim_i = 1:length(eventIDs)
+  if shapeOverlay
+    %find the correct frameMotionData
+    frameMotionDataInd = strcmp(frameMotionDataNames, eventIDs(stim_i));
+    stimFrameMotionData = frameMotionData(frameMotionDataInd);
+  end
+  
   stimVidStruct = dir([stimDir '/**/' eventIDs{stim_i}]);
   stimVidPath = [stimVidStruct(1).folder filesep stimVidStruct(1).name];
   stimVid = VideoReader(stimVidPath);
   stimFs = stimVid.FrameRate;
   frames  = ceil((psthImDur/1000)*stimFs);
   sampFreq = psthImDur/frames;
-  frameIndArray = round((1:frames)*sampFreq);
+  clear frameCountArray frameIndArray
+  frameCountArray = diff(round((1:frames)*sampFreq)); %each index is the number of points averaged to make a frame.
+  frameCountArray = [frameCountArray frameCountArray(end)]; %Diff chops off the end, so repeat it
+  %frameIndArray = zeros(psthImDur, 1);
+  frameIndArray = ones(frameCountArray(1), 1);
+  for avg_ind = 2:length(frameCountArray)
+    frameIndArray = [frameIndArray; ones(frameCountArray(avg_ind), 1)*avg_ind];
+  end
   %Find each trial of the stimuli presented, Take the eye trace of each of these trials,
   eyeInByEvent = squeeze(analogInByEvent{stim_i}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
   %Downsample the signal
-  eyeInByEvent = eyeInByEvent(:,:,frameIndArray);
-  %Transform these eye signals from Dva from the middle, to pixels from the
-  %upper left corner of the stimuli. Origin/Gain into a new space.
+  eyeInAvg = zeros(size(eyeInByEvent,1), size(eyeInByEvent, 2), frames);
+  for eye_ind = 1:frames
+    eyeInAvg(:,:,eye_ind) = mean((eyeInByEvent(:,:,frameIndArray == eye_ind)),3);
+  end
+  eyeInByEvent = eyeInAvg;
+  
+  %Shift to pixel space
   pixelOrigin = [stimVid.Width/2 stimVid.Height/2];
   for eye_ind = 1:size(eyeInByEvent,1)
     eyeInByEvent(eye_ind, :, :) = (eyeInByEvent(eye_ind, :, :)*PixelsPerDegree(eye_ind)) + pixelOrigin(eye_ind);
@@ -4718,25 +4675,56 @@ for stim_i = 1:length(eventIDs)
   open(outputVideo);
   frame_ind = 1;
   
+  %Shape related info
+  if shapeOverlay
+    objects = stimFrameMotionData.objNames;
+    objectShapes = stimFrameMotionData.objShapes;
+    objRad = stimFrameMotionData.objRadii;
+    for obj_i = 1:length(objects)
+      eval(sprintf('%s = stimFrameMotionData.objLoc{%d};', objects{obj_i}, obj_i));
+    end
+  end
+  
   while hasFrame(stimVid) && frame_ind <= size(eyeInByEvent,3)
     %Pull a frame from the video
     img1 = readFrame(stimVid);
+    %Add in Shapes (If the data exists, and switch is set)
+    if shapeOverlay && ~isempty(stimFrameMotionData.objNames) %Landscapes/Scrambles
+      for obj_i = 1:length(objects)
+        coords = eval(eval(sprintf('objects{%d}',obj_i)));
+        coords = coords(frame_ind,:);
+        if any(isnan(coords)) %NaN means the object isn't present.
+          continue
+        end
+        switch objectShapes{obj_i}
+          case 'Circle'
+            img1 = insertShape(img1,objectShapes{obj_i},[coords(1) coords(2) objRad(obj_i)],'LineWidth',2,'color', (shapeColors{obj_i}.*255));
+          case 'Line'
+            %the 2 lines define gazes - the first one comes from Face1, the
+            %2nd from Face2.
+            if obj_i == find(strcmp(objectShapes,'Line'),1,'first')
+              GazeSource = Face1;
+            else
+              GazeSource = Face2;
+            end
+            img1 = insertShape(img1,objectShapes{obj_i},[GazeSource(frame_ind,1) GazeSource(frame_ind,2) coords(1) coords(2)],'LineWidth',2);
+        end
+      end
+    end
     %Add the eye signal
     for trial_i = 1:size(eyeInByEvent, 2)
       coords = (eyeInByEvent(:, trial_i, frame_ind));
-      img1 = insertShape(img1, 'Circle',[coords(1) coords(2) 1],'LineWidth',2,'Color',colors{mod(trial_i-1,length(colors))+1});
+      img1 = insertShape(img1, 'Circle',[coords(1) coords(2) 1],'LineWidth',3,'Color',colors{mod(trial_i-1,length(colors))+1});
     end
-    % step the video
-    frame_ind = frame_ind + 1;
     
-    %Add the new Frame
-    writeVideo(outputVideo, img1);
+    frame_ind = frame_ind + 1;      % step the video
+    writeVideo(outputVideo, img1);  % Add the new Frame
   end
   close(outputVideo);
 end
 end
 
-function attendedObj = calcEyeObjectTrace(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, eventIDs, taskData)
+function attendedObj = calcEyeObjectTrace(psthByImage, psthParams, stimDir, lfpPaddedBy, analogInByEvent, eventIDs, taskData)
 % Functions goal is to return a vector, of the same structure as
 % "analogInByEvent", replacing the {event}(1*Channels*Trials*Millseconds)
 % structure with a {event}{trial}{frame*1}, where ever item is the
@@ -4746,10 +4734,12 @@ PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
 frameMotionData = taskData.frameMotionData;
 frameMotionDataNames = {frameMotionData(:).stimVid}';
 
-stimStartInd = psthPre+lfpPaddedBy;
-stimEndInd = stimStartInd + psthImDur;
-trialTotal = size(analogInByEvent{1},4);
+stimStartInd = psthParams.psthPre+lfpPaddedBy;
+stimEndInd = stimStartInd + psthParams.psthImDur;
 attendedObj = cell(length(analogInByEvent), 1);
+
+shapeColors = {[1. 0. 0.];[0 .4 1.];[.1 .8 .1];[.1 .8 .1];[0 0 0];[1 .4 0]; ...
+  [.7 0 0];[0 0 .7];[0 .5 0];[0 .5 0];[0 0 0];[1 .6 0]};
 
 for stim_i = 1:length(eventIDs)
   %Get the size of the stimulus video, which will allow us to translate DVA
@@ -4758,18 +4748,29 @@ for stim_i = 1:length(eventIDs)
   stimVidPath = [stimVidStruct(1).folder filesep stimVidStruct(1).name];
   stimVid = VideoReader(stimVidPath);
   stimFs = stimVid.FrameRate;
-  frames  = ceil((psthImDur/1000)*stimFs);
-  sampFreq = psthImDur/frames;
-  frameIndArray = round((1:frames)*sampFreq);
+  frames  = ceil((psthParams.psthImDur/1000)*stimFs);
+  sampFreq = psthParams.psthImDur/frames;
+  clear frameCountArray frameIndArray
+  frameCountArray = diff(round((1:frames)*sampFreq)); %each index is the number of points averaged to make a frame.
+  frameCountArray = [frameCountArray frameCountArray(end)]; %Diff chops off the end, so repeat it
+  %frameIndArray = zeros(psthImDur, 1);
+  frameIndArray = ones(frameCountArray(1), 1);
+  for avg_ind = 2:length(frameCountArray)
+    frameIndArray = [frameIndArray; ones(frameCountArray(avg_ind), 1)*avg_ind];
+  end
   %Find each trial of the stimuli presented, Take the eye trace of each of these trials,
   eyeInByEvent = squeeze(analogInByEvent{stim_i}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
   %Downsample the signal
-  eyeInByEvent = eyeInByEvent(:,:,frameIndArray);
+  eyeInAvg = zeros(size(eyeInByEvent,1), size(eyeInByEvent, 2), frames);
+  for eye_ind = 1:frames
+    eyeInAvg(:,:,eye_ind) = mean((eyeInByEvent(:,:,frameIndArray == eye_ind)),3);
+  end
+  eyeInByEvent = eyeInAvg;
   
   %Shift to pixel space
   pixelOrigin = [stimVid.Width/2 stimVid.Height/2];
   for eye_ind = 1:size(eyeInByEvent,1)
-    eyeInByEvent(eye_ind, :, :) = (eyeInByEvent(eye_ind, :, :)*PixelsPerDegree(eye_ind)) - pixelOrigin(eye_ind);
+    eyeInByEvent(eye_ind, :, :) = (eyeInByEvent(eye_ind, :, :)*PixelsPerDegree(eye_ind)) + pixelOrigin(eye_ind);
   end
   
   %Initialize the output cell array.
@@ -4780,19 +4781,26 @@ for stim_i = 1:length(eventIDs)
   stimFrameMotionData = frameMotionData(frameMotionDataInd);
   
   if ~isempty(stimFrameMotionData.objNames) %Landscapes/Scrambles
+    %Make variables for each object. Not a clean way of doing this
+    objects = stimFrameMotionData.objNames;
+    for obj_i = 1:length(objects)
+      eval(sprintf('%s = stimFrameMotionData.objLoc{%d};', objects{obj_i}, obj_i));
+    end
+    
+    %Reshape the info to make it easy to compare
+    objRads = stimFrameMotionData.objRadii;
+    objLocStack = [stimFrameMotionData.objLoc{:}];
+    
+    
     for frame_i = 1:size(eyeInByEvent, 3)
-      %for each frame, construct the appropriate vector for comparing the
-      %coordinates of the eye location with those of each shape.
-      %pull and reshape the vectors representing each shape.
-      objLocStack = [stimFrameMotionData.objLoc{:}];
-      objLoc = reshape(objLocStack(50,:), 12,2);
-      objRads = stimFrameMotionData.objRadii;
-      %for each trial and frame, grab eye location
-      eyeCoord = [eyeInByEvent(1, :, frame_i)' eyeInByEvent(2, :, frame_i)']*-1;
-      for trial_i = 1:size(eyeInByEvent, 2)
+      %for each frame, pull and reshape the apporpriate shape coords and
+      %compare to the eye signal across trials.
+      objLoc = reshape(objLocStack(frame_i,:)', 2,12);
+      eyeCoord = [eyeInByEvent(1, :, frame_i)' eyeInByEvent(2, :, frame_i)'];
+      for trial_i = 1:length(eyeCoord)
         %Calculate distances
-        objDist = sqrt(sum((objLoc - eyeCoord(trial_i,:)).^2, 2));
-        objInd = objDist < objRads';
+        objDist = sqrt(sum((objLoc - eyeCoord(trial_i,:)').^2, 1));
+        objInd = objDist < objRads;
         %Assign the correct object.
         if sum(objInd) == 0
           attendedObj{stim_i}(trial_i, frame_i) = {'bkg'};
@@ -4806,6 +4814,73 @@ for stim_i = 1:length(eventIDs)
         end
       end
     end
+  else
+    attendedObj{stim_i}(:) = {'bkg'}; %Landscapes/Scrambles
+  end
+end
+
+%Plot the Result as an area plot, where X = frames
+areaColors = [shapeColors{:} {[.5 .5 .5]}]; %Shape colors + Background 
+firstChar = @(n) [n(1) n(end-1:end)]; %Pulls the first character and last character of the strong.
+objAbrList = [cellfun(firstChar, frameMotionData(1).objNames, 'UniformOutput', false) {'bkg'}]';
+
+for channel_i = 1:length(psthByImage)
+  for event_i = 1:length(eventIDs)
+    psthTitle = sprintf('Per Image Area eye plot Ch %d, %s', channel_i, eventIDs{event_i});
+    figure('Name',psthTitle,'NumberTitle','off');
+    subplot(2, 1, 1)
+    %For every event, grab the relevant data and initialize the "counts"
+    %matrix for each object.
+    attendedObjectEvent = attendedObj{event_i};
+    firstCharPerFrame = cellfun(firstChar, attendedObjectEvent, 'UniformOutput', false); % a Trial * Frame array of the first letter of each object.
+    areaPlotData = zeros(size(firstCharPerFrame, 2), length(objAbrList)); %Frames * Unique objects
+    for frame_ind = 1:size(firstCharPerFrame, 2)
+      %For each frame, cycle through objects and see whats attended. Create a
+      %total count of the 13 objects and the number of trials in which they
+      %are attended to.
+      frameObjAttended = firstCharPerFrame(:,frame_ind);
+      [A, ~, C] = unique(frameObjAttended);
+      a_counts = accumarray(C,1);
+      for obj_ind = 1:length(A)
+        dataInd = strcmp(objAbrList, A{obj_ind});
+        assert(sum(dataInd) == 1);
+        areaPlotData(frame_ind, dataInd) = a_counts(obj_ind);
+      end
+    end
+    areaPlotDataNorm = areaPlotData./size(attendedObjectEvent,1);
+    areaPlotHandle = area(areaPlotDataNorm); %Plot normalized values
+    %Make it presentable.
+    title(eventIDs{event_i})
+    xlim([1 size(firstCharPerFrame, 2)])
+    ylim([0 1])
+    for face_i = 1:length(areaPlotHandle)
+      areaPlotHandle(face_i).FaceColor = areaColors{face_i};
+    end
+    legend([frameMotionData(1).objNames {'bkg'}])
+    
+    %Underneath, plot the activity of all identified units with a PSTH
+    unitCount = length(psthByImage{channel_i});
+    psthHandle = subplot(2, 1, 2);
+    %Create a PSTH of responses to this event specifically
+    eventPSTH = zeros(unitCount, stimEndInd-stimStartInd);
+    %Labeling related code
+    if unitCount > 2
+      unitLabels = cell(unitCount,1);
+      unitLabels{1} = 'Unsorted';
+      unitLabels{end} = 'MUA';
+      for unit_ind = 1:unitCount - 2
+        unitLabels{unit_ind+1} = ['Unit ' num2str(unit_ind)];
+      end
+    else
+      unitLabels = {'Unsorted', 'MUA'};
+    end
+    %Gather the correct data
+    for unit_i = 1:unitCount
+      eventPSTH(unit_i,:) = psthByImage{channel_i}{unit_i}(event_i,stimStartInd:stimEndInd-1);
+    end
+    psthParams.psthPre = 0;
+    psthParams.psthPost = 0;
+    plotPSTH(eventPSTH, psthHandle, psthParams, 'color', psthTitle, unitLabels);
   end
 end
 
