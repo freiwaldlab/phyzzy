@@ -329,6 +329,10 @@ if isfield(plotSwitch,'eyeStimOverlay') && plotSwitch.eyeStimOverlay
   eyeStimOverlay(stimDir, outDir, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData, colors);
 end
 
+if isfield(plotSwitch, 'clusterOnEyePaths') && plotSwitch.clusterOnEyePaths
+  [psthByImageEyeClust, eventIDsEyeClust, clusterEyeResortInd] = clusterPaths(psthByImage, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData);
+end
+
 %trialDatabaseStruct(taskData, eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
 
 if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
@@ -4883,6 +4887,22 @@ for channel_i = 1:length(psthByImage)
     plotPSTH(eventPSTH, psthHandle, psthParams, 'color', psthTitle, unitLabels);
   end
 end
+end
+
+function [updatedByImageGroup, updatedEventIDs, resortInd] = clusterPaths(byImageGroup, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData)
+% Function takes in some "byEvent" style structure and analogInByEvent (making assumption of eye signal being
+% 1 and 2). It uses these eye signals to create k-means clusters in the
+% paths by sampling positions across regularly spaced frames and finding
+% consistent membership. it restructures the input "ByImageGroup", breaking
+% previous event groupings further based on different viewing patterns
+
+%initialize indexing vector which will be used to reshape groups.
+disp('Breakpoint')
+
+%Cycle through eye signals for each event and find distinct clusters,
+%return indicies for these clusters.
+
+%Recreate the original inputs with the new groupings.
 
 end
 
