@@ -322,15 +322,15 @@ if isfield(plotSwitch, 'eyeCorrelogram') && plotSwitch.eyeCorrelogram
 end
 
 if isfield(plotSwitch, 'attendedObject') && plotSwitch.attendedObject
-  attendedObj = calcEyeObjectTrace(psthByImage, psthParams, stimDir, lfpPaddedBy, analogInByEvent, eventIDs, taskData);
+  attendedObj = calcEyeObjectTrace(psthByImage, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData);
 end
 
 if isfield(plotSwitch,'eyeStimOverlay') && plotSwitch.eyeStimOverlay
-  eyeStimOverlay(stimDir, outDir, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData, colors);
+  eyeStimOverlay(stimDir, outDir, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData);
 end
 
 if isfield(plotSwitch, 'clusterOnEyePaths') && plotSwitch.clusterOnEyePaths
-  [psthByImageEyeClust, eventIDsEyeClust, clusterEyeResortInd] = clusterPaths(psthByImage, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData);
+  [spikesByEventEyeClust, eventIDsEyeClust, clusterEyeResortInd] = clusterPaths(spikesByEvent, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData);
 end
 
 %trialDatabaseStruct(taskData, eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
@@ -515,13 +515,31 @@ if ~taskData.RFmap
       end
       % preferred images raster plot
       if isfield(plotSwitch,'prefImRaster') && plotSwitch.prefImRaster
-        topStimToPlot = 5;
         if isfield(plotSwitch,'topStimToPlot')
           topStimToPlot = plotSwitch.topStimToPlot;
+        else
+          topStimToPlot = 5;
         end
         prefImRasterTitle = sprintf('Preferred Image Raster - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
         fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
-        raster(spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedImageLabels(1:topStimToPlot), psthPre, psthPost, psthImDur, stimTiming.ISI, channel_i, unit_i, colors);
+        raster(spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedImageLabels(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, colors);
+        title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+        saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
+        if closeFig
+          close(fh);
+        end
+      end
+      if isfield(plotSwitch,'prefImRasterColorCoded') && plotSwitch.prefImRasterColorCoded
+        if isfield(plotSwitch,'topStimToPlot') && plotSwitch.topStimToPlot == 0
+          topStimToPlot = length(eventLabels);
+        elseif isfield(plotSwitch,'topStimToPlot')
+          topStimToPlot = plotSwitch.topStimToPlot;
+        else
+          topStimToPlot = 5;
+        end
+        prefImRasterTitle = sprintf('Preferred Image Raster - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+        fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
+        rasterColorCoded(spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedImageLabels(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, colors);
         title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
         if closeFig
@@ -4616,7 +4634,7 @@ if saveFig
 end
 end
 
-function eyeStimOverlay(stimDir, outDir, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData, colors)
+function eyeStimOverlay(stimDir, outDir, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData)
 %Function will visualize eye signal (and objects) on top of stimulus.
 shapeOverlay = 1; %Switch to turn on and off shape overlay.
 
@@ -4635,6 +4653,8 @@ psthPre = psthParams.psthPre;
 
 stimStartInd = psthPre+lfpPaddedBy;
 stimEndInd = stimStartInd + psthImDur;
+extractEye = @(n) squeeze(n(:,1:2,:,stimStartInd:stimEndInd)); %Reshapes analogInByEvent into eye signal.
+eyeInByEventAll = cellfun(extractEye,analogInByEvent, 'UniformOutput', false);  
 
 %Run each stimuli presented
 for stim_i = 1:length(eventIDs)
@@ -4648,24 +4668,8 @@ for stim_i = 1:length(eventIDs)
   stimVidPath = [stimVidStruct(1).folder filesep stimVidStruct(1).name];
   stimVid = VideoReader(stimVidPath);
   stimFs = stimVid.FrameRate;
-  frames  = ceil((psthImDur/1000)*stimFs);
-  sampFreq = psthImDur/frames;
-  clear frameCountArray frameIndArray
-  frameCountArray = diff(round((1:frames)*sampFreq)); %each index is the number of points averaged to make a frame.
-  frameCountArray = [frameCountArray frameCountArray(end)]; %Diff chops off the end, so repeat it
-  %frameIndArray = zeros(psthImDur, 1);
-  frameIndArray = ones(frameCountArray(1), 1);
-  for avg_ind = 2:length(frameCountArray)
-    frameIndArray = [frameIndArray; ones(frameCountArray(avg_ind), 1)*avg_ind];
-  end
-  %Find each trial of the stimuli presented, Take the eye trace of each of these trials,
-  eyeInByEvent = squeeze(analogInByEvent{stim_i}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
-  %Downsample the signal
-  eyeInAvg = zeros(size(eyeInByEvent,1), size(eyeInByEvent, 2), frames);
-  for eye_ind = 1:frames
-    eyeInAvg(:,:,eye_ind) = mean((eyeInByEvent(:,:,frameIndArray == eye_ind)),3);
-  end
-  eyeInByEvent = eyeInAvg;
+  % Grab the eye signal for an event, and down sample it to the frame rate of the video
+  eyeInByEvent = downSampleSig(eyeInByEventAll{stim_i}, psthParams, stimFs); 
   
   %Shift to pixel space
   pixelOrigin = [stimVid.Width/2 stimVid.Height/2];
@@ -4728,7 +4732,7 @@ for stim_i = 1:length(eventIDs)
 end
 end
 
-function attendedObj = calcEyeObjectTrace(psthByImage, psthParams, stimDir, lfpPaddedBy, analogInByEvent, eventIDs, taskData)
+function attendedObj = calcEyeObjectTrace(psthByImage, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData)
 % Functions goal is to return a vector, of the same structure as
 % "analogInByEvent", replacing the {event}(1*Channels*Trials*Millseconds)
 % structure with a {event}{trial}{frame*1}, where ever item is the
@@ -4741,6 +4745,8 @@ frameMotionDataNames = {frameMotionData(:).stimVid}';
 stimStartInd = psthParams.psthPre+lfpPaddedBy;
 stimEndInd = stimStartInd + psthParams.psthImDur;
 attendedObj = cell(length(analogInByEvent), 1);
+extractEye = @(n) squeeze(n(:,1:2,:,stimStartInd:stimEndInd)); %Reshapes analogInByEvent into eye signal.
+eyeInByEventAll = cellfun(extractEye,analogInByEvent, 'UniformOutput', false);
 
 shapeColors = {[1. 0. 0.];[0 .4 1.];[.1 .8 .1];[.1 .8 .1];[0 0 0];[1 .4 0]; ...
   [.7 0 0];[0 0 .7];[0 .5 0];[0 .5 0];[0 0 0];[1 .6 0]};
@@ -4748,31 +4754,12 @@ shapeColors = {[1. 0. 0.];[0 .4 1.];[.1 .8 .1];[.1 .8 .1];[0 0 0];[1 .4 0]; ...
 for stim_i = 1:length(eventIDs)
   %Get the size of the stimulus video, which will allow us to translate DVA
   %into pixels. might consider adding that to frameMotion at some point.
-  stimVidStruct = dir([stimDir '/**/' eventIDs{stim_i}]);
-  stimVidPath = [stimVidStruct(1).folder filesep stimVidStruct(1).name];
-  stimVid = VideoReader(stimVidPath);
-  stimFs = stimVid.FrameRate;
-  frames  = ceil((psthParams.psthImDur/1000)*stimFs);
-  sampFreq = psthParams.psthImDur/frames;
-  clear frameCountArray frameIndArray
-  frameCountArray = diff(round((1:frames)*sampFreq)); %each index is the number of points averaged to make a frame.
-  frameCountArray = [frameCountArray frameCountArray(end)]; %Diff chops off the end, so repeat it
-  %frameIndArray = zeros(psthImDur, 1);
-  frameIndArray = ones(frameCountArray(1), 1);
-  for avg_ind = 2:length(frameCountArray)
-    frameIndArray = [frameIndArray; ones(frameCountArray(avg_ind), 1)*avg_ind];
-  end
-  %Find each trial of the stimuli presented, Take the eye trace of each of these trials,
-  eyeInByEvent = squeeze(analogInByEvent{stim_i}(:,1:2,:,stimStartInd:stimEndInd)); %Grab the eye signal for an event
-  %Downsample the signal
-  eyeInAvg = zeros(size(eyeInByEvent,1), size(eyeInByEvent, 2), frames);
-  for eye_ind = 1:frames
-    eyeInAvg(:,:,eye_ind) = mean((eyeInByEvent(:,:,frameIndArray == eye_ind)),3);
-  end
-  eyeInByEvent = eyeInAvg;
-  
+  stimFs = frameMotionData.fps;
+  % Grab the eye signal for an event, and down sample it to the frame rate of the video
+  eyeInByEvent = downSampleSig(eyeInByEventAll{stim_i}, psthParams, stimFs); 
+
   %Shift to pixel space
-  pixelOrigin = [stimVid.Width/2 stimVid.Height/2];
+  pixelOrigin = [frameMotionData.width/2 frameMotionData.height/2];
   for eye_ind = 1:size(eyeInByEvent,1)
     eyeInByEvent(eye_ind, :, :) = (eyeInByEvent(eye_ind, :, :)*PixelsPerDegree(eye_ind)) + pixelOrigin(eye_ind);
   end
@@ -4794,7 +4781,6 @@ for stim_i = 1:length(eventIDs)
     %Reshape the info to make it easy to compare
     objRads = stimFrameMotionData.objRadii;
     objLocStack = [stimFrameMotionData.objLoc{:}];
-    
     
     for frame_i = 1:size(eyeInByEvent, 3)
       %for each frame, pull and reshape the apporpriate shape coords and
@@ -4895,15 +4881,72 @@ function [updatedByImageGroup, updatedEventIDs, resortInd] = clusterPaths(byImag
 % paths by sampling positions across regularly spaced frames and finding
 % consistent membership. it restructures the input "ByImageGroup", breaking
 % previous event groupings further based on different viewing patterns
+%Inputs:
+% - Some "ByImageGroup" array assumed to be
+% {event}{channel}{unit}.times in size and structure.
+% - analogInByEvent array,
+% {event}(1*Channels*Trial*psthPre+psthDur+psthPost), assumes channels 1
+% and 2 are eyeX and eyeY, respectively.
+% - psthParams and lfpPaddedBy, to parse analogInByEvent and extract eye
+% signal during stim presentation.
+% - eventIDs, an events*1 cell array of titles for the stim. 
+% - taskData
+%Outputs:
+% - resortInd, the index used to further split events into distinct events
+% based on eye signal cluster membership
+% - updatedByImageGroup, byImageGroup resorted based on resortInd.
+% - updatedEventIDs, eventIDs split to represent new event*eye groupings.
 
 %initialize indexing vector which will be used to reshape groups.
-disp('Breakpoint')
+stimStartInd = psthParams.psthPre+lfpPaddedBy;
+stimEndInd = stimStartInd + psthParams.psthImDur;
+eventCount = length(byImageGroup);
+
+extractEye = @(n) squeeze(n(:,1:2,:,stimStartInd:stimEndInd)); %Reshapes analogInByEvent into eye signal.
+dsSig60 = @(n) downSampleSig(n, psthParams, 60); %Pretending all the stimuli are at 60 fps, create function handle with needed inputs.
+
+eyeInByEventAll = cellfun(extractEye,analogInByEvent, 'UniformOutput', false);
+eyeInByEventAllDownSampled = cellfun(dsSig60, eyeInByEventAll, 'UniformOutput', false); %down sample the eye signal
 
 %Cycle through eye signals for each event and find distinct clusters,
 %return indicies for these clusters.
+for stim_i = 1:eventCount
+  eyeInByEvent = eyeInByEventAllDownSampled{stim_i}; %Grab the eye signal for an event
+  eyeInByEventReshaped = [];
+  for frame_i = 1:size(eyeInByEvent, 3)
+    eyeInByEventByFrame = squeeze(eyeInByEvent(:,:,frame_i))';
+    eyeInByEventReshaped = [eyeInByEventReshaped eyeInByEventByFrame];
+  end
+  
+  %To-do: Implement some sort of distance metric to compare different total
+  %paths. 
+  
+end
 
 %Recreate the original inputs with the new groupings.
 
+end
+
+function downSampledEyeInByEvent = downSampleSig(eyeInByEvent, psthParams, stimFs)
+%Function which down samples a signal (assumed to be 3D) present in the 3rd
+%dimension of the input vector (2 eyes * trials * samples for eye signal)
+%by averaging across samples present between points of interest.
+
+  frames  = ceil((psthParams.psthImDur/1000)*stimFs);
+  sampFreq = psthParams.psthImDur/frames;
+  clear frameCountArray frameIndArray
+  frameCountArray = diff(round((1:frames)*sampFreq)); %each index is the number of points averaged to make a frame.
+  frameCountArray = [frameCountArray frameCountArray(end)]; %Diff chops off the end, so repeat it
+  frameIndArray = ones(frameCountArray(1), 1);
+  for avg_ind = 2:length(frameCountArray)
+    frameIndArray = [frameIndArray; ones(frameCountArray(avg_ind), 1)*avg_ind];
+  end
+  %Downsample the signal
+  eyeInAvg = zeros(size(eyeInByEvent,1), size(eyeInByEvent, 2), frames);
+  for eye_ind = 1:frames
+    eyeInAvg(:,:,eye_ind) = mean((eyeInByEvent(:,:,frameIndArray == eye_ind)),3);
+  end
+  downSampledEyeInByEvent = eyeInAvg;
 end
 
 function sigStruct = stimPSTHoverlay(psthByImage, sortMask, inclusionMask, stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, translationTable, outDir)

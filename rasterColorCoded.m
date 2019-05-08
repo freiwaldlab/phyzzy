@@ -1,4 +1,4 @@
-function [ ] = raster( spikesByItem, pictureLabels, psthParams, ISI, channel_i, unit_i, colors )
+function [ ] = rasterColorCoded( spikesByItem, pictureLabels, psthParams, ISI, channel_i, unit_i, colors )
 %RASTER makes a raster plot in the current figure
 %    Note: if no spikes on any trial of an image, that image will not appear in legend
 
@@ -6,9 +6,10 @@ preAlign = psthParams.psthPre;
 postAlign = psthParams.psthPost;
 imDur = psthParams.psthImDur;
 
-xlim([-preAlign,imDur+postAlign]); 
+xlim([-preAlign,imDur+postAlign]);
 hold on;
 axis ij
+
 yLevel = 0; % accumulated trial index, sets height in raster
 legendHandles = [];
 for item_i = 1:length(spikesByItem)  
@@ -20,7 +21,6 @@ for item_i = 1:length(spikesByItem)
       plot([trialSpikes.times(spike_i) trialSpikes.times(spike_i)],[yLevel-0.4 yLevel+0.4],'color', colors(mod(item_i,size(colors,1)) + 1,:));% + 1),'-'));
     end
   end
-  %Plot relevant stimulus onset and offset marker
   h = plot([0 0],[yLevelStart yLevel],'color', colors(mod(item_i,size(colors,1)) + 1, :));
   legendHandles = vertcat(legendHandles,h);
   plot([imDur imDur],[yLevelStart yLevel],'color', colors(mod(item_i,size(colors,1)) + 1, :));

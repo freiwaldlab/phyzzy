@@ -363,12 +363,18 @@ if any(strfind(translationTable{1},'.avi'))
   load(frameMotionFile,'frameMotionData'); 
   %go through the translation table, comparing to frameMotionData.stimVid
   frameMotionNames = [{frameMotionData(:).stimVid}'];
-  tmpFrameMotionData = struct('stimVid',[],'objNames',[],'objShapes',[],'objRadii',[],'vidB_XShift',[],'objLoc',[]);
+  tmpFrameMotionData = struct('stimVid',[],'objNames',[],'objShapes',[],'objRadii',[],'vidB_XShift',[],'objLoc',[],'fps',[],'width',[],'height',[]);
   for table_i = 1:length(translationTable)
     dataInd = find(strcmp(frameMotionNames, translationTable{table_i}));
     if ~isempty(dataInd)
       tmpFrameMotionData(table_i) = frameMotionData(dataInd);
     else
+      tmpFrameMotionData(table_i) = frameMotionData(1);
+      tmpFrameMotionData(table_i).objNames = [];
+      tmpFrameMotionData(table_i).objShapes = [];
+      tmpFrameMotionData(table_i).objRadii = [];
+      tmpFrameMotionData(table_i).objLoc = [];
+      tmpFrameMotionData(table_i).vidB_XShift = [];
       tmpFrameMotionData(table_i).stimVid = translationTable{table_i};
     end
   end
