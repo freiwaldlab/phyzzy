@@ -4643,7 +4643,11 @@ end
 
 function eyeStimOverlay(stimDir, outDir, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData)
 %Function will visualize eye signal (and objects) on top of stimulus.
-shapeOverlay = 1; %Switch to turn on and off shape overlay.
+shapeOverlay = 1; %Switch for shape overlay.
+trialNumberOverlay = 1; %Switch for trial number overlay on eye signal.
+findMaxTrials = @(n) size(n,3);
+maxTrials = max(cellfun(findMaxTrials,analogInByEvent));
+colorMap = hsv(maxTrials)*255;
 
 if shapeOverlay
   PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
@@ -4651,7 +4655,6 @@ if shapeOverlay
   frameMotionDataNames = {frameMotionData(:).stimVid}';
 end
 
-colors = {'red','green','blue'};
 shapeColors = {[1. 0. 0.];[0 .4 1.];[.1 .8 .1];[.1 .8 .1];[0 0 0];[1 .4 0]; ...
   [.7 0 0];[0 0 .7];[0 .5 0];[0 .5 0];[0 0 0];[1 .6 0]}; %Faces, Bodies, Hands, Obj, bkg
 
@@ -4729,9 +4732,13 @@ for stim_i = 1:length(eventIDs)
     %Add the eye signal
     for trial_i = 1:size(eyeInByEvent, 2)
       coords = (eyeInByEvent(:, trial_i, frame_ind));
-      img1 = insertShape(img1, 'Circle',[coords(1) coords(2) 1],'LineWidth',3,'Color',colors{mod(trial_i-1,length(colors))+1});
+      if trialNumberOverlay
+        img1 = insertShape(img1, 'Circle',[coords(1) coords(2) 1],'LineWidth',5,'Color','yellow');
+        img1 = insertText(img1,[coords(1)-5 coords(2)-7],num2str(trial_i),'BoxOpacity' ,0,'FontSize', 8);
+      else
+        img1 = insertShape(img1, 'Circle',[coords(1) coords(2) 1],'LineWidth',5,'Color',colorMap(trial_i,:));
+      end
     end
-    
     frame_ind = frame_ind + 1;      % step the video
     writeVideo(outputVideo, img1);  % Add the new Frame
   end
