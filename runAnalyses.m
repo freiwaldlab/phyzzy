@@ -4752,6 +4752,8 @@ function attendedObjData = calcEyeObjectTrace(psthByImage, psthParams, lfpPadded
 % structure with a {event}{trial}{frame*1}, where ever item is the
 % name of what is being fixated on.
 
+plotType = 'trace'; %'area';%
+
 PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
 frameMotionData = taskData.frameMotionData;
 frameMotionDataNames = {frameMotionData(:).stimVid}';
@@ -4821,76 +4823,124 @@ for stim_i = 1:length(eventIDs)
   end
 end
 
+
+
 %Plot the Result as an area plot, where X = frames
-areaColors = [shapeColors{:} {[.5 .5 .5]}]; %Shape colors + Background 
-firstChar = @(n) [n(1) n(end-1:end)]; %Pulls the first character and last character of the strong.
-objAbrList = [cellfun(firstChar, frameMotionData(1).objNames, 'UniformOutput', false) {'bkg'}]';
+areaColors = [shapeColors{:} {[.5 .5 .5]}]'; %Shape colors + Background
+objList = [frameMotionData(1).objNames, {'bkg'}]';
 
-for channel_i = 1:length(psthByImage)
-  for event_i = 1:length(eventIDs)
-    psthTitle = sprintf('Per Image Area eye plot Ch %d, %s', channel_i, eventIDs{event_i});
-    figure('Name',psthTitle,'NumberTitle','off');
-    subplot(2, 1, 1)
-    %For every event, grab the relevant data and initialize the "counts"
-    %matrix for each object.
-    attendedObjectEvent = attendedObjVect{event_i};
-    firstCharPerFrame = cellfun(firstChar, attendedObjectEvent, 'UniformOutput', false); % a Trial * Frame array of the first letter of each object.
-    areaPlotData = zeros(size(firstCharPerFrame, 2), length(objAbrList)); %Frames * Unique objects
-    for frame_ind = 1:size(firstCharPerFrame, 2)
-      %For each frame, cycle through objects and see whats attended. Create a
-      %total count of the 13 objects and the number of trials in which they
-      %are attended to.
-      frameObjAttended = firstCharPerFrame(:,frame_ind);
-      [A, ~, C] = unique(frameObjAttended);
-      a_counts = accumarray(C,1);
-      for obj_ind = 1:length(A)
-        dataInd = strcmp(objAbrList, A{obj_ind});
-        assert(sum(dataInd) == 1);
-        areaPlotData(frame_ind, dataInd) = a_counts(obj_ind);
+switch plotType
+  case 'area'
+    for channel_i = 1:length(psthByImage)
+      for event_i = 1:length(eventIDs)
+        psthTitle = sprintf('Per Image Area eye plot Ch %d, %s', channel_i, eventIDs{event_i});
+        figure('Name',psthTitle,'NumberTitle','off');
+        subplot(2, 1, 1)
+        %For every event, grab the relevant data and initialize the "counts"
+        %matrix for each object.
+        attendedObjectEvent = attendedObjVect{event_i};
+        areaPlotData = zeros(size(attendedObjectEvent, 2), length(objList)); %Frames * Unique objects
+        for frame_ind = 1:size(attendedObjectEvent, 2)
+          %For each frame, cycle through objects and see whats attended. Create a
+          %total count of the 13 objects and the number of trials in which they
+          %are attended to.
+          frameObjAttended = attendedObjectEvent(:,frame_ind);
+          [A, ~, C] = unique(frameObjAttended);
+          a_counts = accumarray(C,1);
+          for obj_ind = 1:length(A)
+            dataInd = strcmp(objList, A{obj_ind});
+            assert(sum(dataInd) == 1);
+            areaPlotData(frame_ind, dataInd) = a_counts(obj_ind);
+          end
+        end
+        areaPlotDataNorm = areaPlotData./size(attendedObjectEvent,1);
+        areaPlotHandle = area(areaPlotDataNorm); %Plot normalized values
+        %Make it presentable.
+        title(eventIDs{event_i})
+        xlim([1 size(attendedObjectEvent, 2)])
+        ylim([0 1])
+        for face_i = 1:length(areaPlotHandle)
+          areaPlotHandle(face_i).FaceColor = areaColors{face_i};
+        end
+        legend([frameMotionData(1).objNames {'bkg'}])
+        
+        %Underneath, plot the activity of all identified units with a PSTH
+        unitCount = length(psthByImage{channel_i});
+        psthHandle = subplot(2, 1, 2);
+        %Create a PSTH of responses to this event specifically
+        eventPSTH = zeros(unitCount, stimEndInd-stimStartInd);
+        %Labeling related code
+        if unitCount > 2
+          unitLabels = cell(unitCount,1);
+          unitLabels{1} = 'Unsorted';
+          unitLabels{end} = 'MUA';
+          for unit_ind = 1:unitCount - 2
+            unitLabels{unit_ind+1} = ['Unit ' num2str(unit_ind)];
+          end
+        else
+          unitLabels = {'Unsorted', 'MUA'};
+        end
+        %Gather the correct data
+        for unit_i = 1:unitCount
+          eventPSTH(unit_i,:) = psthByImage{channel_i}{unit_i}(event_i,stimStartInd:stimEndInd-1);
+        end
+        psthParams.psthPre = 0;
+        psthParams.psthPost = 0;
+        plotPSTH(eventPSTH, psthHandle, psthParams, 'color', psthTitle, unitLabels);
       end
     end
-    areaPlotDataNorm = areaPlotData./size(attendedObjectEvent,1);
-    areaPlotHandle = area(areaPlotDataNorm); %Plot normalized values
-    %Make it presentable.
-    title(eventIDs{event_i})
-    xlim([1 size(firstCharPerFrame, 2)])
-    ylim([0 1])
-    for face_i = 1:length(areaPlotHandle)
-      areaPlotHandle(face_i).FaceColor = areaColors{face_i};
+  case 'trace'
+    tag2color = @(n) areaColors{strcmp(objList, n)}; %Returns appropriate color for each object
+    for channel_i = 1:length(psthByImage)
+      for event_i = 1:length(eventIDs)
+        psthTitle = sprintf('Per Image Trace Ch %d, %s', channel_i, eventIDs{event_i});
+        figure('Name',psthTitle,'NumberTitle','off');
+        subplot(2, 1, 1)
+        %For every event, grab the correct color
+        attendedObjectEvent = attendedObjVect{event_i};
+        attendObjColorMat = cellfun(tag2color, attendedObjectEvent, 'UniformOutput', false); % a Trial * Frame array of the first letter of each object.
+        tracePlotData = zeros(size(attendObjColorMat, 1), size(attendObjColorMat, 2), 3); %Frames * Unique * colors objects
+        for trial_i = 1:size(attendObjColorMat,1)
+          for frame_i = 1:size(attendObjColorMat,2)
+            tracePlotData(trial_i, frame_i, :) = attendObjColorMat{trial_i, frame_i};
+          end
+        end
+        image(tracePlotData);
+        %Make it presentable.
+        title(eventIDs{event_i});
+        legend([frameMotionData(1).objNames {'bkg'}]);
+        %Underneath, plot the activity of all identified units with a PSTH
+        unitCount = length(psthByImage{channel_i});
+        psthHandle = subplot(2, 1, 2);
+        %Create a PSTH of responses to this event specifically
+        eventPSTH = zeros(unitCount, stimEndInd-stimStartInd);
+        %Labeling related code
+        if unitCount > 2
+          unitLabels = cell(unitCount,1);
+          unitLabels{1} = 'Unsorted';
+          unitLabels{end} = 'MUA';
+          for unit_ind = 1:unitCount - 2
+            unitLabels{unit_ind+1} = ['Unit ' num2str(unit_ind)];
+          end
+        else
+          unitLabels = {'Unsorted', 'MUA'};
+        end
+        %Gather the correct data
+        for unit_i = 1:unitCount
+          eventPSTH(unit_i,:) = psthByImage{channel_i}{unit_i}(event_i,stimStartInd:stimEndInd-1);
+        end
+        psthParams.psthPre = 0;
+        psthParams.psthPost = 0;
+        plotPSTH(eventPSTH, psthHandle, psthParams, 'color', psthTitle, unitLabels);
+      end
     end
-    legend([frameMotionData(1).objNames {'bkg'}])
     
-    %Underneath, plot the activity of all identified units with a PSTH
-    unitCount = length(psthByImage{channel_i});
-    psthHandle = subplot(2, 1, 2);
-    %Create a PSTH of responses to this event specifically
-    eventPSTH = zeros(unitCount, stimEndInd-stimStartInd);
-    %Labeling related code
-    if unitCount > 2
-      unitLabels = cell(unitCount,1);
-      unitLabels{1} = 'Unsorted';
-      unitLabels{end} = 'MUA';
-      for unit_ind = 1:unitCount - 2
-        unitLabels{unit_ind+1} = ['Unit ' num2str(unit_ind)];
-      end
-    else
-      unitLabels = {'Unsorted', 'MUA'};
-    end
-    %Gather the correct data
-    for unit_i = 1:unitCount
-      eventPSTH(unit_i,:) = psthByImage{channel_i}{unit_i}(event_i,stimStartInd:stimEndInd-1);
-    end
-    psthParams.psthPre = 0;
-    psthParams.psthPost = 0;
-    plotPSTH(eventPSTH, psthHandle, psthParams, 'color', psthTitle, unitLabels);
-  end
 end
-
 %Package outputs
 attendedObjData.eventIDs = eventIDs;
 attendedObjData.attendedObjVect = attendedObjVect;
 attendedObjData.colorCode = areaColors';
-attendedObjData.objList = [frameMotionData(1).objNames {'bkg'}]';
+attendedObjData.objList = objList;
 attendedObjData.frameStartInd = frameStartInd;
 attendedObjData.frameEndInd = frameEndInd;
 end
