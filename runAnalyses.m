@@ -528,6 +528,24 @@ if ~taskData.RFmap
         figData.x = -psthPre:psthImDur+psthPost;
         raster(spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedImageLabels(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, colors);
         title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+        if isfield(plotSwitch,'attendedObjRasterOverlay') && plotSwitch.attendedObjRasterOverlay
+          rasterAxes = gca;
+          rasterAxes_pos = rasterAxes.Position;
+          ax2 = axes('Position',rasterAxes_pos, 'Color','none');
+          attObjDatatmp = attendedObjData.tracePlotData(imageSortOrder(1:topStimToPlot))';
+          attObjData = cat(1, attObjDatatmp{1:end});
+          %Add in prep and post
+          im = image(attObjData);
+          im.AlphaData = 0.5;
+          axis off
+          % Create the attendedObj data in the correct layout.
+          
+          %   Grab the right figure/axes handle to point the function to.
+          %   copy the figure for each unit?
+          %   Might need to remove spikes before and after stimuli
+          %   presentation, or modify the attendObj function to iplotSwitch.attendedObjRasterOverlaynclude the
+          %   right pre and post space.
+        end
         saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
         if closeFig
           close(fh);
@@ -4762,12 +4780,13 @@ stimStartInd = psthParams.psthPre+lfpPaddedBy;
 stimEndInd = stimStartInd + psthParams.psthImDur;
 attendedObjVect = cell(length(analogInByEvent), 1);
 extractEye = @(n) squeeze(n(:,1:2,:,stimStartInd:stimEndInd)); %Reshapes analogInByEvent into eye signal.
-eyeInByEventAll = cellfun(extractEye,analogInByEvent, 'UniformOutput', false);
+eyeInByEventAll = cellfun(extractEye, analogInByEvent, 'UniformOutput', false);
 
 shapeColors = {[1. 0. 0.];[0 .4 1.];[.1 .8 .1];[.1 .8 .1];[0 0 0];[1 .4 0]; ...
   [.7 0 0];[0 0 .7];[0 .5 0];[0 .5 0];[0 0 0];[1 .6 0]};
 
 [frameStartInd, frameEndInd] = deal(cell(length(eventIDs),1));%Initialize vector of indicies which will be passed out.
+maxFrame = 0;
 
 for stim_i = 1:length(eventIDs)
   %find the correct frameMotionData
@@ -4782,8 +4801,11 @@ for stim_i = 1:length(eventIDs)
     eyeInByEvent(eye_ind, :, :) = (eyeInByEvent(eye_ind, :, :)*PixelsPerDegree(eye_ind)) + pixelOrigin(eye_ind);
   end
 
-  %Initialize the output cell array.
+  %Initialize the output cell array and store max frame.
   attendedObjVect{stim_i} = cell(size(eyeInByEvent, 2), size(eyeInByEvent, 3));
+  if ~(maxFrame > size(eyeInByEvent, 3))
+    maxFrame = size(eyeInByEvent, 3);
+  end
   
   if ~isempty(stimFrameMotionData.objNames) %Landscapes/Scrambles
     %Make variables for each object. Not a clean way of doing this
@@ -4823,11 +4845,26 @@ for stim_i = 1:length(eventIDs)
   end
 end
 
+%Scaling everything to the max frame count to make it stackable later.
+for stim_i = 1:length(attendedObjVect)
+  if size(attendedObjVect{stim_i},2) < maxFrame
+    %for now, since I know this solution works for the videos I'm using,
+    %I'll be doubling the vector, then chopping off any extra at the end.
+    tmpArray = cell(size(attendedObjVect{stim_i},1), size(attendedObjVect{stim_i},2)*2);
+    for frame_ind = 1:size(attendedObjVect{stim_i},2)
+      tmpArray(:,frame_ind*2) = attendedObjVect{stim_i}(:,frame_ind);
+      tmpArray(:,(frame_ind*2)-1) = attendedObjVect{stim_i}(:,frame_ind);
+    end
+    attendedObjVect{stim_i} = tmpArray(:,1:maxFrame);
+  end
+end
 
 
 %Plot the Result as an area plot, where X = frames
 areaColors = [shapeColors{:} {[.5 .5 .5]}]'; %Shape colors + Background
 objList = [frameMotionData(1).objNames, {'bkg'}]';
+handleArray = gobjects(length(psthByImage), length(eventIDs));
+tracePlotData = cell(1,length(eventIDs));
 
 switch plotType
   case 'area'
@@ -4894,18 +4931,18 @@ switch plotType
     for channel_i = 1:length(psthByImage)
       for event_i = 1:length(eventIDs)
         psthTitle = sprintf('Per Image Trace Ch %d, %s', channel_i, eventIDs{event_i});
-        figure('Name',psthTitle,'NumberTitle','off');
+        handleArray(channel_i, event_i) = figure('Name', psthTitle, 'NumberTitle','off','visible','off');
         subplot(2, 1, 1)
         %For every event, grab the correct color
         attendedObjectEvent = attendedObjVect{event_i};
         attendObjColorMat = cellfun(tag2color, attendedObjectEvent, 'UniformOutput', false); % a Trial * Frame array of the first letter of each object.
-        tracePlotData = zeros(size(attendObjColorMat, 1), size(attendObjColorMat, 2), 3); %Frames * Unique * colors objects
+        tracePlotData{event_i} = zeros(size(attendObjColorMat, 1), size(attendObjColorMat, 2), 3); %Frames * Unique * colors objects
         for trial_i = 1:size(attendObjColorMat,1)
           for frame_i = 1:size(attendObjColorMat,2)
-            tracePlotData(trial_i, frame_i, :) = attendObjColorMat{trial_i, frame_i};
+            tracePlotData{event_i}(trial_i, frame_i, :) = attendObjColorMat{trial_i, frame_i};
           end
         end
-        image(tracePlotData);
+        image(tracePlotData{event_i});
         %Make it presentable.
         title(eventIDs{event_i});
         legend([frameMotionData(1).objNames {'bkg'}]);
@@ -4939,10 +4976,12 @@ end
 %Package outputs
 attendedObjData.eventIDs = eventIDs;
 attendedObjData.attendedObjVect = attendedObjVect;
+attendedObjData.tracePlotData = tracePlotData;
 attendedObjData.colorCode = areaColors';
 attendedObjData.objList = objList;
 attendedObjData.frameStartInd = frameStartInd;
 attendedObjData.frameEndInd = frameEndInd;
+attendedObjData.handleArray = handleArray;
 end
 
 function [updatedByImageGroup, updatedEventIDs, resortInd] = clusterPaths(byImageGroup, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData)
