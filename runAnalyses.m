@@ -528,24 +528,6 @@ if ~taskData.RFmap
         figData.x = -psthPre:psthImDur+psthPost;
         raster(spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedImageLabels(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, colors);
         title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
-        if isfield(plotSwitch,'attendedObjRasterOverlay') && plotSwitch.attendedObjRasterOverlay
-          rasterAxes = gca;
-          rasterAxes_pos = rasterAxes.Position;
-          ax2 = axes('Position',rasterAxes_pos, 'Color','none');
-          attObjDatatmp = attendedObjData.tracePlotData(imageSortOrder(1:topStimToPlot))';
-          attObjData = cat(1, attObjDatatmp{1:end});
-          %Add in prep and post
-          im = image(attObjData);
-          im.AlphaData = 0.5;
-          axis off
-          % Create the attendedObj data in the correct layout.
-          
-          %   Grab the right figure/axes handle to point the function to.
-          %   copy the figure for each unit?
-          %   Might need to remove spikes before and after stimuli
-          %   presentation, or modify the attendObj function to iplotSwitch.attendedObjRasterOverlaynclude the
-          %   right pre and post space.
-        end
         saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
         if closeFig
           close(fh);
@@ -4661,14 +4643,16 @@ end
 
 function eyeStimOverlay(stimDir, outDir, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData)
 %Function will visualize eye signal (and objects) on top of stimulus.
+
 shapeOverlay = 1; %Switch for shape overlay.
 trialNumberOverlay = 1; %Switch for trial number overlay on eye signal.
+
 findMaxTrials = @(n) size(n,3);
 maxTrials = max(cellfun(findMaxTrials,analogInByEvent));
 colorMap = hsv(maxTrials)*255;
+PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
 
 if shapeOverlay
-  PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
   frameMotionData = taskData.frameMotionData;
   frameMotionDataNames = {frameMotionData(:).stimVid}';
 end
@@ -4846,8 +4830,10 @@ for stim_i = 1:length(eventIDs)
 end
 
 %Scaling everything to the max frame count to make it stackable later.
+updatedFramesInd = [];
 for stim_i = 1:length(attendedObjVect)
   if size(attendedObjVect{stim_i},2) < maxFrame
+    updatedFramesInd = [updatedFramesInd stim_i];
     %for now, since I know this solution works for the videos I'm using,
     %I'll be doubling the vector, then chopping off any extra at the end.
     tmpArray = cell(size(attendedObjVect{stim_i},1), size(attendedObjVect{stim_i},2)*2);
@@ -4856,9 +4842,14 @@ for stim_i = 1:length(attendedObjVect)
       tmpArray(:,(frame_ind*2)-1) = attendedObjVect{stim_i}(:,frame_ind);
     end
     attendedObjVect{stim_i} = tmpArray(:,1:maxFrame);
+  else
+    frameIndSwapIndex = stim_i;
   end
 end
 
+%Overwrite the frame indexes with previous written ones for a longer stimuli
+[frameStartInd{updatedFramesInd}] = deal(frameStartInd{frameIndSwapIndex});
+[frameEndInd{updatedFramesInd}] = deal(frameEndInd{frameIndSwapIndex});
 
 %Plot the Result as an area plot, where X = frames
 areaColors = [shapeColors{:} {[.5 .5 .5]}]'; %Shape colors + Background
