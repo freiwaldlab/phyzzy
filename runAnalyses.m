@@ -338,16 +338,23 @@ end
 if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
   for channel_i = 1:length(channelNames)
     for unit_i = 1:length(channelUnitNames{channel_i})
-      %Calculate Baseline in PSTH by taking the average of all bins in the
-      %Pre-stimulus period
-%       for ii = 1:size(psthByImage{channel_i}{unit_i},1)
-%         preStimBaseline = mean(psthByImage{channel_i}{unit_i}(ii,:)); %Baseline Subtraction.
-%         psthByImage{channel_i}{unit_i}(ii,:) = psthByImage{channel_i}{unit_i}(ii,:) - preStimBaseline; %Baseline subtraction.
-%       end
+      psthTitle = sprintf('Per Image PSTH %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+      if isfield(psthParams,'Zscore') && psthParams.Zscore
+        %Calculate Baseline in PSTH by taking the average of all bins in the Pre-stimulus period
+        psthTitle = [psthTitle ' - Z scored'];
+        for ii = 1:size(psthByImage{channel_i}{unit_i},1)
+          if psthParams.Zscore == 1
+            preStimBaseline = mean(psthByImage{channel_i}{unit_i}(ii,1:psthPre)); %(Baseline) Mean Subtraction.
+            psthByImage{channel_i}{unit_i}(ii,:) = (psthByImage{channel_i}{unit_i}(ii,:) - preStimBaseline)/std(psthByImage{channel_i}{unit_i}(ii,:)); %Z score.
+          else
+            stimBaseline = mean(psthByImage{channel_i}{unit_i}(ii,:)); % Mean Subtraction.
+            psthByImage{channel_i}{unit_i}(ii,:) = (psthByImage{channel_i}{unit_i}(ii,:) - stimBaseline)/std(psthByImage{channel_i}{unit_i}(ii,:)); %Z score.
+          end
+        end
+      end
       if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
         continue;
       end
-      psthTitle = sprintf('Per Image PSTH %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
       figure('Name',psthTitle,'NumberTitle','off');
       if isfield(psthParams, 'sortStim') && psthParams.sortStim
         if ~exist('NewStimOrder')
