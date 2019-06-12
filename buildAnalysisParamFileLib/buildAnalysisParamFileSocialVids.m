@@ -25,10 +25,10 @@ switch machine
     outputVolume = 'C:/Data 2018/Analyzed_V4';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
     stimDir = 'G:/StimuliForFaridfromJulia/SocialCategories';
-  case 'kekean-pc'
+  case 'DataAnalysisPC'
     ephysVolume = 'Z:/';
     stimulusLogVolume = 'Y:/SocialvNonSocial - random';
-    outputVolume = 'C:/Users/Farid/Desktop/phyzzy/Analysis';
+    outputVolume = 'C:/Users/Farid/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'C:/Users/Farid/Desktop/phyzzy/StimParamFileSocialVids_V2.mat';                  %#ok
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
@@ -45,7 +45,7 @@ switch machine
     stimulusLogVolume = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
     outputVolume = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok
-    stimDir = 'G:/StimuliForFaridfromJulia/SocialCategories';
+    stimDir = 'G:/StimuliForFaridfromJulia/SocialCategories';       
 end
 analysisLabel = 'Basic';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
@@ -241,7 +241,7 @@ psthParams.psthPost = 500;
 psthParams.latency = 0;
 psthParams.movingWin = tfParams.movingWin;
 psthParams.smoothingWidth = 25;  %psth smoothing width, in ms
-psthParams.Zscore = 1;  % 0: raw PSTH, 1: pre-trial baseline subtraction Z Scored PSTH, 2: whole trial baseline subtracted Z Scored PSTH
+psthParams.Zscore = 0;  % 0: raw PSTH, 1: pre-trial baseline subtraction Z Scored PSTH, 2: whole trial baseline subtracted Z Scored PSTH
 psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;

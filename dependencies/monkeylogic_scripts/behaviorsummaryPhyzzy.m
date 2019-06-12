@@ -27,51 +27,67 @@ blockorder = block([1 blockswitch+1]);
 errortype = [data.TrialError];
 ntrial = length(trial);
 corrInd = find(errortype == 0, 1);
-userVars = data(corrInd).UserVars;
-userVars2 = data(corrInd).VariableChanges;
+userVars = data(corrInd).UserVars; %Created by bhv_variable fxn.
+userVars2 = data(corrInd).VariableChanges; % Created by editable fxn.
 
-if ~isfield(userVars,'clipDuration')
-  filebits = strsplit(filepath, '/');
-  filebits = cell2mat(fullfile(filebits(1:end-1),'/'));
-  %If called individually on PC
-  if isempty(filebits)
-    filebits = strsplit(filepath, '\');
-    filebits = cell2mat(fullfile(filebits(1:end-1),'\'));
-  end
-  xlsxLog = dir([filebits 'Recordings*.xlsx']);
-  [~, ~, raw] = xlsread([xlsxLog.folder filesep xlsxLog.name]);
-  
+%
+filebits = strsplit(filepath, '/');
+filebits = cell2mat(fullfile(filebits(1:end-1),'/'));
+%If called individually on PC
+if isempty(filebits)
+  filebits = strsplit(filepath, '\');
+  filebits = cell2mat(fullfile(filebits(1:end-1),'\'));
+end
+xlsxLog = dir([filebits 'Recordings*.xlsx']);
+%If you can find an xls log file, open it.
+if ~isempty(xlsxLog)
   %Find the index for data based on the titles of the columns
-  electrodeInd = strcmp(raw(1,:),'impedance (MOhms)');
-  holeMLInd = find(strcmp(raw(1,:),'ML'));
-  holeAPInd = find(strcmp(raw(1,:),'AP'));
-  recordingInd = strcmp(raw(1,:),'putative distance');
-  thresInd = strcmp(raw(1,:),'threshold (microVolts)');
-  recActComInd = strcmp(raw(1,:),'comments on signal');
+  [~, ~, raw] = xlsread([xlsxLog.folder filesep xlsxLog.name]);
   recID = strcmp(raw(1,:),'recording');
-  regionInd = strcmp(raw(1,:),'putative region');
-  commInd = strcmp(raw(1,:),'online analysis');
-  try
-    rowID = find(strcmp(raw(:,recID),n));
-    assert(~isempty(rowID),' no matching row found in xls')
+  rowID = find(strcmp(raw(:,recID),n));
+  %If there is a matching recordingID, start pulling variables from it.
+  if ~isempty(rowID) %If the row is present, use any variables present to overwrite what was present in the MKL Table +
+    %(for instances b/t July - Dec where runs weren't updated, correct info is pulled from Log book).
     %Pull the data from those columns, using the "Recording" column to
     %match days to runs.
-    userVars.rewardSD = 0;
-    userVars.rewardTimeMean = MLConfig.RewardFuncArgs.Duration;
-    userVars.clipDuration = data(corrInd).ObjectStatusRecord.SceneParam(2).AdapterArgs{1,3}{3};
-    userVars2.comments = raw{rowID,commInd};
-    userVars2.gridHole = [num2str(raw{rowID,holeMLInd}) '-' num2str(raw{rowID,holeAPInd})]; %#ok<FNDSB>
-    userVars2.electrodeImp = raw{rowID,electrodeInd};
-    userVars2.recordingDepth = raw{rowID,recordingInd};
-    userVars2.putativeRegion = raw{rowID,regionInd};
-    userVars2.thresholdSetting = raw{rowID,thresInd};
-    userVars2.activityComments = raw{rowID,recActComInd};
-  catch
-    warning('MonkeyLogic xls lacks fields to populate figure')
-    userVars.rewardSD = 0;
-    [userVars.rewardTimeMean, userVars.clipDuration, userVars2.comments, userVars2.gridHole, userVars2.electrodeImp,...
-      userVars2.recordingDepth, userVars2.putativeRegion, userVars2.thresholdSetting,userVars2.activityComments] = deal('Not Found');
+    electrodeInd = strcmp(raw(1,:),'impedance (MOhms)');
+    holeMLInd = find(strcmp(raw(1,:),'ML'));
+    holeAPInd = find(strcmp(raw(1,:),'AP'));
+    recordingInd = strcmp(raw(1,:),'putative distance');
+    recActComInd = strcmp(raw(1,:),'comments on signal');
+    regionInd = strcmp(raw(1,:),'putative region');
+    commInd = strcmp(raw(1,:),'online analysis');
+    
+    userVars2Temp.activityComments = raw{rowID,recActComInd};
+    userVars2Temp.comments = raw{rowID,commInd};
+    userVars2Temp.electrodeImp = raw{rowID,electrodeInd};
+    userVars2Temp.gridHole = [num2str(raw{rowID,holeMLInd}) '-' num2str(raw{rowID,holeAPInd})];
+    userVars2Temp.putativeRegion = raw{rowID,regionInd};
+    userVars2Temp.recordingDepth = raw{rowID,recordingInd};
+    userVars2Temp.rewardFreq = 1;
+    
+    %Extract values from XLS are sometimes NaN, which must be treated
+    %correctly.
+    varFields = fields(userVars2Temp);
+    for field_i = 1:length(fields(userVars2Temp))
+      %If the XLS has anything, we assume its right, if the experimental
+      %data struct is missing the field, or has it empty, we put NaN
+      %anyway.
+      if any(~isnan(eval(sprintf('userVars2Temp.%s', varFields{field_i})))) || (isempty(eval(sprintf('userVars2.%s', varFields{field_i}))) || ~isfield(userVars2, varFields{field_i}))
+          eval(sprintf('userVars2.%s = userVars2Temp.%s;', varFields{field_i}, varFields{field_i}))
+      end
+    end
   end
+end
+
+%If we're missing other reward related variables, which weren't logged in
+%Aug/July, fill them in from the trial data.
+if ~isfield(userVars,'clipDuration')
+  userVars.clipStartTime = 0;
+  userVars.clipDuration = data(corrInd).ObjectStatusRecord.SceneParam(2).AdapterArgs{1,3}{3};
+  RewardTmp = [data.RewardRecord];
+  userVars.rewardTimeMean = round(mean([RewardTmp.EndTimes]-[RewardTmp.StartTimes]));
+  userVars.rewardSD = 0; %Experiments where this isn't recorded were before this was used, and therefore must be close to 0.
 end
 
 % constants
@@ -93,7 +109,7 @@ hFig =   figure('Name','MonkeyLogic Behavioral Summary','NumberTitle','off');
 set(hFig, 'tag','behaviorsummary', 'numbertitle','off'); %'color',figure_bgcolor);
 
 % performance plot
-perfplot = subplot(2,1,1,'position',[0 0.5 1 0.5]);
+perfplot = subplot('position',[0 0.5 1 0.5]);
 set(gca, 'ylim',[0 1], 'position',[0.08 0.65 0.5 0.3], 'box','on');
 
 hold on;
@@ -156,7 +172,7 @@ else                     % smoothe the performance curve if there are 50 trials 
 end
 
 % Recording Site Image
-recordingSite = subplot(2,1,2,'position',[0.6 0.65 0.35 0.3]);
+recordingSite = subplot('position',[0.6 0.65 0.35 0.3]);
 monthYearRec = data(1).TrialDateTime(1)*100+data(1).TrialDateTime(2); %Determine the month/year of the recording
 if monthYearRec < 201808
   %If recording took place prior to August 2018, Old Grid
@@ -165,7 +181,7 @@ if monthYearRec < 201808
   gridStep = 34;
   holeDiam = 14;
   MLOffset = 1;
-elseif monthYearRec < 201901 %New Grid was used (August - Dec 2018)
+else %monthYearRec < 201901 %New Grid was used (August - Dec 2018)
   gridPic = imread('C:\Data 2018\GridPics\Grid_v2.png');
   gridOrigin = [60 70];
   gridStep = 45.5;
@@ -266,7 +282,7 @@ y = y - lineinterval;
 uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Recording Depth: %s um',num2str(userVars2.recordingDepth)), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
 y = y - lineinterval;
-uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Threshold level: %s mV',num2str(userVars2.thresholdSetting)), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
+uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('Reward Freq: %s',num2str(userVars2.rewardFreq)), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
 y = y - lineinterval*2.5;
 uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w-20 22*2.5],'string',sprintf('Activity comments: %s',userVars2.activityComments), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
