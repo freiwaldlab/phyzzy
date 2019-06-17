@@ -292,7 +292,7 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {@(stimDur) stimDur+60, @(stimDur) stimDur+260}}; %#ok
 
 plotSwitch.imageEyeMap = 0;
-plotSwitch.eyeCorralogram = 0; %Eye Gram
+plotSwitch.eyeCorralogram = 1; %Eye Gram
 plotSwitch.attendedObject = 1; %Vectors to distinguish where subject is looking.
 plotSwitch.eyeStimOverlay = 0; %Visualize eye traces on stimuli.
 plotSwitch.clusterOnEyePaths = 0; %Resort spikes based on distinct eye paths, make "New events".

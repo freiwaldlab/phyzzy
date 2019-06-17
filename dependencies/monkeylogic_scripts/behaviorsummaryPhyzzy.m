@@ -11,7 +11,12 @@ if exist('filename','var')
 else
   [file,path] = uigetfile({'*.mat;*.bhv2;*.h5;','MonkeyLogic Files (*.mat,*.bhv2,*.h5)'},...
    'Select a File');
+ if file == 0
+   disp('No file selected, Function aborted');
+   return
+ else
   filename = [path file];
+ end
 end
 
 %Load the necessary data and set the appropriate paths
@@ -73,7 +78,7 @@ if ~isempty(xlsxLog)
       %If the XLS has anything, we assume its right, if the experimental
       %data struct is missing the field, or has it empty, we put NaN
       %anyway.
-      if any(~isnan(eval(sprintf('userVars2Temp.%s', varFields{field_i})))) || (isempty(eval(sprintf('userVars2.%s', varFields{field_i}))) || ~isfield(userVars2, varFields{field_i}))
+      if any(~isnan(eval(sprintf('userVars2Temp.%s', varFields{field_i})))) || (~isfield(userVars2, varFields{field_i}) || isempty(eval(sprintf('userVars2.%s', varFields{field_i}))))
           eval(sprintf('userVars2.%s = userVars2Temp.%s;', varFields{field_i}, varFields{field_i}))
       end
     end
@@ -107,6 +112,7 @@ corder(1,1:11,1:3) = colororder(1:11,1:3);
 % fig_pos = [fx fy fw fh];
 hFig =   figure('Name','MonkeyLogic Behavioral Summary','NumberTitle','off');
 set(hFig, 'tag','behaviorsummary', 'numbertitle','off'); %'color',figure_bgcolor);
+hFig.ResizeFcn = @figScale;
 
 % performance plot
 perfplot = subplot('position',[0 0.5 1 0.5]);
@@ -267,7 +273,7 @@ uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'st
 
 attempted = sum(errortype ~= 4);
 y = y - lineinterval;
-uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22],'string',sprintf('True success rate: %.2f%% (= %d / %d)',correct/attempted*100,correct,attempted), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
+uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w 22*2],'string',sprintf('True success rate: %.2f%% (= %d / %d)',correct/attempted*100,correct,attempted), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 
 %Draw to the next column;
 lineinterval = 21;
@@ -292,4 +298,33 @@ if isfield(userVars2,'comments')
   uicontrol('parent',hFig,'style','text','units','pixel','position',[x y w-20 22*3],'string',sprintf('General Comments: %s',userVars2.comments), 'fontsize',fontsize,'fontweight','bold','horizontalalignment','left');
 end
 
+%Change all units to normalized.
+origRatios = zeros(length(hFig.Children)-2,4);
+
+for child_ind = 1:length(hFig.Children)-2 %The last 2 are the axes.
+  hFig.Children(child_ind).Units = 'normalized';
+  origRatios(child_ind,:) = hFig.Children(child_ind).Position;
+end
+
+hFig.UserData = origRatios;
+
+end
+
+function figScale(src , event)
+% a callback, called in response to the figure being resized, which will
+% scale the text of the figure in response. to the size change.
+
+%In the default size window, box is 560*420 pixels (W * H)), Font is 10. If the
+%window is resized, maintain that ratio (average bt the two). Text boxes
+%are 
+newFontSize = round(mean(src.Position(3:4)./[56 42]));
+
+%For the text boxes, take advantage of stored original normalized position
+%data - simply restore those numbers and textboxes scale. 
+for child_ind = 1:length(src.Children)-2 %The last 2 are the axes.
+  src.Children(child_ind).FontSize = newFontSize;
+  src.Children(child_ind).Position = src.UserData(child_ind, :);
+end
+%Consider adding something for aspect ratio placements and changing the
+%position of the top figures.
 end
