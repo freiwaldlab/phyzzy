@@ -7,7 +7,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 runNum = '003';
 dateSubject = '180628Mo';
 
-assert(~isempty(str2num(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
+assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
 [~, machine] = system('hostname');
 machine = machine(~isspace(machine));
@@ -22,7 +22,7 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = 'C:/Data 2018'; 
     stimulusLogVolume = 'C:/Data 2018'; 
-    outputVolume = 'C:/Data 2018/Analyzed_V4';
+    outputVolume = 'C:/Data 2018/Analysis_2019';
     stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
     stimDir = 'G:/StimuliForFaridfromJulia/SocialCategories';
   case 'DataAnalysisPC'
@@ -334,7 +334,7 @@ plotSwitch.lfpPowerAcrossChannels = 0;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 0;
-plotSwitch.lfpSpectraByCategory = 0; %LFP Comparison 
+plotSwitch.lfpSpectraByCategory = 1; %LFP Comparison 
 plotSwitch.lfpAutocorrelTfByItem = 0;
 plotSwitch.lfpAutocorrelByItem = 0;
 plotSwitch.spikeSpectraByCategory = 0;

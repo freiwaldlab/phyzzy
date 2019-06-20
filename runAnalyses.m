@@ -553,7 +553,7 @@ if ~taskData.RFmap
         clear figData
         figData.z = spikesByEvent(imageSortOrder(1:topStimToPlot));
         figData.x = -psthPre:psthImDur+psthPost;
-        rasterColorCoded(spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedEventIDs(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, attendedObjData);
+        rasterColorCoded(fh, spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedEventIDs(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, attendedObjData);
         title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
         saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
         if closeFig
@@ -5459,4 +5459,25 @@ for event_i = 1:length(spikesByEventBinned)
     end
   end
 end
+end
+
+%% Figure Callbacks
+function alignToLegend(src, event)
+% a callback, called in response to the figure being resized, which will
+% scale the text of the figure in response. to the size change.
+
+%In the default size window, box is 560*420 pixels (W * H)), Font is 10. If the
+%window is resized, maintain that ratio (average bt the two). Text boxes
+%are 
+newFontSize = round(mean(src.Position(3:4)./[56 42]));
+
+%For the text boxes, take advantage of stored original normalized position
+%data - simply restore those numbers and textboxes scale. 
+% for child_ind = 1:length(src.Children)-2 %The last 2 are the axes.
+%   src.Children(child_ind).FontSize = newFontSize;
+%   src.Children(child_ind).Position = src.UserData(child_ind, :);
+% end
+%Consider adding something for aspect ratio placements and changing the
+%position of the top figures.
+
 end

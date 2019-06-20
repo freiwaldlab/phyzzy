@@ -313,6 +313,9 @@ end
 function figScale(src , event)
 % a callback, called in response to the figure being resized, which will
 % scale the text of the figure in response. to the size change.
+%Store whatever the units are in
+unitStr = src.Units;
+src.Units = 'pixels';
 
 %In the default size window, box is 560*420 pixels (W * H)), Font is 10. If the
 %window is resized, maintain that ratio (average bt the two). Text boxes
@@ -325,6 +328,9 @@ for child_ind = 1:length(src.Children)-2 %The last 2 are the axes.
   src.Children(child_ind).FontSize = newFontSize;
   src.Children(child_ind).Position = src.UserData(child_ind, :);
 end
+
+src.Units = unitStr;
+
 %Consider adding something for aspect ratio placements and changing the
 %position of the top figures.
 end

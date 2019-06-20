@@ -1,4 +1,4 @@
-function [ ] = rasterColorCoded(spikesByItem, pictureLabels, psthParams, ISI, channel_i, unit_i, attendedObjData)
+function [ ] = rasterColorCoded(figHandle, spikesByItem, pictureLabels, psthParams, ISI, channel_i, unit_i, attendedObjData)
 %RASTER makes a raster plot in the current figure of the specified unit and
 %channel data. Uses information from the attendedObjData structure to color
 %code the spikes based on what object the subject was looking at. 
@@ -6,6 +6,11 @@ function [ ] = rasterColorCoded(spikesByItem, pictureLabels, psthParams, ISI, ch
 
 %Color Spikes vs Color Shaded Region
 colorType = 2; %1 = Spikes, 2 = Shaded Regions
+
+%Set the figure handle as the current handle
+set(0, 'CurrentFigure', figHandle)
+%Attach resizing function
+%figHandle.ResizeFcn = @reAlignColorLegend;
 
 %Unpack Variables
 preAlign = psthParams.psthPre;
@@ -66,13 +71,13 @@ if colorType == 2
   im.XData(2) = psthParams.psthImDur;
   im.AlphaData = 0.5;
   im.YData = [im.YData(1)-0.5 im.YData(2)-0.5];
+  figHandle.UserData.shadedAreaHandle = im;
 end
 
 %Plot spikes
 yLevel = -0.5; % accumulated trial index, sets height in raster
 legendHandles = [];
-spikeHandles = [];
-spikeLabels = [];
+% spikeHandles = [];
 trialLabels = [];
 
 for item_i = 1:length(spikesByItem)
@@ -84,14 +89,7 @@ for item_i = 1:length(spikesByItem)
     for spike_i = 1:length(trialSpikes.times)
       if colorType == 1
         trialColors = spikeColor{item_i}{trial_i}.color;
-        if any(sum(uniqueColorInds == [item_i trial_i spike_i], 2) == 3)
-          handleInd = sum(uniqueColorInds == [item_i trial_i spike_i], 2) == 3;
-          spikeLabels = [spikeLabels; attendedObjData.objList(handleInd)];
-          h = plot([trialSpikes.times(spike_i) trialSpikes.times(spike_i)],[yLevel-0.4 yLevel+0.4],'color', trialColors(spike_i,:));
-          spikeHandles = vertcat(spikeHandles, h);
-        else
-          plot([trialSpikes.times(spike_i) trialSpikes.times(spike_i)],[yLevel-0.4 yLevel+0.4],'color', trialColors(spike_i,:));
-        end
+        plot([trialSpikes.times(spike_i) trialSpikes.times(spike_i)],[yLevel-0.4 yLevel+0.4],'color', trialColors(spike_i,:));
       else
         plot([trialSpikes.times(spike_i) trialSpikes.times(spike_i)],[yLevel-0.4 yLevel+0.4],'color', 'black');
       end
@@ -106,9 +104,7 @@ for item_i = 1:length(spikesByItem)
   legendHandles = vertcat(legendHandles,h);
 end
 
-%Add Spike handles to legend;
-legendHandles = vertcat(legendHandles, spikeHandles);
-legendLabels = vertcat(pictureLabels, spikeLabels);
+title(figHandle.Name)
 xlimits = xlim();
 ylim([0,yLevel+0.5]);
 if xlimits(2) < imDur + ISI
@@ -118,14 +114,33 @@ trialLabelsTmp = cell(1, length(trialLabels));
 for tick_i = 1:length(trialLabels)
   trialLabelsTmp{tick_i} = num2str(trialLabels(tick_i));
 end
+
 set(gca,'YTickLabels',trialLabelsTmp);
 set(gca,'TickLength',[0 0]);
 yticks((1:length(trialLabelsTmp))-0.5)
 xlabel('Time after stimulus onset (ms)');
 ylabel('single trials');
-legend(legendHandles, legendLabels, 'Location','northeastoutside');
+legend(legendHandles, pictureLabels, 'Location','northeastoutside');
 hold off;
+
+%Create a legend which gives the color code for the shaded region or the
+%individual spikes. Invisible axes with bar plots for each color.
+invisAx = axes('Color','none','XColor','none');
+%addlistener(figHandle,'SizeChanged',@(varargin)set(invisAx,'Position',get(figHandle.Children(end),'Position')));
+
+handleToThisBarSeries = gobjects(length(attendedObjData.objList),1);
+for b = 1 : length(attendedObjData.objList)
+	handleToThisBarSeries(b) = bar(nan, nan, 'BarWidth', 0.5);
+	set(handleToThisBarSeries(b), 'FaceColor', attendedObjData.colorCode{b});
+	hold on;
 end
+legend(attendedObjData.objList, 'Location', 'southeastoutside');
+invisAx.Visible = 'off';
+invisAx.Position = figHandle.Children(end).Position;
+
+%3 instead of 2 because saveFigure adds axes to add text.
+figHandle.SizeChangedFcn = @(src,event) set(src.Children(3),'Position',get(src.Children(end),'Position'));
 
 
+end
 
