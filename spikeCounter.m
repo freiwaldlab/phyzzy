@@ -1,7 +1,9 @@
 function [ spikeCounts, spikeRatesTrialAve, spikeRatesTrialErr] = spikeCounter( spikesByItem, pre, post )
 %spikeCounter counts spikes within (pre, post) of the trial alignment time
 %   input:
-%   - spikesByItem, as returned by alignSpikes; pre and post in ms
+%   - spikesByItem, as returned by alignSpikes:
+%   spikesByItem{stim}{channel}{unit}(trial).times
+%   - pre and post in ms
 %   returns:
 %   - spikeCounts: cell array of per-trial counts and rates, indexed {channel}{unit}{item}.counts(trial) and .rates(trial).
 %   - spikeCountTrialAve: trial ave spike rates, indexed {channel}(unit,item)

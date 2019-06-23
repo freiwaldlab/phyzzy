@@ -212,15 +212,14 @@ if ~usePreprocessed
   for event_i = 1:length(eventCategories)
     eventIDs{event_i} = eventCategories{event_i}{1}; %per the stimParamFile spec, this is the event ID
   end
-  onsetsByEvent = cell(length(eventIDs),1);
-  offsetsByEvent = cell(length(eventIDs),1);
+  [onsetsByEvent, offsetsByEvent, trialIDsByEvent] = deal(cell(length(eventIDs),1));
   eventsNotObserved = zeros(length(eventIDs),1);
-  trialIDsByEvent = cell(length(eventIDs),1);
   for event_i = 1:length(eventIDs)
-    onsetsByEvent{event_i} = taskData.taskEventStartTimes(strcmp(taskData.taskEventIDs,eventIDs{event_i}));
-    offsetsByEvent{event_i} = taskData.taskEventEndTimes(strcmp(taskData.taskEventIDs,eventIDs{event_i}));
+    wholeRunEventInd = strcmp(taskData.taskEventIDs,eventIDs{event_i});
+    trialIDsByEvent{event_i} = find(wholeRunEventInd);
+    onsetsByEvent{event_i} = taskData.taskEventStartTimes(wholeRunEventInd);
+    offsetsByEvent{event_i} = taskData.taskEventEndTimes(wholeRunEventInd);
     eventsNotObserved(event_i) = isempty(onsetsByEvent{event_i});
-    trialIDsByEvent{event_i} = find(strcmp(taskData.taskEventIDs,eventIDs{event_i}));
   end
 
   assert(~(sum(eventsNotObserved) == length(eventsNotObserved)),'No Events observed. Confirm correct stimulus Param file is in use.');
@@ -322,7 +321,6 @@ if ~usePreprocessed
 end
 
 %% Package Analysis inputs, and run Analysis
-
 runAnalysisInputs.analysisParamFilename = analysisParamFilename;
 runAnalysisInputs.spikesByChannel = spikesByChannel; 
 runAnalysisInputs.lfpData = lfpData; 

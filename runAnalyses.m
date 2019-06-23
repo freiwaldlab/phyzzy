@@ -13,49 +13,27 @@ function [analysisOutFilename] = runAnalyses( inputs )
 %     specified in the stim param file
 
 %% unpack inputs
-analysisParamFilename = inputs.analysisParamFilename;
-spikesByChannel = inputs.spikesByChannel;
-lfpData = inputs.lfpData;
-analogInData = inputs.analogInData;
-taskEventIDs = inputs.taskData.taskEventIDs;
-taskData = inputs.taskData;
-taskDataAll = inputs.taskDataAll;
-psthImDur = inputs.psthImDur;
-preAlign = inputs.preAlign;
-postAlign = inputs.postAlign;
-categoryList = inputs.categoryList;
-eventLabels = inputs.eventLabels;
-eventIDs = inputs.eventIDs;
-jumpsByImage = inputs.jumpsByImage;
-spikesByEvent = inputs.spikesByEvent;
-psthEmptyByEvent = inputs.psthEmptyByEvent;
-spikesByCategory = inputs.spikesByCategory;
-psthEmptyByCategory = inputs.psthEmptyByCategory;
-spikesByEventForTF = inputs.spikesByEventForTF;
-spikesByCategoryForTF = inputs.spikesByCategoryForTF;
-lfpByEvent = inputs.lfpByEvent;
-lfpByCategory = inputs.lfpByCategory;
-analogInByEvent = inputs.analogInByEvent;
-analogInByCategory = inputs.analogInByCategory;
-channelUnitNames = inputs.channelUnitNames;
-stimTiming = inputs.stimTiming;
-eventCategories = inputs.eventCategories;
-onsetsByEvent = inputs.onsetsByEvent;
-trialIDsByEvent = inputs.trialIDsByEvent;
-onsetsByCategory = inputs.onsetsByCategory;
-trialIDsByCategory = inputs.trialIDsByCategory;
+%List of inputs to be unpacked
+inputFields = fields(inputs);
+%Cycle through and unpack inputs
+for input_ind = 1:length(inputFields)
+  eval(sprintf('%s = inputs.%s;', inputFields{input_ind}, inputFields{input_ind}));
+end
 
-%%% Load parameters from analysis pand stim param files.
+%%% Load parameters from analysis and stim param files.
 load(analysisParamFilename);
 eventLabelsTmp = eventLabels; %note: hack to avoid overwriting list of not presented stimuli
 load(stimParamsFilename);
+
 eventLabels = eventLabelsTmp; % conclusion of hack
 channelNames = ephysParams.channelNames;
 spikeChannels = ephysParams.spikeChannels;
 lfpChannels = ephysParams.lfpChannels;
+
 analogInChannels = analogInParams.analogInChannels;
 analogInChannelNames = analogInParams.channelNames;
 analogInChannelUnits = analogInParams.channelUnits;
+
 psthPre = psthParams.psthPre;
 psthPost = psthParams.psthPost;
 smoothingWidth = psthParams.smoothingWidth;
@@ -69,11 +47,10 @@ lfpPostAlign = lfpAlignParams.msPostAlign;
 
 lfpPaddedBy = tfParams.movingWin(1)/2;
 
-figTag = sprintf('%s,Run%s',dateSubject,runNum);
-
 movingWin = tfParams.movingWin;
 specgramRowAve = tfParams.specgramRowAve;
 samPerMS = ephysParams.samPerMS;
+
 frEpochs = zeros(length(frEpochsCell),2);
 for epoch_i = 1:length(frEpochsCell)
   for range_i = 1:2
@@ -99,10 +76,10 @@ chColors = [{'b'}, {[0 .6 0]} , {'m'}];
 %   end
 % end
 
+figTag = sprintf('%s,Run%s',dateSubject,runNum);
+
 %% check calcSwitch definitions, set defaults, and apply field name updates as needed
-calcSwitchFields = {'categoryPSTH';'imagePSTH';'faceSelectIndex';'faceSelectIndexEarly';'faceSelectIndexLate';'inducedTrialMagnitudeCorrection';...
-  'evokedSpectra';'inducedSpectra';'evokedImageTF';'inducedImageTF';'evokedCatTF';'inducedCatTF';'evokedCoupling';'inducedCoupling';'meanEvokedTF';'trialMeanSpectra';'coherenceByCategory';...
-  'useJacknife'};
+calcSwitchFields = fields(calcSwitch);
 % update deprecated fieldnames: syntax is:
 % {{{'oldName1_1';'oldName1_2';...};'newName1'};{{'oldName2_1';'oldName2_2';...};'newName2'};...}
 calcSwitchFieldnameUpdateMap = {{{'faceSelectIndex'};'selectivityIndices'};{{'faceSelectIndexEarly'};'selectivityIndicesEarly'};...
@@ -122,8 +99,7 @@ for field_i = 1:length(calcSwitchFields)
 end
 
 % check analysisGroups definitions and set defaults
-analysisGroupFields = {'selectivityIndex';'stimPrefBarPlot';'stimulusLabelGroups';'evokedPotentials';'analogInPotentials';'analogInDerivatives';'colorPsthEvoked';...
-  'linePsthEvoked';'evokedPsthOnePane';'tuningCurves';'spectraByCategory';'tfSpectraByCategory';'lfpSingleTrialsByCategory';'coherenceByCategory';'tfCouplingByCategory'};
+analysisGroupFields = fields(analysisGroups);
 for field_i = 1:length(analysisGroupFields)
   field = analysisGroupFields{field_i};
   if ~isfield(analysisGroups,field) || ~isstruct(analysisGroups.(field)) || ~isfield(analysisGroups.(field),'groups')
@@ -329,11 +305,9 @@ if isfield(plotSwitch,'eyeStimOverlay') && plotSwitch.eyeStimOverlay
   eyeStimOverlay(stimDir, outDir, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData);
 end
 
-if isfield(plotSwitch, 'clusterOnEyePaths') && plotSwitch.clusterOnEyePaths
-  [spikesByEventEyeClust, eventIDsEyeClust, clusterEyeResortInd] = clusterPaths(spikesByEvent, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData);
-end
-
-%trialDatabaseStruct(taskData, eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
+% if isfield(plotSwitch, 'clusterOnEyePaths') && plotSwitch.clusterOnEyePaths
+%   [spikesByEventEyeClust, eventIDsEyeClust, clusterEyeResortInd] = clusterPaths(spikesByEvent, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData);
+% end
 
 if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
   for channel_i = 1:length(channelNames)
@@ -424,9 +398,7 @@ end
 save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch', 'imFr','imFrErr','imSpikeCounts','trialCountsByImage', '-append');
 
 if ~isempty(spikesByCategory)
-  firingRatesByCategoryByEpoch = cell(size(frEpochs,1),1);
-  firingRateErrsByCategoryByEpoch = cell(size(frEpochs,1),1);
-  spikeCountsByCategoryByEpoch = cell(size(frEpochs,1),1);
+  [firingRatesByCategoryByEpoch, firingRateErrsByCategoryByEpoch, spikeCountsByCategoryByEpoch] = deal(cell(size(frEpochs,1),1));
   for epoch_i = 1:size(frEpochs,1)
     [spikeCounts, fr, frErr] = spikeCounter(spikesByCategory, frEpochs(epoch_i,1), frEpochs(epoch_i,2));
     firingRatesByCategoryByEpoch{epoch_i} = fr;
@@ -1023,7 +995,7 @@ if taskData.RFmap
         end
         fh = plotRF(rfGrid, meanRF, meanRFerrs, 'heat', AkinoriColormap);
         drawnow;
-%           saveFigure(outDir, sprintf('psthEvokedOverlay_%s_Run%s',groupName,runNum), figData, saveFig, exportFig, saveFigData, figTag );
+        saveFigure(outDir, sprintf('psthEvokedOverlay_%s_Run%s',groupName,runNum), figData, saveFig, exportFig, saveFigData, figTag );
         if closeFig
           close(fh);
         end  
@@ -1076,8 +1048,8 @@ if (calcSwitch.inducedSpectra || calcSwitch.inducedImageTF) && ~calcSwitch.spike
   end
 end
 
-% by category
-if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF || calcSwitch.inducedCoupling) && ~calcSwitch.spikeTimes && ~calcSwitch.inducedTrialMagnitudeCorrection
+% by category - spikes
+if (calcSwitch.inducedSpectra || calcSwitch.inducedCatSpikeTF || calcSwitch.inducedCoupling) && ~calcSwitch.spikeTimes && ~calcSwitch.inducedTrialMagnitudeCorrection
   % subtract the category mean psth from every trial to obtain induced psth
   spikesByCategoryBinnedInduced = spikesByCategoryBinned;
   for cat_i = 1:length(spikesByCategoryBinned)
@@ -1087,6 +1059,11 @@ if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF || calcSwitch.inducedCo
       end
     end
   end
+end
+
+% by category - LFP (removed spikeTimes conditional since the LFP component
+% seems divorced from that).
+if (calcSwitch.inducedSpectra || calcSwitch.inducedCatLFPTF || calcSwitch.inducedCoupling) && ~calcSwitch.inducedTrialMagnitudeCorrection
   lfpByCategoryInduced = lfpByCategory;
   for cat_i = 1:length(lfpByCategory)
     lfpByCategoryInduced{cat_i} = lfpByCategory{cat_i} - mean(lfpByCategory{cat_i},3); %note: matlab automatically applies subtraction to every trial/channel appropriately
@@ -1094,7 +1071,6 @@ if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF || calcSwitch.inducedCo
 end
 
 % if we're going to need induced, response-magnitude-corrected psth's and lfp's, build them now
-
 %by event
 if (calcSwitch.inducedSpectra || calcSwitch.inducedImageTF) && ~calcSwitch.spikeTimes && calcSwitch.inducedTrialMagnitudeCorrection
   % subtract the category mean psth from every trial to obtain induced psth
@@ -1128,8 +1104,9 @@ if (calcSwitch.inducedSpectra || calcSwitch.inducedImageTF) && ~calcSwitch.spike
     end
   end
 end
-% by cat
-if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF || calcSwitch.inducedCoupling) && ~calcSwitch.spikeTimes && calcSwitch.inducedTrialMagnitudeCorrection
+
+% by category - Spikes
+if (calcSwitch.inducedSpectra || calcSwitch.inducedCatSpikeTF || calcSwitch.inducedCoupling) && ~calcSwitch.spikeTimes && calcSwitch.inducedTrialMagnitudeCorrection
   % subtract the category mean psth from every trial to obtain induced psth
   spikesByCategoryBinnedInduced = spikesByCategoryBinned;
   for cat_i = 1:length(spikesByCategoryBinned)
@@ -1149,6 +1126,10 @@ if (calcSwitch.inducedSpectra || calcSwitch.inducedCatTF || calcSwitch.inducedCo
       end
     end
   end
+end
+
+% by category - LFP (Removed spikesTimes conditional).
+if (calcSwitch.inducedSpectra || calcSwitch.inducedCatLFPTF || calcSwitch.inducedCoupling) && calcSwitch.inducedTrialMagnitudeCorrection
   lfpByCategoryInduced = lfpByCategory;
   for cat_i = 1:length(lfpByCategory)
     for channel_i = 1:length(channelNames)
@@ -4503,6 +4484,10 @@ for calc_i = 1:length(tfCalcSwitches)
     end
   end
 end
+
+%% Packaging outputs for use with multi-run analysis code
+trialDatabaseStruct(taskData, spikeCountsByImageByEpoch, eventIDs, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
+
 end
 
 %% Individual Analysis Functions
@@ -5183,11 +5168,11 @@ function clusterFixBin(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent
   % end
 end
 
-function trialDatabaseStruct(taskData, eventLabels, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
+function trialDatabaseStruct(taskData, spikeCountsByImageByEpoch, eventIDs, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
 %Quick Temporary Structure to find out peak times during analysis, save to
 %a file where it can be retrieved easily by Monkeylogic.
 trialDatabaseStruct = struct();
-trialDatabaseStruct.images = eventLabels;
+trialDatabaseStruct.images = eventIDs;
 trialDatabaseStruct.translationTable = taskData.translationTable;
 psthPeaksByImageTmp = psthByImage;
 
@@ -5200,8 +5185,32 @@ for ii = 1:length(psthPeaksByImageTmp)
     [psthPeaksByImage{ii}{jj},  psthPeaksIndByImage{ii}{jj}] = max(psthPeaksByImageTmp{ii}{jj},[],2);
   end
 end
+
 trialDatabaseStruct.psthPeaksIndByImage = psthPeaksIndByImage;
 trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage;
+trialDatabaseStruct.taskData = taskData;
+
+%Reshape spike counts to lend themselves to analysis across days
+%spikeCountsByImageByEpoch{epoch}{channel}{unit}{stim}.times
+trialDatabaseStruct.meanCountPerEpoch.Readme = 'meanCountPerUnit{epoch_i}{channel_i}{unit_i}(eventID)';
+trialDatabaseStruct.meanCountPerEpoch.Epochs = frEpochs;
+trialDatabaseStruct.meanCountPerEpoch.eventIDs = eventIDs;
+meanCountPerUnit = cell(size(frEpochs,1),1);
+
+for epoch_i = 1:length(spikeCountsByImageByEpoch)
+  for channel_i = 1:length(spikeCountsByImageByEpoch{epoch_i})
+    for unit_i = 1:length(spikeCountsByImageByEpoch{epoch_i}{channel_i})      
+      %Initialize a vector which will contribute to a unit * stim matrix
+      %of mean counts within the epoch.
+      unit_vect = zeros(length(spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}),1);
+      for stim_i = 1:length(unit_vect)
+        unit_vect(stim_i) = mean(spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}{stim_i}.counts);
+      end
+      meanCountPerUnit{epoch_i}{channel_i}{unit_i} = unit_vect;
+    end
+  end
+end
+trialDatabaseStruct.meanCountPerEpoch.meanCountPerUnit = meanCountPerUnit;
 
 save([outDir 'trialDatabase'], 'trialDatabaseStruct')
 end
@@ -5459,25 +5468,4 @@ for event_i = 1:length(spikesByEventBinned)
     end
   end
 end
-end
-
-%% Figure Callbacks
-function alignToLegend(src, event)
-% a callback, called in response to the figure being resized, which will
-% scale the text of the figure in response. to the size change.
-
-%In the default size window, box is 560*420 pixels (W * H)), Font is 10. If the
-%window is resized, maintain that ratio (average bt the two). Text boxes
-%are 
-newFontSize = round(mean(src.Position(3:4)./[56 42]));
-
-%For the text boxes, take advantage of stored original normalized position
-%data - simply restore those numbers and textboxes scale. 
-% for child_ind = 1:length(src.Children)-2 %The last 2 are the axes.
-%   src.Children(child_ind).FontSize = newFontSize;
-%   src.Children(child_ind).Position = src.UserData(child_ind, :);
-% end
-%Consider adding something for aspect ratio placements and changing the
-%position of the top figures.
-
 end

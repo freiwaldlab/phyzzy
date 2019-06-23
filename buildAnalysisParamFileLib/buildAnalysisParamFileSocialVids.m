@@ -5,7 +5,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '003';
-dateSubject = '180628Mo';
+dateSubject = '180629Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -65,7 +65,7 @@ ephysParams.lfpChannels = [1];
 ephysParams.channelNames = {'8B'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
 ephysParams.waveClusReclass = 0; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
@@ -289,7 +289,7 @@ end
 % the run as an input.
 frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {-800, 60}; ...
-                {@(stimDur) stimDur+60, @(stimDur) stimDur+260}}; %#ok
+                {100, 1100}}; %#ok
 
 plotSwitch.imageEyeMap = 0;
 plotSwitch.eyeCorralogram = 1; %Eye Gram

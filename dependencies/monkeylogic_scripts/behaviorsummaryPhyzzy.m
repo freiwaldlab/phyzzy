@@ -1,4 +1,4 @@
-function behaviorsummaryPhyzzy(filename)
+function taskData = behaviorsummaryPhyzzy(filename, taskData)
 % NIMH MonkeyLogic
 %
 % This function reads NIMH ML data files (*.bhv2; *.h5; *.mat) and shows a
@@ -94,6 +94,9 @@ if ~isfield(userVars,'clipDuration')
   userVars.rewardTimeMean = round(mean([RewardTmp.EndTimes]-[RewardTmp.StartTimes]));
   userVars.rewardSD = 0; %Experiments where this isn't recorded were before this was used, and therefore must be close to 0.
 end
+
+taskData.taskDataSummary.userVars = userVars;
+taskData.taskDataSummary.userVars2 = userVars2;
 
 % constants
 colororder = [0 1 0; 0 1 1; 1 1 0; 0 0 1; 0.5 0.5 0.5; 1 0 1; 1 0 0; .3 .7 .5; .7 .2 .5; .5 .5 1; .75 .75 .5];
@@ -299,12 +302,17 @@ if isfield(userVars2,'comments')
 end
 
 %Change all units to normalized.
+%Consider using hggroup to group all these elements, manipulate them
+%together.
 origRatios = zeros(length(hFig.Children)-2,4);
 
 for child_ind = 1:length(hFig.Children)-2 %The last 2 are the axes.
   hFig.Children(child_ind).Units = 'normalized';
   origRatios(child_ind,:) = hFig.Children(child_ind).Position;
 end
+
+%hFig.SizeChangedFcn = @(src,event) src.Children(1:end-2).position = hFig.Children(1:end-2).UserData.origRatio;
+
 
 hFig.UserData = origRatios;
 

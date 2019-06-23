@@ -147,7 +147,8 @@ for ii = 1:length(data)
 end
 
 % Behavioral summary of performance during recording
-behaviorsummaryPhyzzy(logfile)
+taskData = struct();
+taskData = behaviorsummaryPhyzzy(logfile, taskData);
 [~, filename, ~] = fileparts(logfile);
 savefig(sprintf('%sBehavSum_%s',params.outDir,filename));
 
@@ -423,6 +424,7 @@ fixationOutTimesBlk = taskEventEndTimesBlk(1);
 
 % finally, build the output structure - This Structure is rebuilt
 % selectively in the 
+taskData.taskDataSummary.TrialRecord = TrialRecord;
 taskData.errorArray = errorArray;
 taskData.taskEventIDs = taskEventIDs;
 taskData.translationTable = translationTable;

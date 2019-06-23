@@ -90,10 +90,12 @@ end
 trialValid = (trialValid == 0);
 
 %
-fprintf('Percent of trials excluded: %f\n', sum(trialValid)/length(trialValid)*100)
-fprintf('Percent of trials excluded: %d\n', sum(trialValid))
+fprintf('Percent of trials excluded: %d%%\n', round((1-sum(trialValid)/length(trialValid))*100))
+fprintf('Number of trials kept: %d\n', sum(trialValid))
 trialValid = logical(trialValid);
-taskDataValid = struct; %taskDataValid = taskData;
+
+taskDataValid = struct;
+taskDataValid.taskDataSummary = taskData.taskDataSummary;
 taskDataValid.translationTable = taskData.translationTable;
 taskDataValid.frameMotionData = taskData.frameMotionData;
 taskDataValid.taskEventIDs = taskData.taskEventIDs(trialValid);
@@ -105,6 +107,7 @@ taskDataValid.juiceOnTimes = taskData.juiceOnTimes(trialValid);
 taskDataValid.juiceOffTimes = taskData.juiceOffTimes(trialValid);
 taskDataValid.RFmap = taskData.RFmap;
 taskDataValid.eyeCal = taskData.eyeCal;
+
 
 if params.DEBUG
   figure();
