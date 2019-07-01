@@ -27,6 +27,8 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
 %   export_fig ... -font_space <char>
 %   export_fig ... -linecaps
 %   export_fig ... -noinvert
+%   export_fig ... -preserve_size
+%   export_fig ... -options <optionsStruct>
 %   export_fig(..., handle)
 %
 % This function saves a figure or single axes to one or more vector and/or
@@ -38,14 +40,14 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
 %   - Improved line and grid line styles
 %   - Anti-aliased graphics (bitmap formats)
 %   - Render images at native resolution (optional for bitmap formats)
-%   - Transparent background supported (pdf, eps, png, tiff)
-%   - Semi-transparent patch objects supported (png, tiff)
-%   - RGB, CMYK or grayscale output (CMYK only with pdf, eps, tiff)
+%   - Transparent background supported (pdf, eps, png, tif)
+%   - Semi-transparent patch objects supported (png, tif)
+%   - RGB, CMYK or grayscale output (CMYK only with pdf, eps, tif)
 %   - Variable image compression, including lossless (pdf, eps, jpg)
 %   - Optional rounded line-caps (pdf, eps)
-%   - Optionally append to file (pdf, tiff)
-%   - Vector formats: pdf, eps
-%   - Bitmap formats: png, tiff, jpg, bmp, export to workspace
+%   - Optionally append to file (pdf, tif)
+%   - Vector formats: pdf, eps, svg
+%   - Bitmap formats: png, tif, jpg, bmp, export to workspace
 %
 % This function is especially suited to exporting figures for use in
 % publications and presentations, because of the high quality and
@@ -59,21 +61,21 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
 % 'none'. PDF, EPS, TIF & PNG are the only formats that support a transparent
 % background; only TIF & PNG formats support transparency of patch objects.
 %
-% The choice of renderer (opengl, zbuffer or painters) has a large impact
-% on the quality of output. The default value (opengl for bitmaps, painters
-% for vector formats) generally gives good results, but if you aren't
-% satisfied then try another renderer.  Notes: 1) For vector formats (EPS,
-% PDF), only painters generates vector graphics. 2) For bitmaps, only
-% opengl can render transparent patch objects correctly. 3) For bitmaps,
-% only painters will correctly scale line dash and dot lengths when
-% magnifying or anti-aliasing. 4) Fonts may be substitued with Courier when
-% using painters.
+% The choice of renderer (opengl/zbuffer/painters) has a large impact on the
+% output quality. The default value (opengl for bitmaps, painters for vector
+% formats) generally gives good results, but if you aren't satisfied
+% then try another renderer.  Notes:
+%   1) For vector formats (EPS,PDF), only painters generates vector graphics
+%   2) For bitmap formats, only opengl correctly renders transparent patches
+%   3) For bitmap formats, only painters correctly scales line dash and dot
+%      lengths when magnifying or anti-aliasing
+%   4) Fonts may be substitued with Courier when using painters
 %
 % When exporting to vector format (PDF & EPS) and bitmap format using the
 % painters renderer, this function requires that ghostscript is installed
 % on your system. You can download this from:
 %   http://www.ghostscript.com
-% When exporting to eps it additionally requires pdftops, from the Xpdf
+% When exporting to EPS it additionally requires pdftops, from the Xpdf
 % suite of functions. You can download this from: http://xpdfreader.com
 %
 % SVG output uses the fig2svg (https://github.com/kupiqu/fig2svg) or plot2svg
@@ -83,25 +85,24 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
 %
 % Inputs:
 %   filename - string containing the name (optionally including full or
-%              relative path) of the file the figure is to be saved as. If
-%              a path is not specified, the figure is saved in the current
-%              directory. If no name and no output arguments are specified,
-%              the default name, 'export_fig_out', is used. If neither a
-%              file extension nor a format are specified, a ".png" is added
-%              and the figure saved in that format.
-%   -format1, -format2, etc. - strings containing the extensions of the
-%                              file formats the figure is to be saved as.
-%                              Valid options: '-pdf', '-eps', '-svg', '-png',
-%                              '-tif', '-jpg', '-bmp'.
-%                              All combinations of formats are valid.
-%   -nocrop - option indicating that the borders of the output are not to
-%             be cropped.
+%             relative path) of the file the figure is to be saved as. If
+%             a path is not specified, the figure is saved in the current
+%             directory. If no name and no output arguments are specified,
+%             the default name, 'export_fig_out', is used. If neither a
+%             file extension nor a format are specified, a ".png" is added
+%             and the figure saved in that format.
+%   -<format> - string(s) containing the output file extension(s). Options:
+%             '-pdf', '-eps', '-svg', '-png', '-tif', '-jpg' and '-bmp'.
+%             Multiple formats can be specified, without restriction.
+%             For example: export_fig('-jpg', '-pdf', '-png', ...)
+%             Either '-tif','-tiff' can be specified, and either '-jpg','-jpeg'.
+%   -nocrop - option indicating that empty margins should not be cropped.
 %   -c[<val>,<val>,<val>,<val>] - option indicating crop amounts. Must be
 %             a 4-element vector of numeric values: [top,right,bottom,left]
 %             where NaN/Inf indicate auto-cropping, 0 means no cropping,
 %             and any other value mean cropping in pixel amounts.
-%   -transparent - option indicating that the figure background is to be
-%                  made transparent (png, pdf, tif and eps output only).
+%   -transparent - option indicating that the figure background is to be made
+%             transparent (PNG,PDF,TIF,EPS formats only). Implies -noinvert.
 %   -m<val> - option where val indicates the factor to magnify the
 %             on-screen figure pixel dimensions by when generating bitmap
 %             outputs (does not affect vector formats). Default: '-m1'.
@@ -121,22 +122,21 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
 %             should not be relied upon. Anti-aliasing can have adverse
 %             effects on image quality (disable with the -a1 option).
 %   -a1, -a2, -a3, -a4 - option indicating the amount of anti-aliasing to
-%                        use for bitmap outputs. '-a1' means no anti-
-%                        aliasing; '-a4' is the maximum amount (default).
+%             use for bitmap outputs. '-a1' means no anti-aliasing;
+%             '-a4' is the maximum amount (default).
 %   -<renderer> - option to force a particular renderer (painters, opengl or
-%                 zbuffer). Default value: opengl for bitmap formats or
-%                 figures with patches and/or transparent annotations;
-%                 painters for vector formats without patches/transparencies.
+%             zbuffer). Default value: opengl for bitmap formats or
+%             figures with patches and/or transparent annotations;
+%             painters for vector formats without patches/transparencies.
 %   -<colorspace> - option indicating which colorspace color figures should
-%                   be saved in: RGB (default), CMYK or gray. CMYK is only
-%                   supported in pdf, eps and tiff output.
-%   -q<val> - option to vary bitmap image quality (in pdf, eps and jpg
-%             files only).  Larger val, in the range 0-100, gives higher
-%             quality/lower compression. val > 100 gives lossless
-%             compression. Default: '-q95' for jpg, ghostscript prepress
-%             default for pdf & eps. Note: lossless compression can
-%             sometimes give a smaller file size than the default lossy
-%             compression, depending on the type of images.
+%             be saved in: RGB (default), CMYK or gray. Usage example: '-gray'.
+%             Note: CMYK is only supported in PDF, EPS and TIF formats.
+%   -q<val> - option to vary bitmap image quality (PDF, EPS, JPG formats only).
+%             A larger val, in the range 0-100, produces higher quality and
+%             lower compression. val > 100 results in lossless compression.
+%             Default: '-q95' for JPG, ghostscript prepress default for PDF,EPS.
+%             Note: lossless compression can sometimes give a smaller file size
+%             than the default lossy compression, depending on the image type.
 %   -p<val> - option to pad a border of width val to exported files, where
 %             val is either a relative size with respect to cropped image
 %             size (i.e. p=0.01 adds a 1% border). For EPS & PDF formats,
@@ -144,15 +144,15 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
 %             val can be positive (padding) or negative (extra cropping).
 %             If used, the -nocrop flag will be ignored, i.e. the image will
 %             always be cropped and then padded. Default: 0 (i.e. no padding).
-%   -append - option indicating that if the file (pdfs only) already
-%             exists, the figure is to be appended as a new page, instead
-%             of being overwritten (default).
+%   -append - option indicating that if the file already exists the figure is to
+%             be appended as a new page, instead of being overwritten (default).
+%             PDF & TIF output formats only.
 %   -bookmark - option to indicate that a bookmark with the name of the
-%               figure is to be created in the output file (pdf only).
+%             figure is to be created in the output file (PDF format only).
 %   -clipboard - option to save output as an image on the system clipboard.
-%                Note: background transparency is not preserved in clipboard
+%             Note: background transparency is not preserved in clipboard
 %   -d<gs_option> - option to indicate a ghostscript setting. For example,
-%                   -dMaxBitmap=0 or -dNoOutputFonts (Ghostscript 9.15+).
+%             -dMaxBitmap=0 or -dNoOutputFonts (Ghostscript 9.15+).
 %   -depsc -  option to use EPS level-3 rather than the default level-2 print
 %             device. This solves some bugs with Matlab's default -depsc2 device
 %             such as discolored subplot lines on images (vector formats only).
@@ -165,9 +165,16 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
 %   -linecaps - option to create rounded line-caps (vector formats only).
 %   -noinvert - option to avoid setting figure's InvertHardcopy property to
 %             'off' during output (this solves some problems of empty outputs).
+%   -preserve_size - option to preserve the figure's PaperSize property in output
+%             file (PDF/EPS formats only; default is to not preserve it).
+%   -options <optionsStruct> - format-specific parameters as defined in Matlab's
+%             documentation of the imwrite function, contained in a struct under
+%             the format name. For example to specify the JPG Comment parameter,
+%             pass a struct such as this: options.JPG.Comment='abc'. Similarly,
+%             options.PNG.BitDepth=4. Valid only for PNG,TIF,JPG output formats.
 %   handle -  The handle of the figure, axes or uipanels (can be an array of
-%             handles, but the objects must be in the same figure) to be
-%             saved. Default: gcf.
+%             handles, but the objects must be in the same figure) which is
+%             to be saved. Default: gcf (handle of current figure).
 %
 % Outputs:
 %   imageData - MxNxC uint8 image array of the exported image.
@@ -277,6 +284,10 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
 % 18/11/18: Issue #261: Added informative alert when trying to export a uifigure (which is not currently supported)
 % 13/12/18: Issue #261: Fixed last commit for cases of specifying axes/panel handle as input, rather than a figure handle
 % 13/01/19: Issue #72: Added basic SVG output support
+% 04/02/19: Workaround for issues #207 and #267: -transparent implies -noinvert
+% 08/03/19: Issue #269: Added ability to specify format-specific options for PNG,TIF,JPG outputs; fixed help section
+% 21/03/19: Fixed the workaround for issues #207 and #267 from 4/2/19 (-transparent now does *NOT* imply -noinvert; -transparent output should now be ok in all formats)
+% 12/06/19: Issue #277: Enabled preservation of figure's PaperSize in output PDF/EPS file
 %}
 
     if nargout
@@ -553,7 +564,14 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
                     % Compute the resolution
                     res = options.magnify * get(0, 'ScreenPixelsPerInch') / 25.4e-3;
                     % Save the png
-                    imwrite(A, [options.name '.png'], 'Alpha', double(alpha), 'ResolutionUnit', 'meter', 'XResolution', res, 'YResolution', res);
+                    [format_options, bitDepth] = getFormatOptions(options, 'png');  %Issue #269
+                    if ~isempty(bitDepth) && bitDepth < 16 && size(A,3) == 3
+                        % BitDepth specification requires using a color-map
+                        [A, map] = rgb2ind(A, 256);
+                        imwrite(A, map, [options.name '.png'], 'Alpha',double(alpha), 'ResolutionUnit','meter', 'XResolution',res, 'YResolution',res, format_options{:});
+                    else
+                        imwrite(A, [options.name '.png'], 'Alpha',double(alpha), 'ResolutionUnit','meter', 'XResolution',res, 'YResolution',res, format_options{:});
+                    end
                     % Clear the png bit
                     options.png = false;
                 end
@@ -616,7 +634,14 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
             % Save the images
             if options.png
                 res = options.magnify * get(0, 'ScreenPixelsPerInch') / 25.4e-3;
-                imwrite(A, [options.name '.png'], 'ResolutionUnit', 'meter', 'XResolution', res, 'YResolution', res);
+                [format_options, bitDepth] = getFormatOptions(options, 'png');  %Issue #269
+                if ~isempty(bitDepth) && bitDepth < 16 && size(A,3) == 3
+                    % BitDepth specification requires using a color-map
+                    [A, map] = rgb2ind(A, 256);
+                    imwrite(A, map, [options.name '.png'], 'ResolutionUnit','meter', 'XResolution',res, 'YResolution',res, format_options{:});
+                else
+                    imwrite(A, [options.name '.png'], 'ResolutionUnit','meter', 'XResolution',res, 'YResolution',res, format_options{:});
+                end
             end
             if options.bmp
                 imwrite(A, [options.name '.bmp']);
@@ -627,10 +652,11 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
                 if isempty(quality)
                     quality = 95;
                 end
+                format_options = getFormatOptions(options, 'jpg');  %Issue #269
                 if quality > 100
-                    imwrite(A, [options.name '.jpg'], 'Mode', 'lossless');
+                    imwrite(A, [options.name '.jpg'], 'Mode','lossless', format_options{:});
                 else
-                    imwrite(A, [options.name '.jpg'], 'Quality', quality);
+                    imwrite(A, [options.name '.jpg'], 'Quality',quality, format_options{:});
                 end
             end
             % Save tif images in cmyk if wanted (and possible)
@@ -646,7 +672,8 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
                     clear C M Y K K_
                 end
                 append_mode = {'overwrite', 'append'};
-                imwrite(A, [options.name '.tif'], 'Resolution', options.magnify*get(0, 'ScreenPixelsPerInch'), 'WriteMode', append_mode{options.append+1});
+                format_options = getFormatOptions(options, 'tif');  %Issue #269
+                imwrite(A, [options.name '.tif'], 'Resolution',options.magnify*get(0,'ScreenPixelsPerInch'), 'WriteMode',append_mode{options.append+1}, format_options{:});
             end
         end
 
@@ -710,20 +737,21 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
             end
             try
                 % Remove background if requested (issue #207)
+                originalBgColor = get(fig, 'Color');
                 [hXs, hYs, hZs] = deal([]);
                 if options.transparent %&& ~isequal(get(fig, 'Color'), 'none')
                     if options.renderer == 1  % OpenGL
-                        warning('export_fig:openglTransparentBG', '-opengl sometimes fails to produce transparent backgrounds; try -painters instead');
-                    else
-                        originalBgColor = get(fig, 'Color');
-                        set(fig,'Color','none');
-
-                        % Correct black axes color to off-black (issue #249)
-                        hAxes = findall(fig, 'Type','axes');
-                        hXs = fixBlackAxle(hAxes, 'XColor');
-                        hYs = fixBlackAxle(hAxes, 'YColor');
-                        hZs = fixBlackAxle(hAxes, 'ZColor');
+                        warning('export_fig:openglTransparentBG', '-opengl sometimes fails to produce transparent backgrounds; in such a case, try to use -painters instead');
                     end
+
+                    % Fix for issue #207, #267 (corrected)
+                    set(fig,'Color','none');
+
+                    % Correct black axes color to off-black (issue #249)
+                    hAxes = findall(fig, 'Type','axes');
+                    hXs = fixBlackAxle(hAxes, 'XColor');
+                    hYs = fixBlackAxle(hAxes, 'YColor');
+                    hZs = fixBlackAxle(hAxes, 'ZColor');
                 end
                 % Generate an eps
                 print2eps(tmp_nam, fig, options, printArgs{:});
@@ -772,8 +800,11 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
                     end
                 end
             catch ex
+                % Restore the figure's previous background color (in case it was not already restored)
+                try set(fig,'Color',originalBgColor); drawnow; catch, end
                 % Delete the eps
                 delete(tmp_nam);
+                % Rethrow the EPS/PDF-generation error
                 rethrow(ex);
             end
             % Delete the eps
@@ -845,7 +876,7 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
                     end
                     print(fig, '-dsvg', printArgs{:}, filename);
                     warning('export_fig:SVG:print', 'export_fig used Matlab''s built-in SVG output engine. Better results may be gotten via the fig2svg utility (https://github.com/kupiqu/fig2svg).');
-                catch err
+                catch err  % built-in print() failed - maybe an old Matlab release (no -dsvg)
                     set(fig,'Units',oldUnits);
                     filename = strrep(filename,'export_fig_out','filename');
                     msg = ['SVG output is not supported for your figure: ' err.message '\n' ...
@@ -980,10 +1011,12 @@ function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>
             if ~hadError,  fprintf(2, 'export_fig error. ');  end
             fprintf(2, 'Please ensure:\n');
             fprintf(2, '  that you are using the <a href="https://github.com/altmany/export_fig/archive/master.zip">latest version</a> of export_fig\n');
-            if ismac
-                fprintf(2, '  and that you have <a href="http://pages.uoregon.edu/koch">Ghostscript</a> installed\n');
-            else
-                fprintf(2, '  and that you have <a href="http://www.ghostscript.com">Ghostscript</a> installed\n');
+            if isvector(options)
+                if ismac
+                    fprintf(2, '  and that you have <a href="http://pages.uoregon.edu/koch">Ghostscript</a> installed\n');
+                else
+                    fprintf(2, '  and that you have <a href="http://www.ghostscript.com">Ghostscript</a> installed\n');
+                end
             end
             try
                 if options.eps
@@ -1011,36 +1044,38 @@ end
 function options = default_options()
     % Default options used by export_fig
     options = struct(...
-        'name',         'export_fig_out', ...
-        'crop',         true, ...
-        'crop_amounts', nan(1,4), ...  % auto-crop all 4 image sides
-        'transparent',  false, ...
-        'renderer',     0, ...         % 0: default, 1: OpenGL, 2: ZBuffer, 3: Painters
-        'pdf',          false, ...
-        'eps',          false, ...
-        'svg',          false, ...
-        'png',          false, ...
-        'tif',          false, ...
-        'jpg',          false, ...
-        'bmp',          false, ...
-        'clipboard',    false, ...
-        'colourspace',  0, ...         % 0: RGB/gray, 1: CMYK, 2: gray
-        'append',       false, ...
-        'im',           false, ...
-        'alpha',        false, ...
-        'aa_factor',    0, ...
-        'bb_padding',   0, ...
-        'magnify',      [], ...
-        'resolution',   [], ...
-        'bookmark',     false, ...
-        'closeFig',     false, ...
-        'quality',      [], ...
-        'update',       false, ...
-        'fontswap',     true, ...
-        'font_space',   '', ...
-        'linecaps',     false, ...
+        'name',            'export_fig_out', ...
+        'crop',            true, ...
+        'crop_amounts',    nan(1,4), ...  % auto-crop all 4 image sides
+        'transparent',     false, ...
+        'renderer',        0, ...         % 0: default, 1: OpenGL, 2: ZBuffer, 3: Painters
+        'pdf',             false, ...
+        'eps',             false, ...
+        'svg',             false, ...
+        'png',             false, ...
+        'tif',             false, ...
+        'jpg',             false, ...
+        'bmp',             false, ...
+        'clipboard',       false, ...
+        'colourspace',     0, ...         % 0: RGB/gray, 1: CMYK, 2: gray
+        'append',          false, ...
+        'im',              false, ...
+        'alpha',           false, ...
+        'aa_factor',       0, ...
+        'bb_padding',      0, ...
+        'magnify',         [], ...
+        'resolution',      [], ...
+        'bookmark',        false, ...
+        'closeFig',        false, ...
+        'quality',         [], ...
+        'update',          false, ...
+        'fontswap',        true, ...
+        'font_space',      '', ...
+        'linecaps',        false, ...
         'invert_hardcopy', true, ...
-        'gs_options',   {{}});
+        'format_options',  struct, ...
+        'preserve_size',   false, ...
+        'gs_options',      {{}});
 end
 
 function [fig, options] = parse_args(nout, fig, varargin)
@@ -1116,7 +1151,7 @@ function [fig, options] = parse_args(nout, fig, varargin)
                             zipFileName = 'https://github.com/altmany/export_fig/archive/master.zip';
                             folderName = fileparts(which(mfilename('fullpath')));
                             targetFileName = fullfile(folderName, datestr(now,'yyyy-mm-dd.zip'));
-                            urlwrite(zipFileName,targetFileName);
+                            urlwrite(zipFileName,targetFileName); %#ok<URLWR>
                         catch
                             error('Could not download %s into %s\n',zipFileName,targetFileName);
                         end
@@ -1136,6 +1171,21 @@ function [fig, options] = parse_args(nout, fig, varargin)
                         options.linecaps = true;
                     case 'noinvert'
                         options.invert_hardcopy = false;
+                    case 'preserve_size'
+                        options.preserve_size = true;
+                    case 'options'
+                        % Issue #269: format-specific options
+                        inputOptions = varargin{a+1};
+                        %options.format_options  = inputOptions;
+                        if isempty(inputOptions), continue, end
+                        formats = fieldnames(inputOptions(1));
+                        for idx = 1 : numel(formats)
+                            optionsStruct = inputOptions.(formats{idx});
+                            %optionsCells = [fieldnames(optionsStruct) struct2cell(optionsStruct)]';
+                            formatName = regexprep(lower(formats{idx}),{'tiff','jpeg'},{'tif','jpg'});
+                            options.format_options.(formatName) = optionsStruct; %=optionsCells(:)';
+                        end
+                        skipNext = true;
                     otherwise
                         try
                             wasError = false;
@@ -1517,4 +1567,28 @@ function hBlackAxles = fixBlackAxle(hAxes, axleName)
         end
     end
     set(hBlackAxles, axleName, [0,0,0.01]);  % off-black
+end
+
+% Issue #269: format-specific options
+function [optionsCells, bitDepth] = getFormatOptions(options, formatName)
+    bitDepth = [];
+    try
+        optionsStruct = options.format_options.(lower(formatName));
+    catch
+        % User did not specify any extra parameters for this format
+        optionsCells = {};
+        return
+    end
+    optionNames = fieldnames(optionsStruct);
+    optionVals  = struct2cell(optionsStruct);
+    optionsCells = [optionNames, optionVals]';
+    if nargout < 2, return, end  % bail out if BitDepth is not required
+    try
+        idx = find(strcmpi(optionNames,'BitDepth'), 1, 'last');
+        if ~isempty(idx)
+            bitDepth = optionVals{idx};
+        end
+    catch
+        % never mind - ignore
+    end
 end

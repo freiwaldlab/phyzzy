@@ -166,7 +166,7 @@ if make_times
     else
         for fnum = 1:length(filenames)
             filename = filenames{fnum};
-            output_files{fnum} = do_clustering_single_FASort(filename, min_spikes4SPC, par_file, par_input, fnum);
+            output_files{fnum} = do_clustering_single(filename, min_spikes4SPC, par_file, par_input, fnum);
             fprintf('%d of %d ''times'' files finished.\n',count_new_times(initial_date, filenames),Nfiles)
         end
     end
@@ -475,11 +475,10 @@ if make_plots
       end      
     end
 end
-toc
 
 end
 
-function output_file = do_clustering_single_Orig(filename,min_spikes4SPC, par_file, par_input,fnum)
+function output_file = do_clustering_single(filename,min_spikes4SPC, par_file, par_input,fnum)
 
 par = struct;
 par = update_parameters(par, par_file, 'clus');
@@ -525,9 +524,19 @@ end
 inspk = wave_features(spikes,par);                % takes wavelet coefficients.
 par.inputs = size(inspk,2);                       % number of inputs to the clustering
 
+% % Spike amplitudes below some threshold are excluded from clustering.
+% par.clusThr = 'n';
+% if par.clusThr == 'y'
+%   spikePeaks = max(abs(spikes),[],2);
+%   spikeMask = spikePeaks > 120; %Get this variable from parameters or spikes, whichever we can add it to most easily.
+%   inspk_mask = inspk(spikeMask,:);
+% else
+%   inspk_mask = inspk;
+% end
+
 if par.permut == 'n'
   % GOES FOR TEMPLATE MATCHING IF TOO MANY SPIKES.
-  if size(spikes,1)> par.max_spk
+  if size(spikes,1)> par.max_spk;
     % take first 'par.max_spk' spikes as an input for SPC
     inspk_aux = inspk(1:naux,:);
   else
@@ -535,7 +544,7 @@ if par.permut == 'n'
   end
 else
   % GOES FOR TEMPLATE MATCHING IF TOO MANY SPIKES.
-  if size(spikes,1)> par.max_spk
+  if size(spikes,1)> par.max_spk;
     % random selection of spikes for SPC
     ipermut = randperm(length(inspk));
     ipermut(naux+1:end) = [];
@@ -636,229 +645,6 @@ catch
   end
 end
 
-
-end
-
-function output_file = do_clustering_single_FASort(filename,min_spikes4SPC, par_file, par_input,fnum)
-
-par = struct;
-par = update_parameters(par, par_file,'clus');
-par = update_parameters(par, par_file,'batch_plot');
-par = update_parameters(par, par_input,'clus');
-par = update_parameters(par, par_input,'batch_plot');
-
-par.filename = filename;
-par.reset_results = true;
-
-data_handler = readInData(par);
-par = data_handler.par;
-check_WC_params(par)
-%     if isfield(par,'channels') && ~isnan(par.channels)
-%         par.max_inputs = par.max_inputs * par.channels;
-%     end
-
-par.fname_in = [data_handler.file_path filesep 'tmp_data_wc' num2str(fnum)];                       % temporary filename used as input for SPC
-par.fname = [data_handler.file_path filesep 'data_' data_handler.nick_name];
-par.nick_name = data_handler.nick_name;
-par.file_path = data_handler.file_path;
-par.fnamespc = [data_handler.file_path filesep 'data_wc' num2str(fnum)];
-
-
-% LOAD SPIKES
-if data_handler.with_spikes            			%data have some time of _spikes files
-  [spikes, index] = data_handler.load_spikes();
-else
-  warning('MyComponent:noValidInput', 'File: %s doesn''t include spikes', filename);
-  throw(ME)
-  return
-end
-
-% If you have too many spikes, use 1:max_spk
-nspk = size(spikes,1);
-nspk_ind = (1:nspk)';
-naux = min(par.max_spk,size(spikes,1));
-
-if nspk < min_spikes4SPC
-  warning('MyComponent:noValidInput', 'Not enough spikes in the file');
-  return
-end
-
-% CALCULATES INPUTS TO THE CLUSTERING ALGORITHM.
-inspk = wave_features(spikes,par);                % takes wavelet coefficients.
-par.inputs = size(inspk,2);                       % number of inputs to the clustering
-
-% Spike amplitudes below some threshold are excluded from clustering.
-par.clusThr = 'y';
-if par.clusThr == 'y'
-  spikePeaks = max(abs(spikes),[],2);
-  spikeMask = spikePeaks > 60; %Get this variable from parameters or spikes, whichever we can add it to most easily.
-  inspk_masked = inspk(spikeMask,:);
-  inspk_ind_masked = nspk_ind(spikeMask,:);
-else
-  inspk_masked = inspk;
-  inspk_ind_masked = nspk_ind;
-end
-
-if par.permut == 'y'
-  % GOES FOR TEMPLATE MATCHING IF TOO MANY SPIKES.
-  ipermut = randperm(size(inspk_masked,1));
-  if size(inspk_masked,1) > par.max_spk
-    ipermut(naux+1:end) = [];     % random selection of spikes for SPC
-  end
-  inspk_ind_masked = inspk_ind_masked(ipermut,:);
-  inspk_aux = inspk_masked(ipermut,:);
-else
-  % GOES FOR TEMPLATE MATCHING IF TOO MANY SPIKES.
-  if size(inspk_masked,1)> par.max_spk
-    inspk_aux = inspk_masked(1:naux,:); % take first 'par.max_spk' spikes as an input for SPC
-    inspk_ind_masked = inspk_ind_masked(1:naux,:);
-  else
-    inspk_aux = inspk_masked;
-    inspk_ind_masked = inspk_ind_masked;
-  end
-end
-
-%Package spikes for SPC
-save(par.fname_in,'inspk_aux','-ascii');
-
-%INTERACTION WITH SPC
-try
-  [clu, tree] = run_cluster(par, true);
-  if exist([par.fnamespc '.dg_01.lab'],'file')
-    movefile([par.fnamespc '.dg_01.lab'], [par.fname '.dg_01.lab'], 'f');
-    movefile([par.fnamespc '.dg_01'], [par.fname '.dg_01'], 'f');
-  end
-catch
-  warning('MyComponent:ERROR_SPC', 'Error in SPC');
-  return
-end
-
-[clust_num, temp, auto_sort] = find_temp(tree,clu,par);
-
-%if you scrambled spikes, unscramble them, and create the correct size clu
-%matrix, with -1's for the spikes not involved in the clustering above
-if par.permut == 'y'
-  clu_aux = zeros(size(clu,1),2 + size(spikes,1)) - 1;  %when update classes from clu, not selected elements go to cluster 0
-  clu_aux(:,ipermut+2) = clu(:,(1:length(ipermut))+2);
-  clu_aux(:,1:2) = clu(:,1:2);
-  clu = clu_aux;
-  clear clu_aux
-  
-  %Make a matching manipulation to the Index vector.
-  inspk_ind_masked = [0; 0; inspk_ind_masked]'; %Clu is mostly columns with 2 added to the front, the input was rows.
-  clu_ind = zeros(1, 2 + size(spikes,1));
-  clu_ind(:,ipermut+2) = inspk_ind_masked(:,(1:length(ipermut))+2);
-  clu_ind(:,1:2) = inspk_ind_masked(:,1:2);
-  inspk_ind_masked = clu_ind;
-  clear clue_ind
-else %To unify the processing streams of permut vs non-permut data, bring clu to order here for both.
-  clu = [clu, zeros(size(clu,1), size(spikes,1) - size(clu,2) + 2)-1];
-  inspk_ind_masked = [0; 0; inspk_ind_masked]';
-  inspk_ind_masked = [inspk_ind_masked zeros(size(inspk_ind_masked,1), size(spikes,1) - size(inspk_ind_masked,2) + 2)-1];
-end 
-
-%If we set a threshold, resort the members of clu back to their proper
-%place.
-if par.clusThr == 'y'
-  spikeMask = find(spikeMask);
-  clu_aux = zeros(size(clu))-1;
-  clu_aux(:,spikeMask+2) = clu(:,(1:length(spikeMask))+2);
-  clu_aux(:,1:2) = clu(:,1:2);
-  clu = clu_aux;
-  clear clu_aux
-  
-  %Complementary Index step
-  clu_ind = zeros(size(inspk_ind_masked));
-  clu_ind(:,spikeMask+2) = inspk_ind_masked(:,(1:length(spikeMask))+2);
-  clu_ind(:,1:2) = inspk_ind_masked(:,1:2);
-  inspk_ind_masked = clu_ind;
-  clear clu_ind
-end
-
-%Check if the index is correctly recreated correctly. The numbers should
-%match their indicies (minus 2). 
-
-matchInd = (find(inspk_ind_masked(3:end)) == inspk_ind_masked(inspk_ind_masked ~= 0));
-if size(inspk_masked,1)> par.max_spk
-  matchInd = matchInd(1:par.max_spk);
-end
-assert(sum(matchInd) == length(matchInd));
-
-%Assign classes to each of the spikes fed into the SPC. If permut was used,
-%the filled in spikes in clu have a tag of -1, and therefore won't be
-%classified. If it wasn't, the code below extends the classes with 0's to
-%account for them.
-classes = zeros(1,size(clu,2)-2);
-for c = 1:length(clust_num)
-  aux = clu(temp(c),3:end) + 1 == clust_num(c);
-  classes(aux) = c;
-end
-
-%If you didn't permut, you took the first max_spk # of spikes. Add on zeros
-%for the remaining, unclassified spikes. - Now not needed, since clu is
-%appropriately sized for both permut and non-permut cases.
-% if par.permut == 'n'
-%   classes = [classes zeros(1,max(size(spikes,1)-par.max_spk,0))];
-% end
-
-Temp = [];
-
-% Classes should be consecutive numbers
-classes_names = nonzeros(sort(unique(classes)));
-for i= 1:length(classes_names)
-  c = classes_names(i);
-  if c~= i
-    classes(classes == c) = i;
-  end
-  Temp(i) = temp(i);
-end
-
-% IF TEMPLATE MATCHING WAS DONE, THEN FORCE
-if (size(spikes,1)> par.max_spk || (par.force_auto))
-  f_in  = spikes(classes~=0,:);
-  f_out = spikes(classes==0,:);
-  class_in = classes(classes~=0);
-  class_out = force_membership_wc(f_in, class_in, f_out, par);
-  forced = classes==0;
-  classes(classes==0) = class_out;
-  forced(classes==0) = 0;
-else
-  forced = zeros(1, size(spikes,1));
-end
-
-
-gui_status = struct();
-gui_status.current_temp =  max(temp);
-gui_status.auto_sort_info = auto_sort;
-gui_status.original_classes = zeros(size(classes));
-
-for i=1:max(classes)
-  gui_status.original_classes(classes==i) = clust_num(i);
-end
-
-current_par = par;
-par = struct;
-par = update_parameters(par, current_par, 'relevant');
-par = update_parameters(par,current_par,'batch_plot');
-
-par.sorting_date = datestr(now);
-cluster_class = zeros(nspk,2);
-cluster_class(:,2)= index';
-cluster_class(:,1)= classes';
-
-%Save Clustering Results
-output_file = [data_handler.file_path filesep 'times_' data_handler.nick_name '.mat'];
-try
-  save(output_file, 'cluster_class','spikes', 'par','inspk','forced','Temp','gui_status');
-  if exist('ipermut','var')
-    save(output_file,'ipermut','-append');
-  end
-catch
-  save(output_file, 'cluster_class','spikes', 'par','inspk','forced','Temp','gui_status','-v7.3');
-  if exist('ipermut','var')
-    save(output_file,'ipermut','-append','-v7.3');
-  end
-end
 
 end
 

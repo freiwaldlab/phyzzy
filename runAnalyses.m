@@ -1,4 +1,4 @@
-function [analysisOutFilename] = runAnalyses( inputs )
+function [analysisOutFilename] = runAnalyses(inputs)
 % runAnalyses should be the main site for customization
 % - inputs is a struct, which will be unpacked
 %  this version of runAnalyses does the following:

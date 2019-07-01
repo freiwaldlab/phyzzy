@@ -167,6 +167,7 @@ if isfield(params, 'waveClus') && params.waveClus
     save([params.outDir 'AnalysisParams.mat'], 'waveClusParams', '-append');
   catch
     warning('waveClus failure - proceeding unsorted')
+    error('waveClus failure')
   end
     %Clean up - Remove added paths, delete folder with files if requested.
     rmpath(genpath('dependencies/wave_clus'))

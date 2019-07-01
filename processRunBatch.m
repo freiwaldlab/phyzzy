@@ -121,4 +121,13 @@ T = cell2table(errorReport);
 T.Properties.VariableNames = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Unit_Count', 'Signifiant_Unit_count', 'Stimuli_count', 'Stimuli'};
 writetable(T,sprintf('%s/BatchRunResults.csv',outputVolume))
 
+%PDF Summary
+figDirPath = @(cell) (fileparts(cell));
+analysisOutFigDirs = cellfun(figDirPath, analysisOutFilename, 'UniformOutput', 0);
+
+for figDir_ind = 1:length(analysisOutFigDirs)
+  createSummaryDoc('buildLayoutParamFile', analysisOutFigDirs{figDir_ind})
+end
+
+
 end

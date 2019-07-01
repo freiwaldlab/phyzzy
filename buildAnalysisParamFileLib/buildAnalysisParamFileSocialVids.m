@@ -5,7 +5,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '003';
-dateSubject = '180629Mo';
+dateSubject = '180628Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -65,9 +65,9 @@ ephysParams.lfpChannels = [1];
 ephysParams.channelNames = {'8B'};
 ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
-ephysParams.waveClusReclass = 0; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
+ephysParams.waveClusReclass = 1; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
 ephysParams.waveClusProjPlot = 1; %Plots all the clusters in higher dimensional space (defined in type and number in wave_clus parameters).
 ephysParams.waveClusClear = 1; %1 deletes all files associated with analysis (leaves processed NSX files), 2 deletes the entire associated '_parsed' folder.
