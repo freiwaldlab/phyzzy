@@ -66,21 +66,40 @@ if ~isempty(xlsxLog)
     userVars2Temp.activityComments = raw{rowID,recActComInd};
     userVars2Temp.comments = raw{rowID,commInd};
     userVars2Temp.electrodeImp = raw{rowID,electrodeInd};
-    userVars2Temp.gridHole = [num2str(raw{rowID,holeMLInd}) '-' num2str(raw{rowID,holeAPInd})];
     userVars2Temp.putativeRegion = raw{rowID,regionInd};
     userVars2Temp.recordingDepth = raw{rowID,recordingInd};
     userVars2Temp.rewardFreq = 1;
+    if ~strcmp(num2str(raw{rowID,holeMLInd}),'NaN')
+      userVars2Temp.gridHole = [num2str(raw{rowID,holeMLInd}) '-' num2str(raw{rowID,holeAPInd})];
+    else
+      userVars2Temp.gridHole = nan;
+    end
     
     %Extract values from XLS are sometimes NaN, which must be treated
     %correctly.
     varFields = fields(userVars2Temp);
-    for field_i = 1:length(fields(userVars2Temp))
+    for field_i = 1:length(varFields)
       %If the XLS has anything, we assume its right, if the experimental
       %data struct is missing the field, or has it empty, we put NaN
       %anyway.
       if any(~isnan(eval(sprintf('userVars2Temp.%s', varFields{field_i})))) || (~isfield(userVars2, varFields{field_i}) || isempty(eval(sprintf('userVars2.%s', varFields{field_i}))))
           eval(sprintf('userVars2.%s = userVars2Temp.%s;', varFields{field_i}, varFields{field_i}))
       end
+    end
+  else %In the event that there is no row, some files lack certain fields that were added at different times. make sure all the appropriate fields are present. Below are defaults
+    userVars2Temp.activityComments = 'None';
+    userVars2Temp.comments = 'None';
+    userVars2Temp.electrodeImp = 'Unknown';
+    userVars2Temp.gridHole = 'Unknown';
+    userVars2Temp.putativeRegion = 'None';
+    userVars2Temp.recordingDepth = 'Unknown';
+    userVars2Temp.rewardFreq = 1;
+    
+    varFields = fields(userVars2Temp);
+    fieldsPresent = fields(userVars2);
+    diffFields = setdiff(varFields, fieldsPresent);
+    for field_i = 1:length(diffFields)
+      eval(sprintf('userVars2.%s = userVars2Temp.%s;', diffFields{field_i}, diffFields{field_i}))
     end
   end
 end
@@ -185,13 +204,13 @@ recordingSite = subplot('position',[0.6 0.65 0.35 0.3]);
 monthYearRec = data(1).TrialDateTime(1)*100+data(1).TrialDateTime(2); %Determine the month/year of the recording
 if monthYearRec < 201808
   %If recording took place prior to August 2018, Old Grid
-  gridPic = imread('C:\Data 2018\GridPics\Grid_v1.png');
+  gridPic = imread([filebits 'GridPics\Grid_v1.png']);
   gridOrigin = [37 159];
   gridStep = 34;
   holeDiam = 14;
   MLOffset = 1;
 else %monthYearRec < 201901 %New Grid was used (August - Dec 2018)
-  gridPic = imread('C:\Data 2018\GridPics\Grid_v2.png');
+  gridPic = imread([filebits 'GridPics\Grid_v2.png']);
   gridOrigin = [60 70];
   gridStep = 45.5;
   holeDiam = 19;
@@ -205,22 +224,24 @@ if length(holes) > 1
   holes = cellfun(removeSpaces, holes,'UniformOutput',false);
 end
 
-%Draw each of the holes, appropriately given the way they are described
-for hole_i = 1:length(holes)
-  if isletter(userVars2.gridHole(1))
-    APGridHole = str2double(holes{hole_i}(2:end))-1;
-    letters = {'A','B','C','D','E'};
-    MLGridHole = find(strcmp(letters, holes{hole_i}(1)))+3;
-    holeCords = [APGridHole (MLGridHole-MLOffset)];
-  else
-    APGridHole = (str2double(holes{hole_i}(3:end))-1);
-    holeCords = [APGridHole (str2double(holes{hole_i}(1))-MLOffset)];
+if any(~isnan(userVars2.gridHole))
+  %Draw each of the holes, appropriately given the way they are described
+  for hole_i = 1:length(holes)
+    if isletter(userVars2.gridHole(1))
+      APGridHole = str2double(holes{hole_i}(2:end))-1;
+      letters = {'A','B','C','D','E'};
+      MLGridHole = find(strcmp(letters, holes{hole_i}(1)))+3;
+      holeCords = [APGridHole (MLGridHole-MLOffset)];
+    else
+      APGridHole = (str2double(holes{hole_i}(3:end))-1);
+      holeCords = [APGridHole (str2double(holes{hole_i}(1))-MLOffset)];
+    end
+    recHoleSite = [gridOrigin + holeCords.*gridStep holeDiam];
+    gridPic = insertShape(gridPic,'FilledCircle',recHoleSite,'color','black','Opacity',1);
   end
-  recHoleSite = [gridOrigin + holeCords.*gridStep holeDiam];
-  gridPic = insertShape(gridPic,'FilledCircle',recHoleSite,'color','black','Opacity',1);
+  imagesc(gridPic);
 end
 
-imagesc(gridPic);
 recordingSite.YTickLabel = [];
 recordingSite.XTickLabel = [];
 title('Grid and Recording Sites')

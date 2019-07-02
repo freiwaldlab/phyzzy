@@ -5,7 +5,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 
 %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '003';
-dateSubject = '180628Mo';
+dateSubject = '20180628Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -20,11 +20,11 @@ switch machine
     stimParamsFilename = '/Freiwald/faboharb/analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
     %stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'Alienware_FA'
-    ephysVolume = 'C:/Data 2018'; 
-    stimulusLogVolume = 'C:/Data 2018'; 
-    outputVolume = 'C:/Data 2018/Analysis_2019';
-    stimParamsFilename = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
-    stimDir = 'G:/StimuliForFaridfromJulia/SocialCategories';
+    ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018'); 
+    stimulusLogVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018'); 
+    outputVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed'); 
+    stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
+    stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
   case 'DataAnalysisPC'
     ephysVolume = 'Z:/';
     stimulusLogVolume = 'Y:/SocialvNonSocial - random';
@@ -479,4 +479,11 @@ if isempty(varargin)
 elseif strcmp(varargin,'saveNoPreprocParams')
   save(analysisParamFilename,'calcSwitch','analysisGroups','plotSwitch','-append');
 end
+end
+
+function swappedString = slashSwap(pathString)
+%Swaps direction of slashes to match Unix/Phyzzy, from Windows Path.
+  stringParts = split(pathString, '\');
+  swappedString = char(join(stringParts, '/'));
+  
 end
