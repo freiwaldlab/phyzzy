@@ -61,6 +61,14 @@ for i = 1:size(lfpData,1)
   lfpData(i,:) = lfpData(i,:) - mean(lfpData(i,:));
 end
 for i = 1:size(lfpData,1)
+  %%%
+  butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 50, 'StopbandFrequency', 200, 'PassbandRipple', 1,...
+    'StopbandAttenuation', 100, 'SampleRate', 30000, 'MatchExactly', 'passband');  %this returns a 3rd order iir filter
+  filt = butter200Hz_v1;
+  disp('starting pre-filter');
+  lfpData(i,:) = filtfilt(filt,lfpData(i,:));
+  disp('finished pre-filter');
+  %%%
   lfpDataDecPadded(i,filterPad+1:end-filterPad) = lfpChannelScaleBy(i)*decimate(decimate(lfpData(i,:),decimateFactorPass1),decimateFactorPass2);
   lfpDataDecPadded(i,1:filterPad) = lfpDataDecPadded(i,filterPad+1)*lfpDataDecPadded(i,1:filterPad);
   lfpDataDecPadded(i,end-(filterPad-1):end) = lfpDataDecPadded(i,end-filterPad)*lfpDataDecPadded(i,end-(filterPad-1):end);

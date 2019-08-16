@@ -783,8 +783,8 @@ if ~taskData.RFmap
     end
     catFr = firingRatesByCategoryByEpoch{calc_i};
     imFr = firingRatesByImageByEpoch{calc_i};
-    catFrErr = firingRateErrsByImageByEpoch{calc_i};
-    imFrErr = firingRateErrsByCategoryByEpoch{calc_i};
+    catFrErr = firingRateErrsByCategoryByEpoch{calc_i};
+    imFrErr = firingRateErrsByImageByEpoch{calc_i};
     frCalcOn = frEpochs(calc_i,1);
     frCalcOff = frEpochs(calc_i,2);
     for group_i = 1:length(analysisGroups.tuningCurves.groups)
