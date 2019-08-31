@@ -473,6 +473,9 @@ if ~taskData.RFmap
         continue;
       end
       [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');  %todo: write the firing rates to file
+      if sum(imageSortedRates) == 0
+        imageSortedRates(1) = 1; %Defense against this causing problems later. 
+      end
       imSpikeCountsSorted = imSpikeCounts{channel_i}{unit_i}(imageSortOrder);
       imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
       sortedImageLabels = eventLabels(imageSortOrder);
@@ -4746,7 +4749,7 @@ function attendedObjData = calcEyeObjectTrace(psthByImage, psthParams, lfpPadded
 % structure with a {event}{trial}{frame*1}, where ever item is the
 % name of what is being fixated on.
 
-plotType = 'trace'; %'area';%
+plotType = 'none'; %'trace'; %'area';%
 
 PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
 frameMotionData = taskData.frameMotionData;
@@ -4845,11 +4848,28 @@ end
 
 %Plot the Result as an area plot, where X = frames
 areaColors = [shapeColors{:} {[.5 .5 .5]}]'; %Shape colors + Background
-objList = [frameMotionData(1).objNames, {'bkg'}]';
+%Hard coded for now, will need adjustment for other task sets.
+objList = [{'Face1'},{'Body1'},{'HandL1'},{'HandR1'},{'GazeFollow1'},{'Object1'},{'Face2'},{'Body2'},{'HandL2'},{'HandR2'},{'GazeFollow2'},{'Object2'},{'bkg'}]';
 handleArray = gobjects(length(psthByImage), length(eventIDs));
 tracePlotData = cell(1,length(eventIDs));
 
 switch plotType
+  case 'none'
+    tag2color = @(n) areaColors{strcmp(objList, n)}; %Returns appropriate color for each object
+    for channel_i = 1:length(psthByImage)
+      for event_i = 1:length(eventIDs)
+        disp('No plotting for calcObjEyeTrace')
+        %For every event, grab the correct color
+        attendedObjectEvent = attendedObjVect{event_i};
+        attendObjColorMat = cellfun(tag2color, attendedObjectEvent, 'UniformOutput', false); % a Trial * Frame array of the first letter of each object.
+        tracePlotData{event_i} = zeros(size(attendObjColorMat, 1), size(attendObjColorMat, 2), 3); %Frames * Unique * colors objects
+        for trial_i = 1:size(attendObjColorMat,1)
+          for frame_i = 1:size(attendObjColorMat,2)
+            tracePlotData{event_i}(trial_i, frame_i, :) = attendObjColorMat{trial_i, frame_i};
+          end
+        end
+      end
+    end
   case 'area'
     for channel_i = 1:length(psthByImage)
       for event_i = 1:length(eventIDs)
@@ -5063,6 +5083,9 @@ for channel_i = 1:length(psthByImage)
     unitPSTH = psthByImage{channel_i}{unit_i};
     for group_i = 1:length(sortMask{channel_i}{unit_i})
       yMax = max(max(unitPSTH));
+      if yMax == 0
+        yMax = 1; %Another 0 unit spike protection.
+      end
       yMin = min(min(unitPSTH));
       unitPSTHSorted = unitPSTH(sortMask{channel_i}{unit_i}{group_i},:);
       translationTableSorted = translationTable(sortMask{channel_i}{unit_i}{group_i});
@@ -5124,7 +5147,7 @@ for channel_i = 1:length(psthByImage)
           
           PSTHVideo = VideoReader(PSTHVideoPath);
           
-          videoPlayer = vision.VideoPlayer;
+          %videoPlayer = vision.VideoPlayer;
           outputVideo = VideoWriter(outputVideoPath);
           outputVideo.FrameRate = stimVid.FrameRate;
           open(outputVideo);
@@ -5134,12 +5157,12 @@ for channel_i = 1:length(psthByImage)
             img2 = readFrame(PSTHVideo);
             imgt = vertcat(img1, img2);
             % play video
-            step(videoPlayer, imgt);
+            %step(videoPlayer, imgt);
             % record new video
             writeVideo(outputVideo, imgt);
           end
           
-          release(videoPlayer);
+          %release(videoPlayer);
           close(outputVideo);
           clear PSTHVideo
           delete(PSTHVideoPath);

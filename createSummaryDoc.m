@@ -72,12 +72,10 @@ for page_ind = 1:length(docFigPath)
     %Retrieve appropriate sizes for each figure, size them accordingly.
     pageLayout = layoutSize{length(figsToPlot)};
     figHand = gobjects(length(figsToPlot),1);
-    testBlock = 0;
     for ii = 1:length(figsToPlot)
       figHand(ii) = openfig(figsToPlot{ii});
       figHand(ii).Units = 'inches';
-      figHand(ii).Position(3:4) = pageLayout{ii}.*pageSize;
-      figHand(ii).Visible = 'off'; % openning them invisible leads to callbacks being disabled.
+      figHand(ii).Position = [24 24 pageLayout{ii}.*pageSize];
     end
     
     %Retrieve appropriate indicies for each figure, and create the correct
@@ -129,7 +127,7 @@ end
 
 function configPages = unitExpand(configPages, figDir)
 %Find all figs with unit in name.
-  unitFigs = dir([figDir '/*unit*']);
+  unitFigs = dir([figDir '\*unit*']);
   unitFigList = {unitFigs.name}';
   %Extract all the unit numbers
   unitNum = @(str) strsplit(str,{' ','_'});

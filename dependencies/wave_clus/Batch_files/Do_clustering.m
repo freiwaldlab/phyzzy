@@ -133,6 +133,8 @@ else
 end
 
 par_file = set_parameters();
+[fileDir, fileN, ~] = fileparts(filenames{1});
+
 if make_times
 % open parallel pool, if parallel input is true
     if parallel == true
@@ -152,23 +154,26 @@ if make_times
         end
     end
 
-
-
     initial_date = now;
     Nfiles = length(filenames);
     output_files = cell(Nfiles,1);
     if run_par_for == true
-        parfor fnum = 1:Nfiles
-            filename = filenames{fnum};
-            output_files{fnum} = do_clustering_single(filename, min_spikes4SPC, par_file, par_input, fnum);
-            fprintf('%d of %d ''times'' files finished.\n',count_new_times(initial_date, filenames),Nfiles)
-        end
+      parfor fnum = 1:Nfiles
+        filename = filenames{fnum};
+        output_files{fnum} = do_clustering_single(filename, min_spikes4SPC, par_file, par_input, fnum);
+        fprintf('%d of %d ''times'' files finished.\n',count_new_times(initial_date, filenames),Nfiles)
+      end
     else
-        for fnum = 1:length(filenames)
-            filename = filenames{fnum};
-            output_files{fnum} = do_clustering_single_FASort(filename, min_spikes4SPC, par_file, par_input, fnum);
-            fprintf('%d of %d ''times'' files finished.\n',count_new_times(initial_date, filenames),Nfiles)
-        end
+      for fnum = 1:length(filenames)
+        filename = filenames{fnum};
+        %Load the output to retrieve the threshold.
+        tmp = load(filename,'par');
+        par_input.threshold(fnum) = tmp.par.threshold;
+        clear tmp
+        %do clustering
+        output_files{fnum} = do_clustering_single_FASort(filename, min_spikes4SPC, par_file, par_input, fnum);
+        fprintf('%d of %d ''times'' files finished.\n',count_new_times(initial_date, filenames),Nfiles)
+      end
     end
     if parallel == true
       if exist('matlabpool','file')
@@ -662,7 +667,7 @@ par.fname = [data_handler.file_path filesep 'data_' data_handler.nick_name];
 par.nick_name = data_handler.nick_name;
 par.file_path = data_handler.file_path;
 par.fnamespc = [data_handler.file_path filesep 'data_wc' num2str(fnum)];
-
+par.threshold = par_input.threshold;
 
 % LOAD SPIKES
 if data_handler.with_spikes            			%data have some time of _spikes files

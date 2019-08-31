@@ -109,7 +109,16 @@ end
 if ~isfield(userVars,'clipDuration')
   userVars.clipStartTime = 0;
   userVars.clipDuration = data(corrInd).ObjectStatusRecord.SceneParam(2).AdapterArgs{1,3}{3};
-  RewardTmp = [data.RewardRecord];
+  RewardTmp = [data([data.TrialError] == 0).RewardRecord];
+  %Duct tape - sometimes manual reward leads to different size vectors,
+  %needs to either reshape or remove them.
+  for ii = 1:length(RewardTmp)
+    if length(RewardTmp(ii).StartTimes) > 1
+      RewardTmp(ii).StartTimes = RewardTmp(ii).StartTimes(end);
+      RewardTmp(ii).EndTimes = RewardTmp(ii).EndTimes(end);
+    end
+  end  
+  %Mean time
   userVars.rewardTimeMean = round(mean([RewardTmp.EndTimes]-[RewardTmp.StartTimes]));
   userVars.rewardSD = 0; %Experiments where this isn't recorded were before this was used, and therefore must be close to 0.
 end

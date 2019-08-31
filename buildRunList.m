@@ -1,25 +1,37 @@
-function [runList] = buildRunList(dataDir)
+function [dirList] = buildRunList(dataDir, tag)
 % Constructs the runList variable for the processRunBatch function based on
-% the selection of a directory.
-runList_struct = dir(dataDir);
-runList_cell = struct2cell(runList_struct);
+% the selection of a directory and a tag, which both denotes the directory
+% contents of interest but also changes output formating.
 
-runList = runList_cell(1, cell2mat(runList_cell(5,1:end)));
+filesOfInterest = dir([dataDir filesep '**' filesep '*.' tag]);
+fileDirs = unique({filesOfInterest.folder}');
 
-%Assumes the first 2 entries are '.' and '..', and discards them. This is
-%not an ideal method and may not work on non-Windows.
-runList = runList(3:end);
-
-runList_tmp = cell(1, length(runList));
-
-for ii = 1:length(runList)
-    filePattern = fullfile([dataDir,filesep,runList{1,ii}], '*.nev');
-    theFiles = struct2cell(dir(filePattern));
-    theFiles = theFiles(1,:);
-    cells = cellfun(@(x) extractBetween(x, runList{1,ii}, '.'), theFiles);
-    runListBlock = {runList{ii}; cells};
-    runList_tmp{ii} = runListBlock;    
+switch tag
+  case 'nev'
+    %Find everywhere with data files - denoted by folders containing a .nev.
+    %Change if not using Blackrock NSP.
+    for ii = 1:length(fileDirs)
+      [~, fileDirs{ii}] = fileparts(fileDirs{ii});
+    end
+    
+    %Cycle through those folders
+    dirList_tmp = cell(1, length(fileDirs));
+    
+    name = regexp(fileDirs{1},'\D*','Match'); %Find the name
+    extractRunNum = @(x) extractBetween(x, name, '.');
+    
+    for ii = 1:length(fileDirs)
+      theFiles = dir([dataDir filesep fileDirs{ii} filesep '*.nev']);
+      theFiles = {theFiles(:).name};
+      cells = cellfun(extractRunNum, theFiles);
+      runListBlock = {fileDirs{ii}; cells};
+      dirList_tmp{ii} = runListBlock;
+    end
+  case 'fig'
+    %Returns directories where .fig files are located, used in conjunction
+    %with the 'createSummaryDoc' function.
+    
+    
 end
-
-runList = runList_tmp;
+dirList = dirList_tmp;
 

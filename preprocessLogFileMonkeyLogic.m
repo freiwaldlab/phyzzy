@@ -159,10 +159,42 @@ packetData = double(taskTriggers.UnparsedData);
 
 if ~isempty(packetData) % Means Blackrock/MKL Communication was intact, correct
   %Code to get rid of any markers prior to the first trial beginning, or after the final trial end.
-  trueStart = find(packetData == trialStartMarker,1);
+  %a defense against double 9's
+  trueStart = find(packetData == trialStartMarker);
+  trueStartTrials = (diff(trueStart) > 1);
+  trueStart = trueStart(trueStartTrials);
+  trueStart = trueStart(1);
   trueEnd = find(packetData == trialEndMarker,1,'last');
+  
   packetData = packetData(trueStart:trueEnd);
   packetTimes = packetTimes(trueStart:trueEnd);
+  
+%   if trueEnd ~= length(packetData) || trueStart ~= 1
+%       %This happens if Blackrock is on less time than Monkeylogic -
+%       %fragments of complete trial marker sets arrive at Blackrock. to keep
+%       %things complete, we need to see which trials are cut, assuming
+%       %Blackrock 
+%       origStartInd = find(packetData == trialStartMarker);
+%       origEndInd = find(packetData == trialEndMarker);
+%       
+%       packetData = packetData(trueStart:trueEnd);
+%       packetTimes = packetTimes(trueStart:trueEnd);
+%       
+%       cutStartInd = find(packetData == trialStartMarker);
+%       cutEndInd = find(packetData == trialEndMarker);
+% 
+%       indStartCutTrial = setdiff(origStartInd, cutStartInd);
+%       indEndCutTrial = setdiff(origEndInd, cutEndInd);
+%       indCutTrial = [indStartCutTrial indEndCutTrial];
+%       %Use this index to modify relevant vectors from Monkeylogic.
+%       keptTrialInd = ones(length(origStartInd),1);
+%       for ii = 1:length(indCutTrial)
+%         keptTrialInd(origStartInd == indCutTrial(ii)) = 0;
+%       end
+%   end
+  
+  %to later figure out how to shape data, we need to know what we saw and
+  %got rid of.
   
   %Below are things which should happen every trial  
   trialStartInds = find(packetData == trialStartMarker); 
@@ -177,29 +209,30 @@ if ~isempty(packetData) % Means Blackrock/MKL Communication was intact, correct
   %trials from the whole array. Assign them them to the correct vectors. 
   [taskEventStartTimesBlk, taskEventEndTimesBlk, juiceOnTimesBlk, juiceOffTimesBlk, taskEventIDsBlk] = deal(nan(length(trialStartInds), 1));
   
-  %Construct Error array from Blackrock files only, if you want
-%   errorArray = zeros(sum(packetData == trialStartMarker), 1);
-%   for ii = 1:length(trialStartInds) %for every trial
-%     %Go through packet data, starting at that stim, and see if you hit a
-%     %40, 3, or 4 first.
-%     found = 0;
-%     stepsAhead = 1;
-%     while ~found
-%       switch packetData(trialStartInds(ii)+stepsAhead)
-%         case fixFailMarker
-%           errorArray(ii) = fixFailMarker;
-%           found = 1;
-%         case stimFailMarker
-%           errorArray(ii) = stimFailMarker;
-%           found = 1;
-%         case rewardMarker
-%           errorArray(ii) = 0;
-%           found = 1;
-%         otherwise
-%           stepsAhead = stepsAhead + 1;
-%       end
-%     end
-%   end
+  %Construct Error array from Blackrock files only, useful in the case that
+  %incomplete trials lead to unpaired start and stop triggers.
+  errorArray = zeros(sum(packetData == trialStartMarker), 1);
+  for ii = 1:length(trialStartInds) %for every trial
+    %Go through packet data, starting at that stim, and see if you hit a
+    %40, 3, or 4 first.
+    found = 0;
+    stepsAhead = 1;
+    while ~found
+      switch packetData(trialStartInds(ii)+stepsAhead)
+        case fixFailMarker
+          errorArray(ii) = fixFailMarker;
+          found = 1;
+        case stimFailMarker
+          errorArray(ii) = stimFailMarker;
+          found = 1;
+        case rewardMarker
+          errorArray(ii) = 0;
+          found = 1;
+        otherwise
+          stepsAhead = stepsAhead + 1;
+      end
+    end
+  end
   
   %packetData is directly referenced for events which only happen
   %sometimes.
@@ -258,43 +291,45 @@ else % Means Blackrock/MKL Communication was not correctly connected.
 end
 
 %% Run some checks comparing data collected from Blackrock, MonkeyLogic.
-if (sum(packetData == rewardMarker) ~= sum(correctTrialArray))
+if (length(taskEventIDsLog) ~= length(taskEventIDsBlk))
   warning('Blackrock and MonkeyLogic report different numbers of correct trials. Attempting to find best alignment')
   %Odd situation, likely due to hitting runAnalyses prior to the MKL being
   %stopped. Seems like MKL doesn't have the complete record, Blackrock
   %does. In these cases, use the shorter of the two.
-  LogLen = length(taskEventIDsLog);
-  BlkLen = length(taskEventIDsBlk);
   lag = finddelay(taskEventIDsBlk, taskEventIDsLog);
   %Switch below written for a single case in July, unlikely to happen
   %again, needs more extensive testing.
-  switch abs(lag) %If find delay has an answer - tihs might invalidate the length checking method, but it seems to not always work.
-    case (lag > 0)
-      taskEventIDsLog = taskEventIDsLog((lag+1):end);
-      taskEventStartTimesLog = taskEventStartTimesLog((lag+1):end);
-      taskEventEndTimesLog = taskEventEndTimesLog((lag+1):end);
-      juiceOnTimesLog = juiceOnTimesLog((lag+1):end);
-      juiceOffTimesLog = juiceOffTimesLog((lag+1):end);
-      tmpEye = tmpEye((lag+1):end);
-      LogLen = length(taskEventIDsLog);
-      BlkLen = length(taskEventIDsBlk);
-    case (lag < 0)
-      lag = abs(lag);
-      taskEventIDsBlk = taskEventIDsBlk((lag+1):end);
-      taskEventStartTimesBlk = taskEventStartTimesBlk((lag+1):end);
-      taskEventEndTimesBlk = taskEventEndTimesBlk((lag+1):end);
-      juiceOnTimesBlk = juiceOnTimesBlk((lag+1):end);
-      juiceOffTimesBlk = juiceOffTimesBlk((lag+1):end);
-      taskEventIDs = taskEventIDs((lag+1):end);
-      LogLen = length(taskEventIDsLog);
-      BlkLen = length(taskEventIDsBlk);
+  %If find delay has an answer - this might invalidate the length checking method, but it seems to not always work.
+  %This means shifting things forward improves the pairwise match - means
+  %something extra at the start.
+  if (lag > 0)
+    taskEventIDsLog = taskEventIDsLog((lag+1):end);
+    taskEventStartTimesLog = taskEventStartTimesLog((lag+1):end);
+    taskEventEndTimesLog = taskEventEndTimesLog((lag+1):end);
+    juiceOnTimesLog = juiceOnTimesLog((lag+1):end);
+    juiceOffTimesLog = juiceOffTimesLog((lag+1):end);
+    tmpEye = tmpEye((lag+1):end);
+  elseif (lag < 0)
+    %Means shifting back improves match,
+    lag = abs(lag);
+    taskEventIDsBlk = taskEventIDsBlk((lag+1):end);
+    taskEventStartTimesBlk = taskEventStartTimesBlk((lag+1):end);
+    taskEventEndTimesBlk = taskEventEndTimesBlk((lag+1):end);
+    juiceOnTimesBlk = juiceOnTimesBlk((lag+1):end);
+    juiceOffTimesBlk = juiceOffTimesBlk((lag+1):end);
+    taskEventIDs = taskEventIDs((lag+1):end);
   end
-  if LogLen < BlkLen %monkeyLogic stopped early.
+  %Recalculate lengths
+  LogLen = length(taskEventIDsLog);
+  BlkLen = length(taskEventIDsBlk);
+  if LogLen < BlkLen %monkeyLogic stopped storing things early.
     %Chop the Blackrock events down to the size of what Mkl has stored
     taskEventIDsBlk = taskEventIDsBlk(1:LogLen);
     if sum(taskEventIDsBlk == taskEventIDsLog) == length(taskEventIDsLog) %If They are now a match
       taskEventStartTimesBlk = taskEventStartTimesBlk(1:LogLen);
       taskEventEndTimesBlk = taskEventEndTimesBlk(1:LogLen);
+      stimFramesLost = stimFramesLost(1:LogLen);
+      errorArray = errorArray(1:LogLen); %Unique here because it is a stored variable from MKL.
       juiceOnTimesBlk = juiceOnTimesBlk(1:LogLen);
       juiceOffTimesBlk = juiceOffTimesBlk(1:LogLen);
       taskEventIDs = taskEventIDs(1:LogLen);
@@ -307,11 +342,12 @@ if (sum(packetData == rewardMarker) ~= sum(correctTrialArray))
     if sum(taskEventIDsBlk == taskEventIDsLog) == length(taskEventIDsLog) %If They are now a match
       %do the same chopping to monkeyLogic related structures
       %Collect trialEventIDs.
-        taskEventStartTimesLog = taskEventStartTimesLog(1:BlkLen);
-        taskEventEndTimesLog = taskEventEndTimesLog(1:BlkLen);
-        juiceOnTimesLog = juiceOnTimesLog(1:BlkLen);
-        juiceOffTimesLog = juiceOffTimesLog(1:BlkLen);
-        tmpEye = tmpEye(1:BlkLen);
+      taskEventStartTimesLog = taskEventStartTimesLog(1:BlkLen);
+      taskEventEndTimesLog = taskEventEndTimesLog(1:BlkLen);
+      stimFramesLost = stimFramesLost(1:BlkLen);
+      juiceOnTimesLog = juiceOnTimesLog(1:BlkLen);
+      juiceOffTimesLog = juiceOffTimesLog(1:BlkLen);
+      tmpEye = tmpEye(1:BlkLen);
     else
       error("Simple alignment failed - Blackrock and MonkeyLogic logs still don't match")
     end

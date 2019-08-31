@@ -4,7 +4,7 @@ function [] = processRunBatch(varargin)
 %   Inputs:
 %   - varargin can have the following forms:
 %     - two arguments, the first being a "runList" cell array of the form 
-%       {{'dateSubj';{'001','002'}} i.e.{{'180314MO'; {'002';'003'}}}, the
+%       {{'dateSubj';{'001','002'}} i.e.{{'180314Mo'; {'002';'003'}}}, the
 %       second of the form paramBuilderFunctionName as a string i.e.
 %       'buildAnalysisParamFileSocVid'
 %     - one argument of the form paramBuilderFunctionName as a string i.e.
@@ -12,13 +12,21 @@ function [] = processRunBatch(varargin)
 %       directory with files.
 
 %% Load Appropriate variables and paths
-addpath('buildAnalysisParamFileLib');
-addpath(genpath('dependencies'));
+addpath(genpath('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy'))
+% addpath('buildAnalysisParamFileLib');
+% addpath(genpath('dependencies'));
 
 if nargin == 1
+    %If there is only 1 file, it loads the analysisParamFile and composes a
+    %list from all the data files in the ephysVolume.
     analysisParamFile = varargin{1};
-    disp('Select Folder containing Data')
-    runList = buildRunList(uigetdir);
+    load(feval(analysisParamFile));
+    runListFolder = uigetdir;
+    if runListFolder == 0
+      disp('using ephysVolume as directory')
+      runListFolder = ephysVolume;
+    end
+    runList = buildRunList(runListFolder, 'nev');
 elseif nargin == 2
     runList = varargin{1};
     analysisParamFile = varargin{2};
@@ -28,8 +36,6 @@ elseif nargin >= 3 || nargin == 0
 end
 
 %% Create all of the appropriate AnalysisParamFiles as a cell array.
-load(feval(analysisParamFile));
-%rmdir(outDir, 's'); %The analysis file is overwritten, so if it isn't a run you're about to do, this file is no longer correct. 
 [analysisParamFileList, analysisParamFileName] = deal(cell(0));
 meta_ind = 1;
 
@@ -61,8 +67,14 @@ end
 %% Process the runs
 [errorsMsg, startTimes, endTimes, analysisOutFilename] = deal(cell(length(analysisParamFileList),1));
 
+diary batchRunLog.txt
+diary on
+
+analysisParamFileList'
+
 if license('test','Distrib_Computing_Toolbox')
   parfor run_ind = 1:length(analysisParamFileList)
+    fprintf('run_ind reads %d... \n', run_ind);
     fprintf('Processing %s... \n', analysisParamFileList{run_ind});
     startTimes{run_ind} = datetime('now');
     try
@@ -75,7 +87,7 @@ if license('test','Distrib_Computing_Toolbox')
       fprintf('Ran into Error, Moving to next File. \n');
       continue
     end
-    clc; close all;
+    close all;
     fprintf('Done! \n');
   end
 else
@@ -97,6 +109,8 @@ else
   end
 end
 
+diary off
+
 %analysisOutFilename is now a cell array of the filepaths to the outputs of
 %runAnalyses. Cycle through them and extract desired information (# of
 %units, significance), which you can add to the output file.
@@ -115,16 +129,29 @@ for ii = 1:length(analysisOutFilename)
   end
 end
 
-%Save Batch Run Results
+% %Save Batch Run Results
 errorReport = [analysisParamFileName' startTimes endTimes errorsMsg UnitCount sigUnits sigStimLen sigStim ];
 T = cell2table(errorReport);
 T.Properties.VariableNames = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Unit_Count', 'Signifiant_Unit_count', 'Stimuli_count', 'Stimuli'};
 writetable(T,sprintf('%s/BatchRunResults.csv',outputVolume))
 
+%Save Batch Run Results
+% errorReport = [analysisParamFileName' startTimes endTimes errorsMsg];
+% T = cell2table(errorReport);
+% T.Properties.VariableNames = {'File_Analyzed', 'Start_Time', 'End_time', 'Error'};
+% writetable(T,sprintf('%s/BatchRunResults.csv',outputVolume))
+
 %PDF Summary
+%Remove empty cells from analysisOutFilename
+nonEmptyCellInd = ~(cellfun('isempty',analysisOutFilename));
+analysisOutFilename = analysisOutFilename(nonEmptyCellInd);
+
+%Find the directory
 figDirPath = @(cell) (fileparts(cell));
 analysisOutFigDirs = cellfun(figDirPath, analysisOutFilename, 'UniformOutput', 0);
 
+if 
+%run through the createSummaryDoc Function.
 for figDir_ind = 1:length(analysisOutFigDirs)
   createSummaryDoc('buildLayoutParamFile', analysisOutFigDirs{figDir_ind})
 end

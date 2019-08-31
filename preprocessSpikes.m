@@ -43,62 +43,76 @@ channelUnitNames = cell(length(params.spikeChannels),1);
 %Checks for resorted spikes, overwrites NEV structure with new unit
 %assignments and time stamps.
 if isfield(params,'offlineSorted') && params.offlineSorted == 1
-    spikeFilenameSorted = [spikeFilePath '/' spikeFile '.xls'];
-    assert(logical(exist(spikeFilenameSorted,'file')),'The Offline sorted spike file you requested does not exist.');
-    spikeMat = xlsread(spikeFilenameSorted);
-    %Overwrite NEV fields
-    NEV.Data.Spikes.Electrode = spikeMat(:,1);
-    NEV.Data.Spikes.Unit = spikeMat(:,2);
-    NEV.Data.Spikes.TimeStamp = spikeMat(:,3)*30e3; %Sampling Freq should likely be a variable pulled from elsewhere.
-    NEV.Data.Spikes.Waveform = spikeMat(:,4:end);
+  spikeFilenameSorted = [spikeFilePath '/' spikeFile '.xls'];
+  assert(logical(exist(spikeFilenameSorted,'file')),'The Offline sorted spike file you requested does not exist.');
+  spikeMat = xlsread(spikeFilenameSorted);
+  %Overwrite NEV fields
+  NEV.Data.Spikes.Electrode = spikeMat(:,1);
+  NEV.Data.Spikes.Unit = spikeMat(:,2);
+  NEV.Data.Spikes.TimeStamp = spikeMat(:,3)*30e3; %Sampling Freq should likely be a variable pulled from elsewhere.
+  NEV.Data.Spikes.Waveform = spikeMat(:,4:end);
 end
 
 if isfield(params, 'waveClus') && params.waveClus
-  try
+%   try
     %Temporarily add directories needed for wave_clus
     addpath(genpath('dependencies/wave_clus'))
-  
+    
     %use the typical naming convention to find the contious trace (ns5)
     lfpFilename = [spikeFilePath '/' spikeFile '.ns5'];
     
     %parse the ns5, or see if they are already parsed.
     parsedData = parse_data_NSx(lfpFilename, 2); %(filename,max_memo_GB)
     
-    %Find spikes in the files which matter
+    %Delete files we don't care about (since they don't represent
+    %electrodes).
     for ii = 1:length(parsedData)
       tmpFilename = parsedData{ii};
       tmpCut = split(tmpFilename, ["_","."]);
-      if str2double(tmpCut{end-1}(3:end)) < 129 %Connector Banks on Blackrock are channels 1 - 128.
-       output_paths = Get_spikes(parsedData{ii});
-      else
+      if str2double(tmpCut{end-1}(3:end)) > 128 %Connector Banks on Blackrock are channels 1 - 128.
         delete(parsedData{ii})
+        parsedData(ii) = [];
       end
     end
     
-    %Cluster them, based on either a specified param file or the default.
-    if isfield(params, 'paramHandle')
-      clusterResults = Do_clustering(output_paths, 'par', params.paramHandle);
+    clusterResults = cell(length(parsedData),1);
+    
+    %Check to see if a previously clustered file exists for each channel
+    %for data_i = 1:length(parsedData)
+    %[dataPath, dataName] = fileparts(parsedData); %{data_i}
+    
+    previousFile = dir([fileparts(parsedData{1}) filesep 'times_*.mat']);
+    if ~isempty(previousFile)
+      disp('waveClus spikes already clustered, providing path to file.')
+      for ii = 1:length(previousFile)
+        clusterResults{ii} = [previousFile(ii).folder filesep previousFile(ii).name];
+      end
+      Do_clustering(clusterResults, 'make_plots', true, 'make_times', false)
     else
-      clusterResults = Do_clustering(output_paths);
+      %Find spikes
+      output_paths = Get_spikes(parsedData); %{data_i}
+      
+      %Cluster them, based on either a specified param file or the default.
+      if isfield(params, 'paramHandle')
+        clusterResults = Do_clustering(output_paths, 'par', params.paramHandle); %{data_i}
+      else
+        clusterResults = Do_clustering(output_paths); %{data_i}
+      end
     end
-    
-    tmp = load(output_paths{1},'par');
-    threshold = mean(tmp.par.threshold);
-    if strcmp(tmp.par.detection,'neg')
-      threshold = -1*threshold;
-    end
-    clear tmp
-    
+    %end
+        
     %Cycle through cluster results (done per electrode) and load them into
     %a temporary NEV structure.
     [tmpSpikes.TimeStamp, tmpSpikes.Electrode, tmpSpikes.Unit, tmpSpikes.Waveform] = deal([]);
     for ii=1:length(clusterResults)
-      WC = load(clusterResults{ii}); %Electrode should actually parse the name of the file. 
+      WC = load(clusterResults{ii}); %Electrode should actually parse the name of the file.
       tmpSpikes.Unit = vertcat(tmpSpikes.Unit, WC.cluster_class(:,1));
       tmpSpikes.TimeStamp = vertcat(tmpSpikes.TimeStamp, WC.cluster_class(:,2));
       tmpSpikes.Waveform = vertcat(tmpSpikes.Waveform, WC.spikes);
       tmpSpikes.Electrode = vertcat(tmpSpikes.Electrode, ones(length(WC.cluster_class), 1)*ii);
+      tmpSpikes.Threshold(ii) = WC.par.threshold(ii);
     end
+    
     
     %TimeStamp are already in ms, so unscale them so later code works.
     tmpSpikes.TimeStamp = tmpSpikes.TimeStamp/params.cPtCal;
@@ -107,50 +121,57 @@ if isfield(params, 'waveClus') && params.waveClus
     %threshold, merge into MUA. First, find the mean waveform of each
     %cluster class.
     if params.waveClusReclass
-      clusters = unique(tmpSpikes.Unit);
-      mean_wave = nan(length(clusters)-1,size(tmpSpikes.Waveform,2));
-      for cluster_i = 2:length(clusters) %start @ 2 to ignore 0th cluster.
-        cluster_id = clusters(cluster_i);
-        mean_wave(cluster_id,:) = mean(tmpSpikes.Waveform(tmpSpikes.Unit == cluster_id, :));
-      end
-      
-      %Plot Average waveforms, and threshold for detection
       figure('Name','waveClusResult - AverageWaveform','Visible','On','NumberTitle','off');
-      title('Average Waveforms, thresholds for detection and reclustering')
-      hold on
-      for wave_i = 1:size(mean_wave,1)
-        plot(mean_wave(wave_i,:),'LineWidth',3)
-      end
-      plot([0 length(mean_wave)], [threshold threshold],'Linewidth',3,'color','r')
-      
-      %Reassignment the clusters within a certain fraction of the threshold
-      %back to MUA (cluster 0).
-      waveform_trough = min(mean_wave, [], 2);
-      MUA_threshold = threshold * params.waveClusMUAThreshold;
-      plot([0 length(mean_wave)], [MUA_threshold MUA_threshold],'Linewidth',3,'color','b')
-      clusters_to_MUA = find(waveform_trough > MUA_threshold); %Cluster numbers that need to be 0 now.
-      for ii = 1:length(clusters_to_MUA)
-        tmpSpikes.Unit(tmpSpikes.Unit == clusters_to_MUA(ii)) = 0;
-      end
-      WC.par.unsortedClusters = clusters_to_MUA;
-      
-      %Now re-assign clusters as to not skip numbers.
-      [sd,r] = sort(unique(tmpSpikes.Unit),'ascend');
-      new_clusters = r - 1;
-      for ii = 1:length(unique(tmpSpikes.Unit))
-        tmpSpikes.Unit(tmpSpikes.Unit == sd(ii)) = new_clusters(ii);
+      for electrode_i = 1:length(unique(tmpSpikes.Electrode))
+        electrode_ind = (tmpSpikes.Electrode == electrode_i);
+        clusters = unique(tmpSpikes.Unit(electrode_ind));
+        mean_wave = nan(length(clusters)-1,size(tmpSpikes.Waveform(electrode_ind,:),2));
+        for cluster_i = 2:length(clusters) %start @ 2 to ignore 0th cluster.
+          cluster_id = clusters(cluster_i);
+          mean_wave(cluster_id,:) = mean(tmpSpikes.Waveform(tmpSpikes.Unit(electrode_ind) == cluster_id, :));
+        end
+        
+        %Plot Average waveforms, and threshold for detection
+        subplot(1,length(unique(tmpSpikes.Electrode)),electrode_i)
+        title(sprintf('Avg Waveforms - Electrode %d \n(thresholds for detection and reclustering) ', electrode_i))
+        hold on
+        for wave_i = 1:size(mean_wave,1)
+          plot(mean_wave(wave_i,:),'LineWidth',3)
+        end
+        plot([0 length(mean_wave)], [tmpSpikes.Threshold(electrode_i) tmpSpikes.Threshold(electrode_i)],'Linewidth',3,'color','r')
+        
+        %Reassignment the clusters within a certain fraction of the threshold
+        %back to MUA (cluster 0).
+        waveform_trough = min(mean_wave, [], 2);
+        MUA_threshold(electrode_i) = tmpSpikes.Threshold(electrode_i) * params.waveClusMUAThreshold;
+        plot([0 length(mean_wave)], [MUA_threshold(electrode_i) MUA_threshold(electrode_i)],'Linewidth',3,'color','b')
+        clusters_to_MUA = find(waveform_trough > MUA_threshold); %Cluster numbers that need to be 0 now.
+        for ii = 1:length(clusters_to_MUA)
+          tmpSpikes.Unit(tmpSpikes.Unit == clusters_to_MUA(ii)) = 0;
+        end
+        WC.threshold(electrode_i) = tmpSpikes.Threshold(electrode_i);
+        WC.par.unsortedClusters = clusters_to_MUA;
+        
+        %Now re-assign clusters as to not skip numbers.
+        [sd,r] = sort(unique(tmpSpikes.Unit),'ascend');
+        new_clusters = r - 1;
+        for ii = 1:length(unique(tmpSpikes.Unit))
+          tmpSpikes.Unit(tmpSpikes.Unit == sd(ii)) = new_clusters(ii);
+        end
       end
     end
     
+    %Somewhere before here - Threshold is turned + - need to fix.
+    
     % the high dimensional feature space used to cluster can be visualized,
     % assuming the switch is selected and there are at least 2 clusters to
-    % see. 
+    % see.
     if params.waveClusProjPlot && (length(unique(tmpSpikes.Unit)) > 2)
       PlotAllFeatures(WC);
     end
     
     %Overwrite the NEV data.
-    NEV.Data.Spikes = tmpSpikes; 
+    NEV.Data.Spikes = tmpSpikes;
     
     %Save figures
     if isfield(params, 'saveFig') && params.saveFig
@@ -161,26 +182,26 @@ if isfield(params, 'waveClus') && params.waveClus
         end
       end
     end
-
+    
     %Append waveClus params to the AnalysisParams file in the outDir.
     waveClusParams = WC.par;
     save([params.outDir 'AnalysisParams.mat'], 'waveClusParams', '-append');
-  catch
-    warning('waveClus failure - proceeding unsorted')
-    error('waveClus failure')
+%   catch
+%     warning('waveClus failure - proceeding unsorted')
+%     error('waveClus failure')
+%   end
+  %Clean up - Remove added paths, delete folder with files if requested.
+  rmpath(genpath('dependencies/wave_clus'))
+  switch params.waveClusClear
+    case 1
+      %delete([spikeFilePath '/' spikeFile '_parsed' '/times*'])
+%       delete([spikeFilePath '/' spikeFile '_parsed' '/*dg*'])
+%       delete([spikeFilePath '/' spikeFile '_parsed' '/*.txt'])
+%       delete([spikeFilePath '/' spikeFile '_parsed' '/*.png'])
+%       delete([spikeFilePath '/' spikeFile '_parsed' '/*spikes.mat'])
+    case 2
+%       rmdir([spikeFilePath '/' spikeFile '_parsed'], 's');
   end
-    %Clean up - Remove added paths, delete folder with files if requested.
-    rmpath(genpath('dependencies/wave_clus'))
-    switch params.waveClusClear
-      case 1
-        delete([spikeFilePath '/' spikeFile '_parsed' '/times*'])
-        delete([spikeFilePath '/' spikeFile '_parsed' '/*dg*'])
-        delete([spikeFilePath '/' spikeFile '_parsed' '/*.txt'])
-        delete([spikeFilePath '/' spikeFile '_parsed' '/*.png'])
-        delete([spikeFilePath '/' spikeFile '_parsed' '/*spikes.mat'])
-      case 2
-        rmdir([spikeFilePath '/' spikeFile '_parsed'], 's');
-    end
 end
 
 for channel_i = 1:length(params.spikeChannels)

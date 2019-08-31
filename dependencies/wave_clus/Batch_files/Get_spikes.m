@@ -189,8 +189,11 @@ function output_path = get_spikes_single(filename, par_input)
     par = struct;
     par = update_parameters(par, current_par, 'detect');
     par.detection_date =  datestr(now);
-    par.threshold = threshold;
-    
+    if strcmp(par.detection,'neg')
+      par.threshold = -mean(threshold);
+    else
+      par.threshold = -mean(threshold);
+    end
     %<----  Add here auxiliar parameters
     output_path = [data_handler.file_path filesep data_handler.nick_name '_spikes.mat'];
     if current_par.cont_segment && data_handler.with_raw
