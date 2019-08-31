@@ -2,8 +2,8 @@
 function createSummaryDoc(layoutParamFilename, figDir)
 % Function which draws together files found in the output Analysis folder
 % into a single document.
-%figDir = 'C:\Users\Farid Aboharb\OneDrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed\180628Mo\Basic\003';
-%layoutParamFilename = 'buildLayoutParamFile';
+figDir = 'E:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed\20180706Mo\Basic\001';
+layoutParamFilename = 'buildLayoutParamFile';
 %% Parse Arguments
 % Want it to accept:
 % a directory with .figs or .pngs
@@ -45,7 +45,7 @@ for config_ind = 1:length(configPages)
   for tag_ind = 1:length(configPages{config_ind})
     figStructTmp = dir([figDir filesep '*' [configPages{config_ind}{tag_ind}] '*']);
     for fig_ind = 1:length(figStructTmp)
-      if length(unique(figPath)) > params.maxFigs
+      if length(unique(figPath)) >= params.maxFigs
         docFigPath{truePageInd} = unique(figPath);
         clear figPath
         totFigInd = 1;
@@ -119,6 +119,7 @@ if strcmp(params.outputType,'pdf')
     else
       export_fig(sumFile,'-m1.2', '-pdf','-opengl','-append')
     end
+    delete(outputDoc{page_ind});
   end
 end
 close all

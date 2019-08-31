@@ -35,16 +35,17 @@ switch machine
     stimulusLogVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     outputVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok
-  case 'FA_Desktop_Home'
-    ephysVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
-    stimulusLogVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
+  case 'HomeDesktop'
+    ephysVolume = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Data 2018');
+    stimulusLogVolume = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Data 2018');
     outputVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
-    stimParamsFilename = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok
+    stimParamsFilename = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
+    stimDir = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
   case 'SurfaceBook2FA'
     ephysVolume = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
     stimulusLogVolume = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
     outputVolume = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
-    stimParamsFilename = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok
+    stimParamsFilename = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_Full.mat';   %#ok
     stimDir = 'G:/StimuliForFaridfromJulia/SocialCategories';       
 end
 analysisLabel = 'Basic';

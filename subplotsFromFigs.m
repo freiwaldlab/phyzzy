@@ -85,7 +85,7 @@ for fig_i = 1:length(figures)
       end
     end
     figures{fig_i}{fig_j} = subplotFilename;
-    %delete(subplotFilename);
+    delete(subplotFilename);
     rowsSpanned(fig_i,fig_j) = movesDown;
     colsSpanned(fig_i,fig_j) = movesRight;
   end

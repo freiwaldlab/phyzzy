@@ -610,6 +610,7 @@ if ~taskData.RFmap
           ylim(max(ylim(),0));
           ylabel('Firing rate [Hz]');
           xlabel('Stimulus Video Title');
+          ylim([ylim()*1.2]) %provides additional room for legend.
           title(sprintf('Image tuning, sorted, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
           %Legends are made, not born
           [~, firstgroupMember] = unique(groupLabelsByImage(imageSortOrder)); %Get the right handles to put in the legend
