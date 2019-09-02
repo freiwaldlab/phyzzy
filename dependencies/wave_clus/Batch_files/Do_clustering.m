@@ -693,7 +693,6 @@ inspk = wave_features(spikes,par);                % takes wavelet coefficients.
 par.inputs = size(inspk,2);                       % number of inputs to the clustering
 
 % Spike amplitudes below some threshold are excluded from clustering.
-par.clusThr = 'y';
 if par.clusThr == 'y'
   spikePeaks = max(abs(spikes),[],2);
   spikeMask = spikePeaks > 60; %Get this variable from parameters or spikes, whichever we can add it to most easily.

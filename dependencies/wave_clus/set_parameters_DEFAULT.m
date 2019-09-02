@@ -16,6 +16,7 @@ par.plot_feature_stats = false;
 
 
 % SPC PARAMETERS
+par.clusThr = 'n';                   % Determines whether only spikes beyond a certain amplitude are used to cluster.
 par.mintemp = 0.00;                  % minimum temperature for SPC
 par.maxtemp = 0.251;                 % maximum temperature for SPC
 par.tempstep = 0.01;                 % temperature steps

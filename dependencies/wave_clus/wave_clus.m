@@ -209,7 +209,6 @@ if data_handler.with_results %data have _times files
     end
 
 else
-
     if data_handler.with_spikes  %data have some time of _spikes files
         [spikes, index] = data_handler.load_spikes();
         if ~data_handler.with_wc_spikes
@@ -219,12 +218,15 @@ else
         set(handles.file_name,'string','Detecting spikes ...'); drawnow
         index = [];
         spikes = [];
+        temp_aux_th_vect = [];
         for n = 1:data_handler.max_segments
             x = data_handler.get_segment();
             [new_spikes, temp_aux_th, new_index]  = amp_detect(x, handles.par);
-            index = [index data_handler.index2ts(new_index)]; %new_index to ms
+            index = [index data_handler.index2ts(new_index)]; % new_index to ms
             spikes = [spikes; new_spikes];
+            temp_aux_th_vect = [temp_aux_th_vect; temp_aux_th];
         end
+        handles.par.threshold = mean(temp_aux_th_vect);
         handles.par.detection_date =  datestr(now);
     end
 
@@ -294,6 +296,7 @@ elseif ~isempty(clu)
     clu = clu_aux;
     clear clu_aux
 end
+
 USER_DATA = get(handles.wave_clus_figure,'userdata');
 USER_DATA{1} = handles.par;
 USER_DATA{2} = spikes;
@@ -538,7 +541,8 @@ cluster_class = zeros(size(spikes,1),2);
 cluster_class(:,1) = classes(:);
 cluster_class(:,2) = USER_DATA{3}';
 
-outfile=['times_' used_par.nick_name];
+[fpath, ~, ~] = fileparts(handles.file_name.String);
+outfile=[fpath filesep 'times_' used_par.nick_name];
 
 par = struct;
 par = update_parameters(par,used_par,'relevant');
@@ -594,7 +598,7 @@ file_names = {'','a','b','c','d','e','f'};
 h_figs = get(0,'children');
 for i=1:length(fig_names)
 	h_fig =  findobj(h_figs,'tag',['wave_clus_' fig_names{i}]);
-    new_file_name = ['fig2print_' outfile(7:end) file_names{i} '.png'];
+    new_file_name = [fpath filesep 'fig2print_' used_par.nick_name file_names{i} '.png'];
 	if ~isempty(h_fig)
         figure(h_fig); set(gcf, 'PaperUnits', 'inches', 'PaperType', 'A4', 'PaperPositionMode', 'auto','PaperOrientation','portrait');
         print(h_fig,'-dpng',new_file_name,'-r300');

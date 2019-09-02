@@ -57,7 +57,7 @@ if isfield(params, 'waveClus') && params.waveClus
 %   try
     %Temporarily add directories needed for wave_clus
     addpath(genpath('dependencies/wave_clus'))
-    
+     
     %use the typical naming convention to find the contious trace (ns5)
     lfpFilename = [spikeFilePath '/' spikeFile '.ns5'];
     
@@ -78,9 +78,6 @@ if isfield(params, 'waveClus') && params.waveClus
     clusterResults = cell(length(parsedData),1);
     
     %Check to see if a previously clustered file exists for each channel
-    %for data_i = 1:length(parsedData)
-    %[dataPath, dataName] = fileparts(parsedData); %{data_i}
-    
     previousFile = dir([fileparts(parsedData{1}) filesep 'times_*.mat']);
     if ~isempty(previousFile)
       disp('waveClus spikes already clustered, providing path to file.')
@@ -90,16 +87,15 @@ if isfield(params, 'waveClus') && params.waveClus
       Do_clustering(clusterResults, 'make_plots', true, 'make_times', false)
     else
       %Find spikes
-      output_paths = Get_spikes(parsedData); %{data_i}
+      output_paths = Get_spikes(parsedData); 
       
       %Cluster them, based on either a specified param file or the default.
       if isfield(params, 'paramHandle')
-        clusterResults = Do_clustering(output_paths, 'par', params.paramHandle); %{data_i}
+        clusterResults = Do_clustering(output_paths, 'par', params.paramHandle); 
       else
-        clusterResults = Do_clustering(output_paths); %{data_i}
+        clusterResults = Do_clustering(output_paths); 
       end
     end
-    %end
         
     %Cycle through cluster results (done per electrode) and load them into
     %a temporary NEV structure.
@@ -112,7 +108,6 @@ if isfield(params, 'waveClus') && params.waveClus
       tmpSpikes.Electrode = vertcat(tmpSpikes.Electrode, ones(length(WC.cluster_class), 1)*ii);
       tmpSpikes.Threshold(ii) = WC.par.threshold(ii);
     end
-    
     
     %TimeStamp are already in ms, so unscale them so later code works.
     tmpSpikes.TimeStamp = tmpSpikes.TimeStamp/params.cPtCal;

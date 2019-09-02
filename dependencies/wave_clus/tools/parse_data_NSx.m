@@ -6,6 +6,11 @@ function [outfile_path] = parse_data_NSx(filename,max_memo_GB)
 % the data should be split for processing
 
 %% Process filename
+if ~exist('filename','var')
+  [fileN, path] = uigetfile('*.ns5');
+  filename = [path filesep fileN];
+end
+
 if length(filename)<3 || (~strcmpi(filename(2:3),':\') && ...
     ~strcmpi(filename(2:3),':/') && ...
     ~strcmpi(filename(1),'/') && ...
@@ -21,10 +26,10 @@ outDirPath = dir([parsedFolder '/'  file '_NSX_Ch*.NC5']);
 
 %% If the file is already parsed, return this path, otherwise, parse the file.
 if ~isempty(outDirPath)
+  disp('Data already processed - returning appropriate paths')
   for i = 1:length(outDirPath)
     outfile_path{i} = [outDirPath(i).folder filesep outDirPath(i).name];
   end
-  disp('Data already processed - returning appropriate paths')
   return
 else
   with_memory=true;
