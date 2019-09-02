@@ -754,12 +754,12 @@ if par.permut == 'y'
   clu_ind(:,ipermut+2) = inspk_ind_masked(:,(1:length(ipermut))+2);
   clu_ind(:,1:2) = inspk_ind_masked(:,1:2);
   inspk_ind_masked = clu_ind;
-  clear clue_ind
+  clear clu_ind
 else %To unify the processing streams of permut vs non-permut data, bring clu to order here for both.
   clu = [clu, zeros(size(clu,1), size(spikes,1) - size(clu,2) + 2)-1];
   inspk_ind_masked = [0; 0; inspk_ind_masked]';
   inspk_ind_masked = [inspk_ind_masked zeros(size(inspk_ind_masked,1), size(spikes,1) - size(inspk_ind_masked,2) + 2)-1];
-end 
+end
 
 %If we set a threshold, resort the members of clu back to their proper
 %place.
