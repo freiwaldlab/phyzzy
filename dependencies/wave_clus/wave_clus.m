@@ -241,8 +241,10 @@ else
     %If you have too many spikes, use 1:max_spk
     nspk = size(spikes,1);
     nspk_ind = (1:nspk)';
-    naux = min(handles.par.max_spk,size(nspk,1));
+    %naux = min(handles.par.max_spk,size(nspk,1));
+    %nspk is a single number, which means this comes out to 1. Try below.
     
+    naux = min(handles.par.max_spk,nspk);
     if size(spikes,1) < 15
         	ME = MException('MyComponent:notEnoughSpikes', 'Less than 15 spikes detected');
             throw(ME)
@@ -258,6 +260,9 @@ else
       spikeMask = spikePeaks > 60; %Get this variable from parameters or spikes, whichever we can add it to most easily.
       inspk_masked = inspk(spikeMask,:);
       inspk_ind_masked = nspk_ind(spikeMask,:);
+      if sum(spikeMask) < naux
+        naux = sum(spikeMask);        
+      end
     else
       inspk_masked = inspk;
       inspk_ind_masked = nspk_ind;
@@ -360,7 +365,7 @@ if ~data_handler.with_results % This doesn't need to be done on preprocessed dat
   %match their indicies (minus 2).
   matchInd = (find(inspk_ind_masked(3:end)) == inspk_ind_masked(inspk_ind_masked ~= 0));
   if size(inspk_masked,1)> handles.par.max_spk
-    matchInd = matchInd(1:par.max_spk);
+    matchInd = matchInd(1:handles.par.max_spk);
   end
   assert(sum(matchInd) == length(matchInd));
 end

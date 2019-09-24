@@ -3,9 +3,12 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %behavior of analyzeSession
 %   todo: option to load 'fixed' params from file, for ease accross days
 
-%%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '001';
-dateSubject = '20180706Mo';
+% %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
+% runNum = '002';
+% dateSubject = '20190923Mo';
+
+runNum = '003';
+dateSubject = '20180629Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -22,14 +25,15 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018'); 
     stimulusLogVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018'); 
-    outputVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed_July_V5_PostSpikeSort'); 
+    outputVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed'); 
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
   case 'DataAnalysisPC'
-    ephysVolume = 'Z:/';
-    stimulusLogVolume = 'Y:/SocialvNonSocial - random';
-    outputVolume = 'C:/Users/Farid/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
-    stimParamsFilename = 'C:/Users/Farid/Desktop/phyzzy/StimParamFileSocialVids_V2.mat';                  %#ok
+    ephysVolume = slashSwap('\\BlackrockPC\nsp\Data');
+    stimulusLogVolume = slashSwap('\\CONTROLLERPC\Monkeylogic Experiments\Social v Non Social Animated');
+    outputVolume = slashSwap('C:\Users\Farid\OneDrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed_Rig');
+    stimParamsFilename = slashSwap('C:\Users\Farid\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_V2.mat');                  %#ok
+    stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     stimulusLogVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
@@ -301,7 +305,7 @@ plotSwitch.stimPSTHoverlay = 1; %grabs stimuli and overlays PSTH on it. produces
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
 plotSwitch.stimCatANOVA = 0;
-plotSwitch.prefImRaster = 0; % Raster
+plotSwitch.prefImRaster = 0; % Raster, Not color coded.
 plotSwitch.topStimToPlot = 5;
 plotSwitch.prefImRasterColorCoded = 2; % Raster, uses info from attendedObj switch.
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
@@ -346,7 +350,7 @@ plotSwitch.lfpSpectraTfByImage = 0;
 plotSwitch.couplingPhasesUnwrapped = 0;
 plotSwitch.couplingPhasesAsOffsets = 0;
 plotSwitch.couplingPhasesPolar = 0;
-plotSwitch.tfSpectraByCategory = 0; %Do I want this?
+plotSwitch.tfSpectraByCategory = 1; %Do I want this?
 plotSwitch.tfErrs = 0;           %#ok
 
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
@@ -445,7 +449,7 @@ calcSwitch.inducedImageTF = 0;
 calcSwitch.evokedCatSpikeTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
 calcSwitch.inducedCatSpikeTF = 0;
 calcSwitch.evokedCatLFPTF = 1; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
-calcSwitch.inducedCatLFPTF = 0;
+calcSwitch.inducedCatLFPTF = 1;
 calcSwitch.evokedCoupling = 0;
 calcSwitch.inducedCoupling = 0;
 calcSwitch.meanEvokedTF = 0;

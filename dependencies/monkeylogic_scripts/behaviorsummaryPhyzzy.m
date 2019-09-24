@@ -213,13 +213,13 @@ recordingSite = subplot('position',[0.6 0.65 0.35 0.3]);
 monthYearRec = data(1).TrialDateTime(1)*100+data(1).TrialDateTime(2); %Determine the month/year of the recording
 if monthYearRec < 201808
   %If recording took place prior to August 2018, Old Grid
-  gridPic = imread([filebits 'GridPics\Grid_v1.png']);
+  gridPic = imread('Grid_v1.png');
   gridOrigin = [37 159];
   gridStep = 34;
   holeDiam = 14;
   MLOffset = 1;
 else %monthYearRec < 201901 %New Grid was used (August - Dec 2018)
-  gridPic = imread([filebits 'GridPics\Grid_v2.png']);
+  gridPic = imread('Grid_v2.png');
   gridOrigin = [60 70];
   gridStep = 45.5;
   holeDiam = 19;

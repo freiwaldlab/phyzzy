@@ -5193,50 +5193,53 @@ function clusterFixBin(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent
 end
 
 function trialDatabaseStruct(taskData, spikeCountsByImageByEpoch, eventIDs, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
-%Quick Temporary Structure to find out peak times during analysis, save to
-%a file where it can be retrieved easily by Monkeylogic.
+%Quick Temporary Structure to find out peak times during analysis, saved
+%for cross-day analysis and online experiment generation via MonkeyLogic.
 trialDatabaseStruct = struct();
 trialDatabaseStruct.images = eventIDs;
-trialDatabaseStruct.translationTable = taskData.translationTable;
-psthPeaksByImageTmp = psthByImage;
-
-for ii = 1:length(psthPeaksByImageTmp)
-  for jj = 1:length(psthPeaksByImageTmp{ii})
-    psthPeaksByImageTmp{ii}{jj} = psthPeaksByImageTmp{ii}{jj}(:,psthPre+1:(end-psthPost-1));
-    %Zero regions not interested in, making sure to not add
-    %anything in the front to mess up index.
-    psthPeaksByImageTmp{ii}{jj}(1:frEpochs(1,1)) = 0;
-    [psthPeaksByImage{ii}{jj},  psthPeaksIndByImage{ii}{jj}] = max(psthPeaksByImageTmp{ii}{jj},[],2);
-  end
-end
-
-trialDatabaseStruct.psthPeaksIndByImage = psthPeaksIndByImage;
-trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage;
 trialDatabaseStruct.taskData = taskData;
 
-%Reshape spike counts to lend themselves to analysis across days
-%spikeCountsByImageByEpoch{epoch}{channel}{unit}{stim}.times
-trialDatabaseStruct.meanCountPerEpoch.Readme = 'meanCountPerUnit{epoch_i}{channel_i}{unit_i}(eventID)';
-trialDatabaseStruct.meanCountPerEpoch.Epochs = frEpochs;
-trialDatabaseStruct.meanCountPerEpoch.eventIDs = eventIDs;
-meanCountPerUnit = cell(size(frEpochs,1),1);
-
-for epoch_i = 1:length(spikeCountsByImageByEpoch)
-  for channel_i = 1:length(spikeCountsByImageByEpoch{epoch_i})
-    for unit_i = 1:length(spikeCountsByImageByEpoch{epoch_i}{channel_i})      
-      %Initialize a vector which will contribute to a unit * stim matrix
-      %of mean counts within the epoch.
-      unit_vect = zeros(length(spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}),1);
-      for stim_i = 1:length(unit_vect)
-        unit_vect(stim_i) = mean(spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}{stim_i}.counts);
-      end
-      meanCountPerUnit{epoch_i}{channel_i}{unit_i} = unit_vect;
-    end
+% Calculate and store the peak of the PSTH
+psthPeaksByImageTmp = psthByImage;
+for chan_ind = 1:length(psthPeaksByImageTmp)
+  for unit_ind = 1:length(psthPeaksByImageTmp{chan_ind})
+    %Get rid of pre and post stimulus presentation
+    psthPeaksByImageTmp{chan_ind}{unit_ind} = psthPeaksByImageTmp{chan_ind}{unit_ind}(:,psthPre+1:(end-psthPost-1));
+    %Zero region prior to hypothesized latency.
+    psthPeaksByImageTmp{chan_ind}{unit_ind}(1:frEpochs(1,1)) = 0;
+    %Store the peak value and its index. Index is used as time in ms. 
+    [psthPeaksByImage{chan_ind}{unit_ind},  psthPeaksIndByImage{chan_ind}{unit_ind}] = max(psthPeaksByImageTmp{chan_ind}{unit_ind},[],2);
   end
 end
-trialDatabaseStruct.meanCountPerEpoch.meanCountPerUnit = meanCountPerUnit;
+trialDatabaseStruct.psthPeaksIndByImage = psthPeaksIndByImage(1);
+trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage(1);
 
+%Reshape spike counts for analysis across days. 
+%spikeCountsByImageByEpoch{epoch}{channel}{unit}{stim}.times
+%trialDatabaseStruct.spikingData.Readme = 'meanCountPerUnit{epoch_i}{channel_i}{unit_i}(eventID)';
+trialDatabaseStruct.Epochs = frEpochs;
+trialDatabaseStruct.spikeData = cell(size(frEpochs,1),1);
+
+%Counts and Rates per Epoch stored
+%countsPerUnit = cell(size(frEpochs,1),1);
+for epoch_i = 1:length(spikeCountsByImageByEpoch)
+  trialDatabaseStruct.spikeData{epoch_i} = cell(length(spikeCountsByImageByEpoch),1);
+  for channel_i = 1:length(spikeCountsByImageByEpoch{epoch_i})
+    % What the vectors mean vary based on unit count.
+    unitCount = length(spikeCountsByImageByEpoch{epoch_i}{channel_i}) - 2;
+    unitData = struct();
+    if unitCount > 0 % Additional units sit in the middle.
+      unitData.unsorted = spikeCountsByImageByEpoch{epoch_i}{channel_i}{1};
+      unitData.units = [spikeCountsByImageByEpoch{epoch_i}{channel_i}{2:end-1}];
+    end
+    unitData.MUA = spikeCountsByImageByEpoch{epoch_i}{channel_i}{end};
+    trialDatabaseStruct.spikeData{epoch_i}{channel_i} = unitData;
+  end
+end
+
+%Save the file.
 save([outDir 'trialDatabase'], 'trialDatabaseStruct')
+
 end
 
 function spikesByStimBinned = calcSpikeTimes(spikesByStim, movingWin, smoothingWidth, channelNames, channelUnitNames, psthPre, psthImDur, psthPost)

@@ -15,7 +15,7 @@ function [] = processRunBatch(varargin)
 addpath(genpath('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy'))
 % addpath('buildAnalysisParamFileLib');
 % addpath(genpath('dependencies'));
-
+    
 if nargin == 1
     %If there is only 1 file, it loads the analysisParamFile and composes a
     %list from all the data files in the ephysVolume.
@@ -150,7 +150,6 @@ analysisOutFilename = analysisOutFilename(nonEmptyCellInd);
 figDirPath = @(cell) (fileparts(cell));
 analysisOutFigDirs = cellfun(figDirPath, analysisOutFilename, 'UniformOutput', 0);
 
-if 
 %run through the createSummaryDoc Function.
 for figDir_ind = 1:length(analysisOutFigDirs)
   createSummaryDoc('buildLayoutParamFile', analysisOutFigDirs{figDir_ind})
