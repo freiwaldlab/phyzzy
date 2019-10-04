@@ -4,11 +4,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-% runNum = '002';
-% dateSubject = '20190923Mo';
-
 runNum = '003';
-dateSubject = '20180629Mo';
+dateSubject = '20190930Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -21,19 +18,18 @@ switch machine
     stimulusLogVolume = '/Freiwald/lab_files/raw_data/EPHYS/Farid_ESINRec/Data2018';
     outputVolume = '/Freiwald/faboharb/analysis/Analyzed';
     stimParamsFilename = '/Freiwald/faboharb/analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
-    %stimDir = "D:/Onedrive/Lab/ESIN_Ephys_Files/Julia's Files/SocialCategories";
   case 'Alienware_FA'
-    ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018'); 
-    stimulusLogVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018'); 
-    outputVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed'); 
+    ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2019'); 
+    stimulusLogVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2019'); 
+    outputVolume = slashSwap('D:\ESIN_Ephys_Files\Analysis\Analyzed'); 
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
-    stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
+    stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code');
   case 'DataAnalysisPC'
     ephysVolume = slashSwap('\\BlackrockPC\nsp\Data');
-    stimulusLogVolume = slashSwap('\\CONTROLLERPC\Monkeylogic Experiments\Social v Non Social Animated');
+    stimulusLogVolume = slashSwap('\\CONTROLLERPC\Monkeylogic Experiments');
     outputVolume = slashSwap('C:\Users\Farid\OneDrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed_Rig');
-    stimParamsFilename = slashSwap('C:\Users\Farid\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_V2.mat');                  %#ok
-    stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
+    stimParamsFilename = slashSwap('C:\Users\Farid\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');                  %#ok
+    stimDir = slashSwap('C:\Users\Farid\OneDrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
     stimulusLogVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
@@ -63,12 +59,15 @@ savePreprocessed = 1;       %#ok
 verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 
 % parameters preprocessSpikes and preprocessLFP, see functions for details
-ephysParams.needLFP = 1;
+ephysParams.needLFP = 0;
 ephysParams.needSpikes = 1;
-ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-ephysParams.lfpChannels = [1]; 
-ephysParams.channelNames = {'8B'};
-ephysParams.lfpChannelScaleBy = [8191/32764]; %converts raw values to microvolts
+% ephysParams.spikeChannels = [9]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+% ephysParams.lfpChannels = [9];
+ephysParams.spikeChannels = [1, 9]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+ephysParams.lfpChannels = [1, 9];
+ephysParams.channelNames = {'C10', 'D10'};
+% ephysParams.channelNames = {'8B'};
+ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
 ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
@@ -83,8 +82,8 @@ ephysParams.decimateFactorPass1 = 6; %note: product of the two decimate factors 
 ephysParams.decimateFactorPass2 = 5;
 ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should be raw rate/productOfDecimateFactors)
 %note: use Blackrock indexing for unitsToUnsort and unitsToDiscard, so unsorted is 0, first defined unit is 1, etc.
-ephysParams.unitsToUnsort = {[]}; %these units will be re-grouped with u0
-ephysParams.unitsToDiscard = {[]}; %these units will be considered noise and discarded
+ephysParams.unitsToUnsort = {[], []}; %these units will be re-grouped with u0
+ephysParams.unitsToDiscard = {[], []}; %these units will be considered noise and discarded
 ephysParams.spikeWaveformPca = 0;
 ephysParams.plotSpikeWaveforms = 2; %0, 1 to build then close, 2 to build and leave open
 ephysParams.spikeWaveformsColors = [[0.0 0.0 1.0];[1.0 0.0 0.0];[0.0 0.5 0.0];[0.620690 0.0 0.0];[0.413793 0.0 0.758621];[0.965517 0.517241 0.034483]];
@@ -125,7 +124,7 @@ photodiodeParams.dataLoader = []; %Incase you're using something besides a raw a
 photodiodeParams.peakTimeOffset = 0; %this is the offset, in ms, of the peak from the event it's coupled to (note: will be subtracted, so should be > 0 if peak follows event, type: numeric)
 photodiodeParams.strobeTroughs = 1; %Strobe causes troughs.
 photodiodeParams.peakFreq = 85; %approximate number of peaks per second
-photodiodeParams.levelCalibType = 'hardcodeAndPlot';
+photodiodeParams.levelCalibType = 'auto';
 %'hardcode', 'hardcodeAndPlot', 'hardcodeAndCheck', 'auto', 'autoAndPlot',
 %'autoAndCheck', 'manual'
 photodiodeParams.numLevels = 1;
@@ -251,7 +250,7 @@ psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;
 psthParams.sortStim = 1;
-psthParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble'};
+psthParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble';'allStim'};
 psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
 load(psthParams.psthColormapFilename);
 psthParams.colormap = map;
@@ -299,15 +298,15 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
 plotSwitch.imageEyeMap = 0;
 plotSwitch.eyeCorralogram = 1; %Eye Gram
 plotSwitch.attendedObject = 1; %Vectors to distinguish where subject is looking.
-plotSwitch.eyeStimOverlay = 0; %Visualize eye traces on stimuli.
+plotSwitch.eyeStimOverlay = 1; %Visualize eye traces on stimuli.
 plotSwitch.clusterOnEyePaths = 0; %Resort spikes based on distinct eye paths, make "New events".
 plotSwitch.stimPSTHoverlay = 1; %grabs stimuli and overlays PSTH on it. produces sigStruct 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
 plotSwitch.stimCatANOVA = 0;
 plotSwitch.prefImRaster = 0; % Raster, Not color coded.
-plotSwitch.topStimToPlot = 5;
-plotSwitch.prefImRasterColorCoded = 2; % Raster, uses info from attendedObj switch.
+plotSwitch.topStimToPlot = 8;
+plotSwitch.prefImRasterColorCoded = 2; % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background.
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
@@ -448,8 +447,8 @@ calcSwitch.evokedImageTF = 0;
 calcSwitch.inducedImageTF = 0;
 calcSwitch.evokedCatSpikeTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
 calcSwitch.inducedCatSpikeTF = 0;
-calcSwitch.evokedCatLFPTF = 1; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
-calcSwitch.inducedCatLFPTF = 1;
+calcSwitch.evokedCatLFPTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
+calcSwitch.inducedCatLFPTF = 0;
 calcSwitch.evokedCoupling = 0;
 calcSwitch.inducedCoupling = 0;
 calcSwitch.meanEvokedTF = 0;
@@ -466,7 +465,7 @@ end
 analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);
 lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        
 spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
-taskFilename = sprintf('%s/%s/%s%s.mat',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
+taskFilename = sprintf('%s/%s/%s%s.mat',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance 
 photodiodeFilename = lfpFilename;                %#ok
 lineNoiseTriggerFilename = lfpFilename; %#ok
 outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);

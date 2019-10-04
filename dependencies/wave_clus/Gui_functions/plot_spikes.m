@@ -285,8 +285,8 @@ for i = 0:nclusters
             tmpy=[tmpy'; repmat(NaN,1,tmpn)];
             tmpy=reshape(tmpy,numel(tmpy),1);
             line(tmpx,tmpy,'color',colors(mod(i-1,maxc)+1,:)*(i~=0),'Parent',handles.projections,'Visible','off');
-			xlim(handles.projections, [1 ls])
-        elseif get(handles.spike_shapes_button,'value') ==1
+            xlim(handles.projections, [1 ls])
+        elseif get(handles.spike_shapes_button,'value') == 1
             av   = mean(spikes(class_i,:));
             plot(handles.projections,1:ls,av,'color',colors(mod(i-1,maxc)+1,:)*(i~=0),'linewidth',2);
             xlim(handles.projections,[1 ls])

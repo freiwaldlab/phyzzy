@@ -396,8 +396,8 @@ end
 %% In cases where the stimuli are .avi's, we should check for the appropriate frameMotion data (representing)
 if any(strfind(translationTable{1},'.avi'))
   %assumes filename below sitting in directory with stimuli
-  frameMotionFile = [params.stimDir '/frameMotion_complete.mat'];
-  load(frameMotionFile,'frameMotionData'); 
+  frameMotionFile = dir([params.stimDir '/**/frameMotion_complete.mat']);
+  load([frameMotionFile(1).folder filesep frameMotionFile(1).name],'frameMotionData'); 
   %go through the translation table, comparing to frameMotionData.stimVid
   frameMotionNames = [{frameMotionData(:).stimVid}'];
   tmpFrameMotionData = struct('stimVid',[],'objNames',[],'objShapes',[],'objRadii',[],'vidB_XShift',[],'objLoc',[],'fps',[],'width',[],'height',[]);
@@ -483,8 +483,8 @@ taskData.RFmap = 0;
 taskData.eyeData = tmpEye;
 taskData.screenStats = screenStats;
 taskData.eyeCal.PixelsPerDegree = MLConfig.PixelsPerDegree;
-taskData.eyeCal.origin = MLConfig.EyeTransform{2}.origin;
-taskData.eyeCal.gain = MLConfig.EyeTransform{2}.gain;
+taskData.eyeCal.origin = MLConfig.EyeTransform{1,2}.origin;
+taskData.eyeCal.gain = MLConfig.EyeTransform{1,2}.gain;
 
 end
 %

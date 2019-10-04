@@ -246,7 +246,11 @@ if any(~isnan(userVars2.gridHole))
       holeCords = [APGridHole (str2double(holes{hole_i}(1))-MLOffset)];
     end
     recHoleSite = [gridOrigin + holeCords.*gridStep holeDiam];
-    gridPic = insertShape(gridPic,'FilledCircle',recHoleSite,'color','black','Opacity',1);
+    try
+      gridPic = insertShape(gridPic,'FilledCircle',recHoleSite,'color','black','Opacity',1);
+    catch ME
+      warning('computer vision toolbox missing')
+    end
   end
   imagesc(gridPic);
 end

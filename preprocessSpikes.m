@@ -96,7 +96,7 @@ if isfield(params, 'waveClus') && params.waveClus
         clusterResults = Do_clustering(output_paths); 
       end
     end
-        
+    
     %Cycle through cluster results (done per electrode) and load them into
     %a temporary NEV structure.
     [tmpSpikes.TimeStamp, tmpSpikes.Electrode, tmpSpikes.Unit, tmpSpikes.Waveform] = deal([]);
@@ -105,7 +105,9 @@ if isfield(params, 'waveClus') && params.waveClus
       tmpSpikes.Unit = vertcat(tmpSpikes.Unit, WC.cluster_class(:,1));
       tmpSpikes.TimeStamp = vertcat(tmpSpikes.TimeStamp, WC.cluster_class(:,2));
       tmpSpikes.Waveform = vertcat(tmpSpikes.Waveform, WC.spikes);
-      tmpSpikes.Electrode = vertcat(tmpSpikes.Electrode, ones(length(WC.cluster_class), 1)*ii);
+      electrodeTmp = split(clusterResults{ii},'Ch');
+      electrodes(ii) = str2double(electrodeTmp{2}(1:end-4));
+      tmpSpikes.Electrode = vertcat(tmpSpikes.Electrode, ones(length(WC.cluster_class), 1)*electrodes(ii));
       tmpSpikes.Threshold(ii) = WC.par.threshold(ii);
     end
     
@@ -118,28 +120,29 @@ if isfield(params, 'waveClus') && params.waveClus
     if params.waveClusReclass
       figure('Name','waveClusResult - AverageWaveform','Visible','On','NumberTitle','off');
       for electrode_i = 1:length(unique(tmpSpikes.Electrode))
-        electrode_ind = (tmpSpikes.Electrode == electrode_i);
+        electrode_ind = (tmpSpikes.Electrode == electrodes(electrode_i));
         clusters = unique(tmpSpikes.Unit(electrode_ind));
         mean_wave = nan(length(clusters)-1,size(tmpSpikes.Waveform(electrode_ind,:),2));
+        electrodeSpikes = tmpSpikes.Waveform(electrode_ind,:);
         for cluster_i = 2:length(clusters) %start @ 2 to ignore 0th cluster.
           cluster_id = clusters(cluster_i);
-          mean_wave(cluster_id,:) = mean(tmpSpikes.Waveform(tmpSpikes.Unit(electrode_ind) == cluster_id, :));
+          mean_wave(cluster_id,:) = mean(electrodeSpikes(tmpSpikes.Unit(electrode_ind) == cluster_id, :));
         end
         
         %Plot Average waveforms, and threshold for detection
         subplot(1,length(unique(tmpSpikes.Electrode)),electrode_i)
-        title(sprintf('Avg Waveforms - Electrode %d \n(thresholds for detection and reclustering) ', electrode_i))
+        title(sprintf('Avg Waveforms - Channel %d \n(thresholds for detection and reclustering) ', electrodes(electrode_i)))
         hold on
         for wave_i = 1:size(mean_wave,1)
           plot(mean_wave(wave_i,:),'LineWidth',3)
         end
-        plot([0 length(mean_wave)], [tmpSpikes.Threshold(electrode_i) tmpSpikes.Threshold(electrode_i)],'Linewidth',3,'color','r')
+        plot([0 length(mean_wave)], [tmpSpikes.Threshold(electrode_i) tmpSpikes.Threshold(electrode_i)],'Linewidth',3,'color','k','LineStyle','--')
         
         %Reassignment the clusters within a certain fraction of the threshold
         %back to MUA (cluster 0).
         waveform_trough = min(mean_wave, [], 2);
         MUA_threshold(electrode_i) = tmpSpikes.Threshold(electrode_i) * params.waveClusMUAThreshold;
-        plot([0 length(mean_wave)], [MUA_threshold(electrode_i) MUA_threshold(electrode_i)],'Linewidth',3,'color','b')
+        plot([0 length(mean_wave)], [MUA_threshold(electrode_i) MUA_threshold(electrode_i)],'Linewidth',3,'color','k','LineStyle','-')
         clusters_to_MUA = find(waveform_trough > MUA_threshold); %Cluster numbers that need to be 0 now.
         for ii = 1:length(clusters_to_MUA)
           tmpSpikes.Unit(tmpSpikes.Unit == clusters_to_MUA(ii)) = 0;
@@ -155,9 +158,7 @@ if isfield(params, 'waveClus') && params.waveClus
         end
       end
     end
-    
-    %Somewhere before here - Threshold is turned + - need to fix.
-    
+        
     % the high dimensional feature space used to cluster can be visualized,
     % assuming the switch is selected and there are at least 2 clusters to
     % see.
@@ -363,7 +364,7 @@ if params.plotSpikeWaveforms
     drawnow;
     if isfield(params, 'saveFig') && params.saveFig
       figHandles = findobj('Type', 'figure');
-      savefig(figHandles(1), [params.outDir spikeFile '_SpikeWaveforms'], 'compact')
+      savefig(figHandles(1), [params.outDir spikeFile '_Ch' num2str(params.spikeChannels(channel_i)) '_SpikeWaveforms'], 'compact')
     end
     if params.plotSpikeWaveforms == 1
       close(fh);

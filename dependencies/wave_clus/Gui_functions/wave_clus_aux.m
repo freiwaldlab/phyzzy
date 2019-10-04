@@ -83,6 +83,13 @@ h_fig = findobj(h_figs,'tag','wave_clus_figure');
 USER_DATA = get(h_fig,'UserData');
 par = USER_DATA{1};
 
+par.nbins6 = 100;
+par.bin_step6 = 1;
+par.nbins7 = 100;
+par.bin_step7 = 1;
+par.nbins8 = 100;
+par.bin_step8 = 1;
+
 for i = 4:8
 	si = num2str(i);
 	set(eval(['handles.isi' si '_accept_button']),'value',1);

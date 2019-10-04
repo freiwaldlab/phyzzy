@@ -12,8 +12,9 @@ function [ ] = buildStimParamFileSocialVids_Auto()
 %Find the folder with what you want
 fprintf('Select folder containing files...\n');
 %StimFolder = uigetdir();
-StimFolder = {'G:\StimuliForFaridfromJulia\SocialDecomposed_renamed', 'G:\StimuliForFaridfromJulia\SocialCategories' };
-
+StimFolder = {'D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories';...
+  'D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\Animations';...
+  'D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\Animation Phase 2'};
 
 %Find every file in this folder with the extension desired.
 %Add other files
@@ -50,6 +51,10 @@ for ii = 1:length(dirInd)
   stimList = vertcat(stimList, subStimList);
 end
 
+%Make sure the stimList only has files of interest (.avi for now)
+stimInd = cellfun(@(x)strcmp(x(end-3:end),'.avi'),stimList);
+stimList = stimList(stimInd);
+
 %% Turn that list into the appropriate file for phyzzy..
 %pictureLabels = split(stimList, '.'); %Due to some names being
 %.avi_Dephased.avi, split won't work. Going to just chop off the last 4
@@ -77,49 +82,58 @@ for ii = 1:length(stimList)
     case '1';            stimLabels = horzcat(stimLabels, 'interaction');
     case '3';            stimLabels = horzcat(stimLabels, 'idle');
   end
-  switch code(3)
-    case '1';            stimLabels = horzcat(stimLabels ,'chasing');
-    case '2';            stimLabels = horzcat(stimLabels ,'fighting');
-    case '3';            stimLabels = horzcat(stimLabels ,'mounting');
-    case '4';            stimLabels = horzcat(stimLabels ,'grooming');
-    case '5';            stimLabels = horzcat(stimLabels ,'holding');
-    case '6';            stimLabels = horzcat(stimLabels ,'following');
-    case '7';            stimLabels = horzcat(stimLabels ,'observing');
-    case '8';            stimLabels = horzcat(stimLabels ,'foraging');
-    case '9';            stimLabels = horzcat(stimLabels ,'sitting');
+  if (length(stimParts) > 2) && ~strncmp(stimParts(3),'C',1)
+    switch code(3)
+      case '1';            stimLabels = horzcat(stimLabels ,'chasing');
+      case '2';            stimLabels = horzcat(stimLabels ,'fighting');
+      case '3';            stimLabels = horzcat(stimLabels ,'mounting');
+      case '4';            stimLabels = horzcat(stimLabels ,'grooming');
+      case '5';            stimLabels = horzcat(stimLabels ,'holding');
+      case '6';            stimLabels = horzcat(stimLabels ,'following');
+      case '7';            stimLabels = horzcat(stimLabels ,'observing');
+      case '8';            stimLabels = horzcat(stimLabels ,'foraging');
+      case '9';            stimLabels = horzcat(stimLabels ,'sitting');
+    end
   end
   %Due to issues w/ grouping of controls, adding this below.
   if (strcmp(code(1:2),'11'))
     if strcmp(code(3),'0')
       stimLabels = horzcat(stimLabels ,'goalDirected');
     else
-      stimLabels = horzcat(stimLabels ,'socialInteraction');
+      %A change needed for the naming convention on animated stimuli controls
+      if (length(stimParts) == 2) || (length(stimParts) > 2 && ~strncmp(stimParts(3),'C',1))
+        stimLabels = horzcat(stimLabels ,'socialInteraction');
+      end
     end
   end
   if any(strcmp(stimParts, 'Dephased'))
     stimLabels = {'scramble'};
     label = 'Scrambled';
   end
-  if (length(stimParts) > 2) && strncmp(stimParts(3),'Decomp',5)
-    modWord = 'no';
-    stimLabels = horzcat(stimLabels, 'Decomp');
-    switch stimParts{3}
-      case 'DecompA'
-        switch stimParts{4}
-          case 'B';   stimLabels = horzcat(stimLabels, 'faces','background'); label = 'Bodies';
-          case 'F';   stimLabels = horzcat(stimLabels, 'bodies', 'hands','background'); label = 'Faces';
-          case 'H';   stimLabels = horzcat(stimLabels, 'bodies', 'faces','background'); label = 'Hands';
-          case 'FB';  stimLabels = horzcat(stimLabels, 'background'); label = 'FacesBodies';
-          case 'FH';  stimLabels = horzcat(stimLabels, 'bodies','background'); label = 'FaceHands';
-        end
-      case 'DecompB'
-        switch stimParts{4}
-          case 'B';   stimLabels = horzcat(stimLabels, 'bodies','hands'); label = 'FacesScene';
-          case 'F';   stimLabels = horzcat(stimLabels, 'faces'); label = 'BodiesScene';
-          case 'H';   stimLabels = horzcat(stimLabels, 'hands'); label = 'FacesBodiesScene';
-          case 'FB';  stimLabels = horzcat(stimLabels, 'faces', 'bodies'); label = 'Scene';
-          case 'FH';  stimLabels = horzcat(stimLabels, 'faces', 'hands'); label = 'BodiesScene';
-        end
+  if (length(stimParts) > 2)
+    if strncmp(stimParts(3),'Decomp',5)
+      modWord = 'no';
+      stimLabels = horzcat(stimLabels, 'Decomp');
+      switch stimParts{3}
+        case 'DecompA'
+          switch stimParts{4}
+            case 'B';   stimLabels = horzcat(stimLabels, 'faces','background'); label = 'Bodies';
+            case 'F';   stimLabels = horzcat(stimLabels, 'bodies', 'hands','background'); label = 'Faces';
+            case 'H';   stimLabels = horzcat(stimLabels, 'bodies', 'faces','background'); label = 'Hands';
+            case 'FB';  stimLabels = horzcat(stimLabels, 'background'); label = 'FacesBodies';
+            case 'FH';  stimLabels = horzcat(stimLabels, 'bodies','background'); label = 'FaceHands';
+          end
+        case 'DecompB'
+          switch stimParts{4}
+            case 'B';   stimLabels = horzcat(stimLabels, 'bodies','hands'); label = 'FacesScene';
+            case 'F';   stimLabels = horzcat(stimLabels, 'faces'); label = 'BodiesScene';
+            case 'H';   stimLabels = horzcat(stimLabels, 'hands'); label = 'FacesBodiesScene';
+            case 'FB';  stimLabels = horzcat(stimLabels, 'faces', 'bodies'); label = 'Scene';
+            case 'FH';  stimLabels = horzcat(stimLabels, 'faces', 'hands'); label = 'BodiesScene';
+          end
+      end
+    elseif strncmp(stimParts(3),'C',1)
+      label = strjoin(stimParts(3:end));
     end
   end
   stimLabels = horzcat(stimLabels, 'allStim');
@@ -136,7 +150,7 @@ for ii = 1:length(stimList)
         eventTag = 'Chase';
       end
     end
-    pictureLabels{ii} = [eventTag '_' speciesTag '_' stimParts{2}(end) modWord label];
+    pictureLabels{ii} = [eventTag '_' speciesTag '_' stimParts{2}(4:end) modWord label];
   else
     pictureLabels{ii} = [stimParts{1} '_' stimParts{2}(end) modWord label];
   end
