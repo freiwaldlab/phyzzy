@@ -4,8 +4,9 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '003';
+runNum = '005';
 dateSubject = '20190930Mo';
+%dateSubject = '20191006Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -59,13 +60,13 @@ savePreprocessed = 1;       %#ok
 verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 
 % parameters preprocessSpikes and preprocessLFP, see functions for details
-ephysParams.needLFP = 0;
+ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
 % ephysParams.spikeChannels = [9]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
 % ephysParams.lfpChannels = [9];
 ephysParams.spikeChannels = [1, 9]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
 ephysParams.lfpChannels = [1, 9];
-ephysParams.channelNames = {'C10', 'D10'};
+ephysParams.channelNames = {'C10','D10'};
 % ephysParams.channelNames = {'8B'};
 ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
@@ -296,21 +297,21 @@ frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {100, 1100}}; %#ok
 
 plotSwitch.imageEyeMap = 0;
-plotSwitch.eyeCorralogram = 1; %Eye Gram
-plotSwitch.attendedObject = 1; %Vectors to distinguish where subject is looking.
-plotSwitch.eyeStimOverlay = 1; %Visualize eye traces on stimuli.
+plotSwitch.eyeCorralogram = 0; %Eye Gram
+plotSwitch.attendedObject = 0; %Vectors to distinguish where subject is looking.
+plotSwitch.eyeStimOverlay = 0; %Visualize eye traces on stimuli.
 plotSwitch.clusterOnEyePaths = 0; %Resort spikes based on distinct eye paths, make "New events".
-plotSwitch.stimPSTHoverlay = 1; %grabs stimuli and overlays PSTH on it. produces sigStruct 
+plotSwitch.stimPSTHoverlay = 0; %grabs stimuli and overlays PSTH on it. produces sigStruct 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
 plotSwitch.stimCatANOVA = 0;
-plotSwitch.prefImRaster = 0; % Raster, Not color coded.
-plotSwitch.topStimToPlot = 8;
-plotSwitch.prefImRasterColorCoded = 2; % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background.
+plotSwitch.prefImRaster = 1; % Raster, Not color coded.
+plotSwitch.topStimToPlot = 5;
+plotSwitch.prefImRasterColorCoded = 0; % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background.
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 0;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-plotSwitch.imageTuningSorted = 1; %Barplot per image, Required for stimPSTHoverlay, sigStruct
+plotSwitch.imageTuningSorted = 0; %Barplot per image, Required for stimPSTHoverlay, sigStruct
 plotSwitch.stimPrefBarPlot = 0; %Per event bar graph.
 plotSwitch.stimPrefBarPlotEarly = 0;
 plotSwitch.stimPrefBarPlotLate = 0;

@@ -65,8 +65,8 @@ par.features = 'wav';                % type of feature ('wav' or 'pca')
  
 % FORCE MEMBERSHIP PARAMETERS 
 par.template_sdnum = 3;             % max radius of cluster in std devs. 
-par.template_k = 100;               % # of nearest neighbors 
-par.template_k_min = 50;            % min # of nn for vote 
+par.template_k = 10;                % # of nearest neighbors
+par.template_k_min = 10;            % min # of nn for vote
 %par.template_type = 'mahal';       % nn, center, ml, mahal 
 par.template_type = 'center';       % nn, center, ml, mahal 
 par.force_feature = 'spk';          % feature use for forcing (whole spike shape) 
@@ -76,24 +76,10 @@ par.force_auto = true;              %automatically force membership (only for ba
 % TEMPLATE MATCHING 
 par.match = 'y';                    % for template matching 
 %par.match = 'n';                   % for no template matching 
-par.max_spk = 50000;                % max. # of spikes before starting templ. match. 
+par.max_spk = 40000;                % max. # of spikes before starting templ. match. 
 %par.permut = 'y';                   % for selection of random 'par.max_spk' spikes before starting templ. match. 
 par.permut = 'n';                 % for selection of the first 'par.max_spk' spikes before starting templ. match. 
  
 % HISTOGRAM PARAMETERS 
 par.nbins = 100;                    % # of bins for the ISI histograms 
 par.bin_step = 1;                   % percentage number of bins to plot 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 

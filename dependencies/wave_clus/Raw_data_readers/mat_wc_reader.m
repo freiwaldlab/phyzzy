@@ -21,7 +21,7 @@ classdef mat_wc_reader < handle
             if ismember('sr',{finfo.name})  %if is possible, load sr from file; else from set_parameters
                 load(raw_filename,'sr'); 
                 obj.sr_infile = true;
-                obj.sr = sr;
+                obj.sr = double(sr);
             else
                 obj.sr_infile = false;
                 if isfield(par,'sr')
@@ -32,7 +32,7 @@ classdef mat_wc_reader < handle
             if ismember('spikes',{finfo.name}) && ismember('index',{finfo.name})
                obj.spikes_file = true;
             end
-            if ismember('data',{finfo.name})
+            if isfield(par,'tmax') && ismember('data',{finfo.name})
                 
                 data_info = whos('-file',raw_filename,'data');
                 if strcmp(par.tmax,'all')

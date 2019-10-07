@@ -166,10 +166,6 @@ if make_times
     else
       for fnum = 1:length(filenames)
         filename = filenames{fnum};
-        %Load the output to retrieve the threshold.
-        tmp = load(filename,'par');
-        par_input.threshold(fnum) = tmp.par.threshold;
-        clear tmp
         %do clustering
         output_files{fnum} = do_clustering_single_FASort(filename, min_spikes4SPC, par_file, par_input, fnum);
         fprintf('%d of %d ''times'' files finished.\n',count_new_times(initial_date, filenames),Nfiles)
@@ -667,7 +663,6 @@ par.fname = [data_handler.file_path filesep 'data_' data_handler.nick_name];
 par.nick_name = data_handler.nick_name;
 par.file_path = data_handler.file_path;
 par.fnamespc = [data_handler.file_path filesep 'data_wc' num2str(fnum)];
-par.threshold = par_input.threshold;
 
 % LOAD SPIKES
 if data_handler.with_spikes            			%data have some time of _spikes files
@@ -694,7 +689,7 @@ par.inputs = size(inspk,2);                       % number of inputs to the clus
 
 % Spike amplitudes below some threshold are excluded from clustering.
 if ~isfield(par,'clusThr')
-    par.clusThr = 'y'
+    par.clusThr = 'y';
 end
 if par.clusThr == 'y'
   spikePeaks = max(abs(spikes),[],2);
@@ -853,15 +848,20 @@ cluster_class = zeros(nspk,2);
 cluster_class(:,2)= index';
 cluster_class(:,1)= classes';
 
+%Recover threshold saved in spike files, add them to clustering results.
+tmp = load(filename,'threshold');
+threshold = mean(tmp.threshold);
+clear tmp
+
 %Save Clustering Results
 output_file = [data_handler.file_path filesep 'times_' data_handler.nick_name '.mat'];
 try
-  save(output_file, 'cluster_class','spikes', 'par','inspk','forced','Temp','gui_status');
+  save(output_file, 'cluster_class','spikes', 'par','inspk','forced','Temp','gui_status','threshold');
   if exist('ipermut','var')
     save(output_file,'ipermut','-append');
   end
 catch
-  save(output_file, 'cluster_class','spikes', 'par','inspk','forced','Temp','gui_status','-v7.3');
+  save(output_file, 'cluster_class','spikes', 'par','inspk','forced','Temp','gui_status','threshold','-v7.3');
   if exist('ipermut','var')
     save(output_file,'ipermut','-append','-v7.3');
   end

@@ -108,7 +108,7 @@ if ~isfield(handles,'new_manual')
         end
 	end
 	% Get fixed clusters from aux figures
-	for i=4:min(par.max_clus,33)
+	for i=4:min(length(classes_names),33)
 		eval(['fixx = par.fix' num2str(i) ';']);
 		if fixx == 1 && ~isempty(USER_DATA{22+i-3})
 			nclusters = nclusters +1;
@@ -274,7 +274,8 @@ for i = 0:nclusters
         class_i = eval(['class' num2str(i)]);
         sup_spikes = length(class_i);
         max_spikes = min(sup_spikes, par.max_spikes_plot);
-        permut = randperm(sup_spikes,max_spikes);
+        permut = randperm(sup_spikes);
+        permut = permut(1:max_spikes);
         xlim(handles.projections,'manual');
         if get(handles.spike_shapes_button,'value') ==1 && (get(handles.plot_all_button,'value') ==1) && ~strcmp(par.all_classes_ax,'mean')
             % optimizing for speed:

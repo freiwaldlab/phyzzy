@@ -108,7 +108,7 @@ if isfield(params, 'waveClus') && params.waveClus
       electrodeTmp = split(clusterResults{ii},'Ch');
       electrodes(ii) = str2double(electrodeTmp{2}(1:end-4));
       tmpSpikes.Electrode = vertcat(tmpSpikes.Electrode, ones(length(WC.cluster_class), 1)*electrodes(ii));
-      tmpSpikes.Threshold(ii) = WC.par.threshold(ii);
+      tmpSpikes.Threshold(ii) = WC.threshold;
     end
     
     %TimeStamp are already in ms, so unscale them so later code works.
