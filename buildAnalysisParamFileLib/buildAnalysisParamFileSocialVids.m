@@ -4,9 +4,9 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '005';
-dateSubject = '20190930Mo';
-%dateSubject = '20191006Mo';
+runNum = '004';
+%dateSubject = '20190930Mo';
+dateSubject = '20191015Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -20,9 +20,11 @@ switch machine
     outputVolume = '/Freiwald/faboharb/analysis/Analyzed';
     stimParamsFilename = '/Freiwald/faboharb/analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
   case 'Alienware_FA'
-    ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2019'); 
-    stimulusLogVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2019'); 
-    outputVolume = slashSwap('D:\ESIN_Ephys_Files\Analysis\Analyzed'); 
+    ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2019');
+    stimulusLogVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2019');
+%     ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018');
+%     stimulusLogVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018');
+    outputVolume = slashSwap('D:\ESIN_Ephys_Files\Analysis\Analyzed');
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code');
   case 'DataAnalysisPC'
@@ -59,6 +61,91 @@ saveFigData = 0;            %#ok
 savePreprocessed = 1;       %#ok
 verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 
+%% Plot switches
+plotSwitch.imageEyeMap = 0;
+plotSwitch.eyeCorralogram = 0; %Eye Gram
+plotSwitch.attendedObject = 1; %Vectors to distinguish where subject is looking.
+plotSwitch.eyeStimOverlay = 0; %Visualize eye traces on stimuli.
+plotSwitch.clusterOnEyePaths = 0; %Resort spikes based on distinct eye paths, make "New events".
+plotSwitch.stimPSTHoverlay = 0; %grabs stimuli and overlays PSTH on it. produces sigStruct 
+plotSwitch.imagePsth = 1;
+plotSwitch.categoryPsth = 0;
+plotSwitch.stimCatANOVA = 0;
+plotSwitch.prefImRaster = 0; % Raster, Not color coded.
+plotSwitch.topStimToPlot = 5;
+plotSwitch.prefImRasterColorCoded = 2; % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background.
+plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
+plotSwitch.prefImRasterAverageEvokedOverlay = 0;
+plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
+plotSwitch.imageTuningSorted = 1; %Barplot per image, Required for stimPSTHoverlay, sigStruct
+plotSwitch.stimPrefBarPlot = 0; %Per event bar graph.
+plotSwitch.stimPrefBarPlotEarly = 0;
+plotSwitch.stimPrefBarPlotLate = 0;
+plotSwitch.tuningCurves = 0;
+plotSwitch.tuningCurvesEarly = 0;
+plotSwitch.tuningCurvesLate = 0;
+plotSwitch.RF = 0;
+plotSwitch.rfEarly = 0;
+plotSwitch.rfLate = 0;
+plotSwitch.latencyRF = 0;
+plotSwitch.evokedPowerRF = 0;
+plotSwitch.evokedPsthMuaMultiCh = 0;
+plotSwitch.evokedByCategory = 0;
+plotSwitch.analogInByItem = 0;
+plotSwitch.analogInDerivativesByItem = 0;
+plotSwitch.colorPsthEvoked = 0;
+plotSwitch.linePsthEvoked = 0;
+plotSwitch.runSummary = 0;
+plotSwitch.runSummaryImMeanSub = 0;
+plotSwitch.runSummaryImMeanSubDiv = 0;
+plotSwitch.lfpPowerMuaScatter = 0; 
+plotSwitch.lfpPeakToPeakMuaScatter = 0;
+plotSwitch.lfpLatencyMuaLatency = 0;
+plotSwitch.lfpPowerAcrossChannels = 0;
+plotSwitch.lfpPeakToPeakAcrossChannels = 0;
+plotSwitch.lfpLatencyShiftAcrossChannels = 0;
+plotSwitch.singleTrialLfpByCategory = 0;
+plotSwitch.lfpSpectraByCategory = 1; %LFP Comparison 
+plotSwitch.lfpAutocorrelTfByItem = 0;
+plotSwitch.lfpAutocorrelByItem = 0;
+plotSwitch.spikeSpectraByCategory = 0;
+plotSwitch.spikeAutocorrelTfByItem = 0;
+plotSwitch.spikeAutocorrelByItem = 0;
+plotSwitch.spikeSpectraTfByImage = 0;
+plotSwitch.lfpSpectraTfByImage = 0;
+plotSwitch.couplingPhasesUnwrapped = 0;
+plotSwitch.couplingPhasesAsOffsets = 0;
+plotSwitch.couplingPhasesPolar = 0;
+plotSwitch.tfSpectraByCategory = 1; %Do I want this?
+plotSwitch.tfErrs = 0;           %#ok
+
+
+%% Calc switches
+
+calcSwitch.categoryPSTH = 1;
+calcSwitch.imagePSTH = 1;
+calcSwitch.faceSelectIndex = 0;
+calcSwitch.faceSelectIndexEarly = 0;
+calcSwitch.faceSelectIndexLate = 0;
+calcSwitch.inducedTrialMagnitudeCorrection = 0;
+calcSwitch.evokedSpectra = 0;
+calcSwitch.inducedSpectra = 0;
+calcSwitch.evokedImageTF = 0;
+calcSwitch.inducedImageTF = 0;
+calcSwitch.evokedCatSpikeTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
+calcSwitch.inducedCatSpikeTF = 0;
+calcSwitch.evokedCatLFPTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
+calcSwitch.inducedCatLFPTF = 0;
+calcSwitch.evokedCoupling = 0;
+calcSwitch.inducedCoupling = 0;
+calcSwitch.meanEvokedTF = 0;
+calcSwitch.trialMeanSpectra = 0;
+calcSwitch.coherenceByCategory = 0;
+calcSwitch.spikeTimes = 0;
+calcSwitch.useJacknife = 0;      
+
+%% Parameters
+
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
@@ -66,11 +153,11 @@ ephysParams.needSpikes = 1;
 % ephysParams.lfpChannels = [9];
 ephysParams.spikeChannels = [1, 9]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
 ephysParams.lfpChannels = [1, 9];
-ephysParams.channelNames = {'C10','D10'};
+ephysParams.channelNames = {'D10','D11'};
 % ephysParams.channelNames = {'8B'};
 ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
 ephysParams.waveClusReclass = 1; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
@@ -295,64 +382,7 @@ end
 frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {-800, 60}; ...
                 {100, 1100}}; %#ok
-
-plotSwitch.imageEyeMap = 0;
-plotSwitch.eyeCorralogram = 0; %Eye Gram
-plotSwitch.attendedObject = 0; %Vectors to distinguish where subject is looking.
-plotSwitch.eyeStimOverlay = 0; %Visualize eye traces on stimuli.
-plotSwitch.clusterOnEyePaths = 0; %Resort spikes based on distinct eye paths, make "New events".
-plotSwitch.stimPSTHoverlay = 0; %grabs stimuli and overlays PSTH on it. produces sigStruct 
-plotSwitch.imagePsth = 1;
-plotSwitch.categoryPsth = 0;
-plotSwitch.stimCatANOVA = 0;
-plotSwitch.prefImRaster = 1; % Raster, Not color coded.
-plotSwitch.topStimToPlot = 5;
-plotSwitch.prefImRasterColorCoded = 0; % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background.
-plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
-plotSwitch.prefImRasterAverageEvokedOverlay = 0;
-plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-plotSwitch.imageTuningSorted = 0; %Barplot per image, Required for stimPSTHoverlay, sigStruct
-plotSwitch.stimPrefBarPlot = 0; %Per event bar graph.
-plotSwitch.stimPrefBarPlotEarly = 0;
-plotSwitch.stimPrefBarPlotLate = 0;
-plotSwitch.tuningCurves = 0;
-plotSwitch.tuningCurvesEarly = 0;
-plotSwitch.tuningCurvesLate = 0;
-plotSwitch.RF = 0;
-plotSwitch.rfEarly = 0;
-plotSwitch.rfLate = 0;
-plotSwitch.latencyRF = 0;
-plotSwitch.evokedPowerRF = 0;
-plotSwitch.evokedPsthMuaMultiCh = 0;
-plotSwitch.evokedByCategory = 0;
-plotSwitch.analogInByItem = 0;
-plotSwitch.analogInDerivativesByItem = 0;
-plotSwitch.colorPsthEvoked = 0;
-plotSwitch.linePsthEvoked = 0;
-plotSwitch.runSummary = 0;
-plotSwitch.runSummaryImMeanSub = 0;
-plotSwitch.runSummaryImMeanSubDiv = 0;
-plotSwitch.lfpPowerMuaScatter = 0; 
-plotSwitch.lfpPeakToPeakMuaScatter = 0;
-plotSwitch.lfpLatencyMuaLatency = 0;
-plotSwitch.lfpPowerAcrossChannels = 0;
-plotSwitch.lfpPeakToPeakAcrossChannels = 0;
-plotSwitch.lfpLatencyShiftAcrossChannels = 0;
-plotSwitch.singleTrialLfpByCategory = 0;
-plotSwitch.lfpSpectraByCategory = 1; %LFP Comparison 
-plotSwitch.lfpAutocorrelTfByItem = 0;
-plotSwitch.lfpAutocorrelByItem = 0;
-plotSwitch.spikeSpectraByCategory = 0;
-plotSwitch.spikeAutocorrelTfByItem = 0;
-plotSwitch.spikeAutocorrelByItem = 0;
-plotSwitch.spikeSpectraTfByImage = 0;
-plotSwitch.lfpSpectraTfByImage = 0;
-plotSwitch.couplingPhasesUnwrapped = 0;
-plotSwitch.couplingPhasesAsOffsets = 0;
-plotSwitch.couplingPhasesPolar = 0;
-plotSwitch.tfSpectraByCategory = 1; %Do I want this?
-plotSwitch.tfErrs = 0;           %#ok
-
+              
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 %Defined for Groups of 2, A-B/A+B type index.
 analysisGroups.selectivityIndex.groups = {{'socialInteraction';'nonInteraction'},{'socialInteraction';'goalDirected'}};
@@ -436,28 +466,6 @@ analysisGroups.coherenceByCategory.names = {'Interaction V Scrambles'}; %'fob';'
 analysisGroups.tfCouplingByCategory.groups = {{'socialInteraction'};{'nonInteraction';};{'objects'};{'goalDirected'}}; %#ok
 %%%%%
 
-calcSwitch.categoryPSTH = 1;
-calcSwitch.imagePSTH = 1;
-calcSwitch.faceSelectIndex = 0;
-calcSwitch.faceSelectIndexEarly = 0;
-calcSwitch.faceSelectIndexLate = 0;
-calcSwitch.inducedTrialMagnitudeCorrection = 0;
-calcSwitch.evokedSpectra = 0;
-calcSwitch.inducedSpectra = 0;
-calcSwitch.evokedImageTF = 0;
-calcSwitch.inducedImageTF = 0;
-calcSwitch.evokedCatSpikeTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
-calcSwitch.inducedCatSpikeTF = 0;
-calcSwitch.evokedCatLFPTF = 0; %Required for one of the above plot switches to actually produce the figure, but crashes @ "spikesByItemBinned = spikesByCategoryBinned;" in the 2k lines.
-calcSwitch.inducedCatLFPTF = 0;
-calcSwitch.evokedCoupling = 0;
-calcSwitch.inducedCoupling = 0;
-calcSwitch.meanEvokedTF = 0;
-calcSwitch.trialMeanSpectra = 0;
-calcSwitch.coherenceByCategory = 0;
-calcSwitch.spikeTimes = 0;
-calcSwitch.useJacknife = 0;      
-
 if calcSwitch.useJacknife
   chronuxParams.err(1) = 2; %#ok
 end
@@ -467,14 +475,25 @@ analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,
 lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        
 spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
 taskFilename = sprintf('%s/%s/%s%s.mat',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance 
-photodiodeFilename = lfpFilename;                %#ok
-lineNoiseTriggerFilename = lfpFilename; %#ok
+[photodiodeFilename, lineNoiseTriggerFilename] = deal(lfpFilename);                %#ok
 outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
 analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
 preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
 
-% Check if the file exists
+% In case difference logfile is being used.
+if ~logical(exist(taskFilename,'file'))
+  [A, B, C] = fileparts(taskFilename);
+  switch C
+    case '.mat'
+      taskFilename = [A '/' B '.bhv2'];
+    case '.bhv2'
+      taskFilename = [A '/' B '.mat'];
+  end
+end
+
+% Check if the key file types exist.
 assert(logical(exist(analogInFilename,'file')),'The analog input file you requested does not exist.');
+assert(logical(exist(taskFilename,'file')),'The log file you requested does not exist.');
 
 if ~exist(outDir,'dir')
   mkdir(outDir);

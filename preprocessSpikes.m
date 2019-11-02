@@ -62,21 +62,9 @@ if isfield(params, 'waveClus') && params.waveClus
     lfpFilename = [spikeFilePath '/' spikeFile '.ns5'];
     
     %parse the ns5, or see if they are already parsed.
-    parsedData = parse_data_NSx(lfpFilename, 2); %(filename,max_memo_GB)
-    
-    %Delete files we don't care about (since they don't represent
-    %electrodes).
-    for ii = 1:length(parsedData)
-      tmpFilename = parsedData{ii};
-      tmpCut = split(tmpFilename, ["_","."]);
-      if str2double(tmpCut{end-1}(3:end)) > 128 %Connector Banks on Blackrock are channels 1 - 128.
-        delete(parsedData{ii})
-        parsedData(ii) = [];
-      end
-    end
+    parsedData = parse_data_NSx(lfpFilename,[],[], 1:128); %(filename,max_memo_GB,output_name,channels)
     
     clusterResults = cell(length(parsedData),1);
-    
     %Check to see if a previously clustered file exists for each channel
     previousFile = dir([fileparts(parsedData{1}) filesep 'times_*.mat']);
     if ~isempty(previousFile)

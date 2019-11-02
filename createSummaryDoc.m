@@ -2,7 +2,7 @@
 function createSummaryDoc(layoutParamFilename, figDir)
 % Function which draws together files found in the output Analysis folder
 % into a single document.
-figDir = 'E:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed\20180706Mo\Basic\001';
+figDir = 'D:\ESIN_Ephys_Files\Analysis\Analyzed\20190930Mo\Basic\001';
 layoutParamFilename = 'buildLayoutParamFile';
 %% Parse Arguments
 % Want it to accept:

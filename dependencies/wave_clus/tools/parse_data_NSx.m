@@ -5,6 +5,10 @@ function [outfile_path] = parse_data_NSx(filename,max_memo_GB,output_name,channe
 % stored in RAM, so it is used to compute the number of segments in which
 % the data should be split for processing
 
+if ~exist('filename')
+  filename = uigetfile('*.ns5');
+end
+
 if length(filename)<3 || (~strcmpi(filename(2:3),':\') && ...
                  ~strcmpi(filename(1),'/') && ...
                  ~strcmpi(filename(2),'/') && ...

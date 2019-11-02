@@ -36,15 +36,6 @@ function [ taskData, stimTiming ] = preprocessLogFileMonkeyLogic(logfile, taskTr
 %% Process MonkeyLogic File
 %Parse the Log file
 disp('Loading MonkeyLogic log file');
-if ~logical(exist(logfile,'file'))
-  [A, B, C] = fileparts(logfile);
-  switch C
-    case '.mat'
-      logfile = [A '/' B '.bhv2'];
-    case '.bhv2'
-      logfile = [A '/' B '.mat'];
-  end
-end
 assert(logical(exist(logfile,'file')),'The logfile you requested does not exist.');
 [data,MLConfig,TrialRecord] = mlread(logfile);
 assert(length(unique(TrialRecord.ConditionsPlayed)) < ceil((length(TrialRecord.ConditionsPlayed))/2) , 'MonkeyLogic file reports each condition was not repeated at least 2 times')
@@ -600,8 +591,6 @@ for event_i = 1:length(RosettaStone)
   newHalf{event_i} = RosettaStone{event_i}{2};
 end
  
-
-% 
 % {'Cut_Order1Fighting1.avi', 'socialInteraction', 'fighting','highMotion'}; ...
 % {'Cut_Order1Fighting2.avi', 'socialInteraction', 'fighting','highMotion'}; ...
 % {'Cut_Order1Fighting3.avi', 'socialInteraction', 'fighting','highMotion'}; ...
