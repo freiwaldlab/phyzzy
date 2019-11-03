@@ -4,6 +4,10 @@ function [dirList] = buildRunList(dataDir, tag)
 % contents of interest but also changes output formating.
 
 filesOfInterest = dir([dataDir filesep '**' filesep '*.' tag]);
+
+%Allows for customization of list
+filesOfInterest = uiDirChoose(filesOfInterest);
+
 fileDirs = unique({filesOfInterest.folder}');
 
 switch tag
@@ -30,8 +34,28 @@ switch tag
   case 'fig'
     %Returns directories where .fig files are located, used in conjunction
     %with the 'createSummaryDoc' function.
-    
-    
 end
 dirList = dirList_tmp;
+end
 
+function filesOfInterestUpdated = uiDirChoose(filesOfInterest)
+theList = {filesOfInterest.name}';
+listCheckFig = figure();
+listCheckFig.Position(3) = 200;
+
+listCheck = uicontrol(listCheckFig,'style', 'listbox','String',theList,'Value',1);
+listCheck.Units = 'Normalized';
+listCheck.Position = [.055 .05 0.9 0.8];
+listCheck.Max = length(theList);
+
+selectButton = uicontrol(listCheckFig,'style','pushbutton','String','Select','Units','Normalized','Position',[.055 .9 0.3 0.1]);
+selectButton.Callback = @resumefig;
+%Wait for the select button to be hit
+uiwait()
+filesOfInterestUpdated = filesOfInterest(listCheck.Value);
+close(listCheckFig)
+end
+
+function resumefig(~, ~)
+  uiresume()
+end

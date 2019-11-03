@@ -15,23 +15,16 @@ function [] = processRunBatch(varargin)
 addpath(genpath('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy'))
 % addpath('buildAnalysisParamFileLib');
 % addpath(genpath('dependencies'));
-    
+
 if nargin == 1
     %If there is only 1 file, it loads the analysisParamFile and composes a
     %list from all the data files in the ephysVolume.
     analysisParamFile = varargin{1};
     load(feval(analysisParamFile));
-    runListFolder = uigetdir;
-    if runListFolder == 0
-      disp('using ephysVolume as directory')
-      runListFolder = ephysVolume;
-    end
+    runListFolder = ephysVolume;
     runList = buildRunList(runListFolder, 'nev');
-elseif nargin == 2
-    runList = varargin{1};
-    analysisParamFile = varargin{2};
-elseif nargin >= 3 || nargin == 0
-    disp('Must have either 1 or 2 inputs.')
+elseif nargin >= 2 || nargin == 0
+    disp('Must have 1 input.')
     return
 end
 
@@ -67,10 +60,10 @@ end
 %% Process the runs
 [errorsMsg, startTimes, endTimes, analysisOutFilename] = deal(cell(length(analysisParamFileList),1));
 
-diary batchRunLog.txt
-diary on
-
-analysisParamFileList'
+% diary batchRunLog.txt
+% diary on
+% 
+% analysisParamFileList'
 
 if license('test','Distrib_Computing_Toolbox')
   parfor run_ind = 1:length(analysisParamFileList)
@@ -109,7 +102,7 @@ else
   end
 end
 
-diary off
+% diary off
 
 %analysisOutFilename is now a cell array of the filepaths to the outputs of
 %runAnalyses. Cycle through them and extract desired information (# of
