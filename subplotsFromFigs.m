@@ -41,7 +41,7 @@ for fig_i = 1:length(figures)
     % if a subplot is .fig or fig handle, generate png and update figures with its filename
     if ~ischar(figures{fig_i}{fig_j})  %it's a figure handle
       assert(isgraphics(figures{fig_i}{fig_j},'Figure'),'Invalid input type: choices are filename or figure handle');
-      subplotFilename = sprintf('%s/subplot_%d_%d.png',dir,fig_i,fig_j);
+      subplotFilename = sprintf('%s%ssubplot_%d_%d.png',dir,filesep,fig_i,fig_j);
       set(0, 'CurrentFigure', figures{fig_i}{fig_j});
       set(figures{fig_i}{fig_j}, 'color', pageColor);
       export_fig(subplotFilename,'-m1.2','-opengl');

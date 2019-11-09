@@ -13,6 +13,7 @@ function [] = processRunBatch(varargin)
 
 %% Load Appropriate variables and paths
 addpath(genpath('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy'))
+origDir = pwd;
 % addpath('buildAnalysisParamFileLib');
 % addpath(genpath('dependencies'));
 
@@ -35,25 +36,35 @@ meta_ind = 1;
 for dateSubj_i = 1:length(runList)
     dateSubject = runList{dateSubj_i}{1};
     for run_i = 1:length(runList{dateSubj_i}{2})
-        runNum = runList{dateSubj_i}{2}{run_i};
-        analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
-        lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);        
-        spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
-        taskFilename = sprintf('%s/%s/%s%s.bhv2',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
-        outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
-        stimSyncParams.outDir = outDir;
-        ephysParams.outDir = outDir;
-        photodiodeFilename = lfpFilename;                %#ok
-        lineNoiseTriggerFilename = lfpFilename; %#ok        
-        analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
-        preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
-        if ~exist(outDir,'dir')
-            mkdir(outDir);
+      runNum = runList{dateSubj_i}{2}{run_i};
+      analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
+      lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);
+      spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
+      taskFilename = sprintf('%s/%s/%s%s.bhv2',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
+      % In case difference logfile is being used.
+      if ~logical(exist(taskFilename,'file'))
+        [A, B, C] = fileparts(taskFilename);
+        switch C
+          case '.mat'
+            taskFilename = [A '/' B '.bhv2'];
+          case '.bhv2'
+            taskFilename = [A '/' B '.mat'];
         end
-        save(analysisParamFilename);
-        analysisParamFileList{meta_ind} = analysisParamFilename;
-        analysisParamFileName{meta_ind} = [dateSubject runNum];
-        meta_ind = meta_ind + 1;
+      end
+      outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
+      stimSyncParams.outDir = outDir;
+      ephysParams.outDir = outDir;
+      photodiodeFilename = lfpFilename;                %#ok
+      lineNoiseTriggerFilename = lfpFilename; %#ok
+      analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
+      preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
+      if ~exist(outDir,'dir')
+        mkdir(outDir);
+      end
+      save(analysisParamFilename);
+      analysisParamFileList{meta_ind} = analysisParamFilename;
+      analysisParamFileName{meta_ind} = [dateSubject runNum];
+      meta_ind = meta_ind + 1;
     end
 end
 

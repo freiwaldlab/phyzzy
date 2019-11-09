@@ -731,7 +731,7 @@ try
     movefile([par.fnamespc '.dg_01'], [par.fname '.dg_01'], 'f');
   end
 catch
-  warning('MyComponent:ERROR_SPC', 'Error in SPC');
+  error('MyComponent:ERROR_SPC', 'Error in SPC');
   return
 end
 

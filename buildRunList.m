@@ -8,30 +8,24 @@ filesOfInterest = dir([dataDir filesep '**' filesep '*.' tag]);
 %Allows for customization of list
 filesOfInterest = uiDirChoose(filesOfInterest);
 
-fileDirs = unique({filesOfInterest.folder}');
-
-switch tag
+ switch tag
   case 'nev'
-    %Find everywhere with data files - denoted by folders containing a .nev.
-    %Change if not using Blackrock NSP.
-    for ii = 1:length(fileDirs)
-      [~, fileDirs{ii}] = fileparts(fileDirs{ii});
-    end
-    
+    %Find the name in the filename.
+    [~,B,~] = fileparts(filesOfInterest(1).folder);
+    nameInd = regexp(B,'\D');
+    %Extract folder names and run names.
+    fileNames = {filesOfInterest.name}';
+    dirNames = extractBetween(fileNames,1,max(nameInd));
+    runNames = extractBetween(fileNames,max(nameInd)+1,'.');
+    tmpDirName = unique(dirNames);
     %Cycle through those folders
-    dirList_tmp = cell(1, length(fileDirs));
-    
-    name = regexp(fileDirs{1},'\D*','Match'); %Find the name
-    extractRunNum = @(x) extractBetween(x, name, '.');
-    
-    for ii = 1:length(fileDirs)
-      theFiles = dir([dataDir filesep fileDirs{ii} filesep '*.nev']);
-      theFiles = {theFiles(:).name};
-      cells = cellfun(extractRunNum, theFiles);
-      runListBlock = {fileDirs{ii}; cells};
+    for ii = 1:length(tmpDirName)
+      runInd = strcmp(dirNames, tmpDirName{ii});
+      runListBlock = {tmpDirName{ii}, {runNames{runInd}}};
       dirList_tmp{ii} = runListBlock;
     end
   case 'fig'
+    fileDirs = unique({filesOfInterest.folder}');
     %Returns directories where .fig files are located, used in conjunction
     %with the 'createSummaryDoc' function.
 end
@@ -49,13 +43,9 @@ listCheck.Position = [.055 .05 0.9 0.8];
 listCheck.Max = length(theList);
 
 selectButton = uicontrol(listCheckFig,'style','pushbutton','String','Select','Units','Normalized','Position',[.055 .9 0.3 0.1]);
-selectButton.Callback = @resumefig;
+selectButton.Callback = @(src,event)uiresume();
 %Wait for the select button to be hit
 uiwait()
 filesOfInterestUpdated = filesOfInterest(listCheck.Value);
 close(listCheckFig)
-end
-
-function resumefig(~, ~)
-  uiresume()
 end

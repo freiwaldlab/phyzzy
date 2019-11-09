@@ -2,8 +2,8 @@
 function createSummaryDoc(layoutParamFilename, figDir)
 % Function which draws together files found in the output Analysis folder
 % into a single document.
-figDir = 'D:\ESIN_Ephys_Files\Analysis\Analyzed\20190930Mo\Basic\001';
-layoutParamFilename = 'buildLayoutParamFile';
+%figDir = 'D:\ESIN_Ephys_Files\Analysis\Analyzed\20190930Mo\Basic\001';
+%layoutParamFilename = 'buildLayoutParamFile';
 %% Parse Arguments
 % Want it to accept:
 % a directory with .figs or .pngs
@@ -128,7 +128,8 @@ end
 
 function configPages = unitExpand(configPages, figDir)
 %Find all figs with unit in name.
-  unitFigs = dir([figDir '\*unit*']);
+unitFigs = dir([figDir '\*unit*']);
+if ~isempty(unitFigs)
   unitFigList = {unitFigs.name}';
   %Extract all the unit numbers
   unitNum = @(str) strsplit(str,{' ','_'});
@@ -142,17 +143,22 @@ function configPages = unitExpand(configPages, figDir)
     configInset{unit_ind} = {sprintf('unit %d', unit_ind)}; %units to place
   end
   configInset{unit_ind+1} = {'unsorted'};
-  
-  %Find the position in the config array they go in.
-  for config_ind = 1:length(configPages)
-    configUnitInd(config_ind) = any(strcmp(configPages{config_ind}, {'unit'}));
-  end
+end
+
+%Find the position in the config array they go in.
+for config_ind = 1:length(configPages)
+  configUnitInd(config_ind) = any(strcmp(configPages{config_ind}, {'unit'}));
+end
+insetStart = find(configUnitInd);
+if ~isempty(unitFigs)
   %Stick in the new cells
   configTmp = cell(1, length(configPages)-1 + length(configInset));
-  insetStart = find(configUnitInd);
   %before and after Inset
   configTmp(1:insetStart-1) = configPages(1:insetStart-1);
   configTmp(insetStart+length(configInset):end) = configPages(insetStart+1:end);
   configTmp(insetStart:insetStart+length(configInset)-1) = configInset;
   configPages = configTmp;
+else
+  configPages(insetStart) = [];
+end
 end

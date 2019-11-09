@@ -48,20 +48,21 @@ xlsxLog = dir([filebits 'Recordings*.xlsx']);
 if ~isempty(xlsxLog)
   %Find the index for data based on the titles of the columns
   [~, ~, raw] = xlsread([xlsxLog.folder filesep xlsxLog.name]);
-  recID = strcmp(raw(1,:),'recording');
+  titles = raw(1,:);
+  recID = strcmp(titles,'recording');
   rowID = find(strcmp(raw(:,recID),n));
   %If there is a matching recordingID, start pulling variables from it.
   if ~isempty(rowID) %If the row is present, use any variables present to overwrite what was present in the MKL Table +
     %(for instances b/t July - Dec where runs weren't updated, correct info is pulled from Log book).
     %Pull the data from those columns, using the "Recording" column to
     %match days to runs.
-    electrodeInd = strcmp(raw(1,:),'impedance (MOhms)');
-    holeMLInd = find(strcmp(raw(1,:),'ML'));
-    holeAPInd = find(strcmp(raw(1,:),'AP'));
-    recordingInd = strcmp(raw(1,:),'putative distance');
-    recActComInd = strcmp(raw(1,:),'comments on signal');
-    regionInd = strcmp(raw(1,:),'putative region');
-    commInd = strcmp(raw(1,:),'online analysis');
+    electrodeInd = strcmp(titles,'impedance (MOhms)');
+    holeMLInd = find(strcmp(titles,'ML'));
+    holeAPInd = find(strcmp(titles,'AP'));
+    recordingInd = strcmp(titles,'putative distance');
+    recActComInd = strcmp(titles,'comments on signal');
+    regionInd = strcmp(titles,'putative region');
+    commInd = strcmp(titles,'online analysis');
     
     userVars2Temp.activityComments = raw{rowID,recActComInd};
     userVars2Temp.comments = raw{rowID,commInd};

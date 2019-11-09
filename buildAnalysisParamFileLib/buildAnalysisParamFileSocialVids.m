@@ -4,9 +4,9 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '002';
+runNum = '003';
 %dateSubject = '20190930Mo';
-dateSubject = '20181015Mo';
+dateSubject = '20180706Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -24,7 +24,7 @@ switch machine
 %     stimulusLogVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2019');
      ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018');
      stimulusLogVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018');
-    outputVolume = slashSwap('D:\ESIN_Ephys_Files\Analysis\Analyzed');
+    outputVolume = slashSwap('D:\DataAnalysis\BatchRun_11_6');
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code');
   case 'DataAnalysisPC'
@@ -67,7 +67,7 @@ plotSwitch.eyeCorralogram = 0; %Eye Gram
 plotSwitch.attendedObject = 1; %Vectors to distinguish where subject is looking.
 plotSwitch.eyeStimOverlay = 0; %Visualize eye traces on stimuli.
 plotSwitch.clusterOnEyePaths = 0; %Resort spikes based on distinct eye paths, make "New events".
-plotSwitch.stimPSTHoverlay = 0; %grabs stimuli and overlays PSTH on it. produces sigStruct 
+plotSwitch.stimPSTHoverlay = 1; %grabs stimuli and overlays PSTH on it. produces sigStruct 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
 plotSwitch.stimCatANOVA = 0;
@@ -149,15 +149,14 @@ calcSwitch.useJacknife = 0;
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
-% ephysParams.spikeChannels = [9]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-% ephysParams.lfpChannels = [9];
-ephysParams.spikeChannels = [1, 9]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-ephysParams.lfpChannels = [1, 9];
-ephysParams.channelNames = {'D10','D11'};
+autoChannelDetect = 1;
+ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+ephysParams.lfpChannels = [1];
+ephysParams.channelNames = {'Ch1'};
 % ephysParams.channelNames = {'8B'};
 ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
 ephysParams.waveClusReclass = 1; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
@@ -212,9 +211,7 @@ photodiodeParams.dataLoader = []; %Incase you're using something besides a raw a
 photodiodeParams.peakTimeOffset = 0; %this is the offset, in ms, of the peak from the event it's coupled to (note: will be subtracted, so should be > 0 if peak follows event, type: numeric)
 photodiodeParams.strobeTroughs = 1; %Strobe causes troughs.
 photodiodeParams.peakFreq = 85; %approximate number of peaks per second
-photodiodeParams.levelCalibType = 'auto';
-%'hardcode', 'hardcodeAndPlot', 'hardcodeAndCheck', 'auto', 'autoAndPlot',
-%'autoAndCheck', 'manual'
+photodiodeParams.levelCalibType = 'auto'; %'hardcode', 'hardcodeAndPlot', 'hardcodeAndCheck', 'auto', 'autoAndPlot','autoAndCheck', 'manual'
 photodiodeParams.numLevels = 1;
 photodiodeParams.saveCalibFile = 0;
 photodiodeParams.centerCornerOffset = 5.3;
@@ -494,6 +491,31 @@ end
 % Check if the key file types exist.
 assert(logical(exist(analogInFilename,'file')),'The analog input file you requested does not exist.');
 assert(logical(exist(taskFilename,'file')),'The log file you requested does not exist.');
+
+% Auto channel detect - if set, find the parsed file (or parse it), and
+% reassign spike channels on this.
+if autoChannelDetect
+  %If the file is parsed, retrieve channels present
+  parsedFolderName = sprintf('%s/%s/%s%s_parsed',ephysVolume,dateSubject,dateSubject,runNum);
+  if exist(parsedFolderName,'dir') == 7
+    channelFiles = dir([parsedFolderName '/*.NC5']);
+    channelNames = {channelFiles.name};
+    channelsTmp = [];
+    channelNameTmp = {};
+    for chan_ind = 1:length(channelNames)
+      startInd = regexp(channelNames{chan_ind}, 'Ch') + 2;
+      stopInd = regexp(channelNames{chan_ind},'.NC5') - 1;
+      chanNum = channelNames{chan_ind}(startInd:stopInd);
+      channelNameTmp{chan_ind} = ['Ch' chanNum];
+      channelsTmp(chan_ind) = str2double(channelNames{chan_ind}(startInd:stopInd));
+    end
+    ephysParams.spikeChannels = channelsTmp; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+    ephysParams.lfpChannels = channelsTmp;
+    ephysParams.channelNames = channelNameTmp;
+  else
+  end
+end
+
 
 if ~exist(outDir,'dir')
   mkdir(outDir);

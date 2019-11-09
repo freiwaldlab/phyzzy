@@ -416,6 +416,7 @@ end
 
   %Shift over all the events, using the calculated line.
   eventTimeAdjustments = taskEventStartTimesFit-taskEventStartTimesBlkPreStrobe;
+  assert(max(eventTimeAdjustments) < 50, 'over 50 ms adjustment for strobe, check')
   disp(strcat('Max magnitude fit residual, msec: ',num2str(max(abs(eventTimeAdjustments)))));
   
   figure('Name','Sync adjustments from model fitting','NumberTitle','off')
