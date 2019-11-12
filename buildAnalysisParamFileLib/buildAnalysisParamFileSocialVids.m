@@ -4,7 +4,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '004';
+runNum = '002';
 %dateSubject = '20190930Mo';
 dateSubject = '20180710Mo';
 
@@ -22,7 +22,7 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018');
     stimulusLogVolume = ephysVolume;
-    outputVolume = slashSwap('D:\DataAnalysis\BatchRunAllDataTest');
+    outputVolume = slashSwap('D:\DataAnalysis\ANOVA_Included');
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code');
   case 'DataAnalysisPC'
@@ -378,7 +378,7 @@ end
 %                 {-800, 60}; ...
 %                 {100, 1100}}; %#ok
 %               
-              frEpochsCell = {{60, @(stimDur) stimDur+60}};...
+              frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {-800, 60}; ...
                 {@(stimDur) stimDur+60, @(stimDur) stimDur+460}}; %#ok
               

@@ -386,17 +386,6 @@ for epoch_i = 1:size(frEpochs,1)
   firingRateErrsByImageByEpoch{epoch_i} = frErr;
 end
 
-imFr = firingRatesByImageByEpoch{1};
-peakImFr = max(psthByImage{1}{1},[],2);
-imFrErr = firingRateErrsByImageByEpoch{1};
-imSpikeCounts = spikeCountsByImageByEpoch{1};
-trialCountsByImage = zeros(length(spikesByEvent),1);
-for event_i = 1:length(spikesByEvent)
-  trialCountsByImage(event_i) = length(spikesByEvent{event_i}{1}{1});
-end
-
-save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch', 'imFr','imFrErr','imSpikeCounts','trialCountsByImage', '-append');
-
 if ~isempty(spikesByCategory)
   [firingRatesByCategoryByEpoch, firingRateErrsByCategoryByEpoch, spikeCountsByCategoryByEpoch] = deal(cell(size(frEpochs,1),1));
   for epoch_i = 1:size(frEpochs,1)
@@ -465,16 +454,29 @@ if ~isempty(spikesByCategory)
   save(analysisOutFilename,'groupLabelsByImage','groupLabelColorsByImage', '-append');
 end
 
-if ~taskData.RFmap
+trialCountsByImage = zeros(length(spikesByEvent),1);
+for event_i = 1:length(spikesByEvent)
+  trialCountsByImage(event_i) = length(spikesByEvent{event_i}{1}{1});
+end
+
+for epoch_i = 1:length(firingRatesByImageByEpoch)
+  imFr = firingRatesByImageByEpoch{epoch_i};
+  imFrErr = firingRateErrsByImageByEpoch{epoch_i};
+  imSpikeCounts = spikeCountsByImageByEpoch{epoch_i};
+  epochTag = sprintf('%d-%d ms',frEpochs(epoch_i,1), frEpochs(epoch_i,2));
+  
+  save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch', 'imFr','imFrErr','imSpikeCounts','trialCountsByImage', '-append');
+  
   % preferred images
   for channel_i = 1:length(spikeChannels)
     for unit_i = 1:length(channelUnitNames{channel_i})
+      chanUnitTag = sprintf('%s, %s', channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
       if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
         continue;
       end
       [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');  %todo: write the firing rates to file
       if sum(imageSortedRates) == 0
-        imageSortedRates(1) = 1; %Defense against this causing problems later. 
+        imageSortedRates(1) = 1; %Defense against this causing problems later.
       end
       imSpikeCountsSorted = imSpikeCounts{channel_i}{unit_i}(imageSortOrder);
       imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
@@ -487,7 +489,7 @@ if ~taskData.RFmap
         sortedGroupLabelColors = ones(length(eventLabels),3);
       end
       save(analysisOutFilename,'imageSortedRates','sortedImageLabels','imFrErrSorted','trialCountsByImageSorted','-append');
-
+      
       fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
       for i = 1:min(10,length(eventLabels))
         fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i),imFrErrSorted(i));
@@ -503,7 +505,7 @@ if ~taskData.RFmap
         else
           topStimToPlot = 5;
         end
-        prefImRasterTitle = sprintf('Preferred Image Raster - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+        prefImRasterTitle = sprintf('Preferred Image Raster - %s, %s',chanUnitTag, epochTag);
         fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
         clear figData
         figData.z = spikesByEvent(imageSortOrder(1:topStimToPlot));
@@ -523,7 +525,7 @@ if ~taskData.RFmap
         else
           topStimToPlot = 5;
         end
-        prefImRasterTitle = sprintf('Preferred Image Raster, Color coded - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+        prefImRasterTitle = sprintf('Preferred Image Raster, Color coded - %s, %s',chanUnitTag, epochTag);
         fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
         clear figData
         figData.z = spikesByEvent(imageSortOrder(1:topStimToPlot));
@@ -537,7 +539,7 @@ if ~taskData.RFmap
       end
       % preferred images raster-evoked overlay
       if isfield(plotSwitch,'prefImRasterEvokedOverlay') && plotSwitch.prefImRasterEvokedOverlay
-        prefImRasterEvokedOverlayTitle = sprintf('Preferred Image Raster, Evoked Potential Overlay - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+        prefImRasterEvokedOverlayTitle = sprintf('Preferred Image Raster, Evoked Potential Overlay - %s, %s',chanUnitTag, epochTag);
         fh = figure('Name',prefImRasterEvokedOverlayTitle,'NumberTitle','off');
         rasterEvoked(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
         title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
@@ -548,7 +550,7 @@ if ~taskData.RFmap
       end
       % preferred images average evoked
       if isfield(plotSwitch,'prefImAverageEvoked') && plotSwitch.prefImRasterAverageEvokedOverlay
-        prefImRasterAverageEvokedOverlayTitle = sprintf('Preferred Image Raster, Average Evoked Potential Overlay - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+        prefImRasterAverageEvokedOverlayTitle = sprintf('Preferred Image Raster, Average Evoked Potential Overlay - %s, %s',chanUnitTag, epochTag);
         fh = figure('Name',prefImRasterAverageEvokedOverlayTitle,'NumberTitle','off');
         averageEvoked(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors)
         title(sprintf('Preferred Images - Average Evoked, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
@@ -559,7 +561,7 @@ if ~taskData.RFmap
       end
       % preferred images raster-evoked overlay, with other channels
       if isfield(plotSwitch,'prefImMultiChRasterEvokedOverlay') && plotSwitch.prefImMultiChRasterEvokedOverlay
-        prefImMultiChRasterEvokedOverlayTitle = sprintf('Preferred Image Raster, Multichannel, Evoked Potential Overlay - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+        prefImMultiChRasterEvokedOverlayTitle = sprintf('Preferred Image Raster, Multichannel, Evoked Potential Overlay - %s, %s',chanUnitTag, epochTag);
         fh = figure('Name',prefImMultiChRasterEvokedOverlayTitle,'NumberTitle','off');
         rasterEvokedMultiCh(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
         title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
@@ -568,6 +570,8 @@ if ~taskData.RFmap
           close(fh);
         end
       end
+      
+      
       % image preference barplot
       if isfield(plotSwitch,'imageTuningSorted') && plotSwitch.imageTuningSorted
         for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
@@ -598,7 +602,7 @@ if ~taskData.RFmap
             [H{channel_i}{unit_i}{group_i}(event_i),pVect{channel_i}{unit_i}{group_i}(event_i)] = ztest(imSpikeCountsSorted{event_i}.rates, mu, mixSigmas(event_i));
           end
           %Plot Everything
-          imageTuningSortedTitle = sprintf('Image Tuning, Sorted - %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
+          imageTuningSortedTitle = sprintf('Image Tuning, Sorted - %s, %s',chanUnitTag, epochTag);
           fh = figure('Name',imageTuningSortedTitle,'NumberTitle','off');
           groupName = analysisGroups.stimulusLabelGroups.names{group_i};
           %tint = tinv([0.025  0.975],length(imSpikeCountsSorted.counts)-1); %Calcule CIs for stimBars.
@@ -611,7 +615,7 @@ if ~taskData.RFmap
           ylabel('Firing rate [Hz]');
           xlabel('Stimulus Video Title');
           ylim([ylim()*1.2]) %provides additional room for legend.
-          title(sprintf('Image tuning, sorted, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+          title(imageTuningSortedTitle);
           %Legends are made, not born
           [~, firstgroupMember] = unique(groupLabelsByImage(imageSortOrder)); %Get the right handles to put in the legend
           legendHandleArray = [HB(firstgroupMember); h.mainLine; HE(firstgroupMember(end))];
@@ -630,8 +634,8 @@ if ~taskData.RFmap
       end
     end
   end
-
-  % multi-channel MUA image preference 
+  
+  % multi-channel MUA image preference
   %(todo: all these, but with mean-sigma as the sort criterion)
   if length(channelNames) > 1
     multiChSpikesMin = zeros(length(eventLabels));
@@ -648,13 +652,13 @@ if ~taskData.RFmap
     multiChSpikesMeanNorm = mean(multiChMuaNorm);
     % multi-channel preferred images
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMin,2,'descend');
-
+    
     sortedImageLabels = eventLabels(imageSortOrder);
     multiChMinFrSort.imageSortedRates = imageSortedRates';
     multiChMinFrSort.imageSortOrder = imageSortOrder';
     multiChMinFrSort.sortedImageLabels = sortedImageLabels';
     save(analysisOutFilename,'multiChMinFrSort','-append');
-
+    
     fprintf('\n\n\nMulti-channel Preferred Images, Maximin\n\n');
     for i = 1:min(10,length(eventLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -663,7 +667,7 @@ if ~taskData.RFmap
     for i = 0:min(4,length(eventLabels)-1)
       fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
     end
-
+    
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMinNorm,2,'descend');
     sortedImageLabels = eventLabels(imageSortOrder);
     multiChMinNormFrSort.imageSortedRates = imageSortedRates';
@@ -678,15 +682,15 @@ if ~taskData.RFmap
     for i = 0:min(4, length(sortedImageLabels)-1)
       fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
     end
-
+    
     [imageSortedRates, imageSortOrder] = sort(multiChSpikesMeanNorm,2,'descend');
-    sortedImageLabels = eventLabels(imageSortOrder); 
+    sortedImageLabels = eventLabels(imageSortOrder);
     multiChMeanNormFrSort.imageSortedRates = imageSortedRates';
     multiChMeanNormFrSort.imageSortOrder = imageSortOrder';
     multiChMeanNormFrSort.sortedImageLabels = sortedImageLabels';
     save(analysisOutFilename,'multiChMeanNormFrSort','-append');
-
-
+    
+    
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Mean\n\n');
     for i = 1:min(10,length(eventLabels))
       fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
@@ -808,10 +812,10 @@ if ~taskData.RFmap
       end
     end
   end
-
+  
   % tuning curves
   calcSwitches = [isfield(plotSwitch,'tuningCurves') && plotSwitch.tuningCurves, isfield(plotSwitch,'tuningCurvesEarly') && plotSwitch.tuningCurvesEarly, ...
-    isfield(plotSwitch,'tuningCurvesLate') && plotSwitch.tuningCurvesLate];  
+    isfield(plotSwitch,'tuningCurvesLate') && plotSwitch.tuningCurvesLate];
   %todo: compute and save measures like pref view, tuning depth, fisher info, fwhm, (mirror) symmetry
   for calc_i = 1:length(calcSwitches)
     if ~calcSwitches(calc_i)
@@ -5362,7 +5366,7 @@ for channel_i = 1:length(spikeCountsByImageByEpoch{1})
       %Target behaves as a switch. If there is a target, it becomes Target
       %v All ANOVA, if not, each eventID is considered.
       if target
-        ANOVAvarName = ['Ch' num2str(channel_i) 'U' num2str(unit_i) ' - Soc vs Non-Soc Label'];
+        ANOVAvarName = ['Ch' num2str(channel_i) 'U' num2str(unit_i) ' - SocVsNonSoc Label'];
         %grab the relevant events
         targetInd = groupLabelsByImage == find(strcmp(group,target));
         targetSpikes = unitResponsePerEvent(targetInd);
@@ -5374,7 +5378,7 @@ for channel_i = 1:length(spikeCountsByImageByEpoch{1})
         for group_i = 1:length(spikeGroups)
           tmp = spikeGroups{group_i};
           tmp = [tmp{:}];
-          dataVec = vertcat(tmp.counts);
+          dataVec = vertcat(tmp.rates);
           labelVec = repmat(spikeGroupLabels(group_i), length(dataVec),1);
           epochVec = repmat(epochLabels(epoch_i), length(dataVec),1);
           trialSpikes = vertcat(trialSpikes,dataVec);

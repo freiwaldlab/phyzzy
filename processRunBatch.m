@@ -113,13 +113,14 @@ end
 %runAnalyses. Cycle through them and extract desired information (# of
 %units, significance), which you can add to the output file.
 %[UnitCount, sigUnits, sigStim, sigStimLen] = deal(cell(size(analysisOutFilename)));
-titles = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Channel', 'Unit_Count', 'Signifiant_Unit_count', 'Stimuli_count', 'Stimuli'};
+titles = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Channel', 'Unit_Count', 'Signifiant_Unit_count', 'Stimuli_count', 'Stimuli', 'ANOVA Sig String','Other Info'};
 table = cell(length(analysisOutFilename), length(titles));
 true_ind = 1;
 for ii = 1:length(analysisOutFilename)
   if ~isempty((analysisOutFilename{ii}))
-    tmp = load(analysisOutFilename{ii}, 'sigStruct'); %Relies on psth Overlay function in runAnalyses.
+    tmp = load(analysisOutFilename{ii}, 'stimCatANOVATable','sigStruct'); %Relies on psth Overlay function in runAnalyses.
     for channel_ind = 1:length(tmp.sigStruct.channels) %Add channel count here.
+      % Null model based significance testing
       channel = tmp.sigStruct.channels(channel_ind);
       UnitCount = tmp.sigStruct.totalUnits{channel_ind};
       sigUnits = length(tmp.sigStruct.sigUnits{channel_ind});
@@ -130,8 +131,18 @@ for ii = 1:length(analysisOutFilename)
       else
         sigStimNames = ' ';
       end
+      % ANOVA based significance
+      unitStructs = tmp.stimCatANOVATable{channel_ind};
+      ANOVASigString = '';
+      for unit_ind = 1:length(unitStructs)
+        anovaSig = unitStructs{1}.ANOVA.p > 0.05;
+        ANOVASigString = [ANOVASigString ['[' num2str(anovaSig(1)) ';' num2str(anovaSig(2)) ';' num2str(anovaSig(3)) ']']];
+      end
       %Package
-      table(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorsMsg(ii), channel, UnitCount, sigUnits, sigStimLen, sigStimNames];
+      table(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorsMsg(ii), channel, UnitCount, sigUnits, sigStimLen, sigStimNames, ANOVASigString, ' '];
+      if ii == 1
+        table{true_ind, 11} = sprintf('Comparison: %s Vs %s', strjoin(unitStructs{1}.ANOVA.stats.grpnames{1}), strjoin(unitStructs{1}.ANOVA.stats.grpnames{2}));
+      end
       true_ind = true_ind + 1;
     end
   end
