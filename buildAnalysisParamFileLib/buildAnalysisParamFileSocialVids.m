@@ -4,9 +4,9 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '003';
+runNum = '004';
 %dateSubject = '20190930Mo';
-dateSubject = '20180706Mo';
+dateSubject = '20180710Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -16,15 +16,13 @@ machine = machine(~isspace(machine));
 switch machine
   case {'turing.rockefeller.edu','hopper.rockefeller.edu'}
     ephysVolume = '/Freiwald/lab_files/raw_data/EPHYS/Farid_ESINRec/Data2018';
-    stimulusLogVolume = '/Freiwald/lab_files/raw_data/EPHYS/Farid_ESINRec/Data2018';
+    stimulusLogVolume = ephysVolume;
     outputVolume = '/Freiwald/faboharb/analysis/Analyzed';
     stimParamsFilename = '/Freiwald/faboharb/analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
   case 'Alienware_FA'
-%     ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2019');
-%     stimulusLogVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2019');
-     ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018');
-     stimulusLogVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018');
-    outputVolume = slashSwap('D:\DataAnalysis\BatchRun_11_6');
+    ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018');
+    stimulusLogVolume = ephysVolume;
+    outputVolume = slashSwap('D:\DataAnalysis\BatchRunAllDataTest');
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code');
   case 'DataAnalysisPC'
@@ -35,25 +33,25 @@ switch machine
     stimDir = slashSwap('C:\Users\Farid\OneDrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
   case 'DESKTOP-MAT9KQ7'
     ephysVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
-    stimulusLogVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Data';
+    stimulusLogVolume = ephysVolume;
     outputVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok
   case 'HomeDesktop'
     ephysVolume = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Data 2018');
-    stimulusLogVolume = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Data 2018');
+    stimulusLogVolume = ephysVolume;
     outputVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
   case 'SurfaceBook2FA'
     ephysVolume = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
-    stimulusLogVolume = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
+    stimulusLogVolume = ephysVolume;
     outputVolume = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_Full.mat';   %#ok
     stimDir = 'G:/StimuliForFaridfromJulia/SocialCategories';       
 end
 analysisLabel = 'Basic';
-analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
-preprocessedDataFilenameStem = 'preprocessedData.mat';
+preprocessedDataFilenameStem = 'preprocessedData.mat';analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
+
 saveFig = 1;                
 closeFig = 0;               %#ok
 exportFig = 0;              %#ok
@@ -70,7 +68,7 @@ plotSwitch.clusterOnEyePaths = 0; %Resort spikes based on distinct eye paths, ma
 plotSwitch.stimPSTHoverlay = 1; %grabs stimuli and overlays PSTH on it. produces sigStruct 
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
-plotSwitch.stimCatANOVA = 0;
+plotSwitch.stimCatANOVA = 1;
 plotSwitch.prefImRaster = 0; % Raster, Not color coded.
 plotSwitch.topStimToPlot = 5;
 plotSwitch.prefImRasterColorCoded = 2; % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background.
@@ -156,7 +154,7 @@ ephysParams.channelNames = {'Ch1'};
 % ephysParams.channelNames = {'8B'};
 ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 1; %Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
 ephysParams.waveClusReclass = 1; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
@@ -376,9 +374,13 @@ end
 % firing rate calculation epochs. Can provide either time (ms from stim onset),
 % or function handle, which will receive the minimum stimulus duration in
 % the run as an input.
-frEpochsCell = {{60, @(stimDur) stimDur+60};...
+% frEpochsCell = {{60, @(stimDur) stimDur+60};...
+%                 {-800, 60}; ...
+%                 {100, 1100}}; %#ok
+%               
+              frEpochsCell = {{60, @(stimDur) stimDur+60}};...
                 {-800, 60}; ...
-                {100, 1100}}; %#ok
+                {@(stimDur) stimDur+60, @(stimDur) stimDur+460}}; %#ok
               
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 %Defined for Groups of 2, A-B/A+B type index.
@@ -497,25 +499,8 @@ assert(logical(exist(taskFilename,'file')),'The log file you requested does not 
 if autoChannelDetect
   %If the file is parsed, retrieve channels present
   parsedFolderName = sprintf('%s/%s/%s%s_parsed',ephysVolume,dateSubject,dateSubject,runNum);
-  if exist(parsedFolderName,'dir') == 7
-    channelFiles = dir([parsedFolderName '/*.NC5']);
-    channelNames = {channelFiles.name};
-    channelsTmp = [];
-    channelNameTmp = {};
-    for chan_ind = 1:length(channelNames)
-      startInd = regexp(channelNames{chan_ind}, 'Ch') + 2;
-      stopInd = regexp(channelNames{chan_ind},'.NC5') - 1;
-      chanNum = channelNames{chan_ind}(startInd:stopInd);
-      channelNameTmp{chan_ind} = ['Ch' chanNum];
-      channelsTmp(chan_ind) = str2double(channelNames{chan_ind}(startInd:stopInd));
-    end
-    ephysParams.spikeChannels = channelsTmp; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
-    ephysParams.lfpChannels = channelsTmp;
-    ephysParams.channelNames = channelNameTmp;
-  else
-  end
+  [ephysParams.spikeChannels, ephysParams.lfpChannels, ephysParams.channelNames] = autoDetectChannels(parsedFolderName);
 end
-
 
 if ~exist(outDir,'dir')
   mkdir(outDir);
@@ -531,5 +516,23 @@ function swappedString = slashSwap(pathString)
 %Swaps direction of slashes to match Unix/Phyzzy, from Windows Path.
   stringParts = split(pathString, '\');
   swappedString = char(join(stringParts, '/'));
-  
+end
+
+function [spike, LFP, names] = autoDetectChannels(parsedFolderName)
+  if exist(parsedFolderName,'dir') == 7
+    channelFiles = dir([parsedFolderName '/*.NC5']);
+    channelNames = {channelFiles.name};
+    channelsTmp = [];
+    channelNameTmp = {};
+    for chan_ind = 1:length(channelNames)
+      startInd = regexp(channelNames{chan_ind}, 'Ch') + 2;
+      stopInd = regexp(channelNames{chan_ind},'.NC5') - 1;
+      chanNum = channelNames{chan_ind}(startInd:stopInd);
+      channelNameTmp{chan_ind} = ['Ch' chanNum];
+      channelsTmp(chan_ind) = str2double(channelNames{chan_ind}(startInd:stopInd));
+    end
+    [spike, LFP] = deal(channelsTmp); %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+    names = channelNameTmp;
+  else
+  end
 end

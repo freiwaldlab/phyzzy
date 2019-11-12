@@ -876,7 +876,7 @@ end
 
 if isfield(plotSwitch, 'stimPSTHoverlay') && plotSwitch.stimPSTHoverlay
   %stimPSTHoverlay(psthByImage, imageSortingMatrix, inclusionMask, stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, taskData.translationTable, outDir)
-  sigStruct = stimPSTHoverlay(psthByImage, imageSortOrderAll, nullModelPvalues, stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, eventIDs, outDir);
+  sigStruct = stimPSTHoverlay(psthByImage, imageSortOrderAll, nullModelPvalues, stimDir, psthParams, ephysParams, lfpPaddedBy, eventIDs, outDir);
   save(analysisOutFilename,'sigStruct','-append');
 end
 
@@ -886,7 +886,7 @@ if isfield(plotSwitch, 'stimCatANOVA') && plotSwitch.stimCatANOVA
   % will use the stimulus wide average PSTH value for now, but may need to
   % get closer to raw spikes to do correctly. "group" variable will not be
   % correct in cases with multiple groupings.
-  stimCatANOVATable = stimCatIndepANOVA(spikeCountsByImageByEpoch, eventLabels, groupLabelsByImage, group, 'socialInteraction');
+  stimCatANOVATable = stimCatTwoWayANOVA(spikeCountsByImageByEpoch, eventLabels, groupLabelsByImage, group, 'socialInteraction');
   save(analysisOutFilename,'stimCatANOVATable','-append');
 end
 
@@ -5066,20 +5066,24 @@ function [downSampledEyeInByEvent,frameStartInd, frameEndInd] = downSampleSig(ey
   frameEndInd = round((1:frames)*sampFreq); %each index is the number of points averaged to make a frame.
 end
 
-function sigStruct = stimPSTHoverlay(psthByImage, sortMask, inclusionMask, stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, translationTable, outDir)
+function sigStruct = stimPSTHoverlay(psthByImage, sortMask, inclusionMask, stimDir, psthParams, ephysParams, lfpPaddedBy, translationTable, outDir)
 %Rearrange PSTH due to sorting which takes place w/ signifiance bars
-
+sigStructOnly = 1;
 %Creates a copy of the video of the stimulus with the PSTH traced below.
+psthPre = psthParams.psthPre;
+psthImDur = psthParams.psthImDur;
+psthPost = psthParams.psthPost;
 times = -psthPre:psthImDur+psthPost;
 stimStartInd = psthPre+lfpPaddedBy + 1;
 stimEndInd = stimStartInd + psthImDur - 1;
 
 %initialize outputs
-sigStruct.sigUnits = cell(0);
-sigStruct.sigStim = cell(0);
+sigStruct.channels = ephysParams.spikeChannels;
+sigStruct.sigUnits = cell(1, length(sigStruct.channels));
+sigStruct.sigStim = cell(1, length(sigStruct.channels));
 
 for channel_i = 1:length(psthByImage)
-  sigStruct.totalUnits{channel_i} = length(psthByImage{channel_i});
+  sigStruct.totalUnits{channel_i} = length(psthByImage{channel_i})-2; %Unsorted and MUA don't count.
   for unit_i = 1:length(psthByImage{channel_i})
     unitPSTH = psthByImage{channel_i}{unit_i};
     for group_i = 1:length(sortMask{channel_i}{unit_i})
@@ -5092,14 +5096,14 @@ for channel_i = 1:length(psthByImage)
       translationTableSorted = translationTable(sortMask{channel_i}{unit_i}{group_i});
       %Get the trials we care about
       runMask = (inclusionMask{channel_i}{unit_i}{group_i} < 0.05);
-      pMask = (inclusionMask{channel_i}{unit_i}{group_i} < 0.1);
       PSTHtoPlot = unitPSTHSorted(runMask,:);
-      %Grab the stimuli names for these events.
-      stimtoPlot = translationTableSorted(runMask,:);
-      stimtoSave = translationTableSorted(pMask,:);
+      stimtoPlot = translationTableSorted(runMask,:);       %Grab the stimuli names for these events.
       if ~isempty(stimtoPlot)
-        sigStruct.sigUnits = [sigStruct.sigUnits, {sprintf('Channel %d, Unit %d, Group %d',[channel_i, unit_i, group_i])}];
-        sigStruct.sigStim = [sigStruct.sigStim {stimtoPlot}];
+        sigStruct.sigUnits{channel_i} = [sigStruct.sigUnits{channel_i}, {sprintf('Ch%d U%d, G%d',[channel_i, unit_i, group_i])}];
+        sigStruct.sigStim{channel_i} = [sigStruct.sigStim{channel_i} stimtoPlot];
+      end
+      if sigStructOnly
+        stimtoPlot = [];
       end
       if ~isempty(stimtoPlot)
         for ii = 1:length(stimtoPlot)
@@ -5370,7 +5374,7 @@ for channel_i = 1:length(spikeCountsByImageByEpoch{1})
         for group_i = 1:length(spikeGroups)
           tmp = spikeGroups{group_i};
           tmp = [tmp{:}];
-          dataVec = vertcat(tmp.rates);
+          dataVec = vertcat(tmp.counts);
           labelVec = repmat(spikeGroupLabels(group_i), length(dataVec),1);
           epochVec = repmat(epochLabels(epoch_i), length(dataVec),1);
           trialSpikes = vertcat(trialSpikes,dataVec);

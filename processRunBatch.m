@@ -13,9 +13,6 @@ function [] = processRunBatch(varargin)
 
 %% Load Appropriate variables and paths
 addpath(genpath('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy'))
-origDir = pwd;
-% addpath('buildAnalysisParamFileLib');
-% addpath(genpath('dependencies'));
 
 if nargin == 1
     %If there is only 1 file, it loads the analysisParamFile and composes a
@@ -51,6 +48,10 @@ for dateSubj_i = 1:length(runList)
             taskFilename = [A '/' B '.mat'];
         end
       end
+      %Autodetecting spike channels
+      %If the file is parsed, retrieve channels present
+      parsedFolderName = sprintf('%s/%s/%s%s_parsed',ephysVolume,dateSubject,dateSubject,runNum);
+      [ephysParams.spikeChannels, ephysParams.lfpChannels, ephysParams.channelNames] = autoDetectChannels(parsedFolderName);
       outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
       stimSyncParams.outDir = outDir;
       ephysParams.outDir = outDir;
@@ -70,11 +71,6 @@ end
 
 %% Process the runs
 [errorsMsg, startTimes, endTimes, analysisOutFilename] = deal(cell(length(analysisParamFileList),1));
-
-% diary batchRunLog.txt
-% diary on
-% 
-% analysisParamFileList'
 
 if license('test','Distrib_Computing_Toolbox')
   parfor run_ind = 1:length(analysisParamFileList)
@@ -113,51 +109,71 @@ else
   end
 end
 
-% diary off
-
 %analysisOutFilename is now a cell array of the filepaths to the outputs of
 %runAnalyses. Cycle through them and extract desired information (# of
 %units, significance), which you can add to the output file.
-[UnitCount, sigUnits, sigStim, sigStimLen] = deal(cell(size(analysisOutFilename)));
-
+%[UnitCount, sigUnits, sigStim, sigStimLen] = deal(cell(size(analysisOutFilename)));
+titles = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Channel', 'Unit_Count', 'Signifiant_Unit_count', 'Stimuli_count', 'Stimuli'};
+table = cell(length(analysisOutFilename), length(titles));
+true_ind = 1;
 for ii = 1:length(analysisOutFilename)
   if ~isempty((analysisOutFilename{ii}))
     tmp = load(analysisOutFilename{ii}, 'sigStruct'); %Relies on psth Overlay function in runAnalyses.
-    UnitCount{ii} = tmp.sigStruct.totalUnits{1};
-    sigUnits{ii} = length(tmp.sigStruct.sigUnits);
-    sigStim{ii} = unique(cat(1, tmp.sigStruct.sigStim{:}));
-    sigStimLen{ii} = length(sigStim{ii});
-    if ~isempty(sigStim{ii})
-      sigStim{ii} = strjoin(sigStim{ii}, ' ');
+    for channel_ind = 1:length(tmp.sigStruct.channels) %Add channel count here.
+      channel = tmp.sigStruct.channels(channel_ind);
+      UnitCount = tmp.sigStruct.totalUnits{channel_ind};
+      sigUnits = length(tmp.sigStruct.sigUnits{channel_ind});
+      sigStim = unique(cat(1, tmp.sigStruct.sigStim{channel_ind}));
+      sigStimLen = length(sigStim);
+      if ~isempty(sigStim)
+        sigStimNames = strjoin(sigStim, ' ');
+      else
+        sigStimNames = ' ';
+      end
+      %Package
+      table(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorsMsg(ii), channel, UnitCount, sigUnits, sigStimLen, sigStimNames];
+      true_ind = true_ind + 1;
     end
   end
 end
 
 % %Save Batch Run Results
-errorReport = [analysisParamFileName' startTimes endTimes errorsMsg UnitCount sigUnits sigStimLen sigStim ];
-T = cell2table(errorReport);
-T.Properties.VariableNames = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Unit_Count', 'Signifiant_Unit_count', 'Stimuli_count', 'Stimuli'};
+T = cell2table(table);
+T.Properties.VariableNames = titles;
 writetable(T,sprintf('%s/BatchRunResults.csv',outputVolume))
 
-%Save Batch Run Results
-% errorReport = [analysisParamFileName' startTimes endTimes errorsMsg];
-% T = cell2table(errorReport);
-% T.Properties.VariableNames = {'File_Analyzed', 'Start_Time', 'End_time', 'Error'};
-% writetable(T,sprintf('%s/BatchRunResults.csv',outputVolume))
+% %PDF Summary
+% %Remove empty cells from analysisOutFilename
+% nonEmptyCellInd = ~(cellfun('isempty',analysisOutFilename));
+% analysisOutFilename = analysisOutFilename(nonEmptyCellInd);
+% 
+% %Find the directory
+% figDirPath = @(cell) (fileparts(cell));
+% analysisOutFigDirs = cellfun(figDirPath, analysisOutFilename, 'UniformOutput', 0);
+% 
+% %run through the createSummaryDoc Function.
+% for figDir_ind = 1:length(analysisOutFigDirs)
+%   createSummaryDoc('buildLayoutParamFile', analysisOutFigDirs{figDir_ind})
+% end
 
-%PDF Summary
-%Remove empty cells from analysisOutFilename
-nonEmptyCellInd = ~(cellfun('isempty',analysisOutFilename));
-analysisOutFilename = analysisOutFilename(nonEmptyCellInd);
 
-%Find the directory
-figDirPath = @(cell) (fileparts(cell));
-analysisOutFigDirs = cellfun(figDirPath, analysisOutFilename, 'UniformOutput', 0);
-
-%run through the createSummaryDoc Function.
-for figDir_ind = 1:length(analysisOutFigDirs)
-  createSummaryDoc('buildLayoutParamFile', analysisOutFigDirs{figDir_ind})
 end
 
-
+function [spike, LFP, names] = autoDetectChannels(parsedFolderName)
+  if exist(parsedFolderName,'dir') == 7
+    channelFiles = dir([parsedFolderName '/*.NC5']);
+    channelNames = {channelFiles.name};
+    channelsTmp = [];
+    channelNameTmp = {};
+    for chan_ind = 1:length(channelNames)
+      startInd = regexp(channelNames{chan_ind}, 'Ch') + 2;
+      stopInd = regexp(channelNames{chan_ind},'.NC5') - 1;
+      chanNum = channelNames{chan_ind}(startInd:stopInd);
+      channelNameTmp{chan_ind} = ['Ch' chanNum];
+      channelsTmp(chan_ind) = str2double(channelNames{chan_ind}(startInd:stopInd));
+    end
+    [spike, LFP] = deal(channelsTmp); %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
+    names = channelNameTmp;
+  else
+  end
 end

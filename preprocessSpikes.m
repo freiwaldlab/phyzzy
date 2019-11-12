@@ -14,6 +14,7 @@ Output.VERBOSE('loading blackrock event file');
 assert(logical(exist(spikeFilename,'file')),'The spike-event file you requested does not exist.');
 NEV = openNEV(spikeFilename,'nosave','nomat'); %note: add param 'report' for verbose
 
+
 %Check to see if new openNEV (where Spikes struct has been flipped), and if
 %so, flip it back.
 if isfield(NEV.Data.Spikes,'WaveformUnit')
@@ -192,8 +193,6 @@ if isfield(params, 'waveClus') && params.waveClus
       %       rmdir([spikeFilePath '/' spikeFile '_parsed'], 's');
   end
 end
-
-
 
 for channel_i = 1:length(params.spikeChannels)
   %change units from sample index to ms; type from int32 to double
