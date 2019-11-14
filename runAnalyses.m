@@ -395,6 +395,7 @@ if ~isempty(spikesByCategory)
     spikeCountsByCategoryByEpoch{epoch_i} = spikeCounts;
   end
   
+  
   catFr = firingRatesByCategoryByEpoch{1};
   catFrErr = firingRateErrsByCategoryByEpoch{1};
   catSpikeCounts = spikeCountsByCategoryByEpoch{1};
@@ -403,8 +404,8 @@ if ~isempty(spikesByCategory)
     trialCountsByCategory(cat_i) = length(spikesByCategory{cat_i}{1}{1});
   end
   
-  save(analysisOutFilename,'firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch', 'catFr','catFrErr','catSpikeCounts','trialCountsByCategory', '-append');
-  
+  save(analysisOutFilename,'frEpochs','firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch', 'catFr','catFrErr','catSpikeCounts','trialCountsByCategory', '-append');
+    
   groupLabelsByImage = zeros(length(eventLabels),length(analysisGroups.stimulusLabelGroups));
   groupLabelColorsByImage = ones(length(eventLabels),3,length(analysisGroups.stimulusLabelGroups));
   for group_i = 1:1:length(analysisGroups.stimulusLabelGroups.groups)
@@ -464,9 +465,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
   imFrErr = firingRateErrsByImageByEpoch{epoch_i};
   imSpikeCounts = spikeCountsByImageByEpoch{epoch_i};
   epochTag = sprintf('%d-%d ms',frEpochs(epoch_i,1), frEpochs(epoch_i,2));
-  
-  save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch', 'imFr','imFrErr','imSpikeCounts','trialCountsByImage', '-append');
-  
+    
   % preferred images
   for channel_i = 1:length(spikeChannels)
     for unit_i = 1:length(channelUnitNames{channel_i})
@@ -575,7 +574,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
       % image preference barplot
       if isfield(plotSwitch,'imageTuningSorted') && plotSwitch.imageTuningSorted
         for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
-          imageSortOrderAll{channel_i}{unit_i}{group_i} = imageSortOrder;
+          imageSortOrderAll{epoch_i}{channel_i}{unit_i}{group_i} = imageSortOrder;
           %Calculate the Null model
           mu = mean(imageSortedRates);
           rawSigmas = imFrErrSorted(trialCountsByImageSorted > 1).*sqrt(trialCountsByImageSorted(trialCountsByImageSorted > 1))';
@@ -596,7 +595,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
           %Calculate significance
           estimatedDiff = imageSortedRates - muNull;
           zScore = estimatedDiff./imFrErrSorted;
-          nullModelPvalues{channel_i}{unit_i}{group_i} = exp(-0.717.*zScore-0.416*(zScore.^2));
+          nullModelPvalues{epoch_i}{channel_i}{unit_i}{group_i} = exp(-0.717.*zScore-0.416*(zScore.^2));
           %Try 2
           for event_i = 1:length(imSpikeCountsSorted)
             [H{channel_i}{unit_i}{group_i}(event_i),pVect{channel_i}{unit_i}{group_i}(event_i)] = ztest(imSpikeCountsSorted{event_i}.rates, mu, mixSigmas(event_i));
@@ -607,7 +606,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
           groupName = analysisGroups.stimulusLabelGroups.names{group_i};
           %tint = tinv([0.025  0.975],length(imSpikeCountsSorted.counts)-1); %Calcule CIs for stimBars.
           %imFrCISorted = imFrErrSorted*tint(2);
-          [HB, HE, ~, ~, ~] = superbar(imageSortedRates,'E',imFrErrSorted,'P',nullModelPvalues{channel_i}{unit_i}{group_i}, 'PStarShowNS', 0,'BarFaceColor',sortedGroupLabelColors(:,:,group_i), 'ErrorbarLineWidth', 1.5, 'ErrorbarColor', [0 0 .1]);
+          [HB, HE, ~, ~, ~] = superbar(imageSortedRates,'E',imFrErrSorted,'P',nullModelPvalues{epoch_i}{channel_i}{unit_i}{group_i}, 'PStarShowNS', 0,'BarFaceColor',sortedGroupLabelColors(:,:,group_i), 'ErrorbarLineWidth', 1.5, 'ErrorbarColor', [0 0 .1]);
           set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(eventLabels),'TickDir','out');
           h = mseb(1:length(imageSortedRates),mean(nullDistSortsMix,1), std(nullDistSortsMix,1),lineProps);
           h.patch.FaceAlpha = '0.5';
@@ -625,7 +624,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
           clear figData
           figData.y = imageSortedRates;
           figData.e = imFrErrSorted;
-          saveFigure(outDir, sprintf('imageTuningSorted_%s_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,runNum), figData, saveFig, exportFig, saveFigData, figTag );
+          saveFigure(outDir, sprintf('imageTuningSorted, %s %s %s R%s',groupName, chanUnitTag, epochTag,runNum), figData, saveFig, exportFig, saveFigData, figTag );
           if closeFig
             close(fh);
           end
@@ -879,8 +878,9 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
 end
 
 if isfield(plotSwitch, 'stimPSTHoverlay') && plotSwitch.stimPSTHoverlay
+  epochLabels = {'Presentation','Fixation','Reward'};
   %stimPSTHoverlay(psthByImage, imageSortingMatrix, inclusionMask, stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, taskData.translationTable, outDir)
-  sigStruct = stimPSTHoverlay(psthByImage, imageSortOrderAll, nullModelPvalues, stimDir, psthParams, ephysParams, lfpPaddedBy, eventIDs, outDir);
+  sigStruct = stimPSTHoverlay(psthByImage, imageSortOrderAll, nullModelPvalues, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, eventIDs, outDir);
   save(analysisOutFilename,'sigStruct','-append');
 end
 
@@ -5070,7 +5070,7 @@ function [downSampledEyeInByEvent,frameStartInd, frameEndInd] = downSampleSig(ey
   frameEndInd = round((1:frames)*sampFreq); %each index is the number of points averaged to make a frame.
 end
 
-function sigStruct = stimPSTHoverlay(psthByImage, sortMask, inclusionMask, stimDir, psthParams, ephysParams, lfpPaddedBy, translationTable, outDir)
+function sigStruct = stimPSTHoverlay(psthByImage, sortMask, inclusionMask, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, translationTable, outDir)
 %Rearrange PSTH due to sorting which takes place w/ signifiance bars
 sigStructOnly = 1;
 %Creates a copy of the video of the stimulus with the PSTH traced below.
@@ -5083,98 +5083,101 @@ stimEndInd = stimStartInd + psthImDur - 1;
 
 %initialize outputs
 sigStruct.channels = ephysParams.spikeChannels;
-sigStruct.sigUnits = cell(1, length(sigStruct.channels));
-sigStruct.sigStim = cell(1, length(sigStruct.channels));
+sigStruct.epochLabels = epochLabels;
+[sigStruct.sigUnits, sigStruct.sigStim] = deal(cell(1, length(inclusionMask)));
+[sigStruct.sigUnits{:}, sigStruct.sigStim{:}] = deal(cell(1, length(sigStruct.channels)));
 
 for channel_i = 1:length(psthByImage)
   sigStruct.totalUnits{channel_i} = length(psthByImage{channel_i})-2; %Unsorted and MUA don't count.
   for unit_i = 1:length(psthByImage{channel_i})
     unitPSTH = psthByImage{channel_i}{unit_i};
-    for group_i = 1:length(sortMask{channel_i}{unit_i})
-      yMax = max(max(unitPSTH));
-      if yMax == 0
-        yMax = 1; %Another 0 unit spike protection.
-      end
-      yMin = min(min(unitPSTH));
-      unitPSTHSorted = unitPSTH(sortMask{channel_i}{unit_i}{group_i},:);
-      translationTableSorted = translationTable(sortMask{channel_i}{unit_i}{group_i});
-      %Get the trials we care about
-      runMask = (inclusionMask{channel_i}{unit_i}{group_i} < 0.05);
-      PSTHtoPlot = unitPSTHSorted(runMask,:);
-      stimtoPlot = translationTableSorted(runMask,:);       %Grab the stimuli names for these events.
-      if ~isempty(stimtoPlot)
-        sigStruct.sigUnits{channel_i} = [sigStruct.sigUnits{channel_i}, {sprintf('Ch%d U%d, G%d',[channel_i, unit_i, group_i])}];
-        sigStruct.sigStim{channel_i} = [sigStruct.sigStim{channel_i} stimtoPlot];
-      end
-      if sigStructOnly
-        stimtoPlot = [];
-      end
-      if ~isempty(stimtoPlot)
-        for ii = 1:length(stimtoPlot)
-          %Isolate the stimuli, its name, and path.
-          stimInfo = dir(strcat(stimDir, '/**/', stimtoPlot{ii})); %use the translationTable to find the file
-          stimPath = [stimInfo(1).folder filesep stimInfo(1).name]; %create its path.
-          
-          %Open the Video, Get some Info on it
-          stimVid = VideoReader(stimPath);
-          
-          %Draw the PSTH video to be added.
-          psthTrace = PSTHtoPlot(ii, psthPre:psthPre+psthImDur);
-          timeInd = 1:psthImDur;
-          PSTHVideoPath =  [outDir 'tmpPSTH_' stimInfo(1).name];
-          outputVideoPath = [outDir sprintf('PSTH_Ch%d_U%d_G%d_%s', [channel_i, unit_i, group_i, stimInfo(1).name])];
-          
-          % new video
-          PSTHVideo = VideoWriter(PSTHVideoPath);
-          PSTHVideo.FrameRate = stimVid.FrameRate;%
-          framesPerSecond = round(1000/stimVid.FrameRate);
-          open(PSTHVideo);
-          
-          %Initialize the line, make the figure plot the right size for later
-          %adjoining to the stimulus.
-          currFig = figure();
-          an = animatedline('color',[1 0 0],'LineWidth',2);
-          currFig.Children.Color = [0 0 0];
-          currFig.Children.Units = 'pixels';
-          currFig.Children.Position = [0 0 stimVid.Width stimVid.Height/5];
-          currFig.Position(3:4) = [stimVid.Width stimVid.Height/5];
-          axis([timeInd(1), timeInd(end), yMin, yMax])
-          
-          for time_ind = 1:timeInd(end)
-            if mod(time_ind,framesPerSecond) == 0
-              addpoints(an, timeInd(time_ind), psthTrace(time_ind));
-              frame = getframe(gcf);
-              writeVideo(PSTHVideo, frame.cdata);
+    for epoch_i = 1:length(inclusionMask)
+      for group_i = 1:length(sortMask{epoch_i}{channel_i}{unit_i})
+        yMax = max(max(unitPSTH));
+        if yMax == 0
+          yMax = 1; %Another 0 unit spike protection.
+        end
+        yMin = min(min(unitPSTH));
+        unitPSTHSorted = unitPSTH(sortMask{epoch_i}{channel_i}{unit_i}{group_i},:);
+        translationTableSorted = translationTable(sortMask{epoch_i}{channel_i}{unit_i}{group_i});
+        %Get the trials we care about
+        runMask = (inclusionMask{epoch_i}{channel_i}{unit_i}{group_i} < 0.05);
+        if sum(runMask) ~= 0
+          PSTHtoPlot = unitPSTHSorted(runMask,:);
+          stimtoPlot = translationTableSorted(runMask,:);       %Grab the stimuli names for these events.
+          sigStruct.sigUnits{epoch_i}{channel_i} = [sigStruct.sigUnits{epoch_i}{channel_i}, {sprintf('Ch%d U%d, G%d',[channel_i, unit_i, group_i])}];
+          sigStruct.sigStim{epoch_i}{channel_i} = [sigStruct.sigStim{epoch_i}{channel_i}; stimtoPlot];
+        end
+        if sigStructOnly
+          stimtoPlot = [];
+        end
+        if ~isempty(stimtoPlot)
+          for ii = 1:length(stimtoPlot)
+            %Isolate the stimuli, its name, and path.
+            stimInfo = dir(strcat(stimDir, '/**/', stimtoPlot{ii})); %use the translationTable to find the file
+            stimPath = [stimInfo(1).folder filesep stimInfo(1).name]; %create its path.
+            
+            %Open the Video, Get some Info on it
+            stimVid = VideoReader(stimPath);
+            
+            %Draw the PSTH video to be added.
+            psthTrace = PSTHtoPlot(ii, psthPre:psthPre+psthImDur);
+            timeInd = 1:psthImDur;
+            PSTHVideoPath =  [outDir 'tmpPSTH_' stimInfo(1).name];
+            outputVideoPath = [outDir sprintf('PSTH_Ch%d_U%d_G%d_%s', [channel_i, unit_i, group_i, stimInfo(1).name])];
+            
+            % new video
+            PSTHVideo = VideoWriter(PSTHVideoPath);
+            PSTHVideo.FrameRate = stimVid.FrameRate;%
+            framesPerSecond = round(1000/stimVid.FrameRate);
+            open(PSTHVideo);
+            
+            %Initialize the line, make the figure plot the right size for later
+            %adjoining to the stimulus.
+            currFig = figure();
+            an = animatedline('color',[1 0 0],'LineWidth',2);
+            currFig.Children.Color = [0 0 0];
+            currFig.Children.Units = 'pixels';
+            currFig.Children.Position = [0 0 stimVid.Width stimVid.Height/5];
+            currFig.Position(3:4) = [stimVid.Width stimVid.Height/5];
+            axis([timeInd(1), timeInd(end), yMin, yMax])
+            
+            for time_ind = 1:timeInd(end)
+              if mod(time_ind,framesPerSecond) == 0
+                addpoints(an, timeInd(time_ind), psthTrace(time_ind));
+                frame = getframe(gcf);
+                writeVideo(PSTHVideo, frame.cdata);
+              end
             end
+            
+            close(currFig);
+            close(PSTHVideo);
+            
+            %Open the stimulus video, play it frame by frame with the PSTH, and save
+            %as a new movie.
+            
+            PSTHVideo = VideoReader(PSTHVideoPath);
+            
+            %videoPlayer = vision.VideoPlayer;
+            outputVideo = VideoWriter(outputVideoPath);
+            outputVideo.FrameRate = stimVid.FrameRate;
+            open(outputVideo);
+            
+            while hasFrame(stimVid) && hasFrame(PSTHVideo)
+              img1 = readFrame(stimVid);
+              img2 = readFrame(PSTHVideo);
+              imgt = vertcat(img1, img2);
+              % play video
+              %step(videoPlayer, imgt);
+              % record new video
+              writeVideo(outputVideo, imgt);
+            end
+            
+            %release(videoPlayer);
+            close(outputVideo);
+            clear PSTHVideo
+            delete(PSTHVideoPath);
           end
-          
-          close(currFig);
-          close(PSTHVideo);
-          
-          %Open the stimulus video, play it frame by frame with the PSTH, and save
-          %as a new movie.
-          
-          PSTHVideo = VideoReader(PSTHVideoPath);
-          
-          %videoPlayer = vision.VideoPlayer;
-          outputVideo = VideoWriter(outputVideoPath);
-          outputVideo.FrameRate = stimVid.FrameRate;
-          open(outputVideo);
-          
-          while hasFrame(stimVid) && hasFrame(PSTHVideo)
-            img1 = readFrame(stimVid);
-            img2 = readFrame(PSTHVideo);
-            imgt = vertcat(img1, img2);
-            % play video
-            %step(videoPlayer, imgt);
-            % record new video
-            writeVideo(outputVideo, imgt);
-          end
-          
-          %release(videoPlayer);
-          close(outputVideo);
-          clear PSTHVideo
-          delete(PSTHVideoPath);
         end
       end
     end

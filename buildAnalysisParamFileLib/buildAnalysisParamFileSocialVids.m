@@ -4,9 +4,9 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '002';
+runNum = '003';
 %dateSubject = '20190930Mo';
-dateSubject = '20180710Mo';
+dateSubject = '20180628Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -381,6 +381,8 @@ end
               frEpochsCell = {{60, @(stimDur) stimDur+60};...
                 {-800, 60}; ...
                 {@(stimDur) stimDur+60, @(stimDur) stimDur+460}}; %#ok
+              
+epochLabels = {'Presentation','Fixation','Reward'};
               
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 %Defined for Groups of 2, A-B/A+B type index.

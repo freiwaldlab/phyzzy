@@ -114,45 +114,58 @@ end
 %units, significance), which you can add to the output file.
 %[UnitCount, sigUnits, sigStim, sigStimLen] = deal(cell(size(analysisOutFilename)));
 titles = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Channel', 'Unit_Count', 'Signifiant_Unit_count', 'Stimuli_count', 'Stimuli', 'ANOVA Sig String','Other Info'};
-table = cell(length(analysisOutFilename), length(titles));
+epochCount = 3; %Hardcoding 3 Epochs here.
+table = cell(epochCount,1);
+[table{:}] = deal(cell(length(analysisOutFilename), length(titles)));
 true_ind = 1;
+
 for ii = 1:length(analysisOutFilename)
   if ~isempty((analysisOutFilename{ii}))
-    tmp = load(analysisOutFilename{ii}, 'stimCatANOVATable','sigStruct'); %Relies on psth Overlay function in runAnalyses.
-    for channel_ind = 1:length(tmp.sigStruct.channels) %Add channel count here.
-      % Null model based significance testing
-      channel = tmp.sigStruct.channels(channel_ind);
-      UnitCount = tmp.sigStruct.totalUnits{channel_ind};
-      sigUnits = length(tmp.sigStruct.sigUnits{channel_ind});
-      sigStim = unique(cat(1, tmp.sigStruct.sigStim{channel_ind}));
-      sigStimLen = length(sigStim);
-      if ~isempty(sigStim)
-        sigStimNames = strjoin(sigStim, ' ');
-      else
-        sigStimNames = ' ';
+    tmp = load(analysisOutFilename{ii}, 'stimCatANOVATable','sigStruct','frEpochs'); %Relies on psth Overlay function in runAnalyses.
+    true_ind_page = true_ind;
+    for epoch_i = 1:length(tmp.sigStruct.sigUnits)
+      for channel_ind = 1:length(tmp.sigStruct.channels) %Add channel count here.
+        % Null model based significance testing
+        channel = tmp.sigStruct.channels(channel_ind);
+        UnitCount = tmp.sigStruct.totalUnits{channel_ind};
+        sigUnits = length(tmp.sigStruct.sigUnits{epoch_i}{channel_ind});
+        sigStim = unique(cat(1, tmp.sigStruct.sigStim{epoch_i}{channel_ind}));
+        sigStimLen = length(sigStim);
+        if ~isempty(sigStim)
+          sigStimNames = strjoin(sigStim, ' ');
+        else
+          sigStimNames = ' ';
+        end
+        % ANOVA based significance
+        unitStructs = tmp.stimCatANOVATable{channel_ind};
+        ANOVASigString = ' ';
+        if epoch_i == 1
+          for unit_ind = 1:length(unitStructs)
+            anovaSig = unitStructs{1}.ANOVA.p > 0.05;
+            ANOVASigString = [ANOVASigString ['[' num2str(anovaSig(1)) ';' num2str(anovaSig(2)) ';' num2str(anovaSig(3)) ']']];
+          end
+        end
+        %Package
+        table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorsMsg(ii), channel, UnitCount, sigUnits, sigStimLen, sigStimNames, ANOVASigString, ' '];
+        if ii == 1 && epoch_i == 1
+          table{epoch_i}{true_ind, 11} = sprintf('Comparison: %s Vs %s', strjoin(unitStructs{1}.ANOVA.stats.grpnames{1}), strjoin(unitStructs{1}.ANOVA.stats.grpnames{2}));
+        end
+        true_ind = true_ind + 1;
       end
-      % ANOVA based significance
-      unitStructs = tmp.stimCatANOVATable{channel_ind};
-      ANOVASigString = '';
-      for unit_ind = 1:length(unitStructs)
-        anovaSig = unitStructs{1}.ANOVA.p > 0.05;
-        ANOVASigString = [ANOVASigString ['[' num2str(anovaSig(1)) ';' num2str(anovaSig(2)) ';' num2str(anovaSig(3)) ']']];
+      if epoch_i ~= length(tmp.sigStruct.sigUnits) % More pages to do = let count reset.
+        true_ind = true_ind_page;
       end
-      %Package
-      table(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorsMsg(ii), channel, UnitCount, sigUnits, sigStimLen, sigStimNames, ANOVASigString, ' '];
-      if ii == 1
-        table{true_ind, 11} = sprintf('Comparison: %s Vs %s', strjoin(unitStructs{1}.ANOVA.stats.grpnames{1}), strjoin(unitStructs{1}.ANOVA.stats.grpnames{2}));
-      end
-      true_ind = true_ind + 1;
     end
   end
 end
 
-% %Save Batch Run Results
-T = cell2table(table);
-T.Properties.VariableNames = titles;
-writetable(T,sprintf('%s/BatchRunResults.csv',outputVolume))
-
+%Save Batch Run Results
+for table_ind = 1:length(table)
+  table{table_ind}{3,11} = sprintf('%d - %d ms', tmp.frEpochs(table_ind,1), tmp.frEpochs(table_ind,2));
+  T = cell2table(table{table_ind});
+  T.Properties.VariableNames = titles;
+  writetable(T,sprintf('%s/BatchRunResults.xlsx',outputVolume),'Sheet', sprintf('%s Epoch', tmp.sigStruct.epochLabels{table_ind}))
+end
 % %PDF Summary
 % %Remove empty cells from analysisOutFilename
 % nonEmptyCellInd = ~(cellfun('isempty',analysisOutFilename));
