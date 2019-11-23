@@ -465,7 +465,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
   imFrErr = firingRateErrsByImageByEpoch{epoch_i};
   imSpikeCounts = spikeCountsByImageByEpoch{epoch_i};
   epochTag = sprintf('%d-%d ms',frEpochs(epoch_i,1), frEpochs(epoch_i,2));
-    
+  
   % preferred images
   for channel_i = 1:length(spikeChannels)
     for unit_i = 1:length(channelUnitNames{channel_i})
@@ -488,89 +488,89 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
         sortedGroupLabelColors = ones(length(eventLabels),3);
       end
       save(analysisOutFilename,'imageSortedRates','sortedImageLabels','imFrErrSorted','trialCountsByImageSorted','-append');
-      
-      fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
-      for i = 1:min(10,length(eventLabels))
-        fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i),imFrErrSorted(i));
-      end
-      fprintf('\nLeast Preferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
-      for i = 0:min(4,length(eventLabels)-1)
-        fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{end-i},imageSortedRates(end-i), imFrErrSorted(end-i));
-      end
-      % preferred images raster plot
-      if isfield(plotSwitch,'prefImRaster') && plotSwitch.prefImRaster
-        if isfield(plotSwitch,'topStimToPlot')
-          topStimToPlot = plotSwitch.topStimToPlot;
-        else
-          topStimToPlot = 5;
+      if epoch_i == 1
+        fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
+        for i = 1:min(10,length(eventLabels))
+          fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i),imFrErrSorted(i));
         end
-        prefImRasterTitle = sprintf('Preferred Image Raster - %s, %s',chanUnitTag, epochTag);
-        fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
-        clear figData
-        figData.z = spikesByEvent(imageSortOrder(1:topStimToPlot));
-        figData.x = -psthPre:psthImDur+psthPost;
-        raster(spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedImageLabels(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, colors);
-        title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
-        saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
-        if closeFig
-          close(fh);
+        fprintf('\nLeast Preferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
+        for i = 0:min(4,length(eventLabels)-1)
+          fprintf('%d) %s: %.2f +/- %.2f Hz\n',i,sortedImageLabels{end-i},imageSortedRates(end-i), imFrErrSorted(end-i));
         end
+        % preferred images raster plot
+        if isfield(plotSwitch,'prefImRaster') && plotSwitch.prefImRaster
+          if isfield(plotSwitch,'topStimToPlot')
+            topStimToPlot = plotSwitch.topStimToPlot;
+          else
+            topStimToPlot = 5;
+          end
+          prefImRasterTitle = sprintf('Preferred Image Raster - %s, %s',chanUnitTag, epochTag);
+          fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
+          clear figData
+          figData.z = spikesByEvent(imageSortOrder(1:topStimToPlot));
+          figData.x = -psthPre:psthImDur+psthPost;
+          raster(spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedImageLabels(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, colors);
+          title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+          saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
+          if closeFig
+            close(fh);
+          end
+        end
+        if isfield(plotSwitch,'prefImRasterColorCoded') && plotSwitch.prefImRasterColorCoded
+          if isfield(plotSwitch,'topStimToPlot') && plotSwitch.topStimToPlot == 0
+            topStimToPlot = length(eventLabels);
+          elseif isfield(plotSwitch,'topStimToPlot')
+            topStimToPlot = plotSwitch.topStimToPlot;
+          else
+            topStimToPlot = 5;
+          end
+          prefImRasterTitle = sprintf('Preferred Image Raster, Color coded - %s, %s',chanUnitTag, epochTag);
+          fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
+          clear figData
+          figData.z = spikesByEvent(imageSortOrder(1:topStimToPlot));
+          figData.x = -psthPre:psthImDur+psthPost;
+          rasterColorCoded(fh, spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedEventIDs(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, attendedObjData);
+          title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+          saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',chanUnitTag,epochTag,runNum), figData, saveFig, exportFig, saveFigData, figTag );
+          if closeFig
+            close(fh);
+          end
+        end
+        % preferred images raster-evoked overlay
+        if isfield(plotSwitch,'prefImRasterEvokedOverlay') && plotSwitch.prefImRasterEvokedOverlay
+          prefImRasterEvokedOverlayTitle = sprintf('Preferred Image Raster, Evoked Potential Overlay - %s, %s',chanUnitTag, epochTag);
+          fh = figure('Name',prefImRasterEvokedOverlayTitle,'NumberTitle','off');
+          rasterEvoked(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
+          title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+          saveFigure(outDir, sprintf('prefImRaster-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
+          if closeFig
+            close(fh);
+          end
+        end
+        % preferred images average evoked
+        if isfield(plotSwitch,'prefImAverageEvoked') && plotSwitch.prefImRasterAverageEvokedOverlay
+          prefImRasterAverageEvokedOverlayTitle = sprintf('Preferred Image Raster, Average Evoked Potential Overlay - %s, %s',chanUnitTag, epochTag);
+          fh = figure('Name',prefImRasterAverageEvokedOverlayTitle,'NumberTitle','off');
+          averageEvoked(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors)
+          title(sprintf('Preferred Images - Average Evoked, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+          saveFigure(outDir, sprintf('prefImAverage-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
+          if closeFig
+            close(fh);
+          end
+        end
+        % preferred images raster-evoked overlay, with other channels
+        if isfield(plotSwitch,'prefImMultiChRasterEvokedOverlay') && plotSwitch.prefImMultiChRasterEvokedOverlay
+          prefImMultiChRasterEvokedOverlayTitle = sprintf('Preferred Image Raster, Multichannel, Evoked Potential Overlay - %s, %s',chanUnitTag, epochTag);
+          fh = figure('Name',prefImMultiChRasterEvokedOverlayTitle,'NumberTitle','off');
+          rasterEvokedMultiCh(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
+          title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
+          saveFigure(outDir, sprintf('prefImRaster-LFP-MultiChannel_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
+          if closeFig
+            close(fh);
+          end
+        end
+        
       end
-      if isfield(plotSwitch,'prefImRasterColorCoded') && plotSwitch.prefImRasterColorCoded
-        if isfield(plotSwitch,'topStimToPlot') && plotSwitch.topStimToPlot == 0
-          topStimToPlot = length(eventLabels);
-        elseif isfield(plotSwitch,'topStimToPlot')
-          topStimToPlot = plotSwitch.topStimToPlot;
-        else
-          topStimToPlot = 5;
-        end
-        prefImRasterTitle = sprintf('Preferred Image Raster, Color coded - %s, %s',chanUnitTag, epochTag);
-        fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
-        clear figData
-        figData.z = spikesByEvent(imageSortOrder(1:topStimToPlot));
-        figData.x = -psthPre:psthImDur+psthPost;
-        rasterColorCoded(fh, spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedEventIDs(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, attendedObjData);
-        title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
-        saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
-        if closeFig
-          close(fh);
-        end
-      end
-      % preferred images raster-evoked overlay
-      if isfield(plotSwitch,'prefImRasterEvokedOverlay') && plotSwitch.prefImRasterEvokedOverlay
-        prefImRasterEvokedOverlayTitle = sprintf('Preferred Image Raster, Evoked Potential Overlay - %s, %s',chanUnitTag, epochTag);
-        fh = figure('Name',prefImRasterEvokedOverlayTitle,'NumberTitle','off');
-        rasterEvoked(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
-        title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
-        saveFigure(outDir, sprintf('prefImRaster-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
-        if closeFig
-          close(fh);
-        end
-      end
-      % preferred images average evoked
-      if isfield(plotSwitch,'prefImAverageEvoked') && plotSwitch.prefImRasterAverageEvokedOverlay
-        prefImRasterAverageEvokedOverlayTitle = sprintf('Preferred Image Raster, Average Evoked Potential Overlay - %s, %s',chanUnitTag, epochTag);
-        fh = figure('Name',prefImRasterAverageEvokedOverlayTitle,'NumberTitle','off');
-        averageEvoked(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors)
-        title(sprintf('Preferred Images - Average Evoked, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
-        saveFigure(outDir, sprintf('prefImAverage-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
-        if closeFig
-          close(fh);
-        end
-      end
-      % preferred images raster-evoked overlay, with other channels
-      if isfield(plotSwitch,'prefImMultiChRasterEvokedOverlay') && plotSwitch.prefImMultiChRasterEvokedOverlay
-        prefImMultiChRasterEvokedOverlayTitle = sprintf('Preferred Image Raster, Multichannel, Evoked Potential Overlay - %s, %s',chanUnitTag, epochTag);
-        fh = figure('Name',prefImMultiChRasterEvokedOverlayTitle,'NumberTitle','off');
-        rasterEvokedMultiCh(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
-        title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
-        saveFigure(outDir, sprintf('prefImRaster-LFP-MultiChannel_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
-        if closeFig
-          close(fh);
-        end
-      end
-      
-      
       % image preference barplot
       if isfield(plotSwitch,'imageTuningSorted') && plotSwitch.imageTuningSorted
         for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
@@ -5084,14 +5084,18 @@ stimEndInd = stimStartInd + psthImDur - 1;
 %initialize outputs
 sigStruct.channels = ephysParams.spikeChannels;
 sigStruct.epochLabels = epochLabels;
-[sigStruct.sigUnits, sigStruct.sigStim] = deal(cell(1, length(inclusionMask)));
-[sigStruct.sigUnits{:}, sigStruct.sigStim{:}] = deal(cell(1, length(sigStruct.channels)));
+[sigStruct.sigUnits, sigStruct.sigStim, sigStruct.sigMUA, sigStruct.sigUnsorted] = deal(cell(1, length(inclusionMask)));
+[sigStruct.sigUnits{:}, sigStruct.sigStim{:}, sigStruct.sigMUA{:}, sigStruct.sigUnsorted{:}] = deal(cell(1, length(sigStruct.channels)));
 
 for channel_i = 1:length(psthByImage)
   sigStruct.totalUnits{channel_i} = length(psthByImage{channel_i})-2; %Unsorted and MUA don't count.
   for unit_i = 1:length(psthByImage{channel_i})
     unitPSTH = psthByImage{channel_i}{unit_i};
     for epoch_i = 1:length(inclusionMask)
+      if unit_i == 1
+        sigStruct.sigMUA{epoch_i}{channel_i} = 0;
+        sigStruct.sigUnsorted{epoch_i}{channel_i} = 0;
+      end
       for group_i = 1:length(sortMask{epoch_i}{channel_i}{unit_i})
         yMax = max(max(unitPSTH));
         if yMax == 0
@@ -5104,8 +5108,14 @@ for channel_i = 1:length(psthByImage)
         runMask = (inclusionMask{epoch_i}{channel_i}{unit_i}{group_i} < 0.05);
         if sum(runMask) ~= 0
           PSTHtoPlot = unitPSTHSorted(runMask,:);
-          stimtoPlot = translationTableSorted(runMask,:);       %Grab the stimuli names for these events.
-          sigStruct.sigUnits{epoch_i}{channel_i} = [sigStruct.sigUnits{epoch_i}{channel_i}, {sprintf('Ch%d U%d, G%d',[channel_i, unit_i, group_i])}];
+          stimtoPlot = translationTableSorted(runMask,:);         % Grab the stimuli names for these events.
+          if unit_i == 1
+            sigStruct.sigUnsorted{epoch_i}{channel_i} = 1;
+          elseif unit_i == length(psthByImage{channel_i})
+            sigStruct.sigMUA{epoch_i}{channel_i} = 1;
+          else
+            sigStruct.sigUnits{epoch_i}{channel_i} = [sigStruct.sigUnits{epoch_i}{channel_i}, {sprintf('Ch%d U%d, G%d',[channel_i, unit_i+1, group_i])}];
+          end
           sigStruct.sigStim{epoch_i}{channel_i} = [sigStruct.sigStim{epoch_i}{channel_i}; stimtoPlot];
         end
         if sigStructOnly
@@ -5183,24 +5193,23 @@ for channel_i = 1:length(psthByImage)
     end
   end
 end
-
 end
 
 function clusterFixBin(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, translationTable, colors)
-  %Step 1 - get fixation statistics on each trial of a given event
-  %Step 2 - put them into some feature space.
-  %Step 3 - use some clustering algorithm to see if they are seperable,
-  %perhaps using k-means, or SVM.
-  %Step 4 - If they are seperable, store an index showing this, update the
-  %"byEvent" array to reflect new Event and subsequent trial membership.
-  % Ex. Event4 - 1 1 1 1 1 --> Event4A - 1 0 0 1 0 , Event4B - 0 1 1 0 1
-  %End cycle
-  %Process changes - for every Event detected to have distinct eye paths...
-  %Either modify the global variable and divide the events into subsections 
-  %based on the "byEye" arrangement. OR
-  %Create a copy of the global variables, adding "ByEye" at the end, to
-  %reflect that new organization.
-  % end
+%Step 1 - get fixation statistics on each trial of a given event
+%Step 2 - put them into some feature space.
+%Step 3 - use some clustering algorithm to see if they are seperable,
+%perhaps using k-means, or SVM.
+%Step 4 - If they are seperable, store an index showing this, update the
+%"byEvent" array to reflect new Event and subsequent trial membership.
+% Ex. Event4 - 1 1 1 1 1 --> Event4A - 1 0 0 1 0 , Event4B - 0 1 1 0 1
+%End cycle
+%Process changes - for every Event detected to have distinct eye paths...
+%Either modify the global variable and divide the events into subsections
+%based on the "byEye" arrangement. OR
+%Create a copy of the global variables, adding "ByEye" at the end, to
+%reflect that new organization.
+% end
 end
 
 function trialDatabaseStruct(taskData, spikeCountsByImageByEpoch, eventIDs, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
@@ -5218,14 +5227,14 @@ for chan_ind = 1:length(psthPeaksByImageTmp)
     psthPeaksByImageTmp{chan_ind}{unit_ind} = psthPeaksByImageTmp{chan_ind}{unit_ind}(:,psthPre+1:(end-psthPost-1));
     %Zero region prior to hypothesized latency.
     psthPeaksByImageTmp{chan_ind}{unit_ind}(1:frEpochs(1,1)) = 0;
-    %Store the peak value and its index. Index is used as time in ms. 
+    %Store the peak value and its index. Index is used as time in ms.
     [psthPeaksByImage{chan_ind}{unit_ind},  psthPeaksIndByImage{chan_ind}{unit_ind}] = max(psthPeaksByImageTmp{chan_ind}{unit_ind},[],2);
   end
 end
 trialDatabaseStruct.psthPeaksIndByImage = psthPeaksIndByImage(1);
 trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage(1);
 
-%Reshape spike counts for analysis across days. 
+%Reshape spike counts for analysis across days.
 %spikeCountsByImageByEpoch{epoch}{channel}{unit}{stim}.times
 %trialDatabaseStruct.spikingData.Readme = 'meanCountPerUnit{epoch_i}{channel_i}{unit_i}(eventID)';
 trialDatabaseStruct.Epochs = frEpochs;
@@ -5358,7 +5367,7 @@ end
 epochLabels = {'Presentation','Fixation','Reward'};
 
 %spikeCountsByImageByEpoch{epoch}{channel}{unit}{event}.rates = trials*1
-%Will likely need changes in the future with respect to group variable 
+%Will likely need changes in the future with respect to group variable
 %will lead to errors on cases with more than one group.
 %Cycle through structure, concatonating the correct events.
 for channel_i = 1:length(spikeCountsByImageByEpoch{1})
@@ -5399,12 +5408,28 @@ for channel_i = 1:length(spikeCountsByImageByEpoch{1})
         end
       end
     end
-    [p, tbl, stats] = anovan(trialSpikes,{trialLabels, trialEpoch},'model','interaction','varnames',{ANOVAvarName, 'Epoch'}, 'alpha', 0.05);
-    % Construct the output for the unit
-    frEpochsANOVA{channel_i}{unit_i}.ANOVA.p = p;
-    frEpochsANOVA{channel_i}{unit_i}.ANOVA.tbl = tbl;
-    frEpochsANOVA{channel_i}{unit_i}.ANOVA.stats = stats;
-    frEpochsANOVA{channel_i}{unit_i}.target = target;
+    % Check for task modulation
+    [p, ~, ~] = anovan(trialSpikes,{trialEpoch},'model','interaction','varnames',{'Epoch'}, 'alpha', 0.05);
+    frEpochsANOVA{channel_i}{unit_i}.taskModulatedP = p;
+    if p < 0.05
+      trialSpikesPres = trialSpikes(strcmp(trialEpoch,'Presentation'));
+      trialLabelsPres = trialLabels(strcmp(trialEpoch,'Presentation'));
+      trialSpikesFix = trialSpikes(strcmp(trialEpoch,'Fixation'));
+      trialLabelsFix = trialLabels(strcmp(trialEpoch,'Fixation'));
+      trialSpikesReward = trialSpikes(strcmp(trialEpoch,'Reward'));
+      trialLabelsReward = trialLabels(strcmp(trialEpoch,'Reward'));
+      [Presp, ~, Pstats] = anovan(trialSpikesPres,{trialLabelsPres},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05);
+      [Fixp, ~, Fstats] = anovan(trialSpikesFix,{trialLabelsFix},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05);
+      [Rewardp, ~, Rstats] = anovan(trialSpikesReward,{trialLabelsReward},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05);
+      % Construct the output for the unit
+      frEpochsANOVA{channel_i}{unit_i}.ANOVA.pp = Presp;
+      frEpochsANOVA{channel_i}{unit_i}.ANOVA.fp = Fixp;
+      frEpochsANOVA{channel_i}{unit_i}.ANOVA.rp = Rewardp;
+      frEpochsANOVA{channel_i}{unit_i}.ANOVA.Pstats = Pstats;
+      frEpochsANOVA{channel_i}{unit_i}.ANOVA.Fstats = Fstats;
+      frEpochsANOVA{channel_i}{unit_i}.ANOVA.Rstats = Rstats;
+      frEpochsANOVA{channel_i}{unit_i}.target = target;
+    end
   end
 end
 end
@@ -5434,7 +5459,7 @@ else
 end
 
 %spikeCountsByImageByEpoch{epoch}{channel}{unit}{event}.rates = trials*1
-%Will likely need changes in the future with respect to group variable 
+%Will likely need changes in the future with respect to group variable
 %will lead to errors on cases with more than one group.
 %Cycle through structure, concatonating the correct events.
 dataTable = {};

@@ -25,7 +25,7 @@ filesOfInterest = uiDirChoose(filesOfInterest);
       dirList_tmp{ii} = runListBlock;
     end
   case 'fig'
-    fileDirs = unique({filesOfInterest.folder}');
+    dirList = unique({filesOfInterest.folder}');
     %Returns directories where .fig files are located, used in conjunction
     %with the 'createSummaryDoc' function.
 end

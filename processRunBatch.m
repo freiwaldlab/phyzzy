@@ -51,7 +51,9 @@ for dateSubj_i = 1:length(runList)
       %Autodetecting spike channels
       %If the file is parsed, retrieve channels present
       parsedFolderName = sprintf('%s/%s/%s%s_parsed',ephysVolume,dateSubject,dateSubject,runNum);
-      [ephysParams.spikeChannels, ephysParams.lfpChannels, ephysParams.channelNames] = autoDetectChannels(parsedFolderName);
+      if exist(parsedFolderName,'dir') == 7
+        [ephysParams.spikeChannels, ephysParams.lfpChannels, ephysParams.channelNames] = autoDetectChannels(parsedFolderName);
+      end
       outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
       stimSyncParams.outDir = outDir;
       ephysParams.outDir = outDir;
@@ -108,12 +110,32 @@ else
     fprintf('Done! \n');
   end
 end
-
+%%
 %analysisOutFilename is now a cell array of the filepaths to the outputs of
 %runAnalyses. Cycle through them and extract desired information (# of
 %units, significance), which you can add to the output file.
 %[UnitCount, sigUnits, sigStim, sigStimLen] = deal(cell(size(analysisOutFilename)));
-titles = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Channel', 'Unit_Count', 'Signifiant_Unit_count', 'Stimuli_count', 'Stimuli', 'ANOVA Sig String','Other Info'};
+replaceAnalysisOut = 0;
+if replaceAnalysisOut
+  addEnd = @(x) strjoin([x, {'analyzedData.mat'}], filesep);
+  breakString = @(x) strsplit(x, filesep);
+  joinStrings = @(x) strjoin([x(length(x)-2), x(length(x))],'');
+  
+  outputVolume = 'D:\DataAnalysis\ANOVA_FullTime_V2_800msFix';
+  analysisOutFilename = dir([outputVolume '\**\analyzedData.mat']);
+  analysisOutFilename = {analysisOutFilename.folder}';
+  [errorsMsg, startTimes, endTimes] = deal(cell(length(analysisOutFilename),1));
+  
+  tmpAnalysisParamFileName = cellfun(breakString, analysisOutFilename, 'UniformOutput',0);
+  analysisParamFileName = cellfun(joinStrings, tmpAnalysisParamFileName, 'UniformOutput',0);
+  analysisOutFilename = cellfun(addEnd, analysisOutFilename,'UniformOutput',0);
+  [startTimes{:}, endTimes{:}] = deal(datetime(now,'ConvertFrom','datenum'));
+  [errorsMsg{:}] = deal('None');
+end
+titles = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Channel', 'Unit_Count', 'Sig Unit count', 'Sig Unsorted','Sig MUA', 'Stimuli_count', 'Stimuli','ANOVA','Other Info'};
+sigMUAInd = strcmp(titles,'Sig MUA');
+sigUnsortedInd = strcmp(titles,'Sig Unsorted');
+
 epochCount = 3; %Hardcoding 3 Epochs here.
 table = cell(epochCount,1);
 [table{:}] = deal(cell(length(analysisOutFilename), length(titles)));
@@ -129,6 +151,8 @@ for ii = 1:length(analysisOutFilename)
         channel = tmp.sigStruct.channels(channel_ind);
         UnitCount = tmp.sigStruct.totalUnits{channel_ind};
         sigUnits = length(tmp.sigStruct.sigUnits{epoch_i}{channel_ind});
+        sigUnsorted = tmp.sigStruct.sigUnsorted{epoch_i}{channel_ind};
+        sigMUA = tmp.sigStruct.sigMUA{epoch_i}{channel_ind};
         sigStim = unique(cat(1, tmp.sigStruct.sigStim{epoch_i}{channel_ind}));
         sigStimLen = length(sigStim);
         if ~isempty(sigStim)
@@ -139,16 +163,23 @@ for ii = 1:length(analysisOutFilename)
         % ANOVA based significance
         unitStructs = tmp.stimCatANOVATable{channel_ind};
         ANOVASigString = ' ';
-        if epoch_i == 1
-          for unit_ind = 1:length(unitStructs)
-            anovaSig = unitStructs{1}.ANOVA.p > 0.05;
-            ANOVASigString = [ANOVASigString ['[' num2str(anovaSig(1)) ';' num2str(anovaSig(2)) ';' num2str(anovaSig(3)) ']']];
+        for unit_ind = 1:length(unitStructs)
+          anovaSig = 0;
+          if isfield(unitStructs{unit_ind}, 'ANOVA')
+            if epoch_i == 1
+              anovaSig = unitStructs{unit_ind}.ANOVA.pp < 0.05;
+            elseif epoch_i == 2
+              anovaSig = unitStructs{unit_ind}.ANOVA.fp < 0.05;
+            elseif epoch_i == 3
+              anovaSig = unitStructs{unit_ind}.ANOVA.rp < 0.05;              
+            end
           end
+          ANOVASigString = [ANOVASigString ['[' num2str(unitStructs{unit_ind}.taskModulatedP < 0.05) ';' num2str(anovaSig(1)) ']']];
         end
         %Package
-        table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorsMsg(ii), channel, UnitCount, sigUnits, sigStimLen, sigStimNames, ANOVASigString, ' '];
+        table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorsMsg(ii), channel, UnitCount, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, ' '];
         if ii == 1 && epoch_i == 1
-          table{epoch_i}{true_ind, 11} = sprintf('Comparison: %s Vs %s', strjoin(unitStructs{1}.ANOVA.stats.grpnames{1}), strjoin(unitStructs{1}.ANOVA.stats.grpnames{2}));
+%           table{epoch_i}{true_ind, 11} = sprintf('Comparison: %s Vs %s', strjoin(unitStructs{1}.ANOVA.stats.grpnames{1}), strjoin(unitStructs{1}.ANOVA.stats.grpnames{2}));
         end
         true_ind = true_ind + 1;
       end
@@ -161,7 +192,7 @@ end
 
 %Save Batch Run Results
 for table_ind = 1:length(table)
-  table{table_ind}{3,11} = sprintf('%d - %d ms', tmp.frEpochs(table_ind,1), tmp.frEpochs(table_ind,2));
+  table{table_ind}{3,end} = sprintf('%d - %d ms', tmp.frEpochs(table_ind,1), tmp.frEpochs(table_ind,2));
   T = cell2table(table{table_ind});
   T.Properties.VariableNames = titles;
   writetable(T,sprintf('%s/BatchRunResults.xlsx',outputVolume),'Sheet', sprintf('%s Epoch', tmp.sigStruct.epochLabels{table_ind}))
@@ -184,7 +215,6 @@ end
 end
 
 function [spike, LFP, names] = autoDetectChannels(parsedFolderName)
-  if exist(parsedFolderName,'dir') == 7
     channelFiles = dir([parsedFolderName '/*.NC5']);
     channelNames = {channelFiles.name};
     channelsTmp = [];
@@ -198,6 +228,4 @@ function [spike, LFP, names] = autoDetectChannels(parsedFolderName)
     end
     [spike, LFP] = deal(channelsTmp); %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
     names = channelNameTmp;
-  else
-  end
 end
