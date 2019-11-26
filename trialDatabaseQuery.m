@@ -31,7 +31,7 @@ for argPair_i=1:length(varargin)/2
   elseif strcmp(argName,'rawIndices')
     assert(length(argVal) == length(fieldValue)-1,'rawIndices argument must have length length(fieldValue)-1');
     useRawIndices = argVal;
-  end  
+  end
 end
 if exist('dateSubj','var') && exist('runNum','var')
   runID = (sprintf('sess%srun%s',dateSubj,runNum));

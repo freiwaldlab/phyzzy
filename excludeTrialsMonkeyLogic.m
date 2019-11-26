@@ -96,7 +96,7 @@ trialValid = logical(trialValid);
 
 taskDataValid = struct;
 taskDataValid.taskDataSummary = taskData.taskDataSummary;
-taskDataValid.translationTable = taskData.translationTable;
+taskDataValid.taskEventList = taskData.taskEventList;
 taskDataValid.frameMotionData = taskData.frameMotionData;
 taskDataValid.taskEventIDs = taskData.taskEventIDs(trialValid);
 taskDataValid.stimFramesLost = taskData.stimFramesLost(trialValid);

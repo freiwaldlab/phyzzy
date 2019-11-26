@@ -64,17 +64,17 @@ for epoch_i = 1:length(frEpochsCell)
 end
 
 analysisOutFilename = strcat(outDir,'analyzedData.mat');
-save(analysisOutFilename,'dateSubject','runNum','analysisParamFilename');
+save(analysisOutFilename,'dateSubject','runNum','analysisParamFilename','taskData');
 
 colors = {[0.55 0.13 0.16];[0.93 .2 0.15];[.98 0.65 0.13];[0 0.55 0.25];[0.15, 0.20, 0.5]};
 chColors = [{'b'}, {[0 .6 0]} , {'m'}];
 
-% trialDB = trialDatabaseInit(dateSubject, runNum, length(taskData.taskEventStartTimes));
-% for event_i = 1:length(eventLabels)
-%   for trial_i = 1:length(trialIDsByEvent{event_i})
-%     trialDB = trialDatabaseSetField('eventLabel',eventLabels{event_i},trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
-%   end
-% end
+trialDB = trialDatabaseInit(dateSubject, runNum, length(taskData.taskEventStartTimes));
+for event_i = 1:length(eventLabels)
+  for trial_i = 1:length(trialIDsByEvent{event_i})
+    trialDB = trialDatabaseSetField('eventLabel',eventLabels{event_i},trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
+  end
+end
 
 figTag = sprintf('%s,Run%s',dateSubject,runNum);
 
@@ -257,25 +257,25 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
   save(analysisOutFilename,'spikesByEventBinned','spikesByCategoryBinned', '-append');
 end
 
-% for channel_i = 1:length(channelNames)
-%   for event_i = 1:length(eventLabels)
-%     for trial_i = 1:length(trialIDsByEvent{event_i})
-%       fieldName = sprintf('LFP.%s',channelNames{channel_i}(~isspace(channelNames{channel_i})));
-%       trialDB = trialDatabaseSetField(fieldName,lfpByEvent{event_i}(1,channel_i,trial_i,:),trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
-%     end
-%   end
-% end
-% 
-% if ~isempty(analogInByEvent)
-%   for channel_i = 1:length(analogInChannelNames)
-%     for event_i = 1:length(eventLabels)
-%       for trial_i = 1:length(trialIDsByEvent{event_i})
-%         fieldName = analogInChannelNames{channel_i}(~isspace(analogInChannelNames{channel_i}));
-%         trialDB =trialDatabaseSetField(fieldName,analogInByEvent{event_i}(1,channel_i,trial_i,:),trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
-%       end
-%     end
-%   end
-% end
+for channel_i = 1:length(channelNames)
+  for event_i = 1:length(eventLabels)
+    for trial_i = 1:length(trialIDsByEvent{event_i})
+      fieldName = sprintf('LFP.%s',channelNames{channel_i}(~isspace(channelNames{channel_i})));
+      trialDB = trialDatabaseSetField(fieldName,squeeze(lfpByEvent{event_i}(1,channel_i,trial_i,:)),trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
+    end
+  end
+end
+
+if ~isempty(analogInByEvent)
+  for channel_i = 1:length(analogInChannelNames)
+    for event_i = 1:length(eventLabels)
+      for trial_i = 1:length(trialIDsByEvent{event_i})
+        fieldName = analogInChannelNames{channel_i}(~isspace(analogInChannelNames{channel_i}));
+        trialDB = trialDatabaseSetField(fieldName,squeeze(analogInByEvent{event_i}(1,channel_i,trial_i,:)),trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
+      end
+    end
+  end
+end
 
 if calcSwitch.imagePSTH && calcSwitch.spikeTimes
   [psthByImage, psthErrByImage] = calcStimPSTH(spikesByEvent, eventLabels, psthEmptyByEvent, channelNames, channelUnitNames, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
@@ -394,17 +394,16 @@ if ~isempty(spikesByCategory)
     firingRateErrsByCategoryByEpoch{epoch_i} = frErr;
     spikeCountsByCategoryByEpoch{epoch_i} = spikeCounts;
   end
-  
-  
-  catFr = firingRatesByCategoryByEpoch{1};
-  catFrErr = firingRateErrsByCategoryByEpoch{1};
-  catSpikeCounts = spikeCountsByCategoryByEpoch{1};
+
+%   catFr = firingRatesByCategoryByEpoch{1};
+%   catFrErr = firingRateErrsByCategoryByEpoch{1};
+%   catSpikeCounts = spikeCountsByCategoryByEpoch{1};
   trialCountsByCategory = zeros(length(spikesByCategory),1);
   for cat_i = 1:length(spikesByCategory)
     trialCountsByCategory(cat_i) = length(spikesByCategory{cat_i}{1}{1});
   end
   
-  save(analysisOutFilename,'frEpochs','firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch', 'catFr','catFrErr','catSpikeCounts','trialCountsByCategory', '-append');
+  save(analysisOutFilename,'frEpochs','firingRatesByCategoryByEpoch','firingRateErrsByCategoryByEpoch','spikeCountsByCategoryByEpoch','trialCountsByCategory', '-append');
     
   groupLabelsByImage = zeros(length(eventLabels),length(analysisGroups.stimulusLabelGroups));
   groupLabelColorsByImage = ones(length(eventLabels),3,length(analysisGroups.stimulusLabelGroups));
@@ -460,6 +459,8 @@ for event_i = 1:length(spikesByEvent)
   trialCountsByImage(event_i) = length(spikesByEvent{event_i}{1}{1});
 end
 
+save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch','-append');
+
 for epoch_i = 1:length(firingRatesByImageByEpoch)
   imFr = firingRatesByImageByEpoch{epoch_i};
   imFrErr = firingRateErrsByImageByEpoch{epoch_i};
@@ -487,7 +488,6 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
       else
         sortedGroupLabelColors = ones(length(eventLabels),3);
       end
-      save(analysisOutFilename,'imageSortedRates','sortedImageLabels','imFrErrSorted','trialCountsByImageSorted','-append');
       if epoch_i == 1
         fprintf('\n\n\nPreferred Images: %s, %s\n\n',channelNames{channel_i},channelUnitNames{channel_i}{unit_i});
         for i = 1:min(10,length(eventLabels))
@@ -569,7 +569,6 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
             close(fh);
           end
         end
-        
       end
       % image preference barplot
       if isfield(plotSwitch,'imageTuningSorted') && plotSwitch.imageTuningSorted
@@ -629,7 +628,6 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
             close(fh);
           end
         end
-        save(analysisOutFilename,'nullModelPvalues','-append');
       end
     end
   end
@@ -688,7 +686,6 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
     multiChMeanNormFrSort.imageSortOrder = imageSortOrder';
     multiChMeanNormFrSort.sortedImageLabels = sortedImageLabels';
     save(analysisOutFilename,'multiChMeanNormFrSort','-append');
-    
     
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Mean\n\n');
     for i = 1:min(10,length(eventLabels))
@@ -877,9 +874,11 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
   end
 end
 
+save(analysisOutFilename,'nullModelPvalues','-append');
+
 if isfield(plotSwitch, 'stimPSTHoverlay') && plotSwitch.stimPSTHoverlay
   epochLabels = {'Presentation','Fixation','Reward'};
-  %stimPSTHoverlay(psthByImage, imageSortingMatrix, inclusionMask, stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, taskData.translationTable, outDir)
+  %stimPSTHoverlay(psthByImage, imageSortingMatrix, inclusionMask, stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, taskData.taskEventList, outDir)
   sigStruct = stimPSTHoverlay(psthByImage, imageSortOrderAll, nullModelPvalues, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, eventIDs, outDir);
   save(analysisOutFilename,'sigStruct','-append');
 end
@@ -2788,7 +2787,6 @@ for calc_i = 1:length(tfCalcSwitches)
   end
 end
   
-  
 %% category-wise time-frequency plots, spikes
 tfCalcSwitchNames = {'evokedCatSpikeTF', 'inducedCatSpikeTF'};
 tfCalcSwitchTitleSuffixes = {'',', induced'}; % appended to titles
@@ -4492,10 +4490,6 @@ for calc_i = 1:length(tfCalcSwitches)
     end
   end
 end
-
-%% Packaging outputs for use with multi-run analysis code
-trialDatabaseStruct(taskData, spikeCountsByImageByEpoch, eventIDs, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
-
 end
 
 %% Individual Analysis Functions
@@ -5070,7 +5064,7 @@ function [downSampledEyeInByEvent,frameStartInd, frameEndInd] = downSampleSig(ey
   frameEndInd = round((1:frames)*sampFreq); %each index is the number of points averaged to make a frame.
 end
 
-function sigStruct = stimPSTHoverlay(psthByImage, sortMask, inclusionMask, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, translationTable, outDir)
+function sigStruct = stimPSTHoverlay(psthByImage, sortMask, inclusionMask, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, taskEventList, outDir)
 %Rearrange PSTH due to sorting which takes place w/ signifiance bars
 sigStructOnly = 1;
 %Creates a copy of the video of the stimulus with the PSTH traced below.
@@ -5103,12 +5097,12 @@ for channel_i = 1:length(psthByImage)
         end
         yMin = min(min(unitPSTH));
         unitPSTHSorted = unitPSTH(sortMask{epoch_i}{channel_i}{unit_i}{group_i},:);
-        translationTableSorted = translationTable(sortMask{epoch_i}{channel_i}{unit_i}{group_i});
+        taskEventListSorted = taskEventList(sortMask{epoch_i}{channel_i}{unit_i}{group_i});
         %Get the trials we care about
         runMask = (inclusionMask{epoch_i}{channel_i}{unit_i}{group_i} < 0.05);
         if sum(runMask) ~= 0
           PSTHtoPlot = unitPSTHSorted(runMask,:);
-          stimtoPlot = translationTableSorted(runMask,:);         % Grab the stimuli names for these events.
+          stimtoPlot = taskEventListSorted(runMask,:);         % Grab the stimuli names for these events.
           if unit_i == 1
             sigStruct.sigUnsorted{epoch_i}{channel_i} = 1;
           elseif unit_i == length(psthByImage{channel_i})
@@ -5124,7 +5118,7 @@ for channel_i = 1:length(psthByImage)
         if ~isempty(stimtoPlot)
           for ii = 1:length(stimtoPlot)
             %Isolate the stimuli, its name, and path.
-            stimInfo = dir(strcat(stimDir, '/**/', stimtoPlot{ii})); %use the translationTable to find the file
+            stimInfo = dir(strcat(stimDir, '/**/', stimtoPlot{ii})); %use the taskEventList to find the file
             stimPath = [stimInfo(1).folder filesep stimInfo(1).name]; %create its path.
             
             %Open the Video, Get some Info on it
@@ -5195,7 +5189,7 @@ for channel_i = 1:length(psthByImage)
 end
 end
 
-function clusterFixBin(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, translationTable, colors)
+function clusterFixBin(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, taskEventList, colors)
 %Step 1 - get fixation statistics on each trial of a given event
 %Step 2 - put them into some feature space.
 %Step 3 - use some clustering algorithm to see if they are seperable,
@@ -5210,56 +5204,6 @@ function clusterFixBin(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent
 %Create a copy of the global variables, adding "ByEye" at the end, to
 %reflect that new organization.
 % end
-end
-
-function trialDatabaseStruct(taskData, spikeCountsByImageByEpoch, eventIDs, pictureLabels, paramArray, psthByImage, psthPre, psthPost, frEpochs, outDir)
-%Quick Temporary Structure to find out peak times during analysis, saved
-%for cross-day analysis and online experiment generation via MonkeyLogic.
-trialDatabaseStruct = struct();
-trialDatabaseStruct.images = eventIDs;
-trialDatabaseStruct.taskData = taskData;
-
-% Calculate and store the peak of the PSTH
-psthPeaksByImageTmp = psthByImage;
-for chan_ind = 1:length(psthPeaksByImageTmp)
-  for unit_ind = 1:length(psthPeaksByImageTmp{chan_ind})
-    %Get rid of pre and post stimulus presentation
-    psthPeaksByImageTmp{chan_ind}{unit_ind} = psthPeaksByImageTmp{chan_ind}{unit_ind}(:,psthPre+1:(end-psthPost-1));
-    %Zero region prior to hypothesized latency.
-    psthPeaksByImageTmp{chan_ind}{unit_ind}(1:frEpochs(1,1)) = 0;
-    %Store the peak value and its index. Index is used as time in ms.
-    [psthPeaksByImage{chan_ind}{unit_ind},  psthPeaksIndByImage{chan_ind}{unit_ind}] = max(psthPeaksByImageTmp{chan_ind}{unit_ind},[],2);
-  end
-end
-trialDatabaseStruct.psthPeaksIndByImage = psthPeaksIndByImage(1);
-trialDatabaseStruct.psthPeaksByImage = psthPeaksByImage(1);
-
-%Reshape spike counts for analysis across days.
-%spikeCountsByImageByEpoch{epoch}{channel}{unit}{stim}.times
-%trialDatabaseStruct.spikingData.Readme = 'meanCountPerUnit{epoch_i}{channel_i}{unit_i}(eventID)';
-trialDatabaseStruct.Epochs = frEpochs;
-trialDatabaseStruct.spikeData = cell(size(frEpochs,1),1);
-
-%Counts and Rates per Epoch stored
-%countsPerUnit = cell(size(frEpochs,1),1);
-for epoch_i = 1:length(spikeCountsByImageByEpoch)
-  trialDatabaseStruct.spikeData{epoch_i} = cell(length(spikeCountsByImageByEpoch),1);
-  for channel_i = 1:length(spikeCountsByImageByEpoch{epoch_i})
-    % What the vectors mean vary based on unit count.
-    unitCount = length(spikeCountsByImageByEpoch{epoch_i}{channel_i}) - 2;
-    unitData = struct();
-    if unitCount > 0 % Additional units sit in the middle.
-      unitData.unsorted = spikeCountsByImageByEpoch{epoch_i}{channel_i}{1};
-      unitData.units = [spikeCountsByImageByEpoch{epoch_i}{channel_i}{2:end-1}];
-    end
-    unitData.MUA = spikeCountsByImageByEpoch{epoch_i}{channel_i}{end};
-    trialDatabaseStruct.spikeData{epoch_i}{channel_i} = unitData;
-  end
-end
-
-%Save the file.
-save([outDir 'trialDatabase'], 'trialDatabaseStruct')
-
 end
 
 function spikesByStimBinned = calcSpikeTimes(spikesByStim, movingWin, smoothingWidth, channelNames, channelUnitNames, psthPre, psthImDur, psthPost)

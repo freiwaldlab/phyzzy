@@ -236,7 +236,7 @@ if ~usePreprocessed
   % todo: need defense against image with onset but no offset? 
   % todo: add similar defense for rf map locations here?
   if ~taskData.RFmap
-    disp('No presentations of the following images survived exclusion:');
+    %disp('No presentations of the following images survived exclusion:');
     %disp(eventIDs(eventsNotObserved == 1));
   end
   if ~keepItemsNotPresented
@@ -322,33 +322,33 @@ end
 
 %% Package Analysis inputs, and run Analysis
 runAnalysisInputs.analysisParamFilename = analysisParamFilename;
-runAnalysisInputs.spikesByChannel = spikesByChannel; 
-runAnalysisInputs.lfpData = lfpData; 
-runAnalysisInputs.analogInData = analogInData; 
+runAnalysisInputs.spikesByChannel = spikesByChannel;
+runAnalysisInputs.lfpData = lfpData;
+runAnalysisInputs.analogInData = analogInData;
 runAnalysisInputs.taskData = taskData;
-runAnalysisInputs.taskDataAll = taskDataAll; 
-runAnalysisInputs.psthImDur = psthImDur; 
-runAnalysisInputs.preAlign = preAlign; 
+runAnalysisInputs.taskDataAll = taskDataAll;
+runAnalysisInputs.psthImDur = psthImDur;
+runAnalysisInputs.preAlign = preAlign;
 runAnalysisInputs.postAlign = postAlign;
-runAnalysisInputs.categoryList = categoryList; 
-runAnalysisInputs.eventLabels = eventLabels; 
+runAnalysisInputs.categoryList = categoryList;
+runAnalysisInputs.eventLabels = eventLabels;
 runAnalysisInputs.eventIDs = eventIDs;
-runAnalysisInputs.jumpsByImage = jumpsByImage; 
-runAnalysisInputs.spikesByEvent = spikesByEvent; 
-runAnalysisInputs.psthEmptyByEvent = psthEmptyByEvent;  
-runAnalysisInputs.spikesByCategory = spikesByCategory; 
-runAnalysisInputs.psthEmptyByCategory = psthEmptyByCategory; 
-runAnalysisInputs.spikesByEventForTF = spikesByEventForTF;  
-runAnalysisInputs.spikesByCategoryForTF = spikesByCategoryForTF;  
-runAnalysisInputs.lfpByEvent = lfpByEvent;  
-runAnalysisInputs.lfpByCategory = lfpByCategory;  
-runAnalysisInputs.analogInByEvent = analogInByEvent; 
-runAnalysisInputs.analogInByCategory = analogInByCategory;  
+runAnalysisInputs.jumpsByImage = jumpsByImage;
+runAnalysisInputs.spikesByEvent = spikesByEvent;
+runAnalysisInputs.psthEmptyByEvent = psthEmptyByEvent;
+runAnalysisInputs.spikesByCategory = spikesByCategory;
+runAnalysisInputs.psthEmptyByCategory = psthEmptyByCategory;
+runAnalysisInputs.spikesByEventForTF = spikesByEventForTF;
+runAnalysisInputs.spikesByCategoryForTF = spikesByCategoryForTF;
+runAnalysisInputs.lfpByEvent = lfpByEvent;
+runAnalysisInputs.lfpByCategory = lfpByCategory;
+runAnalysisInputs.analogInByEvent = analogInByEvent;
+runAnalysisInputs.analogInByCategory = analogInByCategory;
 runAnalysisInputs.channelUnitNames = channelUnitNames;
-runAnalysisInputs.stimTiming = stimTiming;  
-runAnalysisInputs.eventCategories = eventCategories;  
+runAnalysisInputs.stimTiming = stimTiming;
+runAnalysisInputs.eventCategories = eventCategories;
 runAnalysisInputs.onsetsByEvent = onsetsByEvent;
-runAnalysisInputs.offsetsByEvent = offsetsByEvent; 
+runAnalysisInputs.offsetsByEvent = offsetsByEvent;
 runAnalysisInputs.trialIDsByEvent = trialIDsByEvent;
 runAnalysisInputs.onsetsByCategory = onsetsByCategory;
 runAnalysisInputs.offsetsByCategory = offsetsByCategory;

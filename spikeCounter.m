@@ -12,7 +12,7 @@ function [ spikeCounts, spikeRatesTrialAve, spikeRatesTrialErr] = spikeCounter( 
 %   - add mean spike time and spike time stdev, or gaussian fit?
 
 numChannels = length(spikesByItem{1});
-[spikeCounts, spikeRatesTrialAve, spikeRatesTrialErr] = deal(cell(numChannels));
+[spikeCounts, spikeRatesTrialAve, spikeRatesTrialErr] = deal(cell(numChannels,1));
 
 for channel_i = 1:numChannels
   channelSpikeCounts = cell(length(spikesByItem{1}{channel_i}),1);
