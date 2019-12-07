@@ -20,6 +20,7 @@ assert(length(preprocessedList) == length(analyzedList), 'Lists arent same lengt
 trueCellComp = cell(length(preprocessedList),1);
 
 spikeDataBank = struct();
+allStimuliVec = {};
 for ii = 1:length(preprocessedList)
   tmp = load([preprocessedList(ii).folder filesep preprocessedList(ii).name],'spikesByEvent','eventIDs','eventCategories','preAlign','postAlign');
   tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'dateSubject', 'runNum', 'groupLabelsByImage');
@@ -37,14 +38,59 @@ for ii = 1:length(preprocessedList)
   spikeDataBank.(sessField).end = tmp.postAlign;
   spikeDataBank.(sessField).groupLabel = target;
   spikeDataBank.(sessField).figDir = preprocessedList(ii).folder;
+  allStimuliVec = [allStimuliVec; tmp.eventIDs];
+end
+allStimuliVec = unique(allStimuliVec);
+
+%% New Stimuli Array
+runList = fields(spikeDataBank);
+stimLogicalArray = zeros(length(allStimuliVec),length(runstimLogicalArrayList));
+
+for run_ind = 1:length(runList)  
+  stimLogicalArray(:,run_ind) = ismember(allStimuliVec,spikeDataBank.(runList{run_ind}).eventIDs);
 end
 
-% Exclude phase 2 recording data, making sure to remove either whole fields
+csStimLogicalArray = cumsum(stimLogicalArray,2);
+csStimLogicalArray(~stimLogicalArray) = 0; %Final product is matrix which gives 0 for non present stim, count of stim presentation otherwise.
+
+% First stimulus presentation
+firstStimPresInd = zeros(length(allStimuliVec),1);
+for stim_ind = 1:length(allStimuliVec)
+  firstStimPresInd(stim_ind) = find(stimLogicalArray(stim_ind,:),1,'first');
+end
+
+%Add this vector to each field, also construct a single dateTime vector.
+allDateTimeVec = [];
+for run_ind = 1:length(runList)
+  spikeDataBank.(runList{run_ind}).stimPresArray = csStimLogicalArray(:,run_ind);
+  spikeDataBank.(runList{run_ind}).dateTime = datetime(extractBetween(spikeDataBank.(runList{run_ind}).dateSubject,1,8),'InputFormat','yyyyMMdd');
+  if run_ind == 1
+    spikeDataBank.(runList{run_ind}).daysSinceLastRec = 1000;
+  else
+    spikeDataBank.(runList{run_ind}).daysSinceLastRec = days(diff([spikeDataBank.(runList{run_ind-1}).dateTime, spikeDataBank.(runList{run_ind}).dateTime]));
+  end
+  allDateTimeVec = [allDateTimeVec, spikeDataBank.(runList{run_ind}).dateTime];
+end
+
+%Distance between showings
+daysSinceLastPres = zeros(size(stimLogicalArray));
+for stim_ind = 1:size(stimLogicalArray,1)
+  presentationInd = logical(stimLogicalArray(stim_ind,:)); %When was the stim shown
+  daysSinceLastPres(stim_ind,presentationInd) = days([1000, diff(allDateTimeVec(presentationInd))]); %Duration between those dates in days
+end
+
+%Return this to spikeDataBank, arranged in way that matches stim table.
+daysSinceLastRec = [1000, days(diff(allDateTimeVec))];
+for run_ind = 1:size(stimLogicalArray,2)
+  [~, big2SmallInd] = ismember(spikeDataBank.(runList{run_ind}).eventIDs,allStimuliVec);
+  spikeDataBank.(runList{run_ind}).stimPresCount = daysSinceLastPres(big2SmallInd,run_ind);
+end
+
+%% Exclude phase 2 recording data, making sure to remove either whole fields
 % for a session or individual channel content when appropriate. 
 batchRunxls = [dataDir filesep 'BatchRunResults.xlsx'];
 recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018\RecordingsMoUpdated.xlsx';
 [trueCellInd, trueCellRun] = trueCellCount(batchRunxls, recordingLogxls);
-runList = fields(spikeDataBank);
 
 for run_ind = 1:length(trueCellComp)
   validInd = trueCellInd(strcmp(trueCellComp{run_ind},trueCellRun));
@@ -138,6 +184,7 @@ for run_ind = 1:length(runList)
   spikeDataBank.(runList{run_ind}).pVec = pVec;
   spikeDataBank.(runList{run_ind}).nullPVec = nullVec;
   spikeDataBank.(runList{run_ind}).pStatsVec = pStatsVec;
+  spikeDataBank.(runList{run_ind}).maxOmegaVec = maxOmegaVec;
   spikeDataBank.(runList{run_ind}).omegaVec = omegaVec;
   spikeDataBank.(runList{run_ind}).nullO95Vec = nullO95Vec;
   spikeDataBank.(runList{run_ind}).nullO99Vec = nullO99Vec;
@@ -267,28 +314,8 @@ for ii = 1:length(target)
   title(sprintf('Length of significant bin runs per unit (%s)',target{ii}))
 end
 
-%% Omega Calculation - should be done as soon as stats table is made.
-% for run_ind = 1:length(runList)
-%   omegaVec = recurCellZeros(spikeDataBank.(runList{run_ind}).epochRates{1}, length(spikeDataBank.(runList{run_ind}).epochs), length(target), depth); % Initialize each p value array.
-%   for chan_ind = 1:length(spikeDataBank.(runList{run_ind}).pStatsVec)
-%     for unit_ind = 1:length(spikeDataBank.(runList{run_ind}).pStatsVec{chan_ind})
-%       pStatsRun = spikeDataBank.(runList{run_ind}).pStatsVec{chan_ind}{unit_ind};
-%       omegaVecRun = omegaVec{chan_ind}{unit_ind};
-%       for row_i = 1:size(pStatsRun,1)
-%         for col_i = 1:size(pStatsRun,2)
-%           pStatsTable = pStatsRun{row_i, col_i};
-%           top = pStatsTable{2,3} * (pStatsTable{2,5} - pStatsTable{3,5});
-%           bottom = (pStatsTable{2,3}*pStatsTable{2,5})+(pStatsTable{4,3}-pStatsTable{2,3})*pStatsTable{3,5};
-%           omegaVecRun(row_i, col_i) = top/bottom;
-%         end
-%       end
-%       omegaVec{chan_ind}{unit_ind} = omegaVecRun;
-%     end
-%   end
-%   spikeDataBank.(runList{run_ind}).omegaVec = omegaVec;
-% end
-
 %% Plot Omega curves
+allMaxOmegas = [];
 for run_ind = 1:length(runList)
   omegaVec = spikeDataBank.(runList{run_ind}).omegaVec;
   for chan_ind = 1:length(omegaVec)
@@ -299,6 +326,7 @@ for run_ind = 1:length(runList)
         ANOVAvarName = ['Ch' num2str(chan_ind) ' MUA'];
       else
         ANOVAvarName = ['Ch' num2str(chan_ind) ' unit ' num2str(unit_ind-1)];
+        allMaxOmegas = [allMaxOmegas; spikeDataBank.(runList{run_ind}).maxOmegaVec{chan_ind}{unit_ind}];
       end
       figure()
       plot(omegaVec{chan_ind}{unit_ind},'linewidth',2)
@@ -318,6 +346,13 @@ for run_ind = 1:length(runList)
       saveFigure(savePath, fileName, figData, 1, 0, 0, runList{run_ind}, 'close')
     end
   end
+end
+
+%Distribution of peak sensitivities 
+for ii = 1:size(allMaxOmegas,2)
+  figure
+  hist(allMaxOmegas(:,ii),20);
+  title(target{ii});
 end
 
 save('postOmega')

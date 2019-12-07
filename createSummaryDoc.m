@@ -1,9 +1,14 @@
 %% Figure export script
-function createSummaryDoc(layoutParamFilename, figDir)
+function createSummaryDoc(varargin)
 % Function which draws together files found in the output Analysis folder
 % into a single document.
-%figDir = 'D:\ESIN_Ephys_Files\Analysis\Analyzed\20190930Mo\Basic\001';
-%layoutParamFilename = 'buildLayoutParamFile';
+if isempty(varargin)
+  figDir = 'D:\DataAnalysis\ANOVA_FullTime\20180628Mo\Basic\003';
+  layoutParamFilename = 'buildLayoutParamFile';
+elseif length(varargin)== 2
+  layoutParamFilename = varargin{1};
+  figDir = varargin{2};
+end
 %% Parse Arguments
 % Want it to accept:
 % a directory with .figs or .pngs
@@ -134,9 +139,13 @@ if ~isempty(unitFigs)
   %Extract all the unit numbers
   unitNum = @(str) strsplit(str,{' ','_'});
   unitFigListFrags = cellfun(unitNum, unitFigList, 'UniformOutput', 0);
-  unitNumInd = strcmp(unitFigListFrags{1},'1'); %Find the unit number's location
-  pullUnitNum = @(str) str2double(str{unitNumInd});
-  unitNumList = cellfun(pullUnitNum, unitFigListFrags); %Recover all unit numbers
+  findUnitInd = @(x) find(strcmp(x,'unit')); %Find the unit number's location
+  unitFigListFragUnitInd = cellfun(findUnitInd, unitFigListFrags,'UniformOutput',0);
+  unitFigListFragUnitInd = [unitFigListFragUnitInd{:}]+1;
+  unitNumList = zeros(length(unitFigListFragUnitInd),1);
+  for ii = 1:length(unitFigListFrags)
+    unitNumList(ii) = str2num(unitFigListFrags{ii}{unitFigListFragUnitInd(ii)});
+  end
   unitCount = max(unitNumList); %Get a unit count
   configInset = cell(1, unitCount);
   for unit_ind = 1:unitCount
