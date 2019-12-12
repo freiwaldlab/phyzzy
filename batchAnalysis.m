@@ -3,64 +3,74 @@ function batchAnalysis()
 % performs an ANOVA on rates across a trial (Fixation, presentation, and
 % reward), starting at trial time 0, in some predefined steps.
 dataDir = 'D:\DataAnalysis\ANOVA_FullTime';
-
+stimParamFile = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat';
+spikeDataBaseFilename = 'spikeDataBase.mat';
 binSize = 100;
 binStep = 25;
-figData.binSize = binSize;
-figData.binStep = binStep;
-
+target = {'socialInteraction','agents','interaction'}; %Labels which must exist in the stimParamFile associated with the runs. 
+batchRunxls = [dataDir filesep 'BatchRunResults.xlsx']; %Batch analysis xlsx produced by processRunBatch.
+recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018\RecordingsMoUpdated.xlsx'; %Used to exclude phase 2 to give accurate unit counts.
+excludePhase2 = 0; % a switch which can be used to remove data from the same neuron collected in subsequent runs. Good for getting accurate counts.
 %% Get the relevant data
-% Method 1: Cycle through analyzedData.mat files in a specified directory,
-% store and organize the relevant structures. 
-target = {'socialInteraction','agents','interaction'};
-
-preprocessedList = dir([dataDir '\**\preprocessedData.mat']);
-analyzedList = dir([dataDir '\**\analyzedData.mat']);
-assert(length(preprocessedList) == length(analyzedList), 'Lists arent same length, confirm every preprocessed file has an analyzed file')
-trueCellComp = cell(length(preprocessedList),1);
-
-spikeDataBank = struct();
-allStimuliVec = {};
-for ii = 1:length(preprocessedList)
-  tmp = load([preprocessedList(ii).folder filesep preprocessedList(ii).name],'spikesByEvent','eventIDs','eventCategories','preAlign','postAlign');
-  tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'dateSubject', 'runNum', 'groupLabelsByImage');
-
-  sessField = sprintf('S%s%s', tmp2.dateSubject, tmp2.runNum);
+spikeDataBaseFile = [dataDir filesep spikeDataBaseFilename];
+if exist(spikeDataBaseFile)
+  load(spikeDataBaseFile,'spikeDataBank','allStimuliVec')
+else
+  % Cycle through analyzedData.mat files, store and organize the relevant structures.
+  preprocessedList = dir([dataDir filesep '**' filesep 'preprocessedData.mat']);
+  analyzedList = dir([dataDir filesep '**' filesep 'analyzedData.mat']);
+  assert(length(preprocessedList) == length(analyzedList), 'Lists arent same length, confirm every preprocessed file has an analyzed file')
   
-  trueCellComp{ii} = [tmp2.dateSubject tmp2.runNum];
-  spikeDataBank.(sessField).dateSubject = tmp2.dateSubject;
-  spikeDataBank.(sessField).runNum = tmp2.runNum;
-  spikeDataBank.(sessField).spikesByEvent = tmp.spikesByEvent;
-  spikeDataBank.(sessField).eventIDs = tmp.eventIDs;
-  spikeDataBank.(sessField).eventCategories = tmp.eventCategories;
-  spikeDataBank.(sessField).groupLabelsByImage = tmp2.groupLabelsByImage;
-  spikeDataBank.(sessField).start = -tmp.preAlign;
-  spikeDataBank.(sessField).end = tmp.postAlign;
-  spikeDataBank.(sessField).groupLabel = target;
-  spikeDataBank.(sessField).figDir = preprocessedList(ii).folder;
-  allStimuliVec = [allStimuliVec; tmp.eventIDs];
+  sessionList = cell(length(preprocessedList),1);
+  spikeDataBank = struct();
+  allStimuliVec = {};
+  
+  for ii = 1:length(preprocessedList)
+    tmp = load([preprocessedList(ii).folder filesep preprocessedList(ii).name],'spikesByEvent','eventIDs','eventCategories','preAlign','postAlign');
+    tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'dateSubject', 'runNum', 'groupLabelsByImage','psthByImage');
+    
+    sessField = sprintf('S%s%s', tmp2.dateSubject, tmp2.runNum);
+    allStimuliVec = [allStimuliVec; tmp.eventIDs];
+    sessionList{ii} = [tmp2.dateSubject tmp2.runNum];
+    spikeDataBank.(sessField).dateSubject = tmp2.dateSubject;
+    spikeDataBank.(sessField).runNum = tmp2.runNum;
+    spikeDataBank.(sessField).spikesByEvent = tmp.spikesByEvent;
+    spikeDataBank.(sessField).psthByImage = tmp2.psthByImage;
+    spikeDataBank.(sessField).eventIDs = tmp.eventIDs;
+    spikeDataBank.(sessField).eventCategories = tmp.eventCategories;
+    spikeDataBank.(sessField).groupLabelsByImage = tmp2.groupLabelsByImage;
+    spikeDataBank.(sessField).start = -tmp.preAlign;
+    spikeDataBank.(sessField).end = tmp.postAlign;
+    spikeDataBank.(sessField).groupLabel = target;
+    spikeDataBank.(sessField).figDir = preprocessedList(ii).folder;
+  end
+  save(spikeDataBaseFile, 'spikeDataBank','allStimuliVec')
 end
+%% stimuli information
+%Code below creates a single large vector of stimuli used, and uses this to
+%create individual vectors containing which viewing of the stimulus this
+%represent (i.e. 'this run represents the 10th viewing of X.avi')
 allStimuliVec = unique(allStimuliVec);
-
-%% New Stimuli Array
 runList = fields(spikeDataBank);
-stimLogicalArray = zeros(length(allStimuliVec),length(runstimLogicalArrayList));
+stimLogicalArray = zeros(length(allStimuliVec),length(runList));
 
 for run_ind = 1:length(runList)  
   stimLogicalArray(:,run_ind) = ismember(allStimuliVec,spikeDataBank.(runList{run_ind}).eventIDs);
 end
 
+%Final product is matrix which gives 0 for non present stim, count of stim presentation otherwise.
 csStimLogicalArray = cumsum(stimLogicalArray,2);
-csStimLogicalArray(~stimLogicalArray) = 0; %Final product is matrix which gives 0 for non present stim, count of stim presentation otherwise.
+csStimLogicalArray(~stimLogicalArray) = 0; 
+totalStimPresCount = sum(stimLogicalArray,2);
 
-% First stimulus presentation
+% When was a stimulus first seen? Index of runList where first presentation took place. 
 firstStimPresInd = zeros(length(allStimuliVec),1);
 for stim_ind = 1:length(allStimuliVec)
   firstStimPresInd(stim_ind) = find(stimLogicalArray(stim_ind,:),1,'first');
 end
 
 %Add this vector to each field, also construct a single dateTime vector.
-allDateTimeVec = [];
+allDateTimeVec = NaT(1, length(runList));
 for run_ind = 1:length(runList)
   spikeDataBank.(runList{run_ind}).stimPresArray = csStimLogicalArray(:,run_ind);
   spikeDataBank.(runList{run_ind}).dateTime = datetime(extractBetween(spikeDataBank.(runList{run_ind}).dateSubject,1,8),'InputFormat','yyyyMMdd');
@@ -69,8 +79,9 @@ for run_ind = 1:length(runList)
   else
     spikeDataBank.(runList{run_ind}).daysSinceLastRec = days(diff([spikeDataBank.(runList{run_ind-1}).dateTime, spikeDataBank.(runList{run_ind}).dateTime]));
   end
-  allDateTimeVec = [allDateTimeVec, spikeDataBank.(runList{run_ind}).dateTime];
+  allDateTimeVec(run_ind) = spikeDataBank.(runList{run_ind}).dateTime;
 end
+recordingDays = unique(allDateTimeVec');
 
 %Distance between showings
 daysSinceLastPres = zeros(size(stimLogicalArray));
@@ -81,34 +92,126 @@ end
 
 %Return this to spikeDataBank, arranged in way that matches stim table.
 daysSinceLastRec = [1000, days(diff(allDateTimeVec))];
+small2BigInd = zeros(size(stimLogicalArray)); %Used latter for PSTHs.
 for run_ind = 1:size(stimLogicalArray,2)
   [~, big2SmallInd] = ismember(spikeDataBank.(runList{run_ind}).eventIDs,allStimuliVec);
+  [~, small2BigInd(:,run_ind)] = ismember(allStimuliVec, spikeDataBank.(runList{run_ind}).eventIDs);
   spikeDataBank.(runList{run_ind}).stimPresCount = daysSinceLastPres(big2SmallInd,run_ind);
 end
 
 %% Exclude phase 2 recording data, making sure to remove either whole fields
-% for a session or individual channel content when appropriate. 
-batchRunxls = [dataDir filesep 'BatchRunResults.xlsx'];
-recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018\RecordingsMoUpdated.xlsx';
-[trueCellInd, trueCellRun] = trueCellCount(batchRunxls, recordingLogxls);
+if excludePhase2
+  % for a session or individual channel content when appropriate.
+  [trueCellInd, trueCellRun] = trueCellCount(batchRunxls, recordingLogxls);
+  
+  for run_ind = 1:length(sessionList)
+    validInd = trueCellInd(strcmp(sessionList{run_ind},trueCellRun));
+    if sum(validInd) == 0
+      spikeDataBank = rmfield(spikeDataBank,(runList{run_ind}));
+    else
+      for event_ind = 1:length(spikeDataBank.(runList{run_ind}).spikesByEvent)
+        % for every run, use the corresponding 'validInd' to remove non-valid
+        % channel data from each spikesByEvent cell.
+        spikeDataBank.(runList{run_ind}).spikesByEvent{event_ind} = spikeDataBank.(runList{run_ind}).spikesByEvent{event_ind}(validInd);
+      end
+    end
+  end
+  runList = fields(spikeDataBank);
+  %Future Note - other variables related to stimulus must also be
+  %reconstructed if this happens. Maybe move to before that step.
+end
+%% Combine PSTH across all runs for a particular stimulus.
+% This will crash if the PSTHs aren't the same length.
+plotTopStim = 1;
+broadLabel = 1; %Transitions individual stimuli to broad catagory (e.g. chasing).
+topStimPresThreshold = 100; %At least this many stim presentations to be plotted when plotTopStim is on.
+figureTitle = 'per Stimuli';
 
-for run_ind = 1:length(trueCellComp)
-  validInd = trueCellInd(strcmp(trueCellComp{run_ind},trueCellRun));
-  if sum(validInd) == 0
-    spikeDataBank = rmfield(spikeDataBank,(runList{run_ind}));
+%Label swapping before plotting
+if broadLabel
+  figureTitle = 'Broad Labels';
+  tmp = load(stimParamFile);
+  for event_i = 1:length(tmp.paramArray)
+    totalEventIDs{event_i} = tmp.paramArray{event_i}{1}; %per the stimParamFile spec, this is the event ID
+  end
+  totalEventIDs = totalEventIDs';
+  [~, paramSortVec] = ismember(allStimuliVec, totalEventIDs);
+  paramArray = tmp.paramArray(paramSortVec);
+  allStimuliVec = labelSwap(allStimuliVec, paramArray);
+end
+[uniqueStimLabels, ~, C] = unique(allStimuliVec);
+
+c = arrayfun(@(x)length(find(C == x)), unique(C), 'Uniform', false);
+uniqueStimLabelCounts = cell2mat(c);
+
+%concatonating PSTHs.
+allStimuliPSTH = zeros(length(allStimuliVec),size(spikeDataBank.(runList{1}).psthByImage{1}{end},2));
+catagoryPSTHBins = cell(length(uniqueStimLabels),1);
+for stim_ind = 1:length(allStimuliVec)
+  stimIndex = small2BigInd(stim_ind,:);
+  psthStimIndex = nonzeros(stimIndex);
+  subRunList = runList(find(stimIndex));
+  [cumulativeUnsortedPSTH, cumulativeUnitPSTH, cumulativeMUAPSTH] = deal([]);
+  for subRun_ind = 1:length(subRunList)
+    tmpPSTH = spikeDataBank.(subRunList{subRun_ind}).psthByImage;
+    for chan_ind = 1:length(tmpPSTH)
+      for unit_ind = 1:length(tmpPSTH{chan_ind})
+        if unit_ind == length(tmpPSTH{chan_ind})
+          cumulativeMUAPSTH = [cumulativeMUAPSTH; tmpPSTH{chan_ind}{unit_ind}(psthStimIndex(subRun_ind),:)];
+        elseif unit_ind == 1
+          cumulativeUnsortedPSTH = [cumulativeUnsortedPSTH; tmpPSTH{chan_ind}{unit_ind}(psthStimIndex(subRun_ind),:)];
+        else
+          cumulativeUnitPSTH = [cumulativeUnitPSTH; tmpPSTH{chan_ind}{unit_ind}(psthStimIndex(subRun_ind),:)];
+        end
+      end
+    end
+  end
+  cumulativePSTHAll = {cumulativeUnsortedPSTH, cumulativeUnitPSTH, cumulativeMUAPSTH};
+  if isempty(catagoryPSTHBins{C(stim_ind)})
+    catagoryPSTHBins{C(stim_ind)} = [catagoryPSTHBins{C(stim_ind)}; cumulativePSTHAll];
   else
-    for event_ind = 1:length(spikeDataBank.(runList{run_ind}).spikesByEvent)
-      % for every run, use the corresponding 'validInd' to remove non-valid
-      % channel data from each spikesByEvent cell.
-      spikeDataBank.(runList{run_ind}).spikesByEvent{event_ind} = spikeDataBank.(runList{run_ind}).spikesByEvent{event_ind}(validInd);
+    for group_ind = 1:3
+      catagoryPSTHBins{C(stim_ind)}{group_ind} = [catagoryPSTHBins{C(stim_ind)}{group_ind}; cumulativePSTHAll{group_ind}];
     end
   end
 end
 
-runList = fields(spikeDataBank);
+%Remove stimuli which aren't displayed over N times (defined at top of
+%section.
+if plotTopStim && ~broadLabel
+  figureTitle = sprintf('stimuli with over %d runs', topStimPresThreshold);
+  topIndex = totalStimPresCount > topStimPresThreshold;
+  catagoryPSTHBins = catagoryPSTHBins(topIndex,:);
+  uniqueStimLabels = uniqueStimLabels(topIndex);
+end
 
+%Remove low frequency examples
+if broadLabel
+  catagoryLowInd = uniqueStimLabelCounts < 4;
+  catagoryPSTHBins(catagoryLowInd) = [];
+  uniqueStimLabels(catagoryLowInd) = [];
+end
+
+groupingType = {'Unsorted','Units','MUA'};
+for group_ind = 1:length(groupingType)
+  figure()
+  hold on
+  maxVal = 0;
+  minVal = 100;
+  for psth_ind = 1:size(catagoryPSTHBins,1)
+    meanPSTH = sum(catagoryPSTHBins{psth_ind}{group_ind})/size(catagoryPSTHBins{psth_ind}{group_ind},1);
+    plot(meanPSTH);
+    maxVal = ceil(max([maxVal, max(meanPSTH)]));
+    minVal = floor(min([minVal, min(meanPSTH)]));
+  end
+  xlim([0,size(spikeDataBank.(runList{1}).psthByImage{1}{end},2)])
+  %ylim([20, ceil(max(max(catagoryPSTHyBins{1}{1})))])
+  legend(uniqueStimLabels,'Location','northeastoutside');
+  plot([800, 800],[minVal,maxVal],'LineWidth',3,'color','k','HandleVisibility','off')
+  plot([3600, 3600],[minVal,maxVal],'LineWidth',3,'color','k','HandleVisibility','off')
+  title(sprintf('Mean PSTH Across all %s - %s', groupingType{group_ind}, figureTitle))
+end
 %% generate bin times and spike rates, and proper memberships to groups.
-
 for run_ind = 1:length(runList)
   runStruct = spikeDataBank.(runList{run_ind});
   starts = (runStruct.start:binStep:(runStruct.end - binSize))';
@@ -316,6 +419,8 @@ end
 
 %% Plot Omega curves
 allMaxOmegas = [];
+figData.binSize = binSize; %figData required to save figure.
+figData.binStep = binStep;
 for run_ind = 1:length(runList)
   omegaVec = spikeDataBank.(runList{run_ind}).omegaVec;
   for chan_ind = 1:length(omegaVec)
@@ -342,7 +447,7 @@ for run_ind = 1:length(runList)
       xticks(1:10:length(starts))
       xticklabels(starts(1:10:length(starts)));
       fileName = sprintf('Omega Curve - %s, %d ms bins, %d ms step', ANOVAvarName, binSize, binStep);
-      savePath = [dataDir filesep spikeDataBank.(runList{run_ind}).dateSubject filesep 'Basic' filesep spikeDataBank.(runList{run_ind}).runNum filesep];
+      savePath = [spikeDataBank.(runList{run_ind}).figDir filesep];
       saveFigure(savePath, fileName, figData, 1, 0, 0, runList{run_ind}, 'close')
     end
   end
@@ -392,4 +497,15 @@ else
     OutCell{inCell_ind} = recurDouble2ANOVATable(inCell{inCell_ind});
   end
 end
+end
+
+function newLabels = labelSwap(OldLabels, paramArray)
+newLabelSet = {'chasing','fighting','mounting','grooming','holding','following','observing',...
+  'foraging','sitting','objects','goalDirected','idle','scramble','scene'};
+
+for label_ind = 1:length(OldLabels)
+  paramStimSet = paramArray{label_ind};
+  newLabels{label_ind} = paramStimSet{ismember(paramStimSet,newLabelSet)};
+end
+newLabels = newLabels';
 end

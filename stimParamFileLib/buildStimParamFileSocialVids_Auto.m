@@ -65,11 +65,11 @@ stimListTmp = stimList;
 pictureLabels = cell(size(stimList));
 
 for ii = 1:length(stimList)
+  stim = stimList{ii};
   modWord = [];
   label = [];
-  stim = stimList{ii};
   stimParts = split(stim,["_","."]);
-  stimParts = stimParts(1:end-1);
+  stimParts = stimParts(1:end-1); %Remove the tag
   code = stimParts{2};
   stimLabels = cell(1);
   switch code(1)
@@ -82,7 +82,7 @@ for ii = 1:length(stimList)
     case '1';            stimLabels = horzcat(stimLabels, 'interaction');
     case '3';            stimLabels = horzcat(stimLabels, 'idle');
   end
-  if (length(stimParts) > 2) && ~strncmp(stimParts(3),'C',1)
+  if (length(stimParts) > 2) && ~strncmp(stimParts(3),'C',1) || (length(stimParts) == 2)
     switch code(3)
       case '1';            stimLabels = horzcat(stimLabels ,'chasing');
       case '2';            stimLabels = horzcat(stimLabels ,'fighting');
