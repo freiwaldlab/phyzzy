@@ -69,12 +69,12 @@ save(analysisOutFilename,'dateSubject','runNum','analysisParamFilename','taskDat
 colors = {[0.55 0.13 0.16];[0.93 .2 0.15];[.98 0.65 0.13];[0 0.55 0.25];[0.15, 0.20, 0.5]};
 chColors = [{'b'}, {[0 .6 0]} , {'m'}];
 
-trialDB = trialDatabaseInit(dateSubject, runNum, length(taskData.taskEventStartTimes));
-for event_i = 1:length(eventLabels)
-  for trial_i = 1:length(trialIDsByEvent{event_i})
-    trialDB = trialDatabaseSetField('eventLabel',eventLabels{event_i},trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
-  end
-end
+% trialDB = trialDatabaseInit(dateSubject, runNum, length(taskData.taskEventStartTimes));
+% for event_i = 1:length(eventLabels)
+%   for trial_i = 1:length(trialIDsByEvent{event_i})
+%     trialDB = trialDatabaseSetField('eventLabel',eventLabels{event_i},trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
+%   end
+% end
 
 figTag = sprintf('%s,Run%s',dateSubject,runNum);
 
@@ -257,25 +257,25 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
   save(analysisOutFilename,'spikesByEventBinned','spikesByCategoryBinned', '-append');
 end
 
-for channel_i = 1:length(channelNames)
-  for event_i = 1:length(eventLabels)
-    for trial_i = 1:length(trialIDsByEvent{event_i})
-      fieldName = sprintf('LFP.%s',channelNames{channel_i}(~isspace(channelNames{channel_i})));
-      trialDB = trialDatabaseSetField(fieldName,squeeze(lfpByEvent{event_i}(1,channel_i,trial_i,:)),trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
-    end
-  end
-end
+% for channel_i = 1:length(channelNames)
+%   for event_i = 1:length(eventLabels)
+%     for trial_i = 1:length(trialIDsByEvent{event_i})
+%       fieldName = sprintf('LFP.%s',channelNames{channel_i}(~isspace(channelNames{channel_i})));
+%       trialDB = trialDatabaseSetField(fieldName,squeeze(lfpByEvent{event_i}(1,channel_i,trial_i,:)),trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
+%     end
+%   end
+% end
 
-if ~isempty(analogInByEvent)
-  for channel_i = 1:length(analogInChannelNames)
-    for event_i = 1:length(eventLabels)
-      for trial_i = 1:length(trialIDsByEvent{event_i})
-        fieldName = analogInChannelNames{channel_i}(~isspace(analogInChannelNames{channel_i}));
-        trialDB = trialDatabaseSetField(fieldName,squeeze(analogInByEvent{event_i}(1,channel_i,trial_i,:)),trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
-      end
-    end
-  end
-end
+% if ~isempty(analogInByEvent)
+%   for channel_i = 1:length(analogInChannelNames)
+%     for event_i = 1:length(eventLabels)
+%       for trial_i = 1:length(trialIDsByEvent{event_i})
+%         fieldName = analogInChannelNames{channel_i}(~isspace(analogInChannelNames{channel_i}));
+%         trialDB = trialDatabaseSetField(fieldName,squeeze(analogInByEvent{event_i}(1,channel_i,trial_i,:)),trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
+%       end
+%     end
+%   end
+% end
 
 if calcSwitch.imagePSTH && calcSwitch.spikeTimes
   [psthByImage, psthErrByImage] = calcStimPSTH(spikesByEvent, eventLabels, psthEmptyByEvent, channelNames, channelUnitNames, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
@@ -299,6 +299,7 @@ end
 
 if isfield(plotSwitch, 'attendedObject') && plotSwitch.attendedObject
   attendedObjData = calcEyeObjectTrace(psthByImage, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData);
+  save(analysisOutFilename,'attendedObjData','-append');
 end
 
 if isfield(plotSwitch,'eyeStimOverlay') && plotSwitch.eyeStimOverlay
@@ -4857,7 +4858,6 @@ switch plotType
     tag2color = @(n) areaColors{strcmp(objList, n)}; %Returns appropriate color for each object
     for channel_i = 1:length(psthByImage)
       for event_i = 1:length(eventIDs)
-        disp('No plotting for calcObjEyeTrace')
         %For every event, grab the correct color
         attendedObjectEvent = attendedObjVect{event_i};
         attendObjColorMat = cellfun(tag2color, attendedObjectEvent, 'UniformOutput', false); % a Trial * Frame array of the first letter of each object.
@@ -5353,7 +5353,7 @@ for channel_i = 1:length(spikeCountsByImageByEpoch{1})
       end
     end
     % Check for task modulation
-    [p, ~, ~] = anovan(trialSpikes,{trialEpoch},'model','interaction','varnames',{'Epoch'}, 'alpha', 0.05);
+    [p, ~, ~] = anovan(trialSpikes,{trialEpoch},'model','interaction','varnames',{'Epoch'}, 'alpha', 0.05,'display','off');
     frEpochsANOVA{channel_i}{unit_i}.taskModulatedP = p;
     if p < 0.05
       trialSpikesPres = trialSpikes(strcmp(trialEpoch,'Presentation'));
@@ -5362,9 +5362,9 @@ for channel_i = 1:length(spikeCountsByImageByEpoch{1})
       trialLabelsFix = trialLabels(strcmp(trialEpoch,'Fixation'));
       trialSpikesReward = trialSpikes(strcmp(trialEpoch,'Reward'));
       trialLabelsReward = trialLabels(strcmp(trialEpoch,'Reward'));
-      [Presp, ~, Pstats] = anovan(trialSpikesPres,{trialLabelsPres},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05);
-      [Fixp, ~, Fstats] = anovan(trialSpikesFix,{trialLabelsFix},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05);
-      [Rewardp, ~, Rstats] = anovan(trialSpikesReward,{trialLabelsReward},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05);
+      [Presp, ~, Pstats] = anovan(trialSpikesPres,{trialLabelsPres},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05,'display','off');
+      [Fixp, ~, Fstats] = anovan(trialSpikesFix,{trialLabelsFix},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05,'display','off');
+      [Rewardp, ~, Rstats] = anovan(trialSpikesReward,{trialLabelsReward},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05,'display','off');
       % Construct the output for the unit
       frEpochsANOVA{channel_i}{unit_i}.ANOVA.pp = Presp;
       frEpochsANOVA{channel_i}{unit_i}.ANOVA.fp = Fixp;

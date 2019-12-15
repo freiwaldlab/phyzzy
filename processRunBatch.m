@@ -13,6 +13,7 @@ function [] = processRunBatch(varargin)
 
 %% Load Appropriate variables and paths
 addpath(genpath('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy'))
+usePreprocessed = 1;
 
 if nargin == 1
     %If there is only 1 file, it loads the analysisParamFile and composes a
@@ -73,6 +74,11 @@ end
 
 %% Process the runs
 [errorsMsg, startTimes, endTimes, analysisOutFilename] = deal(cell(length(analysisParamFileList),1));
+if usePreprocessed
+  for path_ind = 1:length(analysisParamFileList)
+    analysisParamFileList{path_ind} = [fileparts(analysisParamFileList{path_ind}) filesep 'preprocessedData.mat'];
+  end
+end
 
 if license('test','Distrib_Computing_Toolbox')
   parfor run_ind = 1:length(analysisParamFileList)
@@ -80,7 +86,11 @@ if license('test','Distrib_Computing_Toolbox')
     fprintf('Processing %s... \n', analysisParamFileList{run_ind});
     startTimes{run_ind} = datetime('now');
     try
-      [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
+      if usePreprocessed
+        [~, analysisOutFilename{run_ind}] = processRun('paramBuilder','buildAnalysisParamFileSocialVids','preprocessed',analysisParamFileList{run_ind});
+      else
+        [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
+      end
       errorsMsg{run_ind} = 'None';
       endTimes{run_ind} = datetime('now');
     catch MyErr
@@ -97,7 +107,11 @@ else
     fprintf('Processing %s... \n', analysisParamFileList{run_ind});
     startTimes{run_ind} = datetime('now');
     try
-      [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
+      if usePreprocessed
+        [~, analysisOutFilename{run_ind}] = processRun('paramBuilder','buildAnalysisParamFileSocialVids','preprocessed',analysisParamFileList{run_ind});
+      else
+        [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
+      end
       errorsMsg{run_ind} = 'None';
       endTimes{run_ind} = datetime('now');
     catch MyErr

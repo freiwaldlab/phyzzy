@@ -2,9 +2,10 @@ function batchAnalysis()
 %% Sliding Window ANOVA
 % performs an ANOVA on rates across a trial (Fixation, presentation, and
 % reward), starting at trial time 0, in some predefined steps.
-dataDir = 'D:\DataAnalysis\ANOVA_FullTime';
+dataDir = 'D:\DataAnalysis\FullTime';
 stimParamFile = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat';
 spikeDataBaseFilename = 'spikeDataBase.mat';
+batchAnalysisFigDir = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\batchAnalysisFigs';
 binSize = 100;
 binStep = 25;
 target = {'socialInteraction','agents','interaction'}; %Labels which must exist in the stimParamFile associated with the runs. 
@@ -13,12 +14,13 @@ recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018\RecordingsMoUpdate
 excludePhase2 = 0; % a switch which can be used to remove data from the same neuron collected in subsequent runs. Good for getting accurate counts.
 %% Get the relevant data
 spikeDataBaseFile = [dataDir filesep spikeDataBaseFilename];
-if exist(spikeDataBaseFile)
+if exist(spikeDataBaseFile, 'file')
   load(spikeDataBaseFile,'spikeDataBank','allStimuliVec')
 else
-  % Cycle through analyzedData.mat files, store and organize the relevant structures.
+  %Cycle through analyzedData.mat files, store and organize the relevant structures.
   preprocessedList = dir([dataDir filesep '**' filesep 'preprocessedData.mat']);
   analyzedList = dir([dataDir filesep '**' filesep 'analyzedData.mat']);
+  analysisParamsList = cell(length(analyzedList),1);
   assert(length(preprocessedList) == length(analyzedList), 'Lists arent same length, confirm every preprocessed file has an analyzed file')
   
   sessionList = cell(length(preprocessedList),1);
@@ -27,7 +29,9 @@ else
   
   for ii = 1:length(preprocessedList)
     tmp = load([preprocessedList(ii).folder filesep preprocessedList(ii).name],'spikesByEvent','eventIDs','eventCategories','preAlign','postAlign');
-    tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'dateSubject', 'runNum', 'groupLabelsByImage','psthByImage');
+    tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'analysisParamFilename','dateSubject', 'runNum', 'groupLabelsByImage','psthByImage','attendedObjData');
+    tmp3 = load(tmp2.analysisParamFilename, 'psthParams');
+    analysisParamsList{ii} = tmp2.analysisParamFilename;
     
     sessField = sprintf('S%s%s', tmp2.dateSubject, tmp2.runNum);
     allStimuliVec = [allStimuliVec; tmp.eventIDs];
@@ -36,16 +40,19 @@ else
     spikeDataBank.(sessField).runNum = tmp2.runNum;
     spikeDataBank.(sessField).spikesByEvent = tmp.spikesByEvent;
     spikeDataBank.(sessField).psthByImage = tmp2.psthByImage;
+    spikeDataBank.(sessField).attendedObjData = tmp2.attendedObjData;
     spikeDataBank.(sessField).eventIDs = tmp.eventIDs;
     spikeDataBank.(sessField).eventCategories = tmp.eventCategories;
     spikeDataBank.(sessField).groupLabelsByImage = tmp2.groupLabelsByImage;
-    spikeDataBank.(sessField).start = -tmp.preAlign;
-    spikeDataBank.(sessField).end = tmp.postAlign;
+    spikeDataBank.(sessField).start = -tmp3.psthParams.psthPre;
+    spikeDataBank.(sessField).stimDur = tmp3.psthParams.psthImDur;
+    spikeDataBank.(sessField).end = tmp3.psthParams.psthImDur + tmp3.psthParams.psthPost;
     spikeDataBank.(sessField).groupLabel = target;
     spikeDataBank.(sessField).figDir = preprocessedList(ii).folder;
   end
   save(spikeDataBaseFile, 'spikeDataBank','allStimuliVec')
 end
+
 %% stimuli information
 %Code below creates a single large vector of stimuli used, and uses this to
 %create individual vectors containing which viewing of the stimulus this
@@ -124,9 +131,10 @@ end
 % This will crash if the PSTHs aren't the same length.
 plotTopStim = 1;
 broadLabel = 1; %Transitions individual stimuli to broad catagory (e.g. chasing).
+zscorePSTHs = 0; %Normalizes PSTH values to the recording's fixation period.
 topStimPresThreshold = 100; %At least this many stim presentations to be plotted when plotTopStim is on.
-figureTitle = 'per Stimuli';
 
+figureTitle = 'per Stimuli';
 %Label swapping before plotting
 if broadLabel
   figureTitle = 'Broad Labels';
@@ -148,24 +156,48 @@ uniqueStimLabelCounts = cell2mat(c);
 allStimuliPSTH = zeros(length(allStimuliVec),size(spikeDataBank.(runList{1}).psthByImage{1}{end},2));
 catagoryPSTHBins = cell(length(uniqueStimLabels),1);
 for stim_ind = 1:length(allStimuliVec)
-  stimIndex = small2BigInd(stim_ind,:);
-  psthStimIndex = nonzeros(stimIndex);
-  subRunList = runList(find(stimIndex));
-  [cumulativeUnsortedPSTH, cumulativeUnitPSTH, cumulativeMUAPSTH] = deal([]);
-  for subRun_ind = 1:length(subRunList)
+  
+  stimIndex = small2BigInd(stim_ind,:); % Which runs had the stim?
+  psthStimIndex = nonzeros(stimIndex);  % create an index for reaching into those runs.
+  subRunList = runList(find(stimIndex));% grab the runs with the activity.
+  [cumulativeUnsortedPSTH, cumulativeUnitPSTH, cumulativeMUAPSTH, ...
+    peakPSTHUnsortedValue, peakPSTHUnitValue, peakPSTHMUAValue,...
+    peakPSTHUnsortedInd, peakPSTHUnitInd, peakPSTHMUAInd] = deal([]); 
+  
+  for subRun_ind = 1:length(subRunList) % Cycle through the runs, grabbing relevant activity vector in each.
     tmpPSTH = spikeDataBank.(subRunList{subRun_ind}).psthByImage;
     for chan_ind = 1:length(tmpPSTH)
       for unit_ind = 1:length(tmpPSTH{chan_ind})
+        unitActivity = tmpPSTH{chan_ind}{unit_ind}(psthStimIndex(subRun_ind),:);
+        if zscorePSTHs
+          fixMean = mean(unitActivity(1:abs(spikeDataBank.(subRunList{subRun_ind}).start))); %Find activity during fixation
+          fixSD = std(unitActivity(1:abs(spikeDataBank.(subRunList{subRun_ind}).start))); %Find activity during fixation
+          if fixMean == 0 || fixSD == 0
+            continue
+          else
+            unitActivity = (unitActivity - fixMean)/fixSD;
+          end
+        end
+        stimPresInd = abs(spikeDataBank.(subRunList{subRun_ind}).start);
+        [maxVal, maxInd] = max(unitActivity);
         if unit_ind == length(tmpPSTH{chan_ind})
-          cumulativeMUAPSTH = [cumulativeMUAPSTH; tmpPSTH{chan_ind}{unit_ind}(psthStimIndex(subRun_ind),:)];
+          cumulativeMUAPSTH = [cumulativeMUAPSTH; unitActivity];
+          peakPSTHMUAValue = [peakPSTHMUAValue; maxVal];
+          peakPSTHMUAInd = [peakPSTHMUAInd; maxInd];
         elseif unit_ind == 1
-          cumulativeUnsortedPSTH = [cumulativeUnsortedPSTH; tmpPSTH{chan_ind}{unit_ind}(psthStimIndex(subRun_ind),:)];
+          cumulativeUnsortedPSTH = [cumulativeUnsortedPSTH; unitActivity];
+          peakPSTHUnsortedValue = [peakPSTHUnsortedValue; maxVal];
+          peakPSTHUnsortedInd = [peakPSTHUnsortedInd; maxInd];
         else
-          cumulativeUnitPSTH = [cumulativeUnitPSTH; tmpPSTH{chan_ind}{unit_ind}(psthStimIndex(subRun_ind),:)];
+          cumulativeUnitPSTH = [cumulativeUnitPSTH; unitActivity];
+          peakPSTHUnitValue = [peakPSTHUnitValue; maxVal];
+          peakPSTHUnitInd = [peakPSTHUnitInd; maxInd];
         end
       end
     end
   end
+  cumulativePSTHMaxIndAll = {peakPSTHUnsortedInd, peakPSTHUnitInd, peakPSTHMUAInd};
+  cumulativePSTHMaxAll = {peakPSTHUnsortedValue, peakPSTHUnitValue, peakPSTHMUAValue};
   cumulativePSTHAll = {cumulativeUnsortedPSTH, cumulativeUnitPSTH, cumulativeMUAPSTH};
   if isempty(catagoryPSTHBins{C(stim_ind)})
     catagoryPSTHBins{C(stim_ind)} = [catagoryPSTHBins{C(stim_ind)}; cumulativePSTHAll];
@@ -179,7 +211,7 @@ end
 %Remove stimuli which aren't displayed over N times (defined at top of
 %section.
 if plotTopStim && ~broadLabel
-  figureTitle = sprintf('stimuli with over %d runs', topStimPresThreshold);
+  figureTitle = sprintf('%s with over %d runs', figureTitle, topStimPresThreshold);
   topIndex = totalStimPresCount > topStimPresThreshold;
   catagoryPSTHBins = catagoryPSTHBins(topIndex,:);
   uniqueStimLabels = uniqueStimLabels(topIndex);
@@ -192,25 +224,57 @@ if broadLabel
   uniqueStimLabels(catagoryLowInd) = [];
 end
 
+if zscorePSTHs
+  zTag = 'Z-scored';
+else
+  zTag = 'raw';
+end
+
+% Plot the stimuli
 groupingType = {'Unsorted','Units','MUA'};
+h = gobjects(length(groupingType),2);
 for group_ind = 1:length(groupingType)
-  figure()
-  hold on
   maxVal = 0;
   minVal = 100;
+  [allTrace, grandSDTrace] = deal([]);
+  [meanPSTH, SDPSTH] = deal(zeros(length(catagoryPSTHBins), 4101));
   for psth_ind = 1:size(catagoryPSTHBins,1)
-    meanPSTH = sum(catagoryPSTHBins{psth_ind}{group_ind})/size(catagoryPSTHBins{psth_ind}{group_ind},1);
-    plot(meanPSTH);
+    meanPSTH(psth_ind,:) = mean(catagoryPSTHBins{psth_ind}{group_ind});
+    allTrace = [allTrace; catagoryPSTHBins{psth_ind}{group_ind}];
+    SDPSTH(psth_ind,:) = std(catagoryPSTHBins{psth_ind}{group_ind});
+    grandSDTrace = [grandSDTrace; SDPSTH(psth_ind,:)];
+    %plot(meanPSTH);
     maxVal = ceil(max([maxVal, max(meanPSTH)]));
     minVal = floor(min([minVal, min(meanPSTH)]));
   end
-  xlim([0,size(spikeDataBank.(runList{1}).psthByImage{1}{end},2)])
-  %ylim([20, ceil(max(max(catagoryPSTHyBins{1}{1})))])
-  legend(uniqueStimLabels,'Location','northeastoutside');
-  plot([800, 800],[minVal,maxVal],'LineWidth',3,'color','k','HandleVisibility','off')
-  plot([3600, 3600],[minVal,maxVal],'LineWidth',3,'color','k','HandleVisibility','off')
-  title(sprintf('Mean PSTH Across all %s - %s', groupingType{group_ind}, figureTitle))
+  grandMeanTrace = mean(allTrace);
+  load('psthParamsTmp.mat');
+  psthTitle = sprintf('Mean %s PSTH Across all %s - %s', zTag, groupingType{group_ind}, figureTitle);
+  newOrder = [1:3,5,7,4,6,8:10]; %Applies to broad labels, puts Controls at bottom.
+  % Plot PSTH
+  h(group_ind,1) = figure('NumberTitle', 'off', 'Name', psthTitle);
+  psthAxes = axes();
+  psthAxes = plotPSTH(meanPSTH(newOrder,:), psthAxes, psthParams, 'color', psthTitle, uniqueStimLabels(newOrder,:));
+  title(psthTitle)
+  grandMeanAxes = axes('YAxisLocation','right','Color', 'none','xtick',[],'xticklabel',[],'xlim',[0 length(grandMeanTrace)]);%,'ytick',[],'yticklabel',[]);
+  hold on
+  plot(grandMeanAxes, grandMeanTrace,'color','black','lineWidth',4)
+  linkprop([psthAxes, grandMeanAxes],{'Position'})
+  
+  %Plot SD PSTH
+  grandSDTrace = std(allTrace);
+  psthTitle = sprintf('Mean %s PSTH Std Deviation Across all %s - %s', zTag, groupingType{group_ind}, figureTitle);
+  h(group_ind,2) = figure('NumberTitle', 'off', 'Name', psthTitle);
+  psthSDAxes = axes();
+  psthSDAxes = plotPSTH(SDPSTH(newOrder,:), psthSDAxes, psthParams, 'color', psthTitle, uniqueStimLabels(newOrder,:));
+  title(psthTitle)
+  grandSDAxes = axes('YAxisLocation','right','Color', 'none','xtick',[],'xticklabel',[],'xlim',[0 length(grandSDTrace)]);%,'ytick',[],'yticklabel',[]);
+  hold on
+  plot(grandSDAxes, grandSDTrace,'color','black','lineWidth',4)
+  linkprop([psthSDAxes, grandSDAxes],{'Position'})
 end
+h = reshape(h,[size(h,1)*size(h,2),1]);
+savefig(h,[batchAnalysisFigDir filesep 'meanPSTHandSD_Figs.fig']);
 %% generate bin times and spike rates, and proper memberships to groups.
 for run_ind = 1:length(runList)
   runStruct = spikeDataBank.(runList{run_ind});
@@ -459,7 +523,6 @@ for ii = 1:size(allMaxOmegas,2)
   hist(allMaxOmegas(:,ii),20);
   title(target{ii});
 end
-
 save('postOmega')
 
 end

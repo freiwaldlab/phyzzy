@@ -47,7 +47,7 @@ xlsxLog = dir([filebits 'Recordings*.xlsx']);
 %If you can find an xls log file, open it.
 if ~isempty(xlsxLog)
   %Find the index for data based on the titles of the columns
-  [~, ~, raw] = xlsread([xlsxLog.folder filesep xlsxLog.name]);
+  [~, ~, raw] = xlsread([xlsxLog(1).folder filesep xlsxLog(1).name]); %To-do: Update this to be readtable, update susbsequent code.
   titles = raw(1,:);
   recID = strcmp(titles,'recording');
   rowID = find(strcmp(raw(:,recID),n));

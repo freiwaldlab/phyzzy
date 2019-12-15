@@ -19,9 +19,9 @@ switch machine
     outputVolume = '/Freiwald/faboharb/analysis/Analyzed';
     stimParamsFilename = '/Freiwald/faboharb/analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
   case 'Alienware_FA'
-    ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018');
+    ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data');
     stimulusLogVolume = ephysVolume;
-    outputVolume = slashSwap('D:\DataAnalysis\ANOVA_FullTime');
+    outputVolume = slashSwap('D:\DataAnalysis\FullTime');
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code');
   case 'DataAnalysisPC'
@@ -36,7 +36,7 @@ switch machine
     outputVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok
   case 'HomeDesktop'
-    ephysVolume = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Data 2018');
+    ephysVolume = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Data');
     stimulusLogVolume = ephysVolume;
     outputVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
@@ -72,7 +72,7 @@ plotSwitch.prefImRaster = 0; % Raster, Not color coded.
 plotSwitch.topStimToPlot = 5;
 plotSwitch.prefImRasterColorCoded = 2; % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background.
 plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
-plotSwitch.prefImRasterAverageEvokedOverlay = 0;
+plotSwitch.prefImRasterAverageEvokedOverlay = 1;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
 plotSwitch.imageTuningSorted = 1; %Barplot per image, Required for stimPSTHoverlay, sigStruct
 plotSwitch.stimPrefBarPlot = 0; %Per event bar graph.
@@ -102,7 +102,7 @@ plotSwitch.lfpPowerAcrossChannels = 0;
 plotSwitch.lfpPeakToPeakAcrossChannels = 0;
 plotSwitch.lfpLatencyShiftAcrossChannels = 0;
 plotSwitch.singleTrialLfpByCategory = 0;
-plotSwitch.lfpSpectraByCategory = 1; %LFP Comparison 
+plotSwitch.lfpSpectraByCategory = 1; % LFP Comparison 
 plotSwitch.lfpAutocorrelTfByItem = 0;
 plotSwitch.lfpAutocorrelByItem = 0;
 plotSwitch.spikeSpectraByCategory = 0;

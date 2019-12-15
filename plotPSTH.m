@@ -26,7 +26,7 @@ if strcmp(plotType,'color')
   else
     imagesc(psthAxes, xrange, yaxis, psthArray);
   end
-  h = colorbar; 
+  h = colorbar;
   ylabel(h,'Firing Rate [Hz]','FontSize',14);
   colormap(psthParams.colormap);
   ylimits= ylim();
