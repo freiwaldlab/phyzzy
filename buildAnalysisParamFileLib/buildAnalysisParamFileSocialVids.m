@@ -49,7 +49,8 @@ switch machine
     stimDir = 'G:/StimuliForFaridfromJulia/SocialCategories';       
 end
 analysisLabel = 'Basic';
-preprocessedDataFilenameStem = 'preprocessedData.mat';analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
+preprocessedDataFilenameStem = 'preprocessedData.mat';
+analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 
 saveFig = 1;                
 closeFig = 0;               %#ok

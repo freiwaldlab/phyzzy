@@ -1,63 +1,12 @@
-function batchAnalysis()
-%% Sliding Window ANOVA
-% performs an ANOVA on rates across a trial (Fixation, presentation, and
-% reward), starting at trial time 0, in some predefined steps.
-dataDir = 'D:\DataAnalysis\FullTime';
-stimParamFile = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat';
-spikeDataBaseFilename = 'spikeDataBase.mat';
-batchAnalysisFigDir = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\batchAnalysisFigs';
-binSize = 100;
-binStep = 25;
-target = {'socialInteraction','agents','interaction'}; %Labels which must exist in the stimParamFile associated with the runs. 
-batchRunxls = [dataDir filesep 'BatchRunResults.xlsx']; %Batch analysis xlsx produced by processRunBatch.
-recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018\RecordingsMoUpdated.xlsx'; %Used to exclude phase 2 to give accurate unit counts.
-excludePhase2 = 0; % a switch which can be used to remove data from the same neuron collected in subsequent runs. Good for getting accurate counts.
-%% Get the relevant data
-spikeDataBaseFile = [dataDir filesep spikeDataBaseFilename];
-if exist(spikeDataBaseFile, 'file')
-  load(spikeDataBaseFile,'spikeDataBank','allStimuliVec')
-else
-  %Cycle through analyzedData.mat files, store and organize the relevant structures.
-  preprocessedList = dir([dataDir filesep '**' filesep 'preprocessedData.mat']);
-  analyzedList = dir([dataDir filesep '**' filesep 'analyzedData.mat']);
-  analysisParamsList = cell(length(analyzedList),1);
-  assert(length(preprocessedList) == length(analyzedList), 'Lists arent same length, confirm every preprocessed file has an analyzed file')
-  
-  sessionList = cell(length(preprocessedList),1);
-  spikeDataBank = struct();
-  allStimuliVec = {};
-  
-  for ii = 1:length(preprocessedList)
-    tmp = load([preprocessedList(ii).folder filesep preprocessedList(ii).name],'spikesByEvent','eventIDs','eventCategories','preAlign','postAlign');
-    tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'analysisParamFilename','dateSubject', 'runNum', 'groupLabelsByImage','psthByImage','attendedObjData');
-    tmp3 = load(tmp2.analysisParamFilename, 'psthParams');
-    analysisParamsList{ii} = tmp2.analysisParamFilename;
-    
-    sessField = sprintf('S%s%s', tmp2.dateSubject, tmp2.runNum);
-    allStimuliVec = [allStimuliVec; tmp.eventIDs];
-    sessionList{ii} = [tmp2.dateSubject tmp2.runNum];
-    spikeDataBank.(sessField).dateSubject = tmp2.dateSubject;
-    spikeDataBank.(sessField).runNum = tmp2.runNum;
-    spikeDataBank.(sessField).spikesByEvent = tmp.spikesByEvent;
-    spikeDataBank.(sessField).psthByImage = tmp2.psthByImage;
-    spikeDataBank.(sessField).attendedObjData = tmp2.attendedObjData;
-    spikeDataBank.(sessField).eventIDs = tmp.eventIDs;
-    spikeDataBank.(sessField).eventCategories = tmp.eventCategories;
-    spikeDataBank.(sessField).groupLabelsByImage = tmp2.groupLabelsByImage;
-    spikeDataBank.(sessField).start = -tmp3.psthParams.psthPre;
-    spikeDataBank.(sessField).stimDur = tmp3.psthParams.psthImDur;
-    spikeDataBank.(sessField).end = tmp3.psthParams.psthImDur + tmp3.psthParams.psthPost;
-    spikeDataBank.(sessField).groupLabel = target;
-    spikeDataBank.(sessField).figDir = preprocessedList(ii).folder;
-  end
-  save(spikeDataBaseFile, 'spikeDataBank','allStimuliVec')
-end
+function [analysisOutFilename] = batchAnalysis(inputs)
+%%Unpack Inputs
+load(inputs{1})   % Non spike variables
+spikeDataBank = saveSpikeDataBank([], [], 'load', outputDir);
 
 %% stimuli information
 %Code below creates a single large vector of stimuli used, and uses this to
 %create individual vectors containing which viewing of the stimulus this
 %represent (i.e. 'this run represents the 10th viewing of X.avi')
-allStimuliVec = unique(allStimuliVec);
 runList = fields(spikeDataBank);
 stimLogicalArray = zeros(length(allStimuliVec),length(runList));
 
@@ -123,16 +72,20 @@ if excludePhase2
       end
     end
   end
+  runListAll = runList;
+  daysSinceLastPresAll = daysSinceLastPres;
   runList = fields(spikeDataBank);
+  daysSinceLastPres
   %Future Note - other variables related to stimulus must also be
   %reconstructed if this happens. Maybe move to before that step.
 end
 %% Combine PSTH across all runs for a particular stimulus.
 % This will crash if the PSTHs aren't the same length.
 plotTopStim = 1;
+topStimPresThreshold = 100; %At least this many stim presentations to be plotted when plotTopStim is on.
 broadLabel = 1; %Transitions individual stimuli to broad catagory (e.g. chasing).
 zscorePSTHs = 0; %Normalizes PSTH values to the recording's fixation period.
-topStimPresThreshold = 100; %At least this many stim presentations to be plotted when plotTopStim is on.
+maxStimOnly = 1; %The max value and max index taken from the PSTH is only in the area of the stimulus presentation.
 
 figureTitle = 'per Stimuli';
 %Label swapping before plotting
@@ -154,7 +107,7 @@ uniqueStimLabelCounts = cell2mat(c);
 
 %concatonating PSTHs.
 allStimuliPSTH = zeros(length(allStimuliVec),size(spikeDataBank.(runList{1}).psthByImage{1}{end},2));
-catagoryPSTHBins = cell(length(uniqueStimLabels),1);
+[catagoryPSTHBins, catagoryPSTHMaxBins, catagoryPSTHMaxBinInds] = deal(cell(length(uniqueStimLabels),1));
 for stim_ind = 1:length(allStimuliVec)
   
   stimIndex = small2BigInd(stim_ind,:); % Which runs had the stim?
@@ -178,8 +131,13 @@ for stim_ind = 1:length(allStimuliVec)
             unitActivity = (unitActivity - fixMean)/fixSD;
           end
         end
-        stimPresInd = abs(spikeDataBank.(subRunList{subRun_ind}).start);
-        [maxVal, maxInd] = max(unitActivity);
+        if maxStimOnly
+          stimStartInd = abs(spikeDataBank.(subRunList{subRun_ind}).start);
+          stimEndInd = abs(spikeDataBank.(subRunList{subRun_ind}).start) + spikeDataBank.(subRunList{subRun_ind}).stimDur;
+          [maxVal, maxInd] = max(unitActivity(stimStartInd:stimEndInd));
+        else
+          [maxVal, maxInd] = max(unitActivity);
+        end
         if unit_ind == length(tmpPSTH{chan_ind})
           cumulativeMUAPSTH = [cumulativeMUAPSTH; unitActivity];
           peakPSTHMUAValue = [peakPSTHMUAValue; maxVal];
@@ -201,9 +159,13 @@ for stim_ind = 1:length(allStimuliVec)
   cumulativePSTHAll = {cumulativeUnsortedPSTH, cumulativeUnitPSTH, cumulativeMUAPSTH};
   if isempty(catagoryPSTHBins{C(stim_ind)})
     catagoryPSTHBins{C(stim_ind)} = [catagoryPSTHBins{C(stim_ind)}; cumulativePSTHAll];
+    catagoryPSTHMaxBins{C(stim_ind)} = [catagoryPSTHMaxBins{C(stim_ind)}; cumulativePSTHMaxAll];
+    catagoryPSTHMaxBinInds{C(stim_ind)} = [catagoryPSTHMaxBinInds{C(stim_ind)}; cumulativePSTHMaxIndAll];
   else
     for group_ind = 1:3
       catagoryPSTHBins{C(stim_ind)}{group_ind} = [catagoryPSTHBins{C(stim_ind)}{group_ind}; cumulativePSTHAll{group_ind}];
+      catagoryPSTHMaxBins{C(stim_ind)}{group_ind} = [catagoryPSTHMaxBins{C(stim_ind)}{group_ind}; cumulativePSTHMaxAll{group_ind}];
+      catagoryPSTHMaxBinInds{C(stim_ind)}{group_ind} = [catagoryPSTHMaxBinInds{C(stim_ind)}{group_ind}; cumulativePSTHMaxIndAll{group_ind}];
     end
   end
 end
@@ -214,6 +176,8 @@ if plotTopStim && ~broadLabel
   figureTitle = sprintf('%s with over %d runs', figureTitle, topStimPresThreshold);
   topIndex = totalStimPresCount > topStimPresThreshold;
   catagoryPSTHBins = catagoryPSTHBins(topIndex,:);
+  catagoryPSTHMaxBins = catagoryPSTHMaxBins(topIndex,:);
+  catagoryPSTHMaxBinInds = catagoryPSTHMaxBinInds(topIndex,:);
   uniqueStimLabels = uniqueStimLabels(topIndex);
 end
 
@@ -221,6 +185,8 @@ end
 if broadLabel
   catagoryLowInd = uniqueStimLabelCounts < 4;
   catagoryPSTHBins(catagoryLowInd) = [];
+  catagoryPSTHMaxBins(catagoryLowInd) = [];
+  catagoryPSTHMaxBinInds(catagoryLowInd) = [];
   uniqueStimLabels(catagoryLowInd) = [];
 end
 
@@ -229,20 +195,33 @@ if zscorePSTHs
 else
   zTag = 'raw';
 end
-
+%% Plot PSTH
 % Plot the stimuli
 groupingType = {'Unsorted','Units','MUA'};
 h = gobjects(length(groupingType),2);
 for group_ind = 1:length(groupingType)
+  figure() %Initiate peak PSTH Histogram
+  sgtitle(sprintf('Peak PSTH Bin value - %s', groupingType{group_ind}))
+  hold on
   maxVal = 0;
   minVal = 100;
   [allTrace, grandSDTrace] = deal([]);
   [meanPSTH, SDPSTH] = deal(zeros(length(catagoryPSTHBins), 4101));
   for psth_ind = 1:size(catagoryPSTHBins,1)
     meanPSTH(psth_ind,:) = mean(catagoryPSTHBins{psth_ind}{group_ind});
-    allTrace = [allTrace; catagoryPSTHBins{psth_ind}{group_ind}];
     SDPSTH(psth_ind,:) = std(catagoryPSTHBins{psth_ind}{group_ind});
+    
+    %Histogram of max bins
+    subplot(ceil(length(catagoryPSTHBins)/5),5, psth_ind);
+    hist(catagoryPSTHMaxBins{psth_ind}{group_ind}, 20);
+    title(sprintf('%s (mean = %s)',uniqueStimLabels{psth_ind}, num2str(round(mean(catagoryPSTHMaxBins{psth_ind}{group_ind}), 2))));
+    
+    %Histogram of time bins (Inds)
+    
+    
     grandSDTrace = [grandSDTrace; SDPSTH(psth_ind,:)];
+    allTrace = [allTrace; catagoryPSTHBins{psth_ind}{group_ind}];
+    
     %plot(meanPSTH);
     maxVal = ceil(max([maxVal, max(meanPSTH)]));
     minVal = floor(min([minVal, min(meanPSTH)]));
@@ -254,27 +233,30 @@ for group_ind = 1:length(groupingType)
   % Plot PSTH
   h(group_ind,1) = figure('NumberTitle', 'off', 'Name', psthTitle);
   psthAxes = axes();
-  psthAxes = plotPSTH(meanPSTH(newOrder,:), psthAxes, psthParams, 'color', psthTitle, uniqueStimLabels(newOrder,:));
+  psthAxes = plotPSTH(meanPSTH(newOrder,:), psthAxes, psthParams, 'color', psthTitle, uniqueStimLabels(newOrder));
   title(psthTitle)
   grandMeanAxes = axes('YAxisLocation','right','Color', 'none','xtick',[],'xticklabel',[],'xlim',[0 length(grandMeanTrace)]);%,'ytick',[],'yticklabel',[]);
   hold on
   plot(grandMeanAxes, grandMeanTrace,'color','black','lineWidth',4)
-  linkprop([psthAxes, grandMeanAxes],{'Position'})
+  linkprop([psthAxes, grandMeanAxes],{'Position'});
   
   %Plot SD PSTH
   grandSDTrace = std(allTrace);
   psthTitle = sprintf('Mean %s PSTH Std Deviation Across all %s - %s', zTag, groupingType{group_ind}, figureTitle);
   h(group_ind,2) = figure('NumberTitle', 'off', 'Name', psthTitle);
   psthSDAxes = axes();
-  psthSDAxes = plotPSTH(SDPSTH(newOrder,:), psthSDAxes, psthParams, 'color', psthTitle, uniqueStimLabels(newOrder,:));
+  psthSDAxes = plotPSTH(SDPSTH(newOrder,:), psthSDAxes, psthParams, 'color', psthTitle, uniqueStimLabels(newOrder));
   title(psthTitle)
   grandSDAxes = axes('YAxisLocation','right','Color', 'none','xtick',[],'xticklabel',[],'xlim',[0 length(grandSDTrace)]);%,'ytick',[],'yticklabel',[]);
   hold on
   plot(grandSDAxes, grandSDTrace,'color','black','lineWidth',4)
-  linkprop([psthSDAxes, grandSDAxes],{'Position'})
+  linkprop([psthSDAxes, grandSDAxes],{'Position'});
+    
+  %Histogram of Times?
+  
 end
 h = reshape(h,[size(h,1)*size(h,2),1]);
-savefig(h,[batchAnalysisFigDir filesep 'meanPSTHandSD_Figs.fig']);
+%savefig(h,[batchAnalysisFigDir filesep 'meanPSTHandSD_Figs.fig']);
 %% generate bin times and spike rates, and proper memberships to groups.
 for run_ind = 1:length(runList)
   runStruct = spikeDataBank.(runList{run_ind});
@@ -293,68 +275,80 @@ for run_ind = 1:length(runList)
 end
 
 %% Perform ANOVA, store values.
-save('postSpikeCounter.mat');
+% performs an ANOVA on rates across a trial (Fixation, presentation, and
+% reward), starting at trial time 0, in some predefined steps.
+% save('postSpikeCounter.mat'); %Saves most the environment
+% saveSpikeDataBank(spikeDataBank,5,'save'); %Saves spikeDataBank, which has grown large.
+
+spikeDataBank = saveSpikeDataBank([],5,'load'); %Saves spikeDataBank, which has grown large.
+load('postSpikeCounter.mat')
+
 plotCells = 0;
 depth = 2;
 
 for run_ind = 1:length(runList)
-  [pVec, nullVec, errVec, omegaVec, nullO95Vec, nullO99Vec] = deal(recurCellZeros(spikeDataBank.(runList{run_ind}).epochRates{1}, length(spikeDataBank.(runList{run_ind}).epochs), length(target), depth)); % Initialize each p value array.
-  [maxOmegaVec] = deal(recurCellZeros(spikeDataBank.(runList{run_ind}).epochRates{1}, 1, length(target), depth)); % Initialize each p value array.
+  disp(run_ind)
+  [pVec, nullVec] = deal(recurCell(spikeDataBank.(runList{run_ind}).epochRates{1}, length(spikeDataBank.(runList{run_ind}).epochs), length(target), depth, 'ones')); % Initialize each p value array.
+  omegaVec = recurCell(spikeDataBank.(runList{run_ind}).epochRates{1}, length(spikeDataBank.(runList{run_ind}).epochs), length(target), depth,'zeros');
+  [maxOmegaVec] = deal(recurCell(spikeDataBank.(runList{run_ind}).epochRates{1}, 1, length(target), depth, 'zeros')); % Initialize each p value array.
   pStatsVec = recurDouble2ANOVATable(pVec);
-  for bin_ind = 1:length(spikeDataBank.(runList{run_ind}).epochs)
-    for chan_ind = 1:length(spikeDataBank.(runList{run_ind}).epochRates{bin_ind})
-      for unit_ind = 1:length(spikeDataBank.(runList{run_ind}).epochRates{bin_ind}{chan_ind})
-        unitResponsePerEvent = spikeDataBank.(runList{run_ind}).epochRates{bin_ind}{chan_ind}{unit_ind};
-        catagortyInd = spikeDataBank.(runList{run_ind}).catagoryInd;
-        %unitData{event}.rates = trial*1
-        for target_ind = 1:length(target)
-          [trialSpikes, trialLabels]  = deal([]);
-          %grab the relevant events
-          targetInd = catagortyInd(:,target_ind);
-          targetSpikes = unitResponsePerEvent(targetInd);
-          otherSpikes = unitResponsePerEvent(~targetInd);
-          %Initialize relevant vecotrs
-          spikeGroups = {targetSpikes otherSpikes};
-          spikeGroupLabels ={(target{target_ind}) (['non-' target{target_ind}])};
-          %Cluster and reshape the arrays properly
-          for group_i = 1:length(spikeGroups)
-            tmp = spikeGroups{group_i};
-            tmp = [tmp{:}];
-            dataVec = vertcat(tmp.rates);
-            labelVec = repmat(spikeGroupLabels(group_i), length(dataVec),1);
-            trialSpikes = vertcat(trialSpikes,dataVec);
-            trialLabels = vertcat(trialLabels, labelVec);
-          end
-          % Check for social v non-social
-          [pVec{chan_ind}{unit_ind}(bin_ind,target_ind), pStatsTable, ~] = anovan(trialSpikes,{trialLabels},'model','interaction','varnames',{'SvNS'}, 'alpha', 0.05,'display','off');
-          top = pStatsTable{2,3} * (pStatsTable{2,5} - pStatsTable{3,5});
-          bottom = (pStatsTable{2,3}*pStatsTable{2,5})+(pStatsTable{4,3}-pStatsTable{2,3})*pStatsTable{3,5};
-          omegaVec{chan_ind}{unit_ind}(bin_ind,target_ind) = top/bottom;
-          [nullPVec, nullOmegaVec] = deal(zeros(1,100));
-          for rand_ind = 1:100
-            trialLabels = trialLabels(randperm(length(trialLabels)));
-            [nullPVec(rand_ind), pStatsTable, ~] = anovan(trialSpikes,{trialLabels},'model','interaction','varnames',{'SvNS'}, 'alpha', 0.05,'display','off');
+  if length(unique(spikeDataBank.(runList{run_ind}).catagoryInd)) > 1 %Only run tests where you have members in each group.
+    for bin_ind = 1:length(spikeDataBank.(runList{run_ind}).epochs)
+      for chan_ind = 1:length(spikeDataBank.(runList{run_ind}).epochRates{bin_ind})
+        for unit_ind = 1:length(spikeDataBank.(runList{run_ind}).epochRates{bin_ind}{chan_ind})
+          unitResponsePerEvent = spikeDataBank.(runList{run_ind}).epochRates{bin_ind}{chan_ind}{unit_ind};
+          catagortyInd = spikeDataBank.(runList{run_ind}).catagoryInd;
+          %unitData{event}.rates = trial*1
+          for target_ind = 1:length(target)
+            if length(unique(catagortyInd(:,target_ind))) == 1
+              break
+            end
+            [trialSpikes, trialLabels]  = deal([]);
+            %grab the relevant events
+            targetInd = catagortyInd(:,target_ind);
+            targetSpikes = unitResponsePerEvent(targetInd);
+            otherSpikes = unitResponsePerEvent(~targetInd);
+            %Initialize relevant vecotrs
+            spikeGroups = {targetSpikes otherSpikes};
+            spikeGroupLabels ={(target{target_ind}) (['non-' target{target_ind}])};
+            %Cluster and reshape the arrays properly
+            for group_i = 1:length(spikeGroups)
+              tmp = spikeGroups{group_i};
+              tmp = [tmp{:}];
+              dataVec = vertcat(tmp.rates);
+              labelVec = repmat(spikeGroupLabels(group_i), length(dataVec),1);
+              trialSpikes = vertcat(trialSpikes,dataVec);
+              trialLabels = vertcat(trialLabels, labelVec);
+            end
+            % Check for social v non-social
+            [pVec{chan_ind}{unit_ind}(bin_ind,target_ind), pStatsTable, ~] = anovan(trialSpikes,{trialLabels},'model','interaction','varnames',{'SvNS'}, 'alpha', 0.05,'display','off');
             top = pStatsTable{2,3} * (pStatsTable{2,5} - pStatsTable{3,5});
             bottom = (pStatsTable{2,3}*pStatsTable{2,5})+(pStatsTable{4,3}-pStatsTable{2,3})*pStatsTable{3,5};
-            nullOmegaVec(rand_ind) = top/bottom;
-          end
-          nullVec{chan_ind}{unit_ind}(bin_ind,target_ind) = mean(nullPVec);
-          nullO95Vec{chan_ind}{unit_ind}(bin_ind,target_ind) = prctile(nullOmegaVec,95);
-          nullO99Vec{chan_ind}{unit_ind}(bin_ind,target_ind) = prctile(nullOmegaVec,99);
-          if bin_ind == length(spikeDataBank.(runList{run_ind}).epochs)
-            maxOmegaVec{chan_ind}{unit_ind} = max(omegaVec{chan_ind}{unit_ind});
+            omegaVec{chan_ind}{unit_ind}(bin_ind,target_ind) = top/bottom;
+            [nullPVec, nullOmegaVec] = deal(zeros(1,100));
+            for rand_ind = 1:50
+              trialLabels = trialLabels(randperm(length(trialLabels)));
+              [nullPVec(rand_ind), pStatsTable, ~] = anovan(trialSpikes,{trialLabels},'model','interaction','varnames',{'SvNS'}, 'alpha', 0.05,'display','off');
+              top = pStatsTable{2,3} * (pStatsTable{2,5} - pStatsTable{3,5});
+              bottom = (pStatsTable{2,3}*pStatsTable{2,5})+(pStatsTable{4,3}-pStatsTable{2,3})*pStatsTable{3,5};
+              nullOmegaVec(rand_ind) = top/bottom;
+            end
+            nullVec{chan_ind}{unit_ind}(bin_ind,target_ind) = mean(nullPVec);
+            if bin_ind == length(spikeDataBank.(runList{run_ind}).epochs)
+              maxOmegaVec{chan_ind}{unit_ind} = max(omegaVec{chan_ind}{unit_ind});
+            end
           end
         end
       end
     end
+  else
+    disp('Skipping')
   end
   spikeDataBank.(runList{run_ind}).pVec = pVec;
   spikeDataBank.(runList{run_ind}).nullPVec = nullVec;
   spikeDataBank.(runList{run_ind}).pStatsVec = pStatsVec;
   spikeDataBank.(runList{run_ind}).maxOmegaVec = maxOmegaVec;
   spikeDataBank.(runList{run_ind}).omegaVec = omegaVec;
-  spikeDataBank.(runList{run_ind}).nullO95Vec = nullO95Vec;
-  spikeDataBank.(runList{run_ind}).nullO99Vec = nullO99Vec;
   %Plot the results for each unit seen
   if plotCells
     for chan_ind = 1:length(pVec)
@@ -382,16 +376,19 @@ for run_ind = 1:length(runList)
           h.(sprintf('NullLine%d', null_ind)) = mseb(1:length(nullVec{chan_ind}{unit_ind}),nullVec{chan_ind}{unit_ind}(:,null_ind)', errVec{chan_ind}{unit_ind}(:,null_ind)');
           h.(sprintf('NullLine%d', null_ind)).patch.FaceAlpha = '0.5';
         end
-        legend(legendText); 
+        legend(legendText);
       end
     end
   end
-  if mod(run_ind,10) == 0 || run_ind == length(runList)
+  if mod(run_ind,20) == 0 || run_ind == length(runList)
     save('ANOVAandNull')
+    saveSpikeDataBank(spikeDataBank,5,'save')
   end
 end
 
-%% Do Population wide ANOVA
+%% Do Population wide ANOVA and count units.
+% spikeDataBank = saveSpikeDataBank([],5,'load'); %Saves spikeDataBank, which has grown large.
+% load('postSpikeCounter.mat')
 totalUnitCount = 0;
 totalChannelCount = 0;
 [sigBinCountUnit, sigBinCountUnsorted, sigBinCountMUA, ...
@@ -437,6 +434,7 @@ for run_ind = 1:length(runList)
 end
 
 save('postSlidingANOVA')
+saveSpikeDataBank(spikeDataBank,5,'save')
 %% Plot Population Code
 %Figure 1 - Soc vs Non-Soc significance bins
 target = {'socialInteraction','agents','interaction'};
@@ -527,7 +525,7 @@ save('postOmega')
 
 end
 
-function OutCell = recurCellZeros(inCell, N, M, depth)
+function OutCell = recurCell(inCell, N, M, depth, fill)
 %Takes a nested cell structure and initializes a blank N * M double array
 %within. If the cell structure contains cells, function goes deeper.
 
@@ -537,10 +535,17 @@ function OutCell = recurCellZeros(inCell, N, M, depth)
 if iscell(inCell) && depth ~= 0
   OutCell = cell(size(inCell));
   for inCell_ind = 1:length(inCell)
-    OutCell{inCell_ind} = recurCellZeros(inCell{inCell_ind}, N, M, depth-1);
+    OutCell{inCell_ind} = recurCell(inCell{inCell_ind}, N, M, depth-1, fill);
   end
 else
-  OutCell = zeros(N,M);
+  switch fill
+    case 'zeros'
+      OutCell = zeros(N,M);
+    case 'ones'
+      OutCell = ones(N,M);
+    case 'NaN'
+      OutCell = NaN(N,M);
+  end
 end
 end
 
@@ -566,9 +571,48 @@ function newLabels = labelSwap(OldLabels, paramArray)
 newLabelSet = {'chasing','fighting','mounting','grooming','holding','following','observing',...
   'foraging','sitting','objects','goalDirected','idle','scramble','scene'};
 
+newLabels = cell(length(OldLabels),1);
 for label_ind = 1:length(OldLabels)
   paramStimSet = paramArray{label_ind};
   newLabels{label_ind} = paramStimSet{ismember(paramStimSet,newLabelSet)};
 end
 newLabels = newLabels';
+end
+
+function output = saveSpikeDataBank(structData, parts, SaveOrLoad, outDir)
+% Save or loads large structs into slices.
+% - structData: The large struct
+% - parts: the number of parts to divide it into.
+% - SaveOrLoad: whether to 'save' or 'load' the struct.
+switch SaveOrLoad
+  case 'save'
+    %saves variable in N parts.
+    fieldsToStore = fields(structData);
+    fieldCount = length(fields(structData));
+    fieldsPerFile = ceil(fieldCount/parts);
+    output = cell(ceil(fieldCount/fieldsPerFile),1);
+    spikeSliceCount = 1;
+    spikeDataBankSlice = struct();
+    
+    for field_i = 1:length(fieldsToStore)
+      spikeDataBankSlice.(fieldsToStore{field_i}) = structData.(fieldsToStore{field_i});
+      if mod(field_i, fieldsPerFile) == 0 || field_i == length(fieldsToStore)
+        output{spikeSliceCount} = fullfile(outDir, sprintf('spikeDataBank_%d.mat', spikeSliceCount));
+        save(output{spikeSliceCount},'spikeDataBankSlice')
+        clear spikeDataBankSlice
+        spikeSliceCount = spikeSliceCount + 1;
+      end
+    end
+  case 'load'
+    spikeDataBankTmp = struct();
+    filesToCombine = dir(fullfile(outDir, ['spikeDataBank_*.mat']));
+    for ii = 1:length(filesToCombine)
+      tmp = load(fullfile(outDir, filesToCombine(ii).name));
+      fieldsToCombine = fields(tmp.spikeDataBankSlice);
+      for field_ind = 1:length(fieldsToCombine)
+        spikeDataBankTmp.(fieldsToCombine{field_ind}) = tmp.spikeDataBankSlice.(fieldsToCombine{field_ind});
+      end
+    end
+    output = spikeDataBankTmp;
+end
 end

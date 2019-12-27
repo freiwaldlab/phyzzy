@@ -82,7 +82,7 @@ for ii = 1:length(stimList)
     case '1';            stimLabels = horzcat(stimLabels, 'interaction');
     case '3';            stimLabels = horzcat(stimLabels, 'idle');
   end
-  if (length(stimParts) > 2) && ~strncmp(stimParts(3),'C',1) || (length(stimParts) == 2)
+  if ((length(stimParts) > 2) && ~strncmp(stimParts(3),'C',1)) || (length(stimParts) == 2)
     switch code(3)
       case '1';            stimLabels = horzcat(stimLabels ,'chasing');
       case '2';            stimLabels = horzcat(stimLabels ,'fighting');
@@ -94,6 +94,8 @@ for ii = 1:length(stimList)
       case '8';            stimLabels = horzcat(stimLabels ,'foraging');
       case '9';            stimLabels = horzcat(stimLabels ,'sitting');
     end
+  elseif ((length(stimParts) > 2) && strncmp(stimParts(3),'C',1))
+    stimLabels = horzcat(stimLabels ,'goalDirected');
   end
   %Due to issues w/ grouping of controls, adding this below.
   if (strcmp(code(1:2),'11'))

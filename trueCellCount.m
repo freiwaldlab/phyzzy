@@ -12,8 +12,8 @@ function [trueCellInd, analyzedTaskDates] = trueCellCount(batchRunxls, recording
 % session name in the correct format. 
 
 %% True Cell Count
-batchRunxls = 'D:\DataAnalysis\ANOVA_FullTime\BatchRunResults.xlsx';
-recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018\RecordingsMoUpdated.xlsx';
+batchRunxls = 'D:\DataAnalysis\FullTime\BatchRunResults.xlsx';
+recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\RecordingsMoUpdated.xlsx';
 
 logTable = readtable(recordingLogxls); % Grab the record with task information from Recordings excel.
 
@@ -29,7 +29,7 @@ logTable = readtable(recordingLogxls); % Grab the record with task information f
 %Specifically, if a run has the same date, depth, and channel as a previous
 %recording, do not include it.
 uniqueChannels = unique(logTable.Channel);
-recordingDepth = logTable.putativeDistance;
+recordingDepth = cellfun(@str2double, logTable.putativeDistance);
 taskDateRunNum = logTable.recording;
 taskDate = extractBetween(taskDateRunNum,1,8);
 taskDateNum = str2num(cell2mat(taskDate));

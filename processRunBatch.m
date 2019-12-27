@@ -129,13 +129,13 @@ end
 %runAnalyses. Cycle through them and extract desired information (# of
 %units, significance), which you can add to the output file.
 %[UnitCount, sigUnits, sigStim, sigStimLen] = deal(cell(size(analysisOutFilename)));
-replaceAnalysisOut = 0;
+replaceAnalysisOut = 1;
 if replaceAnalysisOut
   addEnd = @(x) strjoin([x, {'analyzedData.mat'}], filesep);
   breakString = @(x) strsplit(x, filesep);
   joinStrings = @(x) strjoin([x(length(x)-2), x(length(x))],'');
   
-  outputVolume = 'D:\DataAnalysis\ANOVA_FullTime_V2_800msFix';
+  outputVolume = 'D:\DataAnalysis\FullTime';
   analysisOutFilename = dir([outputVolume '\**\analyzedData.mat']);
   analysisOutFilename = {analysisOutFilename.folder}';
   [errorsMsg, startTimes, endTimes] = deal(cell(length(analysisOutFilename),1));
