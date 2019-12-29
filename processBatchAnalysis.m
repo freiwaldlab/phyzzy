@@ -1,4 +1,4 @@
-function spikeDataBankPath = preprocessBatchAnalysis( varargin )
+function spikeDataBankPath = processBatchAnalysis( varargin )
 % Function uses batchAnalysisParamFile to coordinate the compilation of the
 % desired 'spikeDataBank'. 
 % Input
@@ -7,7 +7,8 @@ function spikeDataBankPath = preprocessBatchAnalysis( varargin )
 % spikeDataBank (0), or use what is found (1). Default = 1.
 % Output
 % - paths to relevant .mat files (sliced up spikeDataBank + other
-% variables).
+% variables). spikeDataBank files end with '_N', while the other variables
+% end with 'Vars'. Vars file is 1st in cell array of file paths. 
 
 %% Set up
 addpath(genpath('dependencies'));
@@ -34,11 +35,13 @@ spikeDataBaseFile = [outputDir '/' preprocessParams.spikeDataFileName];
 files = dir([spikeDataBaseFile '*.mat']);
 
 if ~isempty(files)
+  disp('spikeDataBank found, Returning paths')
   spikeDataBankPath = cell(length(files),1);
   for file_ind = 1:length(files)
     spikeDataBankPath{file_ind} = fullfile(files(file_ind).folder,files(file_ind).name);
   end
 else
+  disp('spikeDataBank Not found, generating now...')
   %Cycle through analyzedData.mat files, store and organize the relevant structures.
   preprocessedList = dir([analysisDirectory filesep '**' filesep 'preprocessedData.mat']);
   analyzedList = dir([analysisDirectory filesep '**' filesep 'analyzedData.mat']);
@@ -79,45 +82,7 @@ else
   save(nonSpikeSaveName)
 end
 
-%What goes in?
-batchAnalysis(spikeDataBankPath)
+%Return relevant paths to batchAnalysis.
+runBatchAnalysis(spikeDataBankPath)
 
-end
-
-function output = saveSpikeDataBank(structData, parts, SaveOrLoad, outDir)
-% Save or loads large structs into slices.
-% - structData: The large struct
-% - parts: the number of parts to divide it into.
-% - SaveOrLoad: whether to 'save' or 'load' the struct.
-switch SaveOrLoad
-  case 'save'
-    %saves variable in N parts.
-    fieldsToStore = fields(structData);
-    fieldCount = length(fields(structData));
-    fieldsPerFile = ceil(fieldCount/parts);
-    output = cell(ceil(fieldCount/fieldsPerFile),1);
-    spikeSliceCount = 1;
-    spikeDataBankSlice = struct();
-    
-    for field_i = 1:length(fieldsToStore)
-      spikeDataBankSlice.(fieldsToStore{field_i}) = structData.(fieldsToStore{field_i});
-      if mod(field_i, fieldsPerFile) == 0 || field_i == length(fieldsToStore)
-        output{spikeSliceCount} = fullfile(outDir, sprintf('spikeDataBank_%d.mat', spikeSliceCount));
-        save(output{spikeSliceCount},'spikeDataBankSlice')
-        clear spikeDataBankSlice
-        spikeSliceCount = spikeSliceCount + 1;
-      end
-    end
-  case 'load'
-    spikeDataBankTmp = struct();
-    filesToCombine = dir(fullfile(outDir, ['spikeDataBank_*.mat']));
-    for ii = 1:length(filesToCombine)
-      tmp = load(filesToCombine(ii).name);
-      fieldsToCombine = fields(tmp.spikeDataBankSlice);
-      for field_ind = 1:length(fieldsToCombine)
-        spikeDataBankTmp.(fieldsToCombine{field_ind}) = tmp.spikeDataBankSlice.(fieldsToCombine{field_ind});
-      end
-    end
-    output = spikeDataBankTmp;
-end
 end

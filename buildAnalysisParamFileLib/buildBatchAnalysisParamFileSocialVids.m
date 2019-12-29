@@ -30,7 +30,6 @@ plotSwitch.cellCount = 1;
 plotSwitch.slidingWindowANOVA = 1;
 
 %% Parameters
-
 preprocessParams.spikeDataFileName = 'spikeDataBank'; %File ending in .mat, not included to allow for slicing (e.g. 'spikeDataBank_1.mat'...)
 %3 variables below are not used, as defining the variables in a load
 %command w/ a cell array (or other structures) doesn't work.
