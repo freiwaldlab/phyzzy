@@ -18,17 +18,18 @@ switch SaveOrLoad
       spikeDataBankSlice.(fieldsToStore{field_i}) = structData.(fieldsToStore{field_i});
       if mod(field_i, fieldsPerFile) == 0 || field_i == length(fieldsToStore)
         output{spikeSliceCount} = fullfile(outDir, sprintf('spikeDataBank_%d.mat', spikeSliceCount));
-        fprintf('Saving %s now...', output{spikeSliceCount});
+        fprintf('Saving %s now... \n', output{spikeSliceCount});
         save(output{spikeSliceCount},'spikeDataBankSlice')
         clear spikeDataBankSlice
         spikeSliceCount = spikeSliceCount + 1;
       end
     end
   case 'load'
+    fprintf('loading spikeDataBank...\n')
     spikeDataBankTmp = struct();
     filesToCombine = dir(fullfile(outDir, ['spikeDataBank_*.mat']));
     for ii = 1:length(filesToCombine)
-      tmp = load(filesToCombine(ii).name);
+      tmp = load(fullfile(filesToCombine(ii).folder, filesToCombine(ii).name));
       fieldsToCombine = fields(tmp.spikeDataBankSlice);
       for field_ind = 1:length(fieldsToCombine)
         spikeDataBankTmp.(fieldsToCombine{field_ind}) = tmp.spikeDataBankSlice.(fieldsToCombine{field_ind});

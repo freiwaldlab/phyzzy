@@ -26,7 +26,10 @@ saveFigData = 0;            %#ok
 verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 
 %% Switches
-plotSwitch.cellCount = 1;
+calcSwitch.excludeRepeats = 1;
+calcSwitch.cellCount = 1;
+
+plotSwitch.stimPresCount = 1;
 plotSwitch.slidingWindowANOVA = 1;
 
 %% Parameters
@@ -37,9 +40,9 @@ preprocessParams.preprocessedVars = {'spikesByEvent','eventIDs','eventCategories
 preprocessParams.analyzedVars = {'analysisParamFilename','dateSubject', 'runNum', 'groupLabelsByImage','psthByImage','attendedObjData'}; %Variables extracted from analyzedData.mat
 preprocessParams.analysisParamVars = {'psthParams'}; %Variables extracted from analysisParam.mat
 
-cellCountParams.exludePhase2 = 1; % a switch which can be used to remove data from the same neuron collected in subsequent runs. Good for getting accurate counts.
-cellCountParams.batchRunxls = [analysisDirectory filesep 'BatchRunResults.xlsx'];                         %Batch analysis xlsx produced by processRunBatch.
-cellCountParams.recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data 2018\RecordingsMoUpdated.xlsx';  %Used to exclude phase 2 to give accurate unit counts.
+cellCountParams.excludePhase2 = 1; % a switch which can be used to remove data from the same neuron collected in subsequent runs. Good for getting accurate counts.
+cellCountParams.batchRunxls = fullfile(analysisDirectory,'BatchRunResults.xlsx');                         %Batch analysis xlsx produced by processRunBatch.
+cellCountParams.recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\RecordingsMoUpdated.xlsx';  %Used to exclude phase 2 to give accurate unit counts.
 
 slidingANOVAParams.binSize = 100;
 slidingANOVAParams.binStep = 25;

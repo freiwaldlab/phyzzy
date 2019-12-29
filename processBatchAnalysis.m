@@ -10,12 +10,16 @@ function spikeDataBankPath = processBatchAnalysis( varargin )
 % variables). spikeDataBank files end with '_N', while the other variables
 % end with 'Vars'. Vars file is 1st in cell array of file paths. 
 
-%% Set up
+%% Parse Arguments
 addpath(genpath('dependencies'));
 rmpath(genpath('dependencies/mvgc_v1.0')); %note: Not sure if this is appropriate replacement for genpath_exclude. previous line caused issues in parallel runs.
 addpath('buildAnalysisParamFileLib');
 
 switch length(varargin)
+  case 0
+    disp('using buildBatchAnalysisParamFileSocialVids');
+    batchAnalysisParamFile  = 'buildBatchAnalysisParamFileSocialVids';
+    usePreprocessedSpikeData = 1;
   case 1
     batchAnalysisParamFile  = varargin{1};
     usePreprocessedSpikeData = 1;
@@ -26,6 +30,7 @@ switch length(varargin)
     error('incorrect number of arguments')
 end
 
+%% Retrieve relevant parameters
 addpath('buildAnalysisParamFileLib');
 batchAnalysisParamFilename = feval(batchAnalysisParamFile);
 load(batchAnalysisParamFilename);
@@ -34,30 +39,32 @@ load(batchAnalysisParamFilename);
 spikeDataBaseFile = [outputDir '/' preprocessParams.spikeDataFileName];
 files = dir([spikeDataBaseFile '*.mat']);
 
-if ~isempty(files)
+if ~isempty(files) && usePreprocessedSpikeData
   disp('spikeDataBank found, Returning paths')
   spikeDataBankPath = cell(length(files),1);
   for file_ind = 1:length(files)
     spikeDataBankPath{file_ind} = fullfile(files(file_ind).folder,files(file_ind).name);
   end
 else
-  disp('spikeDataBank Not found, generating now...')
+  fprintf('spikeDataBank Not found, generating now... \n')
   %Cycle through analyzedData.mat files, store and organize the relevant structures.
   preprocessedList = dir([analysisDirectory filesep '**' filesep 'preprocessedData.mat']);
   analyzedList = dir([analysisDirectory filesep '**' filesep 'analyzedData.mat']);
   assert(length(preprocessedList) == length(analyzedList), 'Lists arent same length, confirm every preprocessed file has an analyzed file')
+  fprintf('Found %d processed runs.\n', length(analyzedList));
   
-  allStimuliVec = {};
   sessionList = cell(length(preprocessedList),1);
   spikeDataBank = struct();
   
   for ii = 1:length(preprocessedList)
+    if mod(ii, 10) == 0
+      fprintf('processing run %d... \n', ii)      
+    end
     tmp = load([preprocessedList(ii).folder filesep preprocessedList(ii).name],'spikesByEvent','eventIDs','eventCategories','preAlign','postAlign');
     tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'analysisParamFilename','dateSubject', 'runNum', 'groupLabelsByImage','psthByImage','attendedObjData');
     tmp3 = load([analyzedList(ii).folder filesep 'AnalysisParams.mat'], 'psthParams');
     
     sessField = sprintf('S%s%s', tmp2.dateSubject, tmp2.runNum);
-    allStimuliVec = [allStimuliVec; tmp.eventIDs];
     sessionList{ii} = [tmp2.dateSubject tmp2.runNum];
     spikeDataBank.(sessField).dateSubject = tmp2.dateSubject;
     spikeDataBank.(sessField).runNum = tmp2.runNum;
@@ -74,7 +81,6 @@ else
     %slidingANOVAparams.
     spikeDataBank.(sessField).figDir = preprocessedList(ii).folder;
   end
-  allStimuliVec = unique(allStimuliVec);
   spikeDataBankPath = saveSpikeDataBank(spikeDataBank, 5, 'save',outputDir);
   clearvars spikeDataBank
   nonSpikeSaveName = fullfile(outputDir, [preprocessParams.spikeDataFileName 'Vars']);
@@ -82,7 +88,7 @@ else
   save(nonSpikeSaveName)
 end
 
-%Return relevant paths to batchAnalysis.
+%Place the relevant paths into runBatchAnalysis.
 runBatchAnalysis(spikeDataBankPath)
 
 end
