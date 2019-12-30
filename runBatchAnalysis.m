@@ -32,7 +32,9 @@ if ~exist('unitCounts','var')
   [trueCellInd, trueCellRun, unitCounts] = trueCellCount(cellCountParams.batchRunxls, cellCountParams.recordingLogxls);
 end
 
-if calcSwitch.excludeRepeats && ~isfield(analysisLog, 'repeatsExcluded')
+if ~calcSwitch.excludeRepeats && isfield(analysisLog, 'repeatsExcluded')
+  error('Repeats already excluded in this spikeDataBank, delete and restart or change parameters')
+elseif calcSwitch.excludeRepeats && ~isfield(analysisLog, 'repeatsExcluded')
   % Exclude repeated recordings at the same site.
   for run_ind = 1:length(runList)
     sessionName = extractBetween(runList{run_ind}, 2, length(runList{run_ind}));
