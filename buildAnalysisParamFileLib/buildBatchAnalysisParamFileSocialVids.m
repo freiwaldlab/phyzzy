@@ -27,9 +27,9 @@ verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 
 %% Switches
 calcSwitch.excludeRepeats = 1;
-calcSwitch.cellCount = 1;
 
-plotSwitch.stimPresCount = 1;
+plotSwitch.stimPresCount = 1;         % Figures showing presentation counts across all runs, in development.
+plotSwitch.meanPSTH = 1;              % figure showing mean PSTH across all units, MUA, and Unsorted.
 plotSwitch.slidingWindowANOVA = 1;
 
 %% Parameters
@@ -44,29 +44,38 @@ cellCountParams.excludePhase2 = 1; % a switch which can be used to remove data f
 cellCountParams.batchRunxls = fullfile(analysisDirectory,'BatchRunResults.xlsx');                         %Batch analysis xlsx produced by processRunBatch.
 cellCountParams.recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\RecordingsMoUpdated.xlsx';  %Used to exclude phase 2 to give accurate unit counts.
 
+meanPSTHParams.stimParamsFilename = stimParamsFilename;
+meanPSTHParams.plotTopStim = 1;                 %Only plot stimuli which have been present on at least a certain number of runs.
+meanPSTHParams.topStimPresThreshold = 100;      %At least this many stim presentations to be plotted when plotTopStim is on.
+meanPSTHParams.broadLabel = 0;                  %Transitions individual stimuli to broad catagory (e.g. chasing).
+meanPSTHParams.zscorePSTHs = 0;                 %Normalizes PSTH values to the recording's fixation period.
+meanPSTHParams.maxStimOnly = 1;                 %The max value and max index taken from the PSTH is only in the area of the stimulus presentation.
+meanPSTHParams.broadLabelPool = {'chasing','fighting','mounting','grooming','holding','following','observing',...
+    'foraging','sitting','objects','goalDirected','idle','scramble','scene'}; %If broadLabel is on, all stimuli will have their labels changed to one of the labels in this array.
+meanPSTHParams.type = 'normal'; %options are 'normal', 'baselineSub', 'meanWhite'
+meanPSTHParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
+meanPSTHParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
+meanPSTHParams.psthPost = 500;
+meanPSTHParams.latency = 0;
+meanPSTHParams.movingWin = [200 5];
+meanPSTHParams.smoothingWidth = 25;  %psth smoothing width, in ms
+meanPSTHParams.Zscore = 0;  % 0: raw PSTH, 1: pre-trial baseline subtraction Z Scored PSTH, 2: whole trial baseline subtracted Z Scored PSTH
+meanPSTHParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
+meanPSTHParams.errorRangeZ = 1; %how many standard errors to show
+meanPSTHParams.bootstrapSamples = 100;
+meanPSTHParams.sortStim = 1;
+meanPSTHParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble';'allStim'};
+meanPSTHParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
+load(meanPSTHParams.psthColormapFilename);
+meanPSTHParams.colormap = map;  
+  
 slidingANOVAParams.binSize = 100;
 slidingANOVAParams.binStep = 25;
 slidingANOVAParams.Omega = 1; %switch to convert ANOVA curves to Omega curves.
 slidingANOVAParams.target = {'socialInteraction','agents','interaction'};  %Labels which must exist in the stimParamFile associated with the runs. 
 slidingANOVAParams.stimParamFile = stimParamsFilename;
-
-psthParams.type = 'normal'; %options are 'normal', 'baselineSub', 'meanWhite'
-psthParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
-psthParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
-psthParams.psthPost = 500;
-psthParams.latency = 0;
-psthParams.movingWin = [200 5];
-psthParams.smoothingWidth = 25;  %psth smoothing width, in ms
-psthParams.Zscore = 0;  % 0: raw PSTH, 1: pre-trial baseline subtraction Z Scored PSTH, 2: whole trial baseline subtracted Z Scored PSTH
-psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
-psthParams.errorRangeZ = 1; %how many standard errors to show
-psthParams.bootstrapSamples = 100;
-psthParams.sortStim = 1;
-psthParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble';'allStim'};
-psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
-load(psthParams.psthColormapFilename);
-psthParams.colormap = map;
-psthParams.stimParamFile = stimParamsFilename;
+slidingANOVAParams.outputDir = outputDir;
+slidingANOVAParams.spikeDataFileName = preprocessParams.spikeDataFileName;
 
 analysisParamFilenameStem = 'batchAnalysisParams.mat';
 if ~exist([outputDir '/'])
