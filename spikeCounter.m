@@ -8,6 +8,7 @@ function [ spikeCounts, spikeRatesTrialAve, spikeRatesTrialErr] = spikeCounter( 
 %   - spikeCounts: cell array of per-trial counts and rates, indexed {channel}{unit}{item}.counts(trial) and .rates(trial).
 %   - spikeCountTrialAve: trial ave spike rates, indexed {channel}(unit,item)
 %   - spikeCountTrialErr: trial sterr spike rates, indexed {channel}(unit,item)
+%     - to make sterr into std, multiply by root number of trials.
 %   todo: 
 %   - add mean spike time and spike time stdev, or gaussian fit?
 

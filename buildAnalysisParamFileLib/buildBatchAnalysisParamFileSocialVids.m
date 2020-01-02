@@ -30,6 +30,7 @@ calcSwitch.excludeRepeats = 1;
 
 plotSwitch.stimPresCount = 1;         % Figures showing presentation counts across all runs, in development.
 plotSwitch.meanPSTH = 1;              % figure showing mean PSTH across all units, MUA, and Unsorted.
+plotSwitch.frameFiringRates = 1;      % Figures showing raw, max, mean rates per object depending on viewing during frame.
 plotSwitch.slidingWindowANOVA = 1;
 
 %% Parameters
@@ -46,7 +47,7 @@ cellCountParams.recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\Recordi
 
 meanPSTHParams.stimParamsFilename = stimParamsFilename;
 meanPSTHParams.plotTopStim = 1;                 %Only plot stimuli which have been present on at least a certain number of runs.
-meanPSTHParams.topStimPresThreshold = 100;      %At least this many stim presentations to be plotted when plotTopStim is on.
+meanPSTHParams.topStimPresThreshold = 50;      %At least this many stim presentations to be plotted when plotTopStim is on.
 meanPSTHParams.broadLabel = 0;                  %Transitions individual stimuli to broad catagory (e.g. chasing).
 meanPSTHParams.zscorePSTHs = 0;                 %Normalizes PSTH values to the recording's fixation period.
 meanPSTHParams.maxStimOnly = 1;                 %The max value and max index taken from the PSTH is only in the area of the stimulus presentation.
@@ -68,6 +69,9 @@ meanPSTHParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';
 meanPSTHParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
 load(meanPSTHParams.psthColormapFilename);
 meanPSTHParams.colormap = map;  
+
+frameFiringParams.broadLabels = 0;
+frameFiringParams;
   
 slidingANOVAParams.binSize = 100;
 slidingANOVAParams.binStep = 25;
