@@ -11,7 +11,7 @@ function OutCellArray = initNestedCellArray(varargin)
 % 4th argument = depth, if the full depth isn't desired. (default = 100)
 %% Parse Arguments
 fill = 'cell';
-fillSize = [1 1];
+fillSize = [0 0];
 depth = 100;
 
 switch nargin()
