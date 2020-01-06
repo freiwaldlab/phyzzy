@@ -650,142 +650,161 @@ function spikeDataBank = frameFiringRates(spikeDataBank,params)
 % Generate variables needed
 runList = fields(spikeDataBank);
 
-% Step 1 - generate bin times and spike rates, and proper memberships to groups.
-% if 1%~isfield(spikeDataBank.(runList{1}), 'epochRates')
-%   for run_ind = 1:length(runList)
-%     runStruct = spikeDataBank.(runList{run_ind});
-%     starts = (runStruct.start:binStep:(runStruct.end - binSize))';
-%     ends = (runStruct.start+binSize:binStep:(runStruct.end))';
-%     spikeDataBank.(runList{run_ind}).epochs = [starts,ends];
-%     spikeDataBank.(runList{run_ind}).epochRates = cell(length(starts),1);
-%     for bin_ind = 1:length(starts)
-%       [spikeDataBank.(runList{run_ind}).epochRates{bin_ind}, ~, ~] = spikeCounter(spikeDataBank.(runList{run_ind}).spikesByEvent, starts(bin_ind), ends(bin_ind));
-%     end
-%     for group_ind = 1:length(target)
-%       groupDef = target{group_ind};
-%       nestStrCmp = @(x) any(strcmp(x, groupDef));
-%       spikeDataBank.(runList{run_ind}).catagoryInd(:,group_ind) = cell2mat(cellfun(nestStrCmp, runStruct.eventCategories,'UniformOutput',0));
-%     end
-%   end
-%   saveSpikeDataBank(spikeDataBank, 5, 'save',params.outputDir);
-% else
-%   fprintf('Sliding windows rates already calculated, continuing... \n');
-% end
-
-
-% Step 2 - Perform ANOVA, Omega calculation, and store values.
-% performs an ANOVA on rates across a trial, starting at trial time 0, in some predefined steps.
-plotCells = 0;
-depth = 2;
-for run_ind = 1:length(runList)
-  % Check if pValues have already been recorded for this run.
-  if ~isfield(spikeDataBank.(runList{length(run_ind)}),'pVec')
-    % Initialize relevant Structures
-    [pVec, nullVec] = deal(initNestedCellArray(spikeDataBank.(runList{run_ind}).epochRates{1}, 'ones', [length(spikeDataBank.(runList{run_ind}).epochs), length(target)], depth)); % Initialize each p value array.
-    omegaVec = initNestedCellArray(spikeDataBank.(runList{run_ind}).epochRates{1}, 'zeros', [length(spikeDataBank.(runList{run_ind}).epochs), length(target)], depth);
-    %[maxOmegaVec] = deal(initNestedCellArray(spikeDataBank.(runList{run_ind}).epochRates{1}, 'zeros', [1, length(target)], depth)); % Initialize each p value array.
-    if length(unique(spikeDataBank.(runList{run_ind}).catagoryInd)) > 1 %Only run tests where you have members in each group.
-      for bin_ind = 1:length(spikeDataBank.(runList{run_ind}).epochs)
-        for chan_ind = 1:length(spikeDataBank.(runList{run_ind}).epochRates{bin_ind})
-          for unit_ind = 1:length(spikeDataBank.(runList{run_ind}).epochRates{bin_ind}{chan_ind})
-            unitResponsePerEvent = spikeDataBank.(runList{run_ind}).epochRates{bin_ind}{chan_ind}{unit_ind};
-            catagortyInd = spikeDataBank.(runList{run_ind}).catagoryInd;
-            %unitData{event}.rates = trial*1
-            for target_ind = 1:length(target)
-              if length(unique(catagortyInd(:,target_ind))) == 1
-                break % If there is only 1 label type, there is no comparison to be made.
-              end
-              [trialSpikes, trialLabels]  = deal([]);
-              % grab the relevant events
-              targetInd = catagortyInd(:,target_ind);
-              targetSpikes = unitResponsePerEvent(targetInd);
-              otherSpikes = unitResponsePerEvent(~targetInd);
-              % Initialize relevant vecotrs
-              spikeGroups = {targetSpikes otherSpikes};
-              spikeGroupLabels ={(target{target_ind}) (['non-' target{target_ind}])};
-              % Cluster and reshape the arrays properly
-              for group_i = 1:length(spikeGroups)
-                tmp = spikeGroups{group_i};
-                tmp = [tmp{:}];
-                dataVec = vertcat(tmp.rates);
-                labelVec = repmat(spikeGroupLabels(group_i), length(dataVec),1);
-                trialSpikes = vertcat(trialSpikes,dataVec);
-                trialLabels = vertcat(trialLabels, labelVec);
-              end
-              % Check for social v non-social
-              [pVec{chan_ind}{unit_ind}(bin_ind,target_ind), pStatsTable, ~] = anovan(trialSpikes,{trialLabels},'model','interaction','varnames',{'SvNS'}, 'alpha', 0.05,'display','off');
-              top = pStatsTable{2,3} * (pStatsTable{2,5} - pStatsTable{3,5});
-              bottom = (pStatsTable{2,3}*pStatsTable{2,5})+(pStatsTable{4,3}-pStatsTable{2,3})*pStatsTable{3,5};
-              omegaVec{chan_ind}{unit_ind}(bin_ind,target_ind) = top/bottom;
-              [nullPVec, nullOmegaVec] = deal(zeros(1,100));
-              for rand_ind = 1:50
-                trialLabels = trialLabels(randperm(length(trialLabels)));
-                [nullPVec(rand_ind), pStatsTable, ~] = anovan(trialSpikes,{trialLabels},'model','interaction','varnames',{'SvNS'}, 'alpha', 0.05,'display','off');
-                top = pStatsTable{2,3} * (pStatsTable{2,5} - pStatsTable{3,5});
-                bottom = (pStatsTable{2,3}*pStatsTable{2,5})+(pStatsTable{4,3}-pStatsTable{2,3})*pStatsTable{3,5};
-                nullOmegaVec(rand_ind) = top/bottom;
-              end
-              nullVec{chan_ind}{unit_ind}(bin_ind,target_ind) = mean(nullPVec);
-              % On the last bin, do the desired stimulus wide calculations
-              % for collected traces.
-%               if bin_ind == length(spikeDataBank.(runList{run_ind}).epochs)
-%                 maxOmegaVec{chan_ind}{unit_ind} = max(omegaVec{chan_ind}{unit_ind});
-%               end
+% Step 1 - generate bin times and spike rates.
+if ~isfield(spikeDataBank.(runList{end}), 'frameFiringRates')
+  for run_ind = 1:length(runList)
+    runStruct = spikeDataBank.(runList{run_ind});
+    if length(unique(cellfun('length',runStruct.attendedObjData.frameStartInd))) == 1 % If all the videos are the same number of frames
+      starts = runStruct.attendedObjData.frameStartInd{1}'+params.delay;
+      ends = runStruct.attendedObjData.frameEndInd{1}'+params.delay;
+      spikeDataBank.(runList{run_ind}).frameTimes = [starts,ends];
+      spikeDataBank.(runList{run_ind}).frameFiringRates = cell(length(starts),1);
+      frameFiringRatesTmp = cell(length(starts),1);
+      for frame_ind = 1:length(starts)
+        % spikeDataBank.run.framingFiringRates{epoch/bin}{channel}{unit}{stim}
+        [frameFiringRatesTmp{frame_ind}, ~, ~] = spikeCounter(spikeDataBank.(runList{run_ind}).spikesByEvent, starts(frame_ind), ends(frame_ind));
+      end
+    else
+      error('Different stimuli contain different number of frames. Implement different spikeCounting method.')
+    end
+    % Step 1.5 - Rearrange frameFiringRatesTmp to match attendedObjVect data {channel}{unit}{stimuli}(trials*frames)
+    frameCount = length(frameFiringRatesTmp);
+    trialCount = length(frameFiringRatesTmp{1}{1}{1}{1}.counts);
+    frameFiringRates = initNestedCellArray(frameFiringRatesTmp{1},'zeros',[trialCount, frameCount]);
+    for chan_ind = 1:length(frameFiringRatesTmp{1})
+      for unit_ind = 1:length(frameFiringRatesTmp{1}{chan_ind})
+        frameFiringRatesUnitTmp = initNestedCellArray(runStruct.attendedObjData.attendedObjVect, 'zeros', [size(runStruct.attendedObjData.attendedObjVect{1})],1);
+        for frame_ind = 1:length(frameFiringRatesTmp)
+          for stim_ind = 1:length(frameFiringRatesTmp{frame_ind}{chan_ind}{unit_ind})
+            if frame_ind == 1
+              frameFiringRatesUnitTmp{stim_ind} = zeros(size(runStruct.attendedObjData.attendedObjVect{stim_ind}));
+            end
+            if params.useRates
+            frameFiringRatesUnitTmp{stim_ind}(:,frame_ind) = frameFiringRatesTmp{frame_ind}{chan_ind}{unit_ind}{stim_ind}.rates;
+            else
+              frameFiringRatesUnitTmp{stim_ind}(:,frame_ind) = frameFiringRatesTmp{frame_ind}{chan_ind}{unit_ind}{stim_ind}.counts;
             end
           end
         end
+        frameFiringRates{chan_ind}{unit_ind} = frameFiringRatesUnitTmp;
       end
-    else
-      disp('Skipping')
     end
-    spikeDataBank.(runList{run_ind}).pVec = pVec;
-    spikeDataBank.(runList{run_ind}).nullPVec = nullVec;
-%     spikeDataBank.(runList{run_ind}).maxOmegaVec = maxOmegaVec;
-    spikeDataBank.(runList{run_ind}).omegaVec = omegaVec;
-    % Plot the results for each unit seen
-    if plotCells
-      for chan_ind = 1:length(pVec)
-        for unit_ind = 1:length(pVec{chan_ind})
-          if unit_ind == 1
-            ANOVAvarName = ['Ch' num2str(chan_ind) ' Unsorted - SocVsNonSoc'];
-          elseif unit_ind == length(pVec{chan_ind})
-            ANOVAvarName = ['Ch' num2str(chan_ind) ' MUA - SocVsNonSoc'];
+    spikeDataBank.(runList{run_ind}).frameFiringRates = frameFiringRates;
+    disp(run_ind)
+  end
+  saveSpikeDataBank(spikeDataBank, 5, 'save',params.outputDir);
+else
+  fprintf('Frame firing rates already calculated., continuing... \n');
+end
+
+% Step 2 - Go through each run, sum frame counts/rates associated with the
+% specific objects being attended. Plot individual figures if desired.
+groupingType = {'Unsorted','Units','MUA'};
+dataType = {'Bins','Means','Max Value','Max Value Ind'};
+objList = spikeDataBank.(runList{1}).attendedObjData.objList;
+objListBroad = {'Face','Body','Hand','GazeFollow','Object','Bkg'};
+
+if params.broadLabels
+  objListPlot = objListBroad;
+else
+  objListPlot = objList;
+end
+
+% Structure to reference
+%frameFiringRates{channel}{unit}{stim}(trial,frame)
+
+% Structure to Generate
+%frameFiringRatesTotal{stim}{obj}{groupingType}{dataType}
+
+for run_ind = 1:length(runList)
+  disp(run_ind)
+  frameFiringRates = spikeDataBank.(runList{run_ind}).frameFiringRates;
+  attendedObjVect = spikeDataBank.(runList{run_ind}).attendedObjData.attendedObjVect;
+  eventIDs = spikeDataBank.(runList{run_ind}).eventIDs;
+
+  for stim_ind = 1:length(attendedObjVect)
+    stimAttendedObj = attendedObjVect{stim_ind};
+    % Per Stimuli Plot
+    for channel_ind = 1:length(frameFiringRates)
+      ObjFrameFiringRates = initNestedCellArray([length(attendedObjVect), length(objListPlot), length(frameFiringRates{channel_ind}), length(dataType)],'zeros');
+      for unit_ind = 1:length(frameFiringRates{channel_ind})
+        spikeStruct = frameFiringRates{channel_ind}{unit_ind}{stim_ind};
+        % Concatonate to the correct Matrix (index matching phyzzy convention)
+        if unit_ind == 1 % Unsorted
+          groupInd = 1;           unitTitle = 'Unsorted';
+        elseif unit_ind == length(frameFiringRates{channel_ind}) % MUA
+          groupInd = 3;           unitTitle = 'MUA';
+        else % Unit
+          groupInd = 2;           unitTitle = sprintf('Unit %d', unit_ind-1);
+        end
+        for obj_ind = 1:length(objList)
+          objRates = spikeStruct(strcmp(stimAttendedObj, objList{obj_ind}));
+          %           Z-score if needed
+          %             if params.zscorePSTHs
+%               fixMean = mean(unitActivity(1:abs(tmpRunStruct.start))); %Find activity during fixation
+%               fixSD = std(unitActivity(1:abs(tmpRunStruct.start)));
+%               if fixMean == 0 || fixSD == 0
+%                 fixMean = mean(unitActivity);
+%                 fixSD = std(unitActivity);
+%               end
+%               unitActivity = (unitActivity - fixMean)/fixSD;
+%             end         
+
+          % Identify correct object group, when using broad labels.
+          if params.broadLabels
+            switch find(strcmp(objList,objList{obj_ind}))
+              case {1,7};         objStoreInd = 1;
+              case {2,8};         objStoreInd = 2;
+              case {3,4,9,10};    objStoreInd = 3;
+              case {5,11};        objStoreInd = 4;
+              case {6,12};        objStoreInd = 5;
+              case 13;            objStoreInd = 6;
+            end
           else
-            ANOVAvarName = ['Ch' num2str(chan_ind) ' U' num2str(unit_ind-1) ' - SocVsNonSoc'];
+            objStoreInd = obj_ind;
           end
-          figure()
-          plot(pVec{chan_ind}{unit_ind},'linewidth',2)
-          hold on
-          xlim([0,size(pVec{chan_ind}{unit_ind},1)]);
-          ylim([0,1]);
-          plot([0,size(pVec{chan_ind}{unit_ind},1)],[0.05, 0.05],'k','linewidth',3)
-          title(sprintf('Sliding Scale ANOVA - %s',ANOVAvarName))
-          fracSig = round(sum(pVec{chan_ind}{unit_ind} < 0.05)/length(pVec{chan_ind}{unit_ind}), 3, 'significant');
-          fragSigNull = round(sum(pVec{chan_ind}{unit_ind} < 0.4)/length(pVec{chan_ind}{unit_ind}), 3, 'significant');
-          for leg_ind = 1:length(target)
-            legendText{leg_ind} = sprintf('%s (%s;%s)', target{leg_ind}, num2str(fracSig(leg_ind)),num2str(fragSigNull(leg_ind)));
-          end
-          for null_ind = 1:length(target)
-            h.(sprintf('NullLine%d', null_ind)) = mseb(1:length(nullVec{chan_ind}{unit_ind}),nullVec{chan_ind}{unit_ind}(:,null_ind)', errVec{chan_ind}{unit_ind}(:,null_ind)');
-            h.(sprintf('NullLine%d', null_ind)).patch.FaceAlpha = '0.5';
-          end
-          legend(legendText);
+          [maxVal, maxInd] = max(objRates);
+          ObjFrameFiringRates{stim_ind}{objStoreInd}{unit_ind}{1} = [ObjFrameFiringRates{stim_ind}{objStoreInd}{unit_ind}{1}; objRates];
+          ObjFrameFiringRates{stim_ind}{objStoreInd}{unit_ind}{3} = [ObjFrameFiringRates{stim_ind}{objStoreInd}{unit_ind}{3}; maxVal];
+          ObjFrameFiringRates{stim_ind}{objStoreInd}{unit_ind}{4} = [ObjFrameFiringRates{stim_ind}{objStoreInd}{unit_ind}{4}; maxInd];
+        end
+        for obj_ind = 1:length(objListPlot) % Once all the counts are gathered, calculate means.
+          ObjFrameFiringRates{stim_ind}{obj_ind}{unit_ind}{2} = mean(ObjFrameFiringRates{stim_ind}{obj_ind}{unit_ind}{1});
         end
       end
+      if plotRuns
+        % Plot in large subplot grid.
+        figTitle = sprintf('%s - Obj firing rates, Ch%d', eventIDs{stim_ind}, channel_ind);
+        h = figure('Name', figTitle);
+        sgtitle(figTitle)
+        for unit_ind = 1:length(frameFiringRates{channel_ind})
+          if unit_ind == 1 % Unsorted
+            groupInd = 1;           unitTitle = 'Unsorted';
+          elseif unit_ind == length(frameFiringRates{channel_ind}) % MUA
+            groupInd = 3;           unitTitle = 'MUA';
+          else % Unit
+            groupInd = 2;           unitTitle = sprintf('Unit %d', unit_ind-1);
+          end
+          for obj_ind = 1:length(objListPlot)
+            subplot(length(frameFiringRates{channel_ind}), length(objListPlot),(((unit_ind-1)*length(objListPlot))+obj_ind))
+            histogram(ObjFrameFiringRates{stim_ind}{obj_ind}{unit_ind}{1}, 3)
+            countMean = mean(ObjFrameFiringRates{stim_ind}{obj_ind}{unit_ind}{1});
+            title(sprintf('%s (\x03bc  = %s)',objListPlot{obj_ind},num2str(round(countMean,2))));
+            if obj_ind == 1
+              ylabel(unitTitle)
+            end
+          end
+        end
+        savefig(fullfile(spikeDataBank.(runList{run_ind}).figDir, [figTitle '.fig']));
+        close(h)
+      end
     end
-    % Every 20 runs, save progress back to the files
-    if mod(run_ind,20) == 0 || run_ind == length(runList)
-      disp(run_ind)
-      saveSpikeDataBank(spikeDataBank, 5, 'save',params.outputDir);
-    end
-  else
-    sprintf('spikeDataBank field already has pVec, moving to next field... \n')
   end
+  % Structure is ObjFrameFiringRates{stim}{obj}{unit}{dataType}
+  spikeDataBank.(runList{run_ind}).ObjFrameFiringRates = ObjFrameFiringRates;
 end
-sprintf('ANOVA Omega Calculations finished... \n')
 
-% Count Results of ANOVA across all units, count stretches of significant
-% bins.
+% Step 3 - 
 totalUnitCount = 0;
 totalChannelCount = 0;
 [sigBinCountUnit, sigBinCountUnsorted, sigBinCountMUA, ...

@@ -29,7 +29,7 @@ verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 calcSwitch.excludeRepeats = 1;
 
 plotSwitch.stimPresCount = 1;         % Figures showing presentation counts across all runs, in development.
-plotSwitch.meanPSTH = 1;              % figure showing mean PSTH across all units, MUA, and Unsorted.
+plotSwitch.meanPSTH = 0;              % figure showing mean PSTH across all units, MUA, and Unsorted.
 plotSwitch.frameFiringRates = 1;      % Figures showing raw, max, mean rates per object depending on viewing during frame.
 plotSwitch.slidingWindowANOVA = 1;
 
@@ -70,9 +70,13 @@ meanPSTHParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable,
 load(meanPSTHParams.psthColormapFilename);
 meanPSTHParams.colormap = map;  
 
-frameFiringParams.broadLabels = 0;
-frameFiringParams;
-  
+frameFiringParams.outputDir = outputDir;
+frameFiringParams.broadLabels = 1;
+frameFiringParams.useRates = 0;     % collected data per frame can be in rates or spike counts. 1 = Rates, 0 = spikeCounts.
+frameFiringParams.delay = 70;       % Hypothetical delay between frame and the activity it causes. deduced from Mean PSTHs.
+frameFiringParams.plotRuns = 0;     % Plot Histograms of values across individual runs. 
+
+
 slidingANOVAParams.binSize = 100;
 slidingANOVAParams.binStep = 25;
 slidingANOVAParams.Omega = 1; %switch to convert ANOVA curves to Omega curves.
