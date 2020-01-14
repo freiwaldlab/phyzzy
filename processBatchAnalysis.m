@@ -61,7 +61,7 @@ else
       fprintf('processing run %d... \n', ii)      
     end
     tmp = load([preprocessedList(ii).folder filesep preprocessedList(ii).name],'spikesByEvent','eventIDs','eventCategories','preAlign','postAlign');
-    tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'analysisParamFilename','dateSubject', 'runNum', 'groupLabelsByImage','psthByImage','attendedObjData');
+    tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'analysisParamFilename','dateSubject', 'runNum', 'groupLabelsByImage','psthByImage','psthErrByImage','attendedObjData');
     tmp3 = load([analyzedList(ii).folder filesep 'AnalysisParams.mat'], 'psthParams');
     
     sessField = sprintf('S%s%s', tmp2.dateSubject, tmp2.runNum);
@@ -70,6 +70,7 @@ else
     spikeDataBank.(sessField).runNum = tmp2.runNum;
     spikeDataBank.(sessField).spikesByEvent = tmp.spikesByEvent;
     spikeDataBank.(sessField).psthByImage = tmp2.psthByImage;
+    spikeDataBank.(sessField).psthErrByImage = tmp2.psthErrByImage;
     spikeDataBank.(sessField).attendedObjData = tmp2.attendedObjData;
     spikeDataBank.(sessField).eventIDs = tmp.eventIDs;
     spikeDataBank.(sessField).eventCategories = tmp.eventCategories;
@@ -81,7 +82,7 @@ else
     %slidingANOVAparams.
     spikeDataBank.(sessField).figDir = preprocessedList(ii).folder;
   end
-  spikeDataBankPath = saveSpikeDataBank(spikeDataBank, 5, 'save',outputDir);
+  spikeDataBankPath = saveSpikeDataBank(spikeDataBank, 2, 'save',outputDir);
   clearvars spikeDataBank
   nonSpikeSaveName = fullfile(outputDir, [preprocessParams.spikeDataFileName 'Vars']);
   spikeDataBankPath = [nonSpikeSaveName; spikeDataBankPath];

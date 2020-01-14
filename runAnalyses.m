@@ -5210,7 +5210,7 @@ function spikesByStimBinned = calcSpikeTimes(spikesByStim, movingWin, smoothingW
 %Wrapper which cycles through a particular Stimulus tier (Catagory or
 %Event/Image) and feeds it into the chronux binspikes function with bin
 %sizes of 1 ms.
-assert((movingWin(1)/2 > 3*smoothingWidth),'Error: current implementation assumes that movingWin/2 > 3*psthSmoothingWidth. Not true here');
+assert((movingWin(1)/2 >= 3*smoothingWidth),'Error: current implementation assumes that movingWin/2 > 3*psthSmoothingWidth. Not true here');
 
 spikesByStimBinned = cell(size(spikesByStim));
 for image_i = 1:length(spikesByStim)
@@ -5242,6 +5242,7 @@ movingWin = psthParams.movingWin;
 times = -psthParams.psthPre:(psthParams.psthImDur+psthParams.psthPost);
 psthErrorType = psthParams.errorType;
 psthErrorRangeZ = psthParams.errorRangeZ;
+psthBootstrapSamples = psthParams.bootstrapSamples;
 
 spikesByItem = spikesByStim;
 psthEmptyByItem = psthEmptyByStim;
@@ -5253,10 +5254,10 @@ if ~spikeTimes
   smoothingFilter = smoothingFilter/sum(smoothingFilter);
 end
 
-%initialize vecotrs for PSTH and accompanying error.
+% Initialize vectors for PSTH and accompanying error.
 [psthByItem, psthErrByItem] = deal(cell(length(channelNames),1));
 
-%Cycle through channels, units, then items.
+% Cycle through channels, units, then items.
 for channel_i = 1:length(channelNames)
   [channelItemPsth, channelItemPsthErr] = deal(cell(length(channelUnitNames{channel_i}),1));
   for unit_i = 1:length(channelUnitNames{channel_i})
@@ -5269,17 +5270,17 @@ for channel_i = 1:length(channelNames)
           paddedPsthErr = 1000*paddedPsthErr;
           unitItemPsth(item_i,:) = paddedPsth(3*smoothingWidth+1:end-3*smoothingWidth);
           unitItemPsthErr(item_i,:) = paddedPsthErr(3*smoothingWidth+1:end-3*smoothingWidth)*psthErrorRangeZ/2; %note: psth returns +/- 2 stderr; thus the factor of 0.5
-        else %use spike bins
+        else % use spike bins
           paddedPsth = 1000*conv(mean(spikesByItem{item_i}{channel_i}{unit_i},1),smoothingFilter,'same');
           if psthErrorType == 1 || size(spikesByItem{item_i}{channel_i}{unit_i},1) == 1  % if only one trial, can't use bootstrap
             %note: the factor of sqrt(1000) appears because we need to convert to spks/ms to get poisson error, then back to Hz
             paddedPsthErr = sqrt(paddedPsth)*(sqrt(1000)*psthErrorRangeZ/sqrt(size(spikesByItem{item_i}{channel_i}{unit_i},1)));
+          elseif psthErrorType == 2
+            paddedPsthErr = std(bootstrp(psthBootstrapSamples,@(x) mean(x,1),convn(spikesByItem{item_i}{channel_i}{unit_i},smoothingFilter,'same')),[],1)*psthErrorRangeZ*1000;
+          elseif psthErrorType == 3
+            paddedPsthErr = convn(std(spikesByItem{item_i}{channel_i}{unit_i},[],1),smoothingFilter,'same')*psthErrorRangeZ*1000/sqrt(size(spikesByItem{item_i}{channel_i}{unit_i},1));
           else
-            if psthErrorType == 2
-              paddedPsthErr = std(bootstrp(psthBootstrapSamples,@(x) mean(x,1),convn(spikesByItem{item_i}{channel_i}{unit_i},smoothingFilter,'same')),[],1)*psthErrorRangeZ*1000;
-            else
-              paddedPsthErr = convn(std(spikesByItem{item_i}{channel_i}{unit_i},[],1),smoothingFilter,'same')*psthErrorRangeZ*1000/sqrt(size(spikesByItem{item_i}{channel_i}{unit_i},1));
-            end
+            error('psthErrorType parameter, when using spike bins, must be between 1 and 3')
           end
           unitItemPsth(item_i,:) = paddedPsth(movingWin(1)/2+1:end-movingWin(1)/2);
           unitItemPsthErr(item_i,:) = paddedPsthErr(movingWin(1)/2+1:end-movingWin(1)/2)*psthErrorRangeZ;

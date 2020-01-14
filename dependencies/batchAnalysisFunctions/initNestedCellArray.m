@@ -7,8 +7,10 @@ function OutCellArray = initNestedCellArray(varargin)
 % 2nd Argument = 'ones','zeros','NaN', or 'cell', to distinguish structure
 % at bottom. default is cell
 % 3rd argument = array of dimensions to feed into 2nd argument function.
-% default is [1, 1].
+% default is [0, 0].
 % 4th argument = depth, if the full depth isn't desired. (default = 100)
+
+%Defaults: (Array, 'cell', [0 0], 100)
 %% Parse Arguments
 fill = 'cell';
 fillSize = [0 0];

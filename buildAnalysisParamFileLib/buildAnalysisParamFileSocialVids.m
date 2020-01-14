@@ -319,7 +319,7 @@ chronuxParams.fs = 1;
 chronuxParams.trialave = 1;
 chronuxParams.err = [1 .05];  %note: first entry will be automatically switched to 2 if calcSwitch.useJacknife == 1
 chronuxParams.fpass = [0 .1]; 
-tfParams.movingWin = [200 5]; 
+tfParams.movingWin = [300 5]; 
 tfParams.specgramRowAve = 0;
 
 psthParams.type = 'normal'; %options are 'normal', 'baselineSub', 'meanWhite'
@@ -328,9 +328,9 @@ psthParams.psthImDur = 2800;  % only need to set this for variable length stim r
 psthParams.psthPost = 500;
 psthParams.latency = 0;
 psthParams.movingWin = tfParams.movingWin;
-psthParams.smoothingWidth = 25;  %psth smoothing width, in ms
+psthParams.smoothingWidth = 40;  %psth smoothing width, in ms
 psthParams.Zscore = 0;  % 0: raw PSTH, 1: pre-trial baseline subtraction Z Scored PSTH, 2: whole trial baseline subtracted Z Scored PSTH
-psthParams.errorType = 1; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
+psthParams.errorType = 2; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;
 psthParams.sortStim = 1;
