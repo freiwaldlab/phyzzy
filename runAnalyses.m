@@ -5278,7 +5278,7 @@ for channel_i = 1:length(channelNames)
           elseif psthErrorType == 2
             paddedPsthErr = std(bootstrp(psthBootstrapSamples,@(x) mean(x,1),convn(spikesByItem{item_i}{channel_i}{unit_i},smoothingFilter,'same')),[],1)*psthErrorRangeZ*1000;
           elseif psthErrorType == 3
-            paddedPsthErr = convn(std(spikesByItem{item_i}{channel_i}{unit_i},[],1),smoothingFilter,'same')*psthErrorRangeZ*1000/sqrt(size(spikesByItem{item_i}{channel_i}{unit_i},1));
+            paddedPsthErr = std(convn(spikesByItem{item_i}{channel_i}{unit_i},smoothingFilter,'same'),[],1)*psthErrorRangeZ*1000/sqrt(size(spikesByItem{item_i}{channel_i}{unit_i},1));
           else
             error('psthErrorType parameter, when using spike bins, must be between 1 and 3')
           end

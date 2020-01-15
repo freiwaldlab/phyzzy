@@ -6,7 +6,7 @@ machine = machine(~isspace(machine));
 
 switch machine
   case 'Alienware_FA'
-    analysisDirectory = slashSwap('D:\DataAnalysis\FullTime');
+    analysisDirectory = slashSwap('D:\DataAnalysis\Jan2020');
     outputDir = [analysisDirectory '/batchAnalysis'];
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
   case 'HomeDesktop'
@@ -49,11 +49,11 @@ cellCountParams.recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\Recordi
 
 meanPSTHParams.outputDir = fullfile(outputDir,'meanPSTH');
 meanPSTHParams.stimParamsFilename = stimParamsFilename;
-meanPSTHParams.plotTopStim = 1;                 %Only plot stimuli which have been present on at least a certain number of runs.
-meanPSTHParams.topStimPresThreshold = 50;      %At least this many stim presentations to be plotted when plotTopStim is on.
-meanPSTHParams.broadLabel = 1;                  %Transitions individual stimuli to broad catagory (e.g. chasing).
-meanPSTHParams.zscorePSTHs = 1;                 %Normalizes PSTH values to the recording's fixation period.
-meanPSTHParams.maxStimOnly = 1;                 %The max value and max index taken from the PSTH is only in the area of the stimulus presentation.
+meanPSTHParams.plotTopStim = 1;                 % Only plot stimuli which have been present on at least a certain number of runs.
+meanPSTHParams.topStimPresThreshold = 20;       % At least this many stim presentations to be plotted when plotTopStim is on.
+meanPSTHParams.broadLabel = 0;                  % Transitions individual stimuli to broad catagory (e.g. chasing).
+meanPSTHParams.prcSigChangePSTHs = 0;           % Normalizes PSTH values to the recording's fixation period.
+meanPSTHParams.maxStimOnly = 1;                 % The max value and max index taken from the PSTH is only in the area of the stimulus presentation.
 meanPSTHParams.broadLabelPool = {'chasing','fighting','mounting','grooming','holding','following','observing',...
     'foraging','sitting','objects','goalDirected','idle','scramble','scene'}; %If broadLabel is on, all stimuli will have their labels changed to one of the labels in this array.
 meanPSTHParams.topPSTHRunExtract = 3;           % meanPSTH will return a structure of run indices of the top PSTHes by activity (influenced by Z-scoring). This number dictates how many of the top are returned.

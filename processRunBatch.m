@@ -11,9 +11,12 @@ function [] = processRunBatch(varargin)
 %       'buildAnalysisParamFileSocVid'. User will be prompted to select
 %       directory with files.
 
+replaceAnalysisOut = 0; % This generates an excel file at the end based on previous analyses. Don't use when running anew.
+usePreprocessed = 0;    % uses preprocessed version of Phyzzy, only do when changing plotSwitch or calcSwitch and nothing else.
+
+
 %% Load Appropriate variables and paths
 addpath(genpath('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy'))
-usePreprocessed = 1;
 
 if nargin == 1
     %If there is only 1 file, it loads the analysisParamFile and composes a
@@ -129,7 +132,6 @@ end
 %runAnalyses. Cycle through them and extract desired information (# of
 %units, significance), which you can add to the output file.
 %[UnitCount, sigUnits, sigStim, sigStimLen] = deal(cell(size(analysisOutFilename)));
-replaceAnalysisOut = 1;
 if replaceAnalysisOut
   addEnd = @(x) strjoin([x, {'analyzedData.mat'}], filesep);
   breakString = @(x) strsplit(x, filesep);
