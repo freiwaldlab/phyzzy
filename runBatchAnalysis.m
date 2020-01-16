@@ -148,6 +148,7 @@ function [spikeDataBank, meanPSTHStruct] = meanPSTH(spikeDataBank, params)
 % Function which combines stimulus presentations across all runs in the spikeDataBank. 
 % Inputs include spikeDataBank and list of parameters.
 % Initialize
+if ~exist(fullfile(params.outputDir, params.tmpFileName))
 meanPSTHStruct = struct();
 if ~exist(params.outputDir, 'dir')
   mkdir(params.outputDir)
@@ -167,10 +168,10 @@ totalStimPresCount = sum(logical(small2BigInd), 2);
 
 % Load broad label correspondences for plotting or for reassigning labels.
 tmp = load(params.stimParamsFilename);
+totalEventIDs = cell(length(tmp.paramArray),1);
 for event_i = 1:length(tmp.paramArray)
   totalEventIDs{event_i} = tmp.paramArray{event_i}{1}; %per the stimParamFile spec, this is the event ID
 end
-totalEventIDs = totalEventIDs';
 [~, paramSortVec] = ismember(allStimuliVec, totalEventIDs);
 paramArray = tmp.paramArray(paramSortVec);
 
@@ -180,43 +181,28 @@ for label_ind = 1:length(allStimuliVec)
   paramStimSet = paramArray{label_ind};
   allStimuliVecBroad{label_ind} = paramStimSet{ismember(paramStimSet,params.broadLabelPool)};
 end
-[uniqueStimLabels, ~, ~] = unique(allStimuliVecBroad);
-[~, ~, stimIndex] = unique(allStimuliVec);
-
+  
 if params.prcSigChangePSTHs
   zTag = 'normalized';
 else
   zTag = '';
 end
 
-% Broad Label - Swaps labels of individual stimuli for broader catagories,
-% as defined in stimParamFile and the parameters.
-% allStimuliVec = allStimuliVecBroad';
-% figureTitle = 'Broad Labels';
-% uniqueStimLabelCounts = accumarray(stimIndex,1);
-% Find out how many of each of the newly labeled stimuli there are
-% uniqueStimLabelCounts = cell2mat(arrayfun(@(x)length(find(stimIndex == x)), unique(stimIndex), 'Uniform', false));
-
-
-% Concatonating PSTHs.
+% Step 1 - Concatonate PSTHs - iterate across stimuli, grab PSTHes from each run, store 
 groupingType = {'Unsorted','Units','MUA'};
-dataType = {'Bins','Max Value','Max Value Ind','Run Ind'};
+dataType = {'Bins','Err','Max Value','Max Value Ind','Run Ind'};
 %stimPSTH{stim}{grouping}{dataType}
-stimPSTH = initNestedCellArray([length(allStimuliVec), length(groupingType),length(dataType)],'zeros');
-stimPSTHerr = initNestedCellArray([length(allStimuliVec), length(groupingType),length(dataType)],'zeros');
-          
+[stimPSTH] = deal(initNestedCellArray([length(allStimuliVec), length(groupingType),length(dataType)],'zeros'));
+stimPresMat = zeros(length(allStimuliVec), 3); 
+
 for stim_ind = 1:length(allStimuliVec)
   % Find the runs where the stimulus was present, generate a list of them.
   stimRunIndex = small2BigInd(stim_ind,:);
   psthStimIndex = nonzeros(stimRunIndex);
   psthRunIndex = find(stimRunIndex);
   subRunList = runList(psthRunIndex);
+  [chanCount, unitCount] = deal(0);
   
-  % Initialize errors for storing relevant information per stimuli
-  % cumulativePSTH{groupingType}{dataType}
-  cumulativePSTH = initNestedCellArray([length(groupingType),length(dataType)],'zeros');
-  cumulativePSTHerr = initNestedCellArray([length(groupingType),length(dataType)],'zeros');
-    
   % For all runs containing a particular stimuli, retrieve relevant activity vector in each.
   for subRun_ind = 1:length(subRunList) %
     tmpRunStruct = spikeDataBank.(subRunList{subRun_ind});
@@ -225,63 +211,50 @@ for stim_ind = 1:length(allStimuliVec)
         % Retrieve correct PSTH from run
         unitActivity = tmpRunStruct.psthByImage{chan_ind}{unit_ind}(psthStimIndex(subRun_ind),:);
         unitErr = tmpRunStruct.psthErrByImage{chan_ind}{unit_ind}(psthStimIndex(subRun_ind),:);
-        if sum(unitActivity) ~= 0
-          % If desired, Z score PSTHs here based on fixation period activity.
-          if params.prcSigChangePSTHs
-            fixMean = mean(unitActivity(1:abs(tmpRunStruct.start))); %Find activity during fixation
-            %fixSD = std(unitActivity(1:abs(tmpRunStruct.start)));
-            if fixMean == 0 %|| fixSD == 0
-              % If no spikes take place during the fixation period, use the
-              % entire trace to calculate.
-              fixMean = mean(unitActivity);
-              %fixSD = std(unitActivity);
-            end
-            unitActivity = (unitActivity - fixMean)/fixMean;
-            unitErr = (unitErr-fixMean)/fixMean;
+        if sum(unitActivity) == 0
+          continue
+        end
+        % If desired, Z score PSTHs here based on fixation period activity.
+        if params.prcSigChangePSTHs
+          fixMean = mean(unitActivity(1:abs(tmpRunStruct.start))); %Find activity during fixation
+          if fixMean == 0
+            fixMean = mean(unitActivity);
           end
-          % If only taking peaks during stimulus presentation, store here.
-          if params.maxStimOnly
-            stimStartInd = abs(tmpRunStruct.start);
-            stimEndInd = abs(tmpRunStruct.start) + tmpRunStruct.stimDur;
-            [maxVal, maxInd] = max(unitActivity(stimStartInd:stimEndInd));
-            [maxValerr, maxInderr] = max(unitErr(stimStartInd:stimEndInd));
-          else
-            [maxVal, maxInd] = max(unitActivity);
-            [maxValerr, maxInderr] = max(unitErr);
-          end
-          % Concatonate to the correct Matrix (index matching phyzzy convention)
-          if unit_ind == 1 % Unsorted
-            storeInd = 1;
-          elseif unit_ind == length(tmpRunStruct.psthByImage{chan_ind}) % MUA
-            storeInd = 3;
-          else % Unit
-            storeInd = 2;
-          end
-          cumulativePSTH{storeInd}{1} = [cumulativePSTH{storeInd}{1}; unitActivity];
-          cumulativePSTH{storeInd}{2} = [cumulativePSTH{storeInd}{2}; maxVal];
-          cumulativePSTH{storeInd}{3} = [cumulativePSTH{storeInd}{3}; maxInd];
-          cumulativePSTH{storeInd}{4} = [cumulativePSTH{storeInd}{4}; psthRunIndex(subRun_ind)];
-          cumulativePSTHerr{storeInd}{1} = [cumulativePSTHerr{storeInd}{1}; unitErr];
-          cumulativePSTHerr{storeInd}{2} = [cumulativePSTHerr{storeInd}{2}; maxValerr];
-          cumulativePSTHerr{storeInd}{3} = [cumulativePSTHerr{storeInd}{3}; maxInderr];
-          cumulativePSTHerr{storeInd}{4} = [cumulativePSTHerr{storeInd}{4}; psthRunIndex(subRun_ind)];
+          unitActivity = (unitActivity - fixMean)/fixMean;
+          unitErr = (unitErr - fixMean)/fixMean;
+        end
+        % If only taking peaks during stimulus presentation, store here.
+        if params.maxStimOnly
+          stimStartInd = abs(tmpRunStruct.start);
+          stimEndInd = abs(tmpRunStruct.start) + tmpRunStruct.stimDur;
+          [maxVal, maxInd] = max(unitActivity(stimStartInd:stimEndInd));
+        else
+          [maxVal, maxInd] = max(unitActivity);
+        end
+        % Store the generated values into a dataArray
+        dataArray = cell(length(dataType),1); % Structure to store and iterate across.
+        dataArray{1} = unitActivity;
+        dataArray{2} = unitErr;
+        dataArray{3} = maxVal;
+        dataArray{4} = maxInd;
+        dataArray{5} = psthRunIndex(subRun_ind);
+        % Concatonate to the correct Matrix (index matching phyzzy convention)
+        if unit_ind == 1 % Unsorted
+          groupInd = 1;   chanCount = chanCount + 1;
+        elseif unit_ind == length(tmpRunStruct.psthByImage{chan_ind}) % MUA
+          groupInd = 3;
+        else % Unit
+          groupInd = 2;   unitCount = unitCount + 1;
+        end
+        for data_ind = 1:length(dataArray)
+          stimPSTH{stim_ind}{groupInd}{data_ind} = [stimPSTH{stim_ind}{groupInd}{data_ind}; dataArray{data_ind}];
         end
       end
     end
   end
-  % Store into Larger cell array to reference
-  if isempty(stimPSTH{stimIndex(stim_ind)}{1}{1})
-    stimPSTH{stimIndex(stim_ind)} = cumulativePSTH;
-    stimPSTHerr{stimIndex(stim_ind)} = cumulativePSTHerr;
-  else
-    % For overlapping groupings (broad Label), add to sub-structure.
-    for group_ind = 1:length(groupingType)
-      for data_ind = 1:length(dataType)
-        stimPSTH{stimIndex(stim_ind)}{group_ind}{data_ind} = [stimPSTH{stimIndex(stim_ind)}{group_ind}{data_ind}; cumulativePSTH{group_ind}{data_ind}];
-        stimPSTHerr{stimIndex(stim_ind)}{group_ind}{data_ind} = [stimPSTHerr{stimIndex(stim_ind)}{group_ind}{data_ind}; cumulativePSTHerr{group_ind}{data_ind}];
-      end
-    end
-  end
+  
+  %stick on to Counts
+  stimPresMat(stim_ind,:) = [chanCount, unitCount, chanCount];
 end
 
 h = gobjects(length(groupingType),length(dataType));
@@ -290,12 +263,15 @@ h = gobjects(length(groupingType),length(dataType));
 % dataType = {'Bins','Max Value','Max Value Ind','Run Ind'};
 % stimPSTH{stim}{groupingType}{dataType}
 
+% Attach stim counts to names for plotting
+allStimuliTmp = cellfun(@(x) [extractBetween(x, 1, length(x)-4)],allStimuliVec);
+
 % Region below could be updated to cycle through 'dataType' instead of
 % current hardcoded indicies but it doesn't seem worth the effort.
 [broadLabels, ~, broadLabelInd] = unique(allStimuliVecBroad);
 wholeStimPSTH = stimPSTH;
-wholeStimPSTHerr = stimPSTHerr;
-wholeUniqueStimLabels = allStimuliVec;
+wholeUniqueStimLabels = allStimuliTmp;
+wholeStimPresMat = stimPresMat;
 meanPSTHStruct.IndStructs{1} = broadLabels;
 meanPSTHStruct.IndStructs{3} = groupingType;
 catMeanPSTH = initNestedCellArray([length(groupingType)],'zeros',[length(broadLabels), size(stimPSTH{1}{1}{1},2)]);
@@ -303,47 +279,72 @@ catRawPSTH = initNestedCellArray([length(groupingType), length(broadLabels)],'ze
 catMeanPSTHerr = initNestedCellArray([length(groupingType)],'zeros',[length(broadLabels), size(stimPSTH{1}{1}{1},2)]);
 topMeanPSTHMat = [];
 plotInd = true(length(broadLabels),1);
+grandCatTrace = cell(length(groupingType),1);
 
 for broad_ind = 1:length(broadLabels)
-  stimPSTH = wholeStimPSTH(broadLabelInd == broad_ind);
-  stimPSTHerr = wholeStimPSTHerr(broadLabelInd == broad_ind);
+  stimPSTH = wholeStimPSTH(broadLabelInd == broad_ind)';
   uniqueStimLabels = wholeUniqueStimLabels(broadLabelInd == broad_ind);
+  stimPresMat = wholeStimPresMat(broadLabelInd == broad_ind,:);
+  uniqueStimLabels = wholeUniqueStimLabels(broadLabelInd == broad_ind);
+
   meanPSTHStruct.IndStructs{2}{broad_ind} = uniqueStimLabels;
-  dontPlot = 0;
-  for group_ind = 1:length(groupingType)    
-    if dontPlot
+  plotFigs = 1;
+  topStimRun = 1; %Avoids redoing process of removing low rep stim.
+  
+  % If you only want stim above a certain count, remove here.
+  if params.plotTopStim && topStimRun
+    keepInd = stimPresMat(:,2) >= params.topStimPresThreshold;
+    if sum(keepInd) == 0
+      plotFigs = 0;
+      plotInd(broad_ind) = 0;
+    else
+      stimPSTH = stimPSTH(keepInd,:);
+      uniqueStimLabels = uniqueStimLabels(keepInd,:);
+      stimPresMat = stimPresMat(keepInd,:);
+    end
+  end
+  
+  for group_ind = 1:length(groupingType)
+    
+    stimLabels = cell(length(uniqueStimLabels),1);
+    for stim_ind = 1:length(uniqueStimLabels)
+      stimLabels{stim_ind} = [uniqueStimLabels{stim_ind} ',n = ' num2str(stimPresMat(stim_ind,group_ind))];
+    end
+    
+    if ~plotFigs
       continue
     end
-    % Plot Histogram of Peak amplitude across PSTHs.
-    histoPeakFigTitle = sprintf('%s - Peak PSTH Bin value - %s', broadLabels{broad_ind}, groupingType{group_ind});
-    histoIndFigTitle = sprintf('%s - Peak PSTH Times (ms) - %s', broadLabels{broad_ind}, groupingType{group_ind});
-    
-    h(group_ind,1) = figure('NumberTitle', 'off', 'Name', histoPeakFigTitle);
-    hold on
-    sgtitle(histoPeakFigTitle)
-    
-    h(group_ind,2) = figure('NumberTitle', 'off', 'Name', histoIndFigTitle);
-    hold on
-    sgtitle(histoPeakFigTitle)
+    if params.plotHist
+      % Plot Histogram of Peak amplitude and timing across PSTHs.
+      histoPeakFigTitle = sprintf('%s - Peak PSTH Bin value - %s', broadLabels{broad_ind}, groupingType{group_ind});
+      histoIndFigTitle = sprintf('%s - Peak PSTH Times (ms) - %s', broadLabels{broad_ind}, groupingType{group_ind});
+      
+      h(group_ind,1) = figure('NumberTitle', 'off', 'Name', histoPeakFigTitle);
+      hold on
+      sgtitle(histoPeakFigTitle)
+      
+      h(group_ind,2) = figure('NumberTitle', 'off', 'Name', histoIndFigTitle);
+      hold on
+      sgtitle(histoPeakFigTitle)
+    end
     
     maxVal = 0;
     minVal = 100;
-    [grandTrace, grandSDTrace] = deal([]);
+    [grandTrace, grandErrTrace] = deal([]);
     
     % Initialize data and label vectors for subsequent graphs
     [meanPSTH, meanPSTHerr] = deal(zeros(length(stimPSTH), size(stimPSTH{1}{group_ind}{1},2)));
-    uniqueStimLabels = wholeUniqueStimLabels(broadLabelInd == broad_ind);
     
     % Cycle through each stimulus, retrieve the mean and SD of each, plot the
     % histogram of peaks for each.
-    perStimCount = zeros(length(stimPSTH),1);
     for stim_ind = 1:length(stimPSTH)
       % Store traces for grand traces, also calculate states for individual stim.
       PSTHes = stimPSTH{stim_ind}{group_ind}{1};
-      PSTHerr = stimPSTHerr{stim_ind}{group_ind}{1};
+      PSTHerr = stimPSTH{stim_ind}{group_ind}{2};
       catRawPSTH{group_ind}{broad_ind} = [catRawPSTH{group_ind}{broad_ind}; PSTHes];
+      
       if size(PSTHes,1) > 1
-        runInds = stimPSTH{stim_ind}{group_ind}{4};
+        runInds = stimPSTH{stim_ind}{group_ind}{5};
         PSTHaboveZero = max(0,PSTHes);
         PSTHsumAct = sum(PSTHaboveZero(:,params.psthPre:end-params.psthPost),2);
         entry = runInds(PSTHsumAct >= prctile(PSTHsumAct,90));
@@ -351,125 +352,119 @@ for broad_ind = 1:length(broadLabels)
         topMeanPSTHMat = [topMeanPSTHMat; entry, repmat(broad_ind, entryL,1), repmat(stim_ind, entryL,1),repmat(group_ind, entryL,1)];
       end
       grandTrace = [grandTrace; PSTHes];
-      grandSDTrace = [grandSDTrace; PSTHerr];
+      grandErrTrace = [grandErrTrace; PSTHerr];
       
-      perStimCount(stim_ind) = size(PSTHes,1);
       meanPSTH(stim_ind,:) = mean(PSTHes,1);
       meanPSTHerr(stim_ind,:) = mean(PSTHerr,1);
       
-      % Histogram of max bins
-      set(0, 'CurrentFigure', h(group_ind,1))
-      subplot(ceil(length(stimPSTH)/5),5, stim_ind);
-      histogram(stimPSTH{stim_ind}{group_ind}{2}, 20);
-      title(sprintf('%s (\x03bc = %s)',uniqueStimLabels{stim_ind}, num2str(round(mean(stimPSTH{stim_ind}{group_ind}{2},1), 2))));
-      
-      % Histogram of time bins (Inds)
-      set(0, 'CurrentFigure', h(group_ind,2))
-      subplot(length(stimPSTH),1, stim_ind);
-      roundedMaxBinInds = round(stimPSTH{stim_ind}{group_ind}{3}, -1);
-      histogram(roundedMaxBinInds, 56); %every 50 ms
-      title(sprintf('%s (mode = %s)',uniqueStimLabels{stim_ind}, num2str(mode(roundedMaxBinInds))));
-      
-      %plot(meanPSTH);
-      maxVal = ceil(max([maxVal, max(meanPSTH)]));
-      minVal = floor(min([minVal, min(meanPSTH)]));
-      
-      % Edit uniqueStimLabels for PSTH below
-      uniqueStimLabels{stim_ind} = [uniqueStimLabels{stim_ind}(1:end-4) sprintf(',n = %d', perStimCount(stim_ind))];
-      if stim_ind == length(stimPSTH)
-        % If you only want stim above a certain count, remove here.
-        if params.plotTopStim
-          keepInd = perStimCount >= params.topStimPresThreshold;
-          if sum(keepInd) == 0
-            dontPlot = 1;
-            close(h(group_ind,1))
-            close(h(group_ind,2))
-            continue
-          end
-          meanPSTH = meanPSTH(keepInd,:);
-          meanPSTHerr = meanPSTHerr(keepInd,:);
-          uniqueStimLabels = uniqueStimLabels(keepInd,:);
-          perStimCount = perStimCount(keepInd,:);
-        end
-        % Add an 'All Catagory' mean. keep Raw traces for different means.
-        catMeanPSTH{group_ind}(broad_ind,:) = mean(meanPSTH,1);
-        catMeanPSTHerr{group_ind}(broad_ind,:) = std(meanPSTHerr)/sqrt(size(meanPSTHerr,1));
+      if params.plotHist
+        % Histogram of max bins
+        set(0, 'CurrentFigure', h(group_ind,1))
+        subplot(ceil(length(stimPSTH)/5),5, stim_ind);
+        histogram(stimPSTH{stim_ind}{group_ind}{2}, 20);
+        title(sprintf('%s (\x03bc = %s)',stimLabels{stim_ind}, num2str(round(mean(stimPSTH{stim_ind}{group_ind}{2},1), 2))));
         
-        meanPSTH = [meanPSTH; mean(meanPSTH,1)];
-        meanPSTHerr = [meanPSTHerr; mean(meanPSTHerr,1)];
-        % Add a count label to the vector
-        if group_ind == 1
-          uniqueStimLabels = [uniqueStimLabels; ['All ' broadLabels{broad_ind} ',n = ' num2str(sum(perStimCount))]];
+        % Histogram of time bins (Inds)
+        set(0, 'CurrentFigure', h(group_ind,2))
+        subplot(length(stimPSTH),1, stim_ind);
+        roundedMaxBinInds = round(stimPSTH{stim_ind}{group_ind}{4}, -1);
+        histogram(roundedMaxBinInds, 56); %every 50 ms
+        title(sprintf('%s (mode = %s)',stimLabels{stim_ind}, num2str(mode(roundedMaxBinInds))));
+        
+        if stim_ind == length(stimPSTH)
+          savefig(h(group_ind,1),fullfile(params.outputDir, histoPeakFigTitle))
+          savefig(h(group_ind,2),fullfile(params.outputDir, histoIndFigTitle))
+          close(h(group_ind,1))
+          close(h(group_ind,2))
         end
       end
+      
+      maxVal = ceil(max([maxVal, max(meanPSTH)]));
+      minVal = floor(min([minVal, min(meanPSTH)]));
     end
-    if ~dontPlot
-      savefig(h(group_ind,1),fullfile(params.outputDir, histoPeakFigTitle))
-      savefig(h(group_ind,2),fullfile(params.outputDir, histoIndFigTitle))
-      close(h(group_ind,1))
-      close(h(group_ind,2))
-      
-      grandMeanTrace = mean(grandTrace);
-      meanPSTHStruct.grandMeanTrace{group_ind}{broad_ind} = grandMeanTrace;
-      psthTitle = sprintf('All %s Stimuli - Mean %s PSTH - %s', broadLabels{broad_ind}, zTag, groupingType{group_ind});
-      % Plot the Activity PSTH
-      h(group_ind,3) = figure('NumberTitle', 'off', 'Name', psthTitle);
-      psthAxes = axes();
-      psthAxes = plotPSTH(meanPSTH, psthAxes, params, 'color', psthTitle, uniqueStimLabels);
-      title(psthTitle)
-      grandMeanAxes = axes('YAxisLocation','right','Color', 'none','xtick',[],'xticklabel',[],'xlim',[0 length(grandMeanTrace)]);%,'ytick',[],'yticklabel',[]);
-      hold on
-      plot(grandMeanAxes, grandMeanTrace,'color','black','lineWidth',4)
-      linkprop([psthAxes, grandMeanAxes],{'Position'});
-      
-      % Plot Standard Error PSTH
-      grandSDTrace = std(grandTrace);
-      psthErrTitle = sprintf('%s - Mean %s PSTH Error Across all %s - %s', broadLabels{broad_ind}, zTag, groupingType{group_ind});
-      h(group_ind,4) = figure('NumberTitle', 'off', 'Name', psthErrTitle);
-      psthErrAxes = axes();
-      psthErrAxes = plotPSTH(meanPSTHerr, psthErrAxes, params, 'color', psthErrTitle, uniqueStimLabels);
-      title(psthErrTitle)
-      grandErrAxes = axes('YAxisLocation','right','Color', 'none','xtick',[],'xticklabel',[],'xlim',[0 length(grandSDTrace)]);%,'ytick',[],'yticklabel',[]);
-      hold on
-      plot(grandErrAxes, grandSDTrace,'color','black','lineWidth',4)
-      linkprop([psthErrAxes, grandErrAxes],{'Position'});
-      
-      savefig(h(group_ind,3),fullfile(params.outputDir, psthTitle))
-      savefig(h(group_ind,4),fullfile(params.outputDir, psthErrTitle))
-      close(h(group_ind,3))
-      close(h(group_ind,4))
-    end
+    
+    % Add an 'All Catagory' mean. keep Raw traces for different means.
+    catMeanPSTH{group_ind}(broad_ind,:) = mean(meanPSTH,1);
+    catMeanPSTHerr{group_ind}(broad_ind,:) = std(meanPSTHerr)/sqrt(size(meanPSTHerr,1));
+    
+    meanPSTH = [meanPSTH; mean(grandTrace,1)];
+    meanPSTHerr = [meanPSTHerr; mean(grandErrTrace,1)];
+    stimLabels = [stimLabels; [broadLabels{broad_ind} ',n = ' num2str(size(grandTrace,1))]];
+    
+    grandMeanTrace = mean(grandTrace);
+    grandCatTrace{broad_ind}{group_ind} = grandTrace;
+    
+    meanPSTHStruct.grandMeanTrace{group_ind}{broad_ind} = grandMeanTrace;
+    psthTitle = sprintf('All %s Stimuli - Mean %s PSTH - %s', broadLabels{broad_ind}, zTag, groupingType{group_ind});
+    % Plot the Activity PSTH
+    h(group_ind,3) = figure('NumberTitle', 'off', 'Name', psthTitle);
+    psthAxes = axes();
+    psthAxes = plotPSTH(meanPSTH, psthAxes, params, 'color', psthTitle, stimLabels);
+    title(psthTitle)
+    grandMeanAxes = axes('YAxisLocation','right','Color', 'none','xtick',[],'xticklabel',[],'xlim',[0 length(grandMeanTrace)]);%,'ytick',[],'yticklabel',[]);
+    hold on
+    plot(grandMeanAxes, grandMeanTrace,'color','black','lineWidth',4)
+    linkprop([psthAxes, grandMeanAxes],{'Position'});
+    
+    % Plot Standard Error PSTH
+    grandErrTrace = std(grandTrace);
+    psthErrTitle = sprintf('%s - Mean %s PSTH Error Across all %s - %s', broadLabels{broad_ind}, zTag, groupingType{group_ind});
+    h(group_ind,4) = figure('NumberTitle', 'off', 'Name', psthErrTitle);
+    psthErrAxes = axes();
+    psthErrAxes = plotPSTH(meanPSTHerr, psthErrAxes, params, 'color', psthErrTitle, stimLabels);
+    title(psthErrTitle)
+    grandErrAxes = axes('YAxisLocation','right','Color', 'none','xtick',[],'xticklabel',[],'xlim',[0 length(grandErrTrace)]);%,'ytick',[],'yticklabel',[]);
+    hold on
+    plot(grandErrAxes, grandErrTrace,'color','black','lineWidth',4)
+    linkprop([psthErrAxes, grandErrAxes],{'Position'});
+    
+    savefig(h(group_ind,3),fullfile(params.outputDir, psthTitle))
+    savefig(h(group_ind,4),fullfile(params.outputDir, psthErrTitle))
+    close(h(group_ind,3))
+    close(h(group_ind,4))
   end
-  if dontPlot == 1
-    plotInd(broad_ind) = 0;
-  end
+end
+
+save(fullfile(params.outputDir, params.tmpFileName))
+else
+  disp('Loading tmp file')
+  load(fullfile(params.outputDir, params.tmpFileName))
 end
 
 % Remove what we don't want to plot, slide everything to same point at
 % onset
 broadLabels = broadLabels(plotInd);
-for group_ind = 1:length(catMeanPSTH)
-  catMeanPSTH{group_ind} = catMeanPSTH{group_ind}(plotInd,:);
-  catMeanPSTHerr{group_ind} = catMeanPSTHerr{group_ind}(plotInd,:);
-  catRawPSTH{group_ind} = catRawPSTH{group_ind}(plotInd);
-  for stim_ind = 1:size(catMeanPSTH{group_ind},1)
-    catMeanPSTH{group_ind}(stim_ind,:) = catMeanPSTH{group_ind}(stim_ind,:)-catMeanPSTH{group_ind}(stim_ind,800);
+grandCatTrace = grandCatTrace(plotInd);
+grandCatTrace = vertcat(grandCatTrace{:});
+
+% Shift every vector by subtracting the mean value at 500 - 800 ms (last
+% 300 ms of fixation).
+fixAlign = 1;
+if fixAlign
+  for broad_ind = 1:size(grandCatTrace,1)
+    for  group_ind = 1:size(grandCatTrace,2)
+      for row_ind = 1:size(grandCatTrace{broad_ind,group_ind},1)
+        grandCatTrace{broad_ind, group_ind}(row_ind,:) = grandCatTrace{broad_ind, group_ind}(row_ind,:) - mean(grandCatTrace{broad_ind, group_ind}(row_ind,500:800)); %
+      end
+    end
   end
 end
 
 % Plot Cross-Catagory comparisons
-for group_ind = 1:length(catMeanPSTH)
+for group_ind = 1:size(grandCatTrace,2)
+  groupData = grandCatTrace(:, group_ind);
+  groupData = cellfun(@(x) mean(x, 1), groupData, 'UniformOutput',0);
+  plotData = vertcat(groupData{:});
   catPSTHTitle = sprintf('%s Mean PSTH', groupingType{group_ind});
   figure('NumberTitle', 'off', 'Name', catPSTHTitle);
-  catPSTHAxes = axes();
-  catPSTHAxes = plotPSTH(catMeanPSTH{group_ind}, catPSTHAxes, params, 'color', catPSTHTitle, broadLabels);
+  catPSTHAxes = plotPSTH(plotData, axes(), params, 'color', catPSTHTitle, broadLabels);
   title(catPSTHTitle);
 end
 
 meanPSTHStruct.topMeanPSTHMat = topMeanPSTHMat;
 
 % Plot Cross Catagory comparisons as line graphs w/ Error bars.
-for group_ind = 1:length(catMeanPSTH)
+for group_ind = 1:size(grandCatTrace,2)
   catPSTHTitle = sprintf('%s Mean PSTH', groupingType{group_ind});
   figure('NumberTitle', 'off', 'Name', catPSTHTitle);
   hold on
@@ -478,9 +473,38 @@ for group_ind = 1:length(catMeanPSTH)
   lineProps.col = 'brkgmcy';
   lineProps.patch.FaceAlpha = '0.5';
   % Align to stim on
-  mseb(1:length(catMeanPSTH{group_ind}),catMeanPSTH{group_ind}, catMeanPSTHerr{group_ind}, []);
+  groupData = grandCatTrace(:, group_ind);
+  groupMeans = cellfun(@(x) mean(x, 1), groupData, 'UniformOutput',0);
+  groupErr = cellfun(@(x) std(x)/sqrt(size(x,1)), groupData, 'UniformOutput',0);
+  mseb(1:length(groupMeans{1}),vertcat(groupMeans{:}), vertcat(groupErr{:}), []);
   title(catPSTHTitle);
   legend(broadLabels);
+end
+
+[agentInd, socialInd, headTurnInd] = deal(true(length(broadLabels),1));
+agentInd(8:10) = false;
+socialInd([4,6,8:10]) = false;
+headTurnInd([3:5, 7:10]) = false;
+agentNHInd = agentInd;
+agentNHInd([1,2,6]) = false;
+figIncInd = {agentInd, socialInd, headTurnInd};
+figExcInd = {~agentInd, ~socialInd, agentNHInd};
+figTitInd = {'Agent vs Non Agent','Soc v Non Soc','Agents Head Turning v Agents Non Head Turning'};
+figLegends = {{'Agents','Non-Agent'},{'Social','Non Social'},{'Agents Head Turning','Agents Not Head Turning'}};
+
+for fig_ind = 1:length(figIncInd)
+  line1Array = grandCatTrace(figIncInd{fig_ind},:);
+  line2Array = grandCatTrace(figExcInd{fig_ind},:);
+  for group_ind = 1:size(line1Array,2)
+    figure()
+    title(sprintf('%s - %s', figTitInd{fig_ind}, groupingType{group_ind}))
+    line1Data = vertcat(line1Array{:,group_ind});
+    line2Data = vertcat(line2Array{:,group_ind});
+    lineMean = [mean(line1Data); mean(line2Data)];
+    lineErr = [std(line1Data)/sqrt(size(line1Data,1)); std(line2Data)/sqrt(size(line2Data,1))];
+    mseb(1:length(catMeanPSTH{group_ind}),lineMean, lineErr, []);
+    legend(figLegends{fig_ind})
+  end
 end
 
 end

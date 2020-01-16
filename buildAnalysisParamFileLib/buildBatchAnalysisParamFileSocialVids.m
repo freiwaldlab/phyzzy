@@ -49,6 +49,7 @@ cellCountParams.recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\Recordi
 
 meanPSTHParams.outputDir = fullfile(outputDir,'meanPSTH');
 meanPSTHParams.stimParamsFilename = stimParamsFilename;
+meanPSTHParams.plotHist = 0;
 meanPSTHParams.plotTopStim = 1;                 % Only plot stimuli which have been present on at least a certain number of runs.
 meanPSTHParams.topStimPresThreshold = 20;       % At least this many stim presentations to be plotted when plotTopStim is on.
 meanPSTHParams.broadLabel = 0;                  % Transitions individual stimuli to broad catagory (e.g. chasing).
@@ -74,6 +75,7 @@ meanPSTHParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';
 meanPSTHParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
 load(meanPSTHParams.psthColormapFilename);
 meanPSTHParams.colormap = map;
+meanPSTHParams.tmpFileName = 'tmpStructPrcSigChange.mat';
 
 frameFiringParams.stimParamsFilename = stimParamsFilename;
 frameFiringParams.outputDir = outputDir;
