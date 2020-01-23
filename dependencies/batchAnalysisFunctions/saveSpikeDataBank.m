@@ -6,6 +6,9 @@ function output = saveSpikeDataBank(structData, parts, SaveOrLoad, outDir)
 % - SaveOrLoad: whether to 'save' or 'load' the struct.
 switch SaveOrLoad
   case 'save'
+    if ~exist(outDir)
+      mkdir(outDir);
+    end
     %saves variable in N parts.
     fieldsToStore = fields(structData);
     fieldCount = length(fields(structData));
@@ -19,6 +22,7 @@ switch SaveOrLoad
       if mod(field_i, fieldsPerFile) == 0 || field_i == length(fieldsToStore)
         output{spikeSliceCount} = fullfile(outDir, sprintf('spikeDataBank_%d.mat', spikeSliceCount));
         fprintf('Saving %s now... \n', output{spikeSliceCount});
+        assert(logical(exist('spikeDataBankSlice')), "spikeDataBankSlice doesn't exist")
         save(output{spikeSliceCount},'spikeDataBankSlice')
         clear spikeDataBankSlice
         spikeSliceCount = spikeSliceCount + 1;

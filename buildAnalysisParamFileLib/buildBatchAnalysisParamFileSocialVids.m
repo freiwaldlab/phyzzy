@@ -29,11 +29,11 @@ verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 calcSwitch.excludeRepeats = 0;
 
 plotSwitch.stimPresCount = 1;         % Figures showing presentation counts across all runs, in development.
-plotSwitch.meanPSTH = 1;              % figure showing mean PSTH across all units, MUA, and Unsorted.
+plotSwitch.meanPSTH = 0;              % figure showing mean PSTH across all units, MUA, and Unsorted.
 plotSwitch.frameFiringRates = 1;      % Figures showing raw, max, mean rates per object depending on viewing during frame.
-plotSwitch.novelty = 1;       % Seeing whether 10th percentile values in previous analyses line up with 'novel' stimuli
+plotSwitch.novelty = 0;       % Seeing whether 10th percentile values in previous analyses line up with 'novel' stimuli
 
-plotSwitch.slidingWindowANOVA = 0;
+plotSwitch.slidingWindowANOVA = 1;
 
 %% Parameters
 preprocessParams.spikeDataFileName = 'spikeDataBank'; %File ending in .mat, not included to allow for slicing (e.g. 'spikeDataBank_1.mat'...)
@@ -53,12 +53,13 @@ meanPSTHParams.plotHist = 0;
 meanPSTHParams.plotTopStim = 1;                 % Only plot stimuli which have been present on at least a certain number of runs.
 meanPSTHParams.topStimPresThreshold = 20;       % At least this many stim presentations to be plotted when plotTopStim is on.
 meanPSTHParams.broadLabel = 0;                  % Transitions individual stimuli to broad catagory (e.g. chasing).
-meanPSTHParams.prcSigChangePSTHs = 0;           % Normalizes PSTH values to the recording's fixation period.
+meanPSTHParams.normalize = 2;                   % Normalizes PSTH values to the recording's fixation period. 1 = percentile Signal change, 2 = Z score.
 meanPSTHParams.maxStimOnly = 1;                 % The max value and max index taken from the PSTH is only in the area of the stimulus presentation.
-meanPSTHParams.broadLabelPool = {'chasing','fighting','mounting','grooming','holding','following','observing',...
-    'foraging','sitting','objects','goalDirected','idle','scramble','scene'}; %If broadLabel is on, all stimuli will have their labels changed to one of the labels in this array.
+meanPSTHParams.plotLabels = {'chasing','fighting','mounting','grooming','following',...
+    'objects','goalDirected','idle','scramble','scene','socialInteraction','animControl','animSocialInteraction','agents',}; %If broadLabel is on, all stimuli will have their labels changed to one of the labels in this array.
+meanPSTHParams.sortPresCount = 1;                % Sorts images based on counts.
+meanPSTHParams.fixAlign = 1;                    % For cross catagory comparison lines, shift everything to the mean of the fix period.
 meanPSTHParams.topPSTHRunExtract = 3;           % meanPSTH will return a structure of run indices of the top PSTHes by activity (influenced by Z-scoring). This number dictates how many of the top are returned.
-
 meanPSTHParams.type = 'normal'; %options are 'normal', 'baselineSub', 'meanWhite'
 meanPSTHParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
 meanPSTHParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
@@ -78,10 +79,9 @@ meanPSTHParams.colormap = map;
 meanPSTHParams.tmpFileName = 'tmpStructPrcSigChange.mat';
 
 frameFiringParams.stimParamsFilename = stimParamsFilename;
-frameFiringParams.outputDir = outputDir;
-frameFiringParams.outputFigDir = fullfile(outputDir,'frameFiring');
+frameFiringParams.outputDir = fullfile(outputDir,'frameFiring');
 frameFiringParams.broadLabelPool = {'chasing','fighting','mounting','grooming','holding','following','observing',...
-    'foraging','sitting','objects','goalDirected','idle','scramble','scene'}; %If broadLabel is on, all stimuli will have their labels changed to one of the labels in this array.
+    'foraging','sitting','objects','goalDirected','idle','scramble','scene','animControl','animSocialInteraction'}; %If broadLabel is on, all stimuli will have their labels changed to one of the labels in this array.
 frameFiringParams.broadLabels = 1;
 frameFiringParams.useRates = 0;     % collected data per frame can be in rates or spike counts. 1 = Rates, 0 = spikeCounts.
 frameFiringParams.delay = 70;       % Hypothetical delay between frame and the activity it causes. deduced from Mean PSTHs.
@@ -96,6 +96,9 @@ slidingANOVAParams.target = {'socialInteraction','agents','interaction'};  %Labe
 slidingANOVAParams.stimParamFile = stimParamsFilename;
 slidingANOVAParams.outputDir = fullfile(outputDir,'slidingANOVA');
 slidingANOVAParams.spikeDataFileName = preprocessParams.spikeDataFileName;
+
+noveltyParams.outputDir = fullfile(outputDir,'noveltyAnalysis');
+
 
 analysisParamFilenameStem = 'batchAnalysisParams.mat';
 if ~exist([outputDir '/'])

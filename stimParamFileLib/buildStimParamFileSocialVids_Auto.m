@@ -10,8 +10,6 @@ function [ ] = buildStimParamFileSocialVids_Auto()
 % Updated 2019.13.1 to include full stim set, including August stuff.
 
 %Find the folder with what you want
-fprintf('Select folder containing files...\n');
-%StimFolder = uigetdir();
 StimFolder = {'D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories';...
   'D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\Animations';...
   'D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\Animation Phase 2'};
@@ -95,7 +93,7 @@ for ii = 1:length(stimList)
       case '9';            stimLabels = horzcat(stimLabels ,'sitting');
     end
   elseif ((length(stimParts) > 2) && strncmp(stimParts(3),'C',1))
-    stimLabels = horzcat(stimLabels ,'goalDirected');
+    stimLabels = horzcat(stimLabels ,'animControl');
   end
   %Due to issues w/ grouping of controls, adding this below.
   if (strcmp(code(1:2),'11'))
@@ -104,7 +102,11 @@ for ii = 1:length(stimList)
     else
       %A change needed for the naming convention on animated stimuli controls
       if (length(stimParts) == 2) || (length(stimParts) > 2 && ~strncmp(stimParts(3),'C',1))
-        stimLabels = horzcat(stimLabels ,'socialInteraction');
+        if strcmp(stimParts{2}(end),'A')
+          stimLabels = horzcat(stimLabels ,'animSocialInteraction');
+        else
+          stimLabels = horzcat(stimLabels ,'socialInteraction');
+        end
       end
     end
   end
