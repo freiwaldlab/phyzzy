@@ -25,7 +25,7 @@ if plotSwitch.stimPresCount
   %last recording' to highlight days after long breaks.
 end
 
-if ~exist('unitCounts','var')
+if 1%~exist('unitCounts','var')
   [trueCellInd, trueCellRun, unitCounts] = trueCellCount(cellCountParams.batchRunxls, cellCountParams.recordingLogxls);
 end
 
@@ -507,6 +507,10 @@ end
 function spikeDataBank = slidingWindowANOVA(spikeDataBank,params)
 % Perform sliding scale ANOVA, calculate Omega at each bin.
 
+if ~exist(params.outputDir, 'dir')
+  mkdir(params.outputDir)
+end
+
 % Generate variables needed
 runList = fields(spikeDataBank);
 binSize = params.binSize;
@@ -514,205 +518,335 @@ binStep = params.binStep;
 target = params.target;
 Omega = params.Omega;
 stimParamFile = params.stimParamFile;
+nestStrCmp = @(x, y) any(strcmp(x, y));
 
-% Step 1 - generate bin times and spike rates, and proper memberships to groups.
-if ~isfield(spikeDataBank.(runList{1}), 'epochRates')
+% Step 1 - for each bin (epoch), calculate the rates and counts. save them
+% into a larger epochRates structure, which can be stored in the folder for
+% this function for subsequent runs. 
+
+if ~exist(fullfile(params.outputDir, 'epochRates.mat'), 'file')
+  epochRates = cell(length(runList),1);
+  catagoryInd = cell(length(runList),1);
+  % Step 1 - generate bin times and spike rates, and proper memberships to groups.
   for run_ind = 1:length(runList)
     runStruct = spikeDataBank.(runList{run_ind});
     starts = (runStruct.start:binStep:(runStruct.end - binSize))';
     ends = (runStruct.start+binSize:binStep:(runStruct.end))';
     spikeDataBank.(runList{run_ind}).epochs = [starts,ends];
-    spikeDataBank.(runList{run_ind}).epochRates = cell(length(starts),1);
+    epochRates{run_ind} = cell(length(starts),1);
     for bin_ind = 1:length(starts)
-      [spikeDataBank.(runList{run_ind}).epochRates{bin_ind}, ~, ~] = spikeCounter(spikeDataBank.(runList{run_ind}).spikesByEvent, starts(bin_ind), ends(bin_ind));
+      [epochRates{run_ind}{bin_ind}, ~, ~] = spikeCounter(spikeDataBank.(runList{run_ind}).spikesByEvent, starts(bin_ind), ends(bin_ind));
     end
     for group_ind = 1:length(target)
-      groupDef = target{group_ind};
-      nestStrCmp = @(x) any(strcmp(x, groupDef));
-      spikeDataBank.(runList{run_ind}).catagoryInd(:,group_ind) = cell2mat(cellfun(nestStrCmp, runStruct.eventCategories,'UniformOutput',0));
+      catagoryInd{run_ind}(:,group_ind) = cell2mat(cellfun(nestStrCmp, runStruct.eventCategories, repmat(target(group_ind), [length(runStruct.eventCategories),1]), 'UniformOutput',0));
     end
   end
-  %saveSpikeDataBank(spikeDataBank, 2, 'save',fileparts(params.outputDir));
+  save(fullfile(params.outputDir, 'epochRates'), 'epochRates', 'catagoryInd');
 else
+  load(fullfile(params.outputDir, 'epochRates'), 'epochRates', 'catagoryInd');
+  assert(length(epochRates) == length(runList), 'epochRates length does not match runList length');
   fprintf('Sliding windows rates already calculated, continuing... \n');
 end
 
+% Step 2 - Perform ANOVA, Omega calculation across bins, and store values.
+% Save the output in the function folder for later retrieval. 
 
-%% Step 2 - Perform ANOVA, Omega calculation, and store values.
-% performs an ANOVA on rates across a trial, starting at trial time 0, in some predefined steps.
+statsType = {'pVec', 'omegaVec', 'meanNullVec', 'meanErrVec' 'nullOmegaVec', 'maxNullOmegaVec'};
 
-for run_ind = 1:length(runList)
-  % Check if pValues have already been recorded for this run.
-  if ~isfield(spikeDataBank.(runList{run_ind}),'pVec')
-    % Initialize relevant Structures
-    [pVec, errVec, nullOmegaVec, nullVec] = deal(initNestedCellArray(spikeDataBank.(runList{run_ind}).epochRates{1}, 'ones', [length(spikeDataBank.(runList{run_ind}).epochs), length(target)], 2)); % Initialize each p value array.
-    omegaVec = initNestedCellArray(spikeDataBank.(runList{run_ind}).epochRates{1}, 'zeros', [length(spikeDataBank.(runList{run_ind}).epochs), length(target)], 2);
-    [maxOmegaVec] = deal(initNestedCellArray(spikeDataBank.(runList{run_ind}).epochRates{1}, 'zeros', [1, length(target)], 2)); % Initialize each p value array.
-    if length(unique(spikeDataBank.(runList{run_ind}).catagoryInd)) > 1 %Only run tests where you have members in each group.
-      for bin_ind = 1:length(spikeDataBank.(runList{run_ind}).epochs)
-        for chan_ind = 1:length(spikeDataBank.(runList{run_ind}).epochRates{bin_ind})
-          for unit_ind = 1:length(spikeDataBank.(runList{run_ind}).epochRates{bin_ind}{chan_ind})
-            unitResponsePerEvent = spikeDataBank.(runList{run_ind}).epochRates{bin_ind}{chan_ind}{unit_ind};
-            catagortyInd = spikeDataBank.(runList{run_ind}).catagoryInd;
-            %unitData{event}.rates = trial*1
-            for target_ind = 1:length(target)
-              if length(unique(catagortyInd(:,target_ind))) == 1
-                break % If there is only 1 label type, there is no comparison to be made.
-              end
-              [trialSpikes, trialLabels]  = deal([]);
-              % grab the relevant events
-              targetInd = catagortyInd(:,target_ind);
-              targetSpikes = unitResponsePerEvent(targetInd);
-              otherSpikes = unitResponsePerEvent(~targetInd);
-              % Initialize relevant vecotrs
-              spikeGroups = {targetSpikes otherSpikes};
-              spikeGroupLabels ={(target{target_ind}) (['non-' target{target_ind}])};
-              % Cluster and reshape the arrays properly
-              for group_i = 1:length(spikeGroups)
-                tmp = spikeGroups{group_i};
-                tmp = [tmp{:}];
-                dataVec = vertcat(tmp.rates);
-                labelVec = repmat(spikeGroupLabels(group_i), length(dataVec),1);
-                trialSpikes = vertcat(trialSpikes,dataVec);
-                trialLabels = vertcat(trialLabels, labelVec);
-              end
-              % Check for social v non-social
-              [pVec{chan_ind}{unit_ind}(bin_ind,target_ind), pStatsTable, ~] = anovan(trialSpikes,{trialLabels},'model','interaction','varnames',{'SvNS'}, 'alpha', 0.05,'display','off');
-              top = pStatsTable{2,3} * (pStatsTable{2,5} - pStatsTable{3,5});
-              bottom = (pStatsTable{2,3}*pStatsTable{2,5})+(pStatsTable{4,3}-pStatsTable{2,3})*pStatsTable{3,5};
-              omegaVec{chan_ind}{unit_ind}(bin_ind,target_ind) = top/bottom;
-              % Perform Calculations on scrambles
-              [nullPVec, nullOmegaVecSingle] = deal(zeros(1,params.scrambleCount));
-              for rand_ind = 1:params.scrambleCount
-                [nullPVec(rand_ind), pStatsTable, ~] = anovan(trialSpikes,{trialLabels(randperm(length(trialLabels)))},'model','interaction','varnames',{'SvNS'}, 'alpha', 0.05,'display','off');
+if 1%~exist(fullfile(params.outputDir, 'allStatsArray.mat'), 'file')
+  chanUnitStruct = structfun(@(x) x.psthByImage, spikeDataBank,'UniformOutput',0);
+  chanUnitStruct = struct2cell(chanUnitStruct);
+  allStatsArray = initNestedCellArray(chanUnitStruct, 'zeros', [length(epochRates{1}), length(target), length(statsType)], 3);
+  clear chanUnitStruct;
+  scrambleCount = params.scrambleCount;
+  
+  tic
+  if 0% license('test','Distrib_Computing_Toolbox')
+    epochRatesPar = parallel.pool.Constant(epochRates);
+    catagoryIndPar =  parallel.pool.Constant(catagoryInd);
+    parfor run_ind = 1:length(runList)
+      % Initialize relevant Structures
+      if length(unique(catagoryIndPar.Value{run_ind})) > 1 %Only run tests where you have members in each group.
+        binCount = length(epochRatesPar.Value{run_ind});
+        for chan_ind = 1:length(epochRatesPar.Value{run_ind}{1})
+          for unit_ind = 1:length(epochRatesPar.Value{run_ind}{1}{chan_ind})
+            for bin_ind = 1:binCount
+              unitResponsePerEvent = epochRatesPar.Value{run_ind}{bin_ind}{chan_ind}{unit_ind};
+              catagortyIndSlice = catagoryIndPar.Value{run_ind};
+              %unitData{event}.rates = trial*1
+              for target_ind = 1:length(target)
+                if length(unique(catagortyIndSlice(:,target_ind))) == 1
+                  break % If there is only 1 label type, there is no comparison to be made.
+                end
+                [trialSpikes, trialLabels]  = deal([]);
+                % grab the relevant events
+                targetInd = catagortyIndSlice(:,target_ind);
+                targetSpikes = unitResponsePerEvent(targetInd);
+                otherSpikes = unitResponsePerEvent(~targetInd);
+                % Initialize relevant vecotrs
+                spikeGroups = {targetSpikes otherSpikes};
+                spikeGroupLabels ={(target{target_ind}) (['non-' target{target_ind}])};
+                % Cluster and reshape the arrays properly
+                for group_i = 1:length(spikeGroups)
+                  tmp = spikeGroups{group_i};
+                  tmp = [tmp{:}];
+                  dataVec = vertcat(tmp.rates);
+                  labelVec = repmat(spikeGroupLabels(group_i), length(dataVec),1);
+                  trialSpikes = vertcat(trialSpikes,dataVec);
+                  trialLabels = vertcat(trialLabels, labelVec);
+                end
+                % Check for social v non-social
+                % 3rd ind in 3D mat statsType = {'pVec', 'omegaVec', 'meanNullVec', 'meanErrVec' 'nullOmegaVec', 'maxNullOmegaVec'};
+                [allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('pVec',statsType)), pStatsTable, ~] = anovan(trialSpikes,{trialLabels},'model','interaction','varnames',{'SvNS'}, 'alpha', 0.05,'display','off');
                 top = pStatsTable{2,3} * (pStatsTable{2,5} - pStatsTable{3,5});
                 bottom = (pStatsTable{2,3}*pStatsTable{2,5})+(pStatsTable{4,3}-pStatsTable{2,3})*pStatsTable{3,5};
-                nullOmegaVecSingle(rand_ind) = top/bottom;
-              end
-              nullVec{chan_ind}{unit_ind}(bin_ind,target_ind) = mean(nullPVec);
-              errVec{chan_ind}{unit_ind}(bin_ind,target_ind) = std(nullPVec)/length(nullPVec);
-              nullOmegaVec{chan_ind}{unit_ind}(bin_ind,target_ind) = mean(nullOmegaVecSingle);
-              % On the last bin, do the desired stimulus wide calculations
-              % for collected traces.
-              if bin_ind == length(spikeDataBank.(runList{run_ind}).epochs)
-                maxOmegaVec{chan_ind}{unit_ind} = max(omegaVec{chan_ind}{unit_ind});
+                if isnan(top/bottom)
+                  allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('omegaVec',statsType)) = 0;
+                else
+                  allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('omegaVec',statsType)) = top/bottom;
+                end                % Perform Calculations on scrambles
+                [nullPVec, nullOmegaVecSingle] = deal(zeros(1,scrambleCount));
+                for rand_ind = 1:scrambleCount
+                  [nullPVec(rand_ind), pStatsTable, ~] = anovan(trialSpikes,{trialLabels(randperm(length(trialLabels)))},'model','interaction','varnames',{'SvNS'}, 'alpha', 0.05,'display','off');
+                  top = pStatsTable{2,3} * (pStatsTable{2,5} - pStatsTable{3,5});
+                  bottom = (pStatsTable{2,3}*pStatsTable{2,5})+(pStatsTable{4,3}-pStatsTable{2,3})*pStatsTable{3,5};
+                  nullOmegaVecSingle(rand_ind) = top/bottom;
+                end
+                allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('meanNullVec',statsType)) = mean(nullPVec);
+                allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('meanErrVec',statsType)) = std(nullPVec)/sqrt(length(nullPVec));
+                allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('nullOmegaVec',statsType)) = mean(nullOmegaVecSingle);
+                allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('maxNullOmegaVec',statsType)) = max(nullOmegaVecSingle);
               end
             end
           end
         end
-      end
-    else
-      disp('Skipping')
-    end
-    spikeDataBank.(runList{run_ind}).pVec = pVec;
-    spikeDataBank.(runList{run_ind}).nullPVec = nullVec;
-    spikeDataBank.(runList{run_ind}).maxOmegaVec = maxOmegaVec;
-    spikeDataBank.(runList{run_ind}).omegaVec = omegaVec;
-    spikeDataBank.(runList{run_ind}).nullOmegaVec = nullOmegaVec;
-    % Plot the results for each unit seen
-    if params.plotANOVA
-      for chan_ind = 1:length(pVec)
-        for unit_ind = 1:length(pVec{chan_ind})
-          if unit_ind == 1
-            ANOVAvarName = ['Ch' num2str(chan_ind) ' Unsorted - SocVsNonSoc'];
-          elseif unit_ind == length(pVec{chan_ind})
-            ANOVAvarName = ['Ch' num2str(chan_ind) ' MUA - SocVsNonSoc'];
-          else
-            ANOVAvarName = ['Ch' num2str(chan_ind) ' U' num2str(unit_ind-1) ' - SocVsNonSoc'];
-          end
-          if ~any(any(isnan(pVec{chan_ind}{unit_ind})))
-            k = figure();
-            plot(pVec{chan_ind}{unit_ind},'linewidth',2)
-            hold on
-            xlim([0,size(pVec{chan_ind}{unit_ind},1)]);
-            ylim([0,1]);
-            plot([0,size(pVec{chan_ind}{unit_ind},1)],[0.05, 0.05],'k','linewidth',3)
-            fracSig = round(sum(pVec{chan_ind}{unit_ind} < 0.05)/length(pVec{chan_ind}{unit_ind}), 3, 'significant');
-            fragSigNull = round(sum(pVec{chan_ind}{unit_ind} < 0.4)/length(pVec{chan_ind}{unit_ind}), 3, 'significant');
-            nullLines = cell(length(target),1);
-            for null_ind = 1:length(target)
-              nullLines{null_ind} = mseb(1:length(nullVec{chan_ind}{unit_ind}),nullVec{chan_ind}{unit_ind}(:,null_ind)', errVec{chan_ind}{unit_ind}(:,null_ind)');
-              nullLines{null_ind}.patch.FaceAlpha = '0.5';
-            end
-            % Create Legend and Title
-            titleString = sprintf('Sliding Scale ANOVA - %s',ANOVAvarName);
-            title(titleString)
-            legendText = cell(length(target),1);
-            for leg_ind = 1:length(target)
-              legendText{leg_ind} = sprintf('%s (%s;%s)', target{leg_ind}, num2str(fracSig(leg_ind)),num2str(fragSigNull(leg_ind)));
-            end
-            legend(legendText);
-            % Save and close
-            savefig(k, fullfile(spikeDataBank.(runList{run_ind}).figDir,titleString))
-            close(k)
-          end
-        end
+      else
+        disp('Skipping')
       end
     end
-    % Every 20 runs, save progress back to the files
-    if mod(run_ind,20) == 0 || run_ind == length(runList)
-      disp(run_ind)
-      saveSpikeDataBank(spikeDataBank, 2, 'save',params.outputDir);
-    end
+    save(fullfile(params.outputDir, 'allStatsArray'), 'allStatsArray');
+    fprintf('Done in %d hours \n', toc/3600)
   else
-    fprintf('spikeDataBank field %d already has pVec, moving to next field... \n', run_ind)
+
+    for run_ind = 1%:length(runList)
+      % Initialize relevant Structures
+      if length(unique(catagoryInd{run_ind})) > 1 %Only run tests where you have members in each group.
+        chanCount = length(epochRates{run_ind}{1});
+        binCount = length(epochRates{run_ind});
+        for chan_ind = 1:chanCount
+          for unit_ind = 1:length(epochRates{run_ind}{1}{chan_ind})
+            for bin_ind = 1:binCount
+              unitResponsePerEvent = epochRates{run_ind}{bin_ind}{chan_ind}{unit_ind};
+              catagortyIndSlice = catagoryInd{run_ind};
+              %unitData{event}.rates = trial*1
+              for target_ind = 1:length(target)
+                if length(unique(catagortyIndSlice(:,target_ind))) == 1
+                  break % If there is only 1 label type, there is no comparison to be made.
+                end
+                [trialSpikes, trialLabels]  = deal([]);
+                % grab the relevant events
+                targetInd = catagortyIndSlice(:,target_ind);
+                targetSpikes = unitResponsePerEvent(targetInd);
+                otherSpikes = unitResponsePerEvent(~targetInd);
+                % Initialize relevant vecotrs
+                spikeGroups = {targetSpikes otherSpikes};
+                spikeGroupLabels ={(target{target_ind}) (['non-' target{target_ind}])};
+                % Cluster and reshape the arrays properly
+                for group_i = 1:length(spikeGroups)
+                  tmp = spikeGroups{group_i};
+                  tmp = [tmp{:}];
+                  dataVec = vertcat(tmp.rates);
+                  labelVec = repmat(spikeGroupLabels(group_i), length(dataVec),1);
+                  trialSpikes = vertcat(trialSpikes,dataVec);
+                  trialLabels = vertcat(trialLabels, labelVec);
+                end
+                % Check for social v non-social
+                % 3rd ind in 3D mat statsType = {'pVec', 'omegaVec', 'meanNullVec', 'meanErrVec' 'nullOmegaVec', 'maxNullOmegaVec'};
+                [allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('pVec',statsType)), pStatsTable, ~] = anovan(trialSpikes,{trialLabels},'model','interaction','varnames',{'SvNS'}, 'alpha', 0.05,'display','off');
+                top = pStatsTable{2,3} * (pStatsTable{2,5} - pStatsTable{3,5});
+                bottom = (pStatsTable{2,3}*pStatsTable{2,5})+(pStatsTable{4,3}-pStatsTable{2,3})*pStatsTable{3,5};
+                if isnan(top/bottom)
+                  allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('omegaVec',statsType)) = 0;
+                else
+                  allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('omegaVec',statsType)) = top/bottom;
+                end
+                % Perform Calculations on scrambles
+                [nullPVec, nullOmegaVecSingle] = deal(zeros(1,scrambleCount));
+                for rand_ind = 1:scrambleCount
+                  [nullPVec(rand_ind), pStatsTable, ~] = anovan(trialSpikes,{trialLabels(randperm(length(trialLabels)))},'model','interaction','varnames',{'SvNS'}, 'alpha', 0.05,'display','off');
+                  top = pStatsTable{2,3} * (pStatsTable{2,5} - pStatsTable{3,5});
+                  bottom = (pStatsTable{2,3}*pStatsTable{2,5})+(pStatsTable{4,3}-pStatsTable{2,3})*pStatsTable{3,5};
+                  nullOmegaVecSingle(rand_ind) = top/bottom;
+                end
+                allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('meanNullVec',statsType)) = mean(nullPVec);
+                allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('meanErrVec',statsType)) = std(nullPVec)/sqrt(length(nullPVec));
+                allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('nullOmegaVec',statsType)) = mean(nullOmegaVecSingle);
+                allStatsArray{run_ind}{chan_ind}{unit_ind}(bin_ind,target_ind, strcmp('maxNullOmegaVec',statsType)) = max(nullOmegaVecSingle);
+              end
+            end
+          end
+        end
+      else
+        disp('Skipping')
+      end
+    end
+    save(fullfile(params.outputDir, 'allStatsArray'), 'allStatsArray');
+    fprintf('Done in %d hours \n', toc/3600)
   end
+else
+  fprintf('Loading statsArray from saved data... \n')
+  load(fullfile(params.outputDir, 'allStatsArray.mat'), 'allStatsArray');
+  assert(length(allStatsArray) == length(runList), 'allStatsArray length does not match runList length');
 end
+%
+%     % Plot the results for each unit seen
+%     if params.plotANOVA
+%       for chan_ind = 1:length(statsArray)
+%         for unit_ind = 1:length(statsArray{chan_ind})
+%           if unit_ind == 1
+%             ANOVAvarName = ['Ch' num2str(chan_ind) ' Unsorted - SocVsNonSoc'];
+%           elseif unit_ind == length(statsArray{chan_ind})
+%             ANOVAvarName = ['Ch' num2str(chan_ind) ' MUA - SocVsNonSoc'];
+%           else
+%             ANOVAvarName = ['Ch' num2str(chan_ind) ' U' num2str(unit_ind-1) ' - SocVsNonSoc'];
+%           end
+%           if ~any(any(isnan(statsArray{chan_ind}{unit_ind}(:,:,1))))
+%             k = figure();
+%             plot(statsArray{chan_ind}{unit_ind}(:,:,1),'linewidth',2)
+%             hold on
+%             xlim([0,size(statsArray{chan_ind}{unit_ind}(:,:,1),1)]);
+%             ylim([0,1]);
+%             plot([0,size(statsArray{chan_ind}{unit_ind}(:,:,1),1)],[0.05, 0.05],'k','linewidth',3)
+%             fracSig = round(sum(statsArray{chan_ind}{unit_ind}(:,:,1) < 0.05)/length(statsArray{chan_ind}{unit_ind}(:,:,1)), 3, 'significant');
+%             fragSigNull = round(sum(statsArray{chan_ind}{unit_ind}(:,:,1) < 0.4)/length(statsArray{chan_ind}{unit_ind}(:,:,1)), 3, 'significant');
+%             nullLines = cell(length(target),1);
+%             for null_ind = 1:length(target)
+%               nullLines{null_ind} = mseb(1:length(statsArray{chan_ind}{unit_ind}(:,:,2)),statsArray{chan_ind}{unit_ind}(:,null_ind,2)', statsArray{chan_ind}{unit_ind}(:,null_ind,2)');
+%               nullLines{null_ind}.patch.FaceAlpha = '0.5';
+%             end
+%             % Create Legend and Title
+%             titleString = sprintf('Sliding Scale ANOVA - %s',ANOVAvarName);
+%             title(titleString)
+%             legendText = cell(length(target),1);
+%             for leg_ind = 1:length(target)
+%               legendText{leg_ind} = sprintf('%s (%s;%s)', target{leg_ind}, num2str(fracSig(leg_ind)),num2str(fragSigNull(leg_ind)));
+%             end
+%             legend(legendText);
+%             % Save and close
+%             savefig(k, fullfile(spikeDataBank.(runList{run_ind}).figDir,titleString))
+%             close(k)
+%           end
+%         end
+%       end
+%     end
+%     % Every 20 runs, save progress back to the files
+%     if mod(run_ind,20) == 0 || run_ind == length(runList)
+%       disp(run_ind)
+%       saveSpikeDataBank(spikeDataBank, 2, 'save',params.outputDir);
+%     end
+% end
 
 fprintf('ANOVA Omega Calculations finished... \n')
 
-% Count Results of ANOVA across all units, count stretches of significant
+% Step 3 - Count Results of ANOVA across all units and count stretches of significant
 % bins.
 totalUnitCount = 0;
 totalChannelCount = 0;
-[sigBinCountUnit, sigBinCountUnsorted, sigBinCountMUA, ...
-  nulSigBinCountUnit, nulSigBinCountUnsorted, nulSigBinCountMUA] = deal(zeros(length(spikeDataBank.(runList{1}).epochs), length(target)));
-sigBinCountTotal = [];
-targetRunLengths = struct();
-for targ_i = 1:length(target)
-  targetRunLengths.(target{targ_i}) = [];
-end
+groupingType = {'Unsorted', 'Unit', 'MUA'};
+% target = {'socialInteraction','agents','interaction'};, pulled from params.
+dataType = {'sigBins','nullSigBins'};
+statType = {'Counts', 'Sig Run Lengths',' Mean Stretch Lengths', 'Max run lengths'};
+omegaStatType = {'Raw', 'Maximum values'};
 
-for run_ind = 1:length(runList)
-  for chan_ind = 1:length(spikeDataBank.(runList{run_ind}).pVec)
+ANOVAmat = zeros(length(epochRates{1}), length(target), length(groupingType), length(dataType)); % (binCount, target, group, dataType)
+targetRunLens = cell(length(target), length(groupingType), length(statType));
+omegaData = cell(length(target), length(groupingType), length(omegaStatType));
+
+for run_ind = 1:length(allStatsArray)
+  for chan_ind = 1:length(allStatsArray{run_ind})
+    unitCount = length(allStatsArray{run_ind}{chan_ind});
+    totalUnitCount = totalUnitCount + (unitCount - 2);
     totalChannelCount = totalChannelCount + 1;
-    for unit_ind = 1:length(spikeDataBank.(runList{run_ind}).pVec{chan_ind})
-      unitLen = length(spikeDataBank.(runList{run_ind}).pVec{chan_ind});
-      uPVec = spikeDataBank.(runList{run_ind}).pVec{chan_ind}{unit_ind};
-      uNullVec =  spikeDataBank.(runList{run_ind}).nullPVec{chan_ind}{unit_ind};
-      % Check for significant bins
-      tmpSigCount = uPVec < 0.05;
-      tmpNullSigCount = uNullVec < 0.05;
-      % Add to relevant structures
-      if unit_ind == 1
-        sigBinCountUnsorted = tmpSigCount + sigBinCountUnsorted;
-        nulSigBinCountUnsorted = tmpNullSigCount + nulSigBinCountUnsorted;
-      elseif unit_ind == unitLen
-        sigBinCountMUA = tmpSigCount + sigBinCountMUA;
-        nulSigBinCountMUA = tmpNullSigCount + nulSigBinCountMUA;
-      else
-        totalUnitCount = totalUnitCount + 1;
-        sigBinCountUnit = tmpSigCount + sigBinCountUnit;
-        nulSigBinCountUnit = tmpNullSigCount +nulSigBinCountUnit;
-        sigBinCountTotal = [sigBinCountTotal; sum(tmpSigCount)];
-        % Keep count of consecutive bins for units
-        for targ_i = 1:size(tmpSigCount,2)
-          starts = find(diff([0; tmpSigCount(:,targ_i)]) == 1);
-          ends = find(diff([tmpSigCount(:,targ_i); 0]) == -1)+1;
+    for unit_ind = 1:unitCount
+      uPVec = allStatsArray{run_ind}{chan_ind}{unit_ind}(:,:,strcmp('pVec',statsType));
+      if ~isempty(uPVec)
+        uPVec(uPVec == 0) = nan;
+        uNullVec = allStatsArray{run_ind}{chan_ind}{unit_ind}(:,:,strcmp('nullVec',statsType));
+        uNullVec(uNullVec == 0) = nan;
+        omegaVec = allStatsArray{run_ind}{chan_ind}{unit_ind}(:,:,strcmp('omegaVec',statsType));
+        omegaVec(isnan(omegaVec)) = 0;
+        % Check for significant bins
+        tmpSigCount = uPVec < 0.05;
+        tmpNullSigCount = uNullVec < 0.05;
+        % Add to relevant structures
+        if unit_ind == 1
+          group_i = 1;
+        elseif unit_ind == unitCount
+          group_i = 3;
+        else
+          group_i = 2;
+        end
+        % Save significant bins and null bins correctly.
+        ANOVAmat(:, :, group_i, 1) = ANOVAmat(:, :, group_i, 1) + tmpSigCount;
+        ANOVAmat(:, :, group_i, 2) = ANOVAmat(:, :, group_i, 2) + tmpNullSigCount;
+        % Keep count of consecutive bins
+        for targ_i = 1:length(target)
+          trace = tmpSigCount(:,targ_i);
+          starts = find(diff([0; trace]) == 1);
+          ends = find(diff([trace; 0]) == -1)+1;
           runLengths = ends - starts;
-          targetRunLengths.(target{targ_i}) = [targetRunLengths.(target{targ_i}); runLengths];
+          targetRunLens{targ_i, group_i, 1} = [targetRunLens{targ_i, group_i, 1}; sum(trace)];
+          targetRunLens{targ_i, group_i, 2} = [targetRunLens{targ_i, group_i, 2}; runLengths];
+          targetRunLens{targ_i, group_i, 3} = [targetRunLens{targ_i, group_i, 3}; mean(runLengths)];
+          targetRunLens{targ_i, group_i, 4} = [targetRunLens{targ_i, group_i, 4}; max(runLengths)];
+          
+          omegaTrace = omegaVec(:,targ_i)';
+          omegaData{targ_i, group_i, 1} = [omegaData{targ_i, group_i, 1}; omegaTrace];
+          omegaData{targ_i, group_i, 2} = [omegaData{targ_i, group_i, 2}; max(omegaTrace)];
+          
         end
       end
     end
   end
 end
 
-% Plot Results
-% Fig 1 - Soc vs Non-Soc significance bins
-target = {'socialInteraction','agents','interaction'};
-allUnitTraces = [sigBinCountUnit, nulSigBinCountUnit];
-allMUATraces = [sigBinCountMUA, nulSigBinCountMUA];
-allUnsortedTraces = [sigBinCountUnsorted,nulSigBinCountUnsorted];
+% Plot Results - using values found in ANOVAmat and targetRunLens
+% Fig 1 - 'Social Interactions, Run Length Stats' 4 * 3 grid, 1 subplot per
+% group and stat.
+
+for targ_i = 1:length(target)
+  figTitle = sprintf('Summary Statistic for Omega/ANOVA curves - %s', target{targ_i});
+  h = figure('NumberTitle', 'off', 'Name', figTitle,'units','normalized','outerposition',[0 0 1 1]);
+  sgtitle(figTitle);
+  for group_i = 1:length(groupingType)
+    for plot_i = 1:length(statType)
+      plotInd = ((group_i - 1) * length(statType)) + plot_i;
+      subplot(length(groupingType), length(statType), plotInd);
+      plotData = targetRunLens{targ_i, group_i, plot_i};
+      histogram(plotData);
+      plotTitle = sprintf('%s - %s', statType{plot_i}, groupingType{group_i});
+      title(plotTitle);
+    end
+  end
+end
+
+% Figure 2 - the mean Omega Curve.
+for targ_i = 1:length(target)
+  figTitle = sprintf('Summary Statistic for Omega curves - %s', target{targ_i});
+  h = figure('NumberTitle', 'off', 'Name', figTitle,'units','normalized','outerposition',[0 0 1 1]);
+  sgtitle(figTitle);
+  for group_i = 1:length(groupingType)
+    for plot_i = 1:length(omegaStatType)
+      plotInd = ((group_i - 1) * length(omegaStatType)) + plot_i;
+      subplot(length(groupingType), length(omegaStatType), plotInd);
+      plotData = omegaData{targ_i, group_i, plot_i};
+      histogram(plotData);
+      plotTitle = sprintf('%s - %s', omegaStatType{plot_i}, groupingType{group_i});
+      title(plotTitle);
+    end
+  end
+end
+
 legendCells = cell(length(target)*2,1);
 for legend_i = 1:length(target)
   legendCells{legend_i} = target{legend_i};

@@ -201,10 +201,4 @@ if performSigCounts
   T = cell2table(tableCell);
   writetable(T,fullfile(fileparts(batchRunxls),sprintf('%s_sigRuns.xlsx',resultName)))
 end
-%% Comparing Lists
-% taskMod = resultTable(1).taskMod;
-% taskModIntersect = setdiff(resultTable(1).SigNull, taskMod);
-% DoubleSigPres = intersect(resultTable(1).SigANOVA, resultTable(1).SigNull);
-% DoubleSigFix = intersect(resultTable(2).SigANOVA, resultTable(2).SigNull);
-% DoubleSigReward = intersect(resultTable(3).SigANOVA, resultTable(3).SigNull);
 
