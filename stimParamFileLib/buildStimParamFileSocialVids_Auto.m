@@ -61,6 +61,7 @@ stimList = stimList(stimInd);
 %pictureLabels = cellfun(@(x) x(1:end-4), stimList, 'UniformOutput', false);
 stimListTmp = stimList;
 pictureLabels = cell(size(stimList));
+headTurnStimNames = generateHeadTurnList();
 
 for ii = 1:length(stimList)
   stim = stimList{ii};
@@ -110,6 +111,10 @@ for ii = 1:length(stimList)
       end
     end
   end
+  if any(strcmp(stim, headTurnStimNames))
+    stimLabels = horzcat(stimLabels ,'headTurning');
+  end
+
   if any(strcmp(stimParts, 'Dephased'))
     stimLabels = {'scramble'};
     label = 'Scrambled';
@@ -181,3 +186,38 @@ paramArray = paramArray(uInd);
 pictureLabels = pictureLabels(uInd);
 
 save('StimParamFileSocialVids_Full.mat','paramArray','categoryLabels','pictureLabels')
+end
+
+function headTurnStimNames = generateHeadTurnList()
+
+    headTurnStimNames = [
+    {'monkeyChasing_1111.avi'  }
+    {'monkeyChasing_1112.avi'  }
+    {'monkeyChasing_1113.avi'  }
+    {'monkeyChasing_1114.avi'  }
+    {'monkeyChasing_1115.avi'  }
+    {'monkeyFighting_1121.avi' }
+    {'monkeyFighting_1123.avi' }
+    {'monkeyFighting_1124.avi' }
+    {'monkeyFighting_1125.avi' }
+    {'monkeyFollowing_1161.avi'}
+    {'monkeyFollowing_1162.avi'}
+    {'monkeyFollowing_1163.avi'}
+    {'monkeyFollowing_1164.avi'}
+    {'monkeyFollowing_1165.avi'}
+    {'monkeyForaging_1181.avi' }
+    {'monkeyGoalDir_1101.avi'  }
+    {'monkeyGoalDir_1102.avi'  }
+    {'monkeyGoalDir_1104.avi'  }
+    {'monkeyIdle_1301.avi'     }
+    {'monkeyIdle_1302.avi'     }
+    {'monkeyIdle_1303.avi'     }
+    {'monkeyIdle_1305.avi'     }
+    {'monkeyMounting_1131.avi' }
+    {'monkeyMounting_1132.avi' }
+    {'monkeyMounting_1133.avi' }
+    {'monkeyMounting_1134.avi' }
+    {'monkeyMounting_1135.avi' }
+    {'monkeyMounting_1136.avi' }];
+  
+end

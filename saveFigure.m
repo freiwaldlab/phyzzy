@@ -8,13 +8,13 @@ if ~isempty(varargin)
   text(ax, .025,.5,footer, 'fontsize',12);
 end
 if saveFig     
-  savefig(strcat(outDir, filename,'.fig'));
+  savefig(fullfile(outDir, [filename,'.fig']));
 end
 if exportFig
-  export_fig([outDir strcat(filename, '.png')],'-m1.2','-transparent','-opengl');
+  export_fig(fullfile(outDir, strcat(filename, '.png')),'-m1.2','-transparent','-opengl');
 end
 if saveData
-  save(strcat(outDir,filename,'_data.mat'),'figData');
+  save(fullfile(outDir,[filename,'_data.mat']),'figData');
 end
 %if length(varargin) > 1 && varargin{2} == 'close'
 if length(varargin) > 1 && strcmp(varargin{2}, 'close')

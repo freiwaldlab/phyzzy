@@ -27,13 +27,11 @@ verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 
 %% Switches
 calcSwitch.excludeRepeats = 0;
-
 plotSwitch.stimPresCount = 1;         % Figures showing presentation counts across all runs, in development.
-plotSwitch.meanPSTH = 0;              % figure showing mean PSTH across all units, MUA, and Unsorted.
-plotSwitch.frameFiringRates = 1;      % Figures showing raw, max, mean rates per object depending on viewing during frame.
+plotSwitch.meanPSTH = 1;              % figure showing mean PSTH across all units, MUA, and Unsorted.
+plotSwitch.frameFiringRates = 0;      % Figures showing raw, max, mean rates per object depending on viewing during frame.
 plotSwitch.novelty = 0;       % Seeing whether 10th percentile values in previous analyses line up with 'novel' stimuli
-
-plotSwitch.slidingWindowANOVA = 1;
+plotSwitch.slidingWindowANOVA = 0;
 
 %% Parameters
 preprocessParams.spikeDataFileName = 'spikeDataBank'; %File ending in .mat, not included to allow for slicing (e.g. 'spikeDataBank_1.mat'...)
@@ -50,15 +48,15 @@ cellCountParams.recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\Recordi
 meanPSTHParams.outputDir = fullfile(outputDir,'meanPSTH');
 meanPSTHParams.stimParamsFilename = stimParamsFilename;
 meanPSTHParams.plotHist = 0;
-meanPSTHParams.plotTopStim = 1;                 % Only plot stimuli which have been present on at least a certain number of runs.
-meanPSTHParams.topStimPresThreshold = 20;       % At least this many stim presentations to be plotted when plotTopStim is on.
+meanPSTHParams.plotTopStim = 0;                 % Only plot stimuli which have been present on at least a certain number of runs.
+meanPSTHParams.topStimPresThreshold = 10;       % At least this many stim presentations to be plotted when plotTopStim is on.
 meanPSTHParams.broadLabel = 0;                  % Transitions individual stimuli to broad catagory (e.g. chasing).
 meanPSTHParams.normalize = 2;                   % Normalizes PSTH values to the recording's fixation period. 1 = percentile Signal change, 2 = Z score.
 meanPSTHParams.maxStimOnly = 1;                 % The max value and max index taken from the PSTH is only in the area of the stimulus presentation.
 meanPSTHParams.plotLabels = {'chasing','fighting','mounting','grooming','following',...
-    'objects','goalDirected','idle','scramble','scene','socialInteraction','animControl','animSocialInteraction','agents',}; %If broadLabel is on, all stimuli will have their labels changed to one of the labels in this array.
+    'objects','goalDirected','idle','scramble','scene','socialInteraction','animControl','animSocialInteraction','agents','headTurning'}; %If broadLabel is on, all stimuli will have their labels changed to one of the labels in this array.
 meanPSTHParams.sortPresCount = 1;                % Sorts images based on counts.
-meanPSTHParams.fixAlign = 1;                    % For cross catagory comparison lines, shift everything to the mean of the fix period.
+meanPSTHParams.fixAlign = 0;                    % For cross catagory comparison lines, shift everything to the mean of the fix period.
 meanPSTHParams.topPSTHRunExtract = 3;           % meanPSTH will return a structure of run indices of the top PSTHes by activity (influenced by Z-scoring). This number dictates how many of the top are returned.
 meanPSTHParams.type = 'normal'; %options are 'normal', 'baselineSub', 'meanWhite'
 meanPSTHParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
@@ -77,6 +75,9 @@ meanPSTHParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable,
 load(meanPSTHParams.psthColormapFilename);
 meanPSTHParams.colormap = map;
 meanPSTHParams.tmpFileName = 'tmpStructPrcSigChange.mat';
+meanPSTHParams.plotTest = 1; % Avoids running completed plot code.
+meanPSTHParams.stimInclude = 2; % 0 = everything, 1 = Only Animations, 2 = Exclude Animations. 
+
 
 frameFiringParams.stimParamsFilename = stimParamsFilename;
 frameFiringParams.outputDir = fullfile(outputDir,'frameFiring');
@@ -87,7 +88,7 @@ frameFiringParams.useRates = 0;     % collected data per frame can be in rates o
 frameFiringParams.delay = 70;       % Hypothetical delay between frame and the activity it causes. deduced from Mean PSTHs.
 frameFiringParams.plotRuns = 0;     % Plot Histograms of values across individual runs. 
 
-slidingANOVAParams.plotANOVA = 1;   % Plot individual cell pVectors. Saves these to individual files.
+slidingANOVAParams.plotANOVA = 0;   % Plot individual cell pVectors. Saves these to individual files.
 slidingANOVAParams.binSize = 100;
 slidingANOVAParams.binStep = 25;
 slidingANOVAParams.scrambleCount = 100;    % Count of trials to come up with control p values.

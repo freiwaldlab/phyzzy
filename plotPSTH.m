@@ -1,4 +1,4 @@
-function [ psthAxes ] = plotPSTH(psthArray, psthAxes, psthParams, plotType, psthTitle, ylabels)
+function [ psthAxes,  colorBarh] = plotPSTH(psthArray, psthAxes, psthParams, plotType, psthTitle, ylabels)
 %UNTITLED10 Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -26,8 +26,8 @@ if strcmp(plotType,'color')
   else
     imagesc(psthAxes, xrange, yaxis, psthArray);
   end
-  h = colorbar;
-  ylabel(h,'Firing Rate [Hz]','FontSize',14);
+  colorBarh = colorbar;
+  ylabel(colorBarh,'Firing Rate [Hz]','FontSize',14);
   colormap(psthParams.colormap);
   ylimits= ylim();
   yRange = ylimits(2) - ylimits(1);
