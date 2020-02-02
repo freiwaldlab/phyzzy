@@ -5045,7 +5045,6 @@ channelNames = ephysParams.channelNames;
 [imageSortOrder, imageSortedRates] = deal(initNestedCellArray(spikeCountsByImageByEpoch, 'cell', [0, 0], 3));
 [nullModelPvalues, nullTraceMeans, nullTraceSD] = deal(initNestedCellArray(spikeCountsByImageByEpoch, 'cell', [length(groups), 1], 3));
 
-
 for epoch_i = 1:length(spikeCountsByImageByEpoch)
   for channel_i = 1:length(spikeCountsByImageByEpoch{epoch_i})
     for unit_i = 1:size(spikeCountsByImageByEpoch{epoch_i}{channel_i},1)
@@ -5084,7 +5083,6 @@ for epoch_i = 1:length(spikeCountsByImageByEpoch)
   end
 end
 
-
 % After generate p values with the null model, generate the sigStruct.
 % sigStruct.channels = ephysParams.spikeChannels;
 groupingType = {'Unsorted','Unit','MUA'};
@@ -5092,6 +5090,7 @@ dataType = {'PSTH', 'Label','Stimuli'};
 sigStruct.IndInfo = {epochLabels, groupingType, dataType};
 sigStruct.channelNames = channelNames;
 sigStruct.unitCount = zeros(length(channelNames),1);
+sigStruct.sigInfo = zeros(length(channelNames), length(groupingType));
 
 
 for channel_i = 1:length(psthByImage)
@@ -5120,6 +5119,7 @@ for channel_i = 1:length(psthByImage)
           groupingInd = 2;
           unitLabel = ['U' num2str(unit_i - 1)];
         end
+        sigStruct.sigInfo(channel_i, groupingInd) =  sigStruct.sigInfo(channel_i, groupingInd) + 1;
         %{sprintf('Ch%d U%d',[channel_i, unit_i+1])}
         dataArray = cell(length(dataType),1);
         dataArray{1} = PSTHtoPlot;

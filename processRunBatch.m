@@ -132,8 +132,9 @@ end
 %runAnalyses. Cycle through them and extract desired information (# of
 %units, significance), which you can add to the output file.
 %[UnitCount, sigUnits, sigStim, sigStimLen] = deal(cell(size(analysisOutFilename)));
+replaceAnalysisOut = 1;
 if replaceAnalysisOut
-  addEnd = @(x) strjoin([x, {'analyzedData.mat'}], filesep);
+  addEnd = @(x) fullfile(x, 'analyzedData.mat');
   breakString = @(x) strsplit(x, filesep);
   joinStrings = @(x) strjoin([x(length(x)-2), x(length(x))],'');
   
@@ -156,26 +157,33 @@ epochCount = 3; %Hardcoding 3 Epochs here.
 table = cell(epochCount,1);
 [table{:}] = deal(cell(length(analysisOutFilename), length(titles)));
 true_ind = 1;
+tmp.sigStruct.IndInfo
+epochType = tmp.sigStruct.IndInfo{1};
+groupingType = tmp.sigStruct.IndInfo{2};
+dataType = tmp.sigStruct.IndInfo{3};
 
 for ii = 1:length(analysisOutFilename)
   if ~isempty((analysisOutFilename{ii}))
     tmp = load(analysisOutFilename{ii}, 'stimCatANOVATable','sigStruct','frEpochs'); %Relies on genStats function in runAnalyses.
     true_ind_page = true_ind;
     for epoch_i = 1:length(tmp.sigStruct.IndInfo{1})
-      for channel_ind = 1:length(tmp.sigStruct.data) 
-        % Null model based significance testing
+      for channel_ind = 1:length(tmp.sigStruct.data)
+        
+        % Null model based significance testing 
         channel = tmp.sigStruct.channelNames(channel_ind);
         UnitCount = tmp.sigStruct.unitCount(channel_ind);
-        sigUnits = length(tmp.sigStruct.sigUnits{epoch_i}{channel_ind});
-        sigUnsorted = tmp.sigStruct.sigUnsorted{epoch_i}{channel_ind};
-        sigMUA = tmp.sigStruct.sigMUA{epoch_i}{channel_ind};
-        sigStim = unique(cat(1, tmp.sigStruct.sigStim{epoch_i}{channel_ind}));
+        sigUnsorted = tmp.sigStruct.sigInfo(channel_ind, 1);
+        sigUnits = tmp.sigStruct.sigInfo(channel_ind, 2);
+        sigMUA = tmp.sigStruct.sigInfo(channel_ind, 3);
+        
+        sigStim = vertcat(tmp.sigStruct.data{channel_ind}{epoch_i,:,strcmp(dataType, 'Stimuli')});
         sigStimLen = length(sigStim);
         if ~isempty(sigStim)
           sigStimNames = strjoin(sigStim, ' ');
         else
           sigStimNames = ' ';
         end
+        
         % ANOVA based significance
         unitStructs = tmp.stimCatANOVATable{channel_ind};
         ANOVASigString = ' ';
@@ -187,21 +195,24 @@ for ii = 1:length(analysisOutFilename)
             elseif epoch_i == 2
               anovaSig = unitStructs{unit_ind}.ANOVA.fp < 0.05;
             elseif epoch_i == 3
-              anovaSig = unitStructs{unit_ind}.ANOVA.rp < 0.05;              
+              anovaSig = unitStructs{unit_ind}.ANOVA.rp < 0.05;
             end
           end
           ANOVASigString = [ANOVASigString ['[' num2str(unitStructs{unit_ind}.taskModulatedP < 0.05) ';' num2str(anovaSig(1)) ']']];
         end
-        %Package
+        
+        % Package Outputs into structure for table
         table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorsMsg(ii), channel, UnitCount, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, ' '];
         if ii == 1 && epoch_i == 1
-%           table{epoch_i}{true_ind, 11} = sprintf('Comparison: %s Vs %s', strjoin(unitStructs{1}.ANOVA.stats.grpnames{1}), strjoin(unitStructs{1}.ANOVA.stats.grpnames{2}));
+          %           table{epoch_i}{true_ind, 11} = sprintf('Comparison: %s Vs %s', strjoin(unitStructs{1}.ANOVA.stats.grpnames{1}), strjoin(unitStructs{1}.ANOVA.stats.grpnames{2}));
         end
-        true_ind = true_ind + 1;
+        true_ind = true_ind + 1;     
       end
+      
       if epoch_i ~= length(tmp.sigStruct.sigUnits) % More pages to do = let count reset.
         true_ind = true_ind_page;
       end
+      
     end
   end
 end
