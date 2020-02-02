@@ -462,12 +462,13 @@ end
 
 save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch','-append');
 
+% Calculate sort orders and statistics
+epochLabels = {'Presentation','Fixation','Reward'};
+[sigStruct, imageSortOrder, nullModelPvalues, nullTraceMeans, nullTraceSD] = genStats(psthByImage, spikeCountsByImageByEpoch, firingRatesByImageByEpoch, firingRateErrsByImageByEpoch, trialCountsByImage, analysisGroups, epochLabels, eventIDs, ephysParams);
+save(analysisOutFilename,'sigStruct','-append');
+
 for epoch_i = 1:length(firingRatesByImageByEpoch)
-  imFr = firingRatesByImageByEpoch{epoch_i};
-  imFrErr = firingRateErrsByImageByEpoch{epoch_i};
-  imSpikeCounts = spikeCountsByImageByEpoch{epoch_i};
   epochTag = sprintf('%d-%d ms',frEpochs(epoch_i,1), frEpochs(epoch_i,2));
-  
   % preferred images
   for channel_i = 1:length(spikeChannels)
     for unit_i = 1:length(channelUnitNames{channel_i})
@@ -475,17 +476,18 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
       if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
         continue;
       end
-      [imageSortedRates, imageSortOrder] = sort(imFr{channel_i}(unit_i,:),2,'descend');  %todo: write the firing rates to file
+      
+      imageSortOrderInd = imageSortOrder{epoch_i}{channel_i}{unit_i};
+      imageSortedRates  = firingRatesByImageByEpoch{epoch_i}{channel_i}(unit_i,imageSortOrderInd);  %todo: write the firing rates to file
       if sum(imageSortedRates) == 0
         imageSortedRates(1) = 1; %Defense against this causing problems later.
       end
-      imSpikeCountsSorted = imSpikeCounts{channel_i}{unit_i}(imageSortOrder);
-      imFrErrSorted = imFrErr{channel_i}(unit_i,imageSortOrder);
-      sortedImageLabels = eventLabels(imageSortOrder);
-      sortedEventIDs = eventIDs(imageSortOrder);
-      trialCountsByImageSorted = trialCountsByImage(imageSortOrder);
+      imFrErrSorted = firingRateErrsByImageByEpoch{epoch_i}{channel_i}(unit_i,imageSortOrderInd);
+      sortedImageLabels = eventLabels(imageSortOrderInd);
+      sortedEventIDs = eventIDs(imageSortOrderInd);
+      trialCountsByImageSorted = trialCountsByImage(imageSortOrderInd);
       if exist('groupLabelColorsByImage','var')
-        sortedGroupLabelColors = groupLabelColorsByImage(imageSortOrder,:,:);
+        sortedGroupLabelColors = groupLabelColorsByImage(imageSortOrderInd,:,:);
       else
         sortedGroupLabelColors = ones(length(eventLabels),3);
       end
@@ -508,9 +510,9 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
           prefImRasterTitle = sprintf('Preferred Image Raster - %s, %s',chanUnitTag, epochTag);
           fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
           clear figData
-          figData.z = spikesByEvent(imageSortOrder(1:topStimToPlot));
+          figData.z = spikesByEvent(imageSortOrderInd(1:topStimToPlot));
           figData.x = -psthPre:psthImDur+psthPost;
-          raster(spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedImageLabels(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, colors);
+          raster(spikesByEvent(imageSortOrderInd(1:topStimToPlot)), sortedImageLabels(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, colors);
           title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
           saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
           if closeFig
@@ -528,9 +530,9 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
           prefImRasterTitle = sprintf('Preferred Image Raster, Color coded - %s, %s',chanUnitTag, epochTag);
           fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
           clear figData
-          figData.z = spikesByEvent(imageSortOrder(1:topStimToPlot));
+          figData.z = spikesByEvent(imageSortOrderInd(1:topStimToPlot));
           figData.x = -psthPre:psthImDur+psthPost;
-          rasterColorCoded(fh, spikesByEvent(imageSortOrder(1:topStimToPlot)), sortedEventIDs(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, attendedObjData);
+          rasterColorCoded(fh, spikesByEvent(imageSortOrderInd(1:topStimToPlot)), sortedEventIDs(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, attendedObjData);
           title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
           saveFigure(outDir, sprintf('prefImRaster_%s_%s_Run%s',chanUnitTag,epochTag,runNum), figData, saveFig, exportFig, saveFigData, figTag );
           if closeFig
@@ -541,7 +543,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
         if isfield(plotSwitch,'prefImRasterEvokedOverlay') && plotSwitch.prefImRasterEvokedOverlay
           prefImRasterEvokedOverlayTitle = sprintf('Preferred Image Raster, Evoked Potential Overlay - %s, %s',chanUnitTag, epochTag);
           fh = figure('Name',prefImRasterEvokedOverlayTitle,'NumberTitle','off');
-          rasterEvoked(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
+          rasterEvoked(spikesByEvent(imageSortOrderInd), lfpByEvent(imageSortOrderInd), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors, 1)
           title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
           saveFigure(outDir, sprintf('prefImRaster-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
           if closeFig
@@ -552,7 +554,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
         if isfield(plotSwitch,'prefImAverageEvoked') && plotSwitch.prefImRasterAverageEvokedOverlay
           prefImRasterAverageEvokedOverlayTitle = sprintf('Preferred Image Raster, Average Evoked Potential Overlay - %s, %s',chanUnitTag, epochTag);
           fh = figure('Name',prefImRasterAverageEvokedOverlayTitle,'NumberTitle','off');
-          averageEvoked(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors)
+          averageEvoked(spikesByEvent(imageSortOrderInd), lfpByEvent(imageSortOrderInd), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, channel_i, colors)
           title(sprintf('Preferred Images - Average Evoked, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
           saveFigure(outDir, sprintf('prefImAverage-LFP_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
           if closeFig
@@ -563,7 +565,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
         if isfield(plotSwitch,'prefImMultiChRasterEvokedOverlay') && plotSwitch.prefImMultiChRasterEvokedOverlay
           prefImMultiChRasterEvokedOverlayTitle = sprintf('Preferred Image Raster, Multichannel, Evoked Potential Overlay - %s, %s',chanUnitTag, epochTag);
           fh = figure('Name',prefImMultiChRasterEvokedOverlayTitle,'NumberTitle','off');
-          rasterEvokedMultiCh(spikesByEvent(imageSortOrder), lfpByEvent(imageSortOrder), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
+          rasterEvokedMultiCh(spikesByEvent(imageSortOrderInd), lfpByEvent(imageSortOrderInd), sortedImageLabels, psthPre, psthPost, psthImDur, stimTiming.ISI, lfpPaddedBy, 1:length(lfpChannels), channelNames, colors)
           title(sprintf('Preferred Images, from top, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
           saveFigure(outDir, sprintf('prefImRaster-LFP-MultiChannel_%s_%s_Run%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
           if closeFig
@@ -574,41 +576,15 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
       % image preference barplot
       if isfield(plotSwitch,'imageTuningSorted') && plotSwitch.imageTuningSorted
         for group_i = 1:length(analysisGroups.stimulusLabelGroups.groups)
-          imageSortOrderAll{epoch_i}{channel_i}{unit_i}{group_i} = imageSortOrder;
-          %Calculate the Null model
-          mu = mean(imageSortedRates);
-          rawSigmas = imFrErrSorted(trialCountsByImageSorted > 1).*sqrt(trialCountsByImageSorted(trialCountsByImageSorted > 1))';
-          mixSigmas = horzcat(imFrErrSorted(trialCountsByImageSorted > 1),randsample(rawSigmas,sum(trialCountsByImageSorted == 1),true));
-          nulltrials = 100;
-          nullDistSortsMix = zeros(nulltrials,length(imageSortedRates));
-          for i = 1:length(imageSortedRates)
-            nullDistSortsMix(:,i) = normrnd(mu,mixSigmas(i),nulltrials,1);
-          end
-          nullDistSortsMix = sort(nullDistSortsMix,2,'descend');
-          nullDistSortsMix(nullDistSortsMix < 0) = 0;
-          hold on
-          lineProps.col = {'k'};
-          lineProps.width = 1;
-          tintNull = tinv([0.025  0.975],length(nullDistSortsMix)-1);
-          nullDistSortsMixSE = (std(nullDistSortsMix,1)/sqrt(length(nullDistSortsMix)));
-          muNull = mean(nullDistSortsMix);
-          %Calculate significance
-          estimatedDiff = imageSortedRates - muNull;
-          zScore = estimatedDiff./imFrErrSorted;
-          nullModelPvalues{epoch_i}{channel_i}{unit_i}{group_i} = exp(-0.717.*zScore-0.416*(zScore.^2));
-          %Try 2
-          for event_i = 1:length(imSpikeCountsSorted)
-            [H{channel_i}{unit_i}{group_i}(event_i),pVect{channel_i}{unit_i}{group_i}(event_i)] = ztest(imSpikeCountsSorted{event_i}.rates, mu, mixSigmas(event_i));
-          end
           %Plot Everything
           imageTuningSortedTitle = sprintf('Image Tuning, Sorted - %s, %s',chanUnitTag, epochTag);
           fh = figure('Name',imageTuningSortedTitle,'NumberTitle','off');
           groupName = analysisGroups.stimulusLabelGroups.names{group_i};
-          %tint = tinv([0.025  0.975],length(imSpikeCountsSorted.counts)-1); %Calcule CIs for stimBars.
-          %imFrCISorted = imFrErrSorted*tint(2);
-          [HB, HE, ~, ~, ~] = superbar(imageSortedRates,'E',imFrErrSorted,'P',nullModelPvalues{epoch_i}{channel_i}{unit_i}{group_i}, 'PStarShowNS', 0,'BarFaceColor',sortedGroupLabelColors(:,:,group_i), 'ErrorbarLineWidth', 1.5, 'ErrorbarColor', [0 0 .1]);
+          [HB, HE, ~, ~, ~] = superbar(imageSortedRates,'E',imFrErrSorted,'P',nullModelPvalues{epoch_i}{channel_i}{unit_i}, 'PStarShowNS', 0,'BarFaceColor',sortedGroupLabelColors(:,:,group_i), 'ErrorbarLineWidth', 1.5, 'ErrorbarColor', [0 0 .1]);
           set(gca,'XTickLabel',sortedImageLabels,'XTickLabelRotation',45,'XTick',1:length(eventLabels),'TickDir','out');
-          h = mseb(1:length(imageSortedRates),mean(nullDistSortsMix,1), std(nullDistSortsMix,1),lineProps);
+          lineProps.col = {'k'};
+          lineProps.width = 1;
+          h = mseb(1:length(imageSortedRates),nullTraceMeans{epoch_i}{channel_i}{unit_i}, nullTraceSD{epoch_i}{channel_i}{unit_i},lineProps);
           h.patch.FaceAlpha = '0.5';
           ylim(max(ylim(),0));
           ylabel('Firing rate [Hz]');
@@ -616,7 +592,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
           ylim([ylim()*1.2]) %provides additional room for legend.
           title(imageTuningSortedTitle);
           %Legends are made, not born
-          [~, firstgroupMember] = unique(groupLabelsByImage(imageSortOrder)); %Get the right handles to put in the legend
+          [~, firstgroupMember] = unique(groupLabelsByImage(imageSortOrderInd)); %Get the right handles to put in the legend
           legendHandleArray = [HB(firstgroupMember); h.mainLine; HE(firstgroupMember(end))];
           legendHandleLabel = [analysisGroups.stimulusLabelGroups.groups{group_i}(:)' {'Null model'} {sprintf('SE Bars, n = %d', mode(trialCountsByImageSorted))}]';
           legend(legendHandleArray,legendHandleLabel,'FontSize',7,'NumColumns', 2);
@@ -875,13 +851,10 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
   end
 end
 
-save(analysisOutFilename,'nullModelPvalues','-append');
-
 if isfield(plotSwitch, 'stimPSTHoverlay') && plotSwitch.stimPSTHoverlay
   epochLabels = {'Presentation','Fixation','Reward'};
-  %stimPSTHoverlay(psthByImage, imageSortingMatrix, inclusionMask, stimDir, psthPre, psthImDur, psthPost, lfpPaddedBy, taskData.taskEventList, outDir)
-  sigStruct = stimPSTHoverlay(psthByImage, imageSortOrderAll, nullModelPvalues, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, eventIDs, outDir);
-  save(analysisOutFilename,'sigStruct','-append');
+  % (psthByImage, sortMask, inclusionMask, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, taskEventList, outDir)
+  stimPSTHoverlay(psthByImage, imageSortOrder, nullModelPvalues, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, eventIDs, outDir);
 end
 
 %likely should be a Calc switch, but not sure of what filters exist b/t
@@ -2177,7 +2150,7 @@ for calc_i = 1:length(calcSwitches)
         end
       end
     end
-      
+    
     
     if isfield(plotSwitch,'lfpSpectraByCategory') && plotSwitch.lfpSpectraByCategory
       for group_i = 1:length(analysisGroups.spectraByCategory.groups)
@@ -2348,7 +2321,7 @@ for calc_i = 1:length(calcSwitches)
               itemNum = imInds.(group{item_i});
             end
             [Cgram, C, shiftList, confCgram, confC] = correlogram(squeeze(lfpByItem{itemNum}(1,channel_i,:,:)),...
-              squeeze(lfpByItem{itemNum}(1,channel_i,:,:)), correlParams);    
+              squeeze(lfpByItem{itemNum}(1,channel_i,:,:)), correlParams);
             Cgram = Cgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
             confCgram = confCgram(lfpPaddedBy+1:end-lfpPaddedBy,lfpPaddedBy+1:end-lfpPaddedBy);
             if item_i == 1
@@ -2357,13 +2330,13 @@ for calc_i = 1:length(calcSwitches)
               shifts =  zeros(length(group),length(C));
             end
             spectra(item_i,:) = C';
-            specErrs(item_i,:,:) = confC;  
+            specErrs(item_i,:,:) = confC;
             shifts(item_i,:) = shiftList';
             t = -psthPre:psthImDur+psthPost;
             if isfield(plotSwitch,'lfpAutocorrelTfByItem') && plotSwitch.lfpAutocorrelTfByItem
-              fh = figure(); 
-              imagesc(t,t,Cgram); axis xy  
-              xlabel('Time (ms)'); 
+              fh = figure();
+              imagesc(t,t,Cgram); axis xy
+              xlabel('Time (ms)');
               ylabel('Time(ms)');
               c = colorbar();
               ylabel(c,'Correlation');
@@ -2394,7 +2367,7 @@ for calc_i = 1:length(calcSwitches)
             ylabel('correlation');
             title(sprintf('%s LFP autocorrelation %s',channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
             clear figData
-            figData.x = shifts; 
+            figData.x = shifts;
             figData.y = spectra;
             figData.e = specErrs;
             drawnow;
@@ -2406,8 +2379,8 @@ for calc_i = 1:length(calcSwitches)
         end
       end
     end
-     
-
+    
+    
     if isfield(plotSwitch,'spikeSpectraByCategory') && plotSwitch.spikeSpectraByCategory
       for group_i = 1:length(analysisGroups.spectraByCategory.groups)
         group = analysisGroups.spectraByCategory.groups{group_i};
@@ -2417,8 +2390,8 @@ for calc_i = 1:length(calcSwitches)
           for unit_i = 1:length(channelUnitNames{channel_i})
             if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %skip unsorted if no isolated units defined
               continue
-            end       
-            for item_i = 1:length(group)              
+            end
+            for item_i = 1:length(group)
               if calcSwitch.spikeTimes
                 [S,F,~,E] = mtspectrumpt(spikesByCategoryForTF{catInds.(group{item_i})}{channel_i}{unit_i}, chronuxParams); %matlab note: '~' is placeholder for unneeded output
               else
@@ -2493,7 +2466,7 @@ for calc_i = 1:length(calcSwitches)
             end
             
             if calcSwitch.trialMeanSpectra
-              for item_i = 1:length(group)              
+              for item_i = 1:length(group)
                 if calcSwitch.spikeTimes
                   [S,F,~,E] = mtspectrumpt(allSpikesByCategoryForTF{catInds.(group{item_i})}{channel_i}{unit_i}, chronuxParams); %matlab note: '~' is placeholder for unneeded output
                 else
@@ -2555,7 +2528,7 @@ for calc_i = 1:length(calcSwitches)
               h = plot(mean(freqs(:,6:end),1),exp(m*log(mean(freqs(:,6:end),1)) + y0), 'k--');
               xlabel('frequency (Hz)', 'FontSize',18);
               ylabel('power (spks/s)', 'FontSize',18);
-              title(sprintf('%s %s mean-evoked power spectra, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchTitleSuffixes{calc_i}), 'FontSize',18);              
+              title(sprintf('%s %s mean-evoked power spectra, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},groupName,tfCalcSwitchTitleSuffixes{calc_i}), 'FontSize',18);
               legend(vertcat(handles,h),vertcat(group,{sprintf('fit,m = %.3f',m)}));
               set(gca,'fontsize',18);
               clear figData
@@ -2570,7 +2543,7 @@ for calc_i = 1:length(calcSwitches)
           end
         end
       end
-            
+      
       % time domain autocorrelation
       if (isfield(plotSwitch,'spikeAutocorrelTfByItem') && plotSwitch.spikeAutocorrelTfByItem) || (isfield(plotSwitch,'spikeAutocorrelByItem') && plotSwitch.spikeAutocorrelByItem)
         for group_i = 1:length(analysisGroups.spectraByCategory.groups)
@@ -2601,13 +2574,13 @@ for calc_i = 1:length(calcSwitches)
                   shifts =  zeros(length(group),length(C));
                 end
                 spectra(item_i,:) = C';
-                specErrs(item_i,:,:) = confC;  
+                specErrs(item_i,:,:) = confC;
                 shifts(item_i,:) = shiftList';
                 t = -psthPre:psthImDur+psthPost;
-                if isfield(plotSwitch,'spikeAutocorrelTfByItem') && plotSwitch.spikeAutocorrelTfByItem 
-                  fh = figure(); 
+                if isfield(plotSwitch,'spikeAutocorrelTfByItem') && plotSwitch.spikeAutocorrelTfByItem
+                  fh = figure();
                   imagesc(t,t,Cgram); axis xy
-                  xlabel('Time (ms)'); 
+                  xlabel('Time (ms)');
                   ylabel('Time (ms)');
                   c = colorbar();
                   ylabel(c,'Correlation');
@@ -2638,7 +2611,7 @@ for calc_i = 1:length(calcSwitches)
                 ylabel('correlation');
                 title(sprintf('%s %s autocorrelation %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 clear figData
-                figData.x = shifts; 
+                figData.x = shifts;
                 figData.y = spectra;
                 figData.e = specErrs;
                 drawnow;
@@ -2659,7 +2632,7 @@ for calc_i = 1:length(calcSwitches)
     end
   end
 end
-  
+
 %% image-wise time-frequency plots, spikes and lfp
 % todo: put in option for just preferred image
 tfCalcSwitchNames = {'evokedImageTF', 'inducedImageTF'};
@@ -2787,7 +2760,7 @@ for calc_i = 1:length(tfCalcSwitches)
     end
   end
 end
-  
+
 %% category-wise time-frequency plots, spikes
 tfCalcSwitchNames = {'evokedCatSpikeTF', 'inducedCatSpikeTF'};
 tfCalcSwitchTitleSuffixes = {'',', induced'}; % appended to titles
@@ -2832,7 +2805,7 @@ for calc_i = 1:length(tfCalcSwitches)
               fh = figure();
               if specgramRowAve
                 for i = 1:size(S,2)
-                  S(:,i) = S(:,i)/mean(S(:,i)); 
+                  S(:,i) = S(:,i)/mean(S(:,i));
                 end
                 imagesc(t,f,S'); axis xy; c = colorbar();
                 ylabel(c,'Row-Normalized Power');
@@ -2841,7 +2814,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 imagesc(t,f,S'); axis xy; c = colorbar();
                 ylabel(c,'Power (dB)');
               end
-              xlabel('Time (ms)'); 
+              xlabel('Time (ms)');
               ylabel('Frequency (Hz)');
               hold on
               draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
@@ -2860,7 +2833,7 @@ for calc_i = 1:length(tfCalcSwitches)
               if closeFig
                 close(fh);
               end
-
+              
               % contribute mua to shared figure
               if unit_i == length(channelUnitNames{channel_i})
                 figure(muaTfFig);
@@ -2873,7 +2846,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 title(sprintf('%s LFP Time-Frequency, %s%s',channelNames{channel_i},eventLabels{image_i},tfCalcSwitchTitleSuffixes{calc_i}));
-                xlabel('Time (ms)'); 
+                xlabel('Time (ms)');
                 ylabel('Frequency (Hz)');
                 title(forTitle);
               end
@@ -2890,7 +2863,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 fh = figure();
                 if specgramRowAve
                   for i = 1:size(S,2)
-                    S(:,i) = S(:,i)/mean(S(:,i)); 
+                    S(:,i) = S(:,i)/mean(S(:,i));
                   end
                   imagesc(t,f,S'); axis xy; c = colorbar();
                   ylabel(c,'Row-Normalized Power');
@@ -2899,7 +2872,7 @@ for calc_i = 1:length(tfCalcSwitches)
                   imagesc(t,f,S'); axis xy; c = colorbar();
                   ylabel(c,'Power (dB)');
                 end
-                xlabel('Time (ms)'); 
+                xlabel('Time (ms)');
                 ylabel('Frequency (Hz)');
                 hold on
                 draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
@@ -2920,7 +2893,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
               end
             end
-                        
+            
             if calcSwitch.trialMeanSpectra
               [S,t,f]=mtspecgramc(squeeze(mean(lfpByCategory{catInds.(group{item_i})}(1,channel_i,:,:),3)),movingWin,chronuxParams);
               t = t - lfpAlignParams.msPreAlign;
@@ -2939,7 +2912,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 imagesc(t,f,S'); axis xy; c = colorbar();
                 ylabel(c,'Power (dB)');
               end
-              xlabel('Time (ms)'); 
+              xlabel('Time (ms)');
               ylabel('Frequency (Hz)');
               hold on
               draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
@@ -3022,7 +2995,7 @@ for calc_i = 1:length(tfCalcSwitches)
             draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
             yyaxis right
             plot(t,totalPower,'Color',[0.8,0.8,0.9],'LineWidth',4);
-            xlabel('Time (ms)'); 
+            xlabel('Time (ms)');
             yyaxis left
             ylabel('Frequency (Hz)');
             title(forTitle);
@@ -3032,7 +3005,7 @@ for calc_i = 1:length(tfCalcSwitches)
               t = t - lfpAlignParams.msPreAlign;
               f = 1000*f;
               totalPower = sum(S,2)';
-
+              
               fh = figure();
               if specgramRowAve
                 for i = 1:size(S,2)
@@ -3045,7 +3018,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 imagesc(t,f,S'); axis xy; c = colorbar();
                 ylabel(c,'Power (dB)');
               end
-              xlabel('Time (ms)'); 
+              xlabel('Time (ms)');
               ylabel('Frequency (Hz)');
               hold on
               draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
@@ -3101,8 +3074,8 @@ for calc_i = 1:length(tfCalcSwitches)
       spikesByCategoryBinned = spikesByCategoryBinnedInduced;
       lfpByCategoryEvokedTmp = lfpByCategory;
       lfpByCategory = lfpByCategoryInduced;
-    end      
-
+    end
+    
     %spike -- field time-domain coupling
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups) %todo: make own analysis group
       group = analysisGroups.coherenceByCategory.groups{group_i};
@@ -3124,7 +3097,7 @@ for calc_i = 1:length(tfCalcSwitches)
             for unit_i = 1:length(channelUnitNames{channel2_i})
               if length(channelUnitNames{channel2_i}) == 2 && unit_i == 1 %skip unsorted if no isolated units; just do mua
                 continue
-              end 
+              end
               for item_i = 1:length(group)
                 if isfield(catInds,group{item_i})
                   lfpByItem = lfpByCategory;
@@ -3154,12 +3127,12 @@ for calc_i = 1:length(tfCalcSwitches)
                   shifts =  zeros(length(group),length(C));
                 end
                 spectra(item_i,:) = C';
-                specErrs(item_i,:,:) = confC;  
+                specErrs(item_i,:,:) = confC;
                 shifts(item_i,:) = shiftList';
                 t = -psthPre:psthImDur+psthPost;
-                fh = figure(); 
+                fh = figure();
                 imagesc(t,t,Cgram'); axis xy
-                xlabel(sprintf('Time, %s field (ms)', channelNames{channel_i})); 
+                xlabel(sprintf('Time, %s field (ms)', channelNames{channel_i}));
                 ylabel(sprintf('Time, %s %s (ms)', channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i}));
                 c = colorbar();
                 ylabel(c,'Correlation');
@@ -3189,7 +3162,7 @@ for calc_i = 1:length(tfCalcSwitches)
               ylabel('correlation');
               title(sprintf('%s %s - %s field correlation %s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
               clear figData
-              figData.x = shifts; 
+              figData.x = shifts;
               figData.y = spectra;
               figData.e = specErrs;
               drawnow;
@@ -3224,7 +3197,7 @@ for calc_i = 1:length(tfCalcSwitches)
             for unit_i = 1:length(channelUnitNames{channel2_i})
               if length(channelUnitNames{channel2_i}) == 2 && unit_i == 1 %skip unsorted if no isolated units; just do mua
                 continue
-              end 
+              end
               for item_i = 1:length(group)
                 if isfield(catInds,group{item_i})
                   lfpByItem = lfpByCategory;
@@ -3257,7 +3230,7 @@ for calc_i = 1:length(tfCalcSwitches)
                   specErrs(item_i,:,1) = Cerr(1,:)-C;
                   specErrs(item_i,:,2) = C-Cerr(2,:);
                 else
-                  specErrs(item_i,:,:) = confC;  
+                  specErrs(item_i,:,:) = confC;
                 end
                 phaseErrs(item_i,:) = phistd';
                 freqs(item_i,:) = 1000*f';
@@ -3265,7 +3238,7 @@ for calc_i = 1:length(tfCalcSwitches)
               % note: this correction maintains consistency with X-Y coherence, where X comes first in the call to coherency, but so we can say X=spike,
               % Y=field, while chronux requires us to put field first in the function call
               phases = -1*phases;
-
+              
               fh = figure();
               lineProps.width = 3;
               lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
@@ -3275,7 +3248,7 @@ for calc_i = 1:length(tfCalcSwitches)
               ylabel('coherency');
               title(sprintf('%s %s - %s field coherence%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
               clear figData
-              figData.x = freqs; 
+              figData.x = freqs;
               figData.y = spectra;
               figData.e = specErrs;
               drawnow;
@@ -3283,7 +3256,7 @@ for calc_i = 1:length(tfCalcSwitches)
               if closeFig
                 close(fh);
               end
-
+              
               %phases %todo: convert from std to sterr?
               fh = figure();
               lineProps.width = 3;
@@ -3343,7 +3316,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 end
               end
               
-             if isfield(plotSwitch,'couplingPhasesPolar') && plotSwitch.couplingPhasesPolar
+              if isfield(plotSwitch,'couplingPhasesPolar') && plotSwitch.couplingPhasesPolar
                 %replot the unwrapped phases as latency differences
                 fh = figure();
                 [unwrappedPhases,~] = unwrapPhases(phases);
@@ -3401,15 +3374,15 @@ for calc_i = 1:length(tfCalcSwitches)
                     specErrs(item_i,:,1) = Cerr(1,:)-C;
                     specErrs(item_i,:,2) = C-Cerr(2,:);
                   else
-                    specErrs(item_i,:,:) = confC;  
-                  end    
+                    specErrs(item_i,:,:) = confC;
+                  end
                   phaseErrs(item_i,:) = phistd';
                   freqs(item_i,:) = 1000*f';
                 end
                 % note: this correction maintains consistency with X-Y coherence, where X comes first in the call to coherency, but so we can say X=spike,
                 % Y=field, while chronux requires us to put field first in the function call
                 phases = -1*phases;
-
+                
                 fh = figure();
                 lineProps.width = 3;
                 lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
@@ -3419,7 +3392,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 ylabel('coherency');
                 title(sprintf('Trial mean %s %s - %s field coherence%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 clear figData
-                figData.x = freqs; 
+                figData.x = freqs;
                 figData.y = spectra;
                 figData.e = specErrs;
                 drawnow;
@@ -3427,7 +3400,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 if closeFig
                   close(fh);
                 end
-
+                
                 %phases %todo: convert from std to sterr?
                 fh = figure();
                 lineProps.width = 3;
@@ -3511,7 +3484,7 @@ for calc_i = 1:length(tfCalcSwitches)
             for unit_i = 1:length(channelUnitNames{channel2_i})
               if length(channelUnitNames{channel2_i}) == 2 && unit_i == 1 %skip unsorted if no isolated units; just do mua
                 continue
-              end 
+              end
               for item_i = 1:length(group)
                 if isfield(catInds,group{item_i})
                   lfpByItem = lfpByCategory;
@@ -3536,7 +3509,7 @@ for calc_i = 1:length(tfCalcSwitches)
                   Cerr(1,:,:) = C+confC; %todo: confirm that this works
                   Cerr(2,:,:) = C-confC;
                 end
-
+                
                 t = t - lfpAlignParams.msPreAlign;
                 f = 1000*f;
                 % note: this correction maintains consistency with X-Y coherence, where X comes first in the call to coherency, but so we can say X=spike,
@@ -3545,10 +3518,10 @@ for calc_i = 1:length(tfCalcSwitches)
                 phaseErrs = zeros(size(Cerr));
                 phaseErrs(1,:,:) = phi+phistd;
                 phaseErrs(2,:,:) = phi-phistd;
-
-                fh = figure(); 
+                
+                fh = figure();
                 imagesc(t,f,C'); axis xy
-                xlabel('Time (ms)'); 
+                xlabel('Time (ms)');
                 ylabel('Frequency (Hz)');
                 c = colorbar();
                 ylabel(c,'Coherency');
@@ -3565,10 +3538,10 @@ for calc_i = 1:length(tfCalcSwitches)
                 if closeFig
                   close(fh);
                 end
-
+                
                 fh = figure();
                 imagesc(t,f,phi'); axis xy
-                xlabel('Time (ms)'); 
+                xlabel('Time (ms)');
                 ylabel('Frequency (Hz)');
                 c = colorbar();
                 ylabel(c,'phase');
@@ -3586,13 +3559,13 @@ for calc_i = 1:length(tfCalcSwitches)
                 if closeFig
                   close(fh);
                 end
-
-
+                
+                
                 if isfield(plotSwitch,'tfErrs') && plotSwitch.tfErrs
-                  fh = figure(); 
+                  fh = figure();
                   subplot(2,3,1);
                   imagesc(t,f,C'); axis xy
-                  xlabel('Time (ms)'); 
+                  xlabel('Time (ms)');
                   ylabel('Frequency (Hz)');
                   c = colorbar();
                   ylabel(c,'Coherency');
@@ -3600,10 +3573,10 @@ for calc_i = 1:length(tfCalcSwitches)
                   draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   title(sprintf('%s %s - %s field coherence, %s%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
+                  
                   subplot(2,3,2);
                   imagesc(t,f,squeeze(Cerr(1,:,:))'); axis xy
-                  xlabel('Time (ms)'); 
+                  xlabel('Time (ms)');
                   ylabel('Frequency (Hz)');
                   c = colorbar();
                   ylabel(c,'Coherency');
@@ -3611,10 +3584,10 @@ for calc_i = 1:length(tfCalcSwitches)
                   draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   title('coherence, upper confidence bound','FontSize',18);
-
+                  
                   subplot(2,3,3);
                   imagesc(t,f,squeeze(Cerr(2,:,:))'); axis xy
-                  xlabel('Time (ms)'); 
+                  xlabel('Time (ms)');
                   ylabel('Frequency (Hz)');
                   c = colorbar();
                   ylabel(c,'Coherency');
@@ -3622,11 +3595,11 @@ for calc_i = 1:length(tfCalcSwitches)
                   draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   title('coherence, lower confidence bound','FontSize',18);
-
-
-                  ax = subplot(2,3,4); 
+                  
+                  
+                  ax = subplot(2,3,4);
                   imagesc(t,f,phi'); axis xy
-                  xlabel('Time (ms)'); 
+                  xlabel('Time (ms)');
                   ylabel('Frequency (Hz)');
                   c = colorbar();
                   ylabel(c,'phase');
@@ -3636,10 +3609,10 @@ for calc_i = 1:length(tfCalcSwitches)
                   draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   title(sprintf('%s %s - %s LFP phase, face%s',channelNames{channel2_i},channelUnitNames{channel2_i}{unit_i},channelNames{channel_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
+                  
                   ax = subplot(2,3,5);
                   imagesc(t,f,squeeze(phistd(2,:,:))'); axis xy
-                  xlabel('Time (ms)'); 
+                  xlabel('Time (ms)');
                   ylabel('Frequency (Hz)');
                   c = colorbar();
                   ylabel(c,'phase');
@@ -3648,12 +3621,12 @@ for calc_i = 1:length(tfCalcSwitches)
                   ylabel(c,'phase std');
                   hold on
                   draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);  
+                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   title('phase, upper confidence bound','FontSize',18);
-
+                  
                   ax = subplot(2,3,6);
                   imagesc(t,f,squeeze(phistd(2,:,:))'); axis xy
-                  xlabel('Time (ms)'); 
+                  xlabel('Time (ms)');
                   ylabel('Frequency (Hz)');
                   c = colorbar();
                   ylabel(c,'phase');
@@ -3677,7 +3650,7 @@ for calc_i = 1:length(tfCalcSwitches)
       end
     end
     
-   % field -- field time domain coupling
+    % field -- field time domain coupling
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups) %todo: make own analysis group
       group = analysisGroups.coherenceByCategory.groups{group_i};
       groupName = analysisGroups.coherenceByCategory.names{group_i};
@@ -3702,12 +3675,12 @@ for calc_i = 1:length(tfCalcSwitches)
                 shifts =  zeros(length(group),length(C));
               end
               spectra(item_i,:) = C';
-              specErrs(item_i,:,:) = confC;  
+              specErrs(item_i,:,:) = confC;
               shifts(item_i,:) = shiftList';
               t = -psthPre:psthImDur+psthPost;
-              fh = figure(); 
+              fh = figure();
               imagesc(t,t,Cgram'); axis xy
-              xlabel(sprintf('Time, %s field (ms)', channelNames{channel_i})); 
+              xlabel(sprintf('Time, %s field (ms)', channelNames{channel_i}));
               ylabel(sprintf('Time, %s field (ms)', channelNames{channel2_i}));
               c = colorbar();
               ylabel(c,'Correlation');
@@ -3737,7 +3710,7 @@ for calc_i = 1:length(tfCalcSwitches)
             ylabel('correlation');
             title(sprintf('%s field - %s field correlation %s',channelNames{channel_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
             clear figData
-            figData.x = shifts; 
+            figData.x = shifts;
             figData.y = spectra;
             figData.e = specErrs;
             drawnow;
@@ -3749,15 +3722,15 @@ for calc_i = 1:length(tfCalcSwitches)
         end
       end
     end
-   
-   
-   % field -- field coherency, frequency domain 
+    
+    
+    % field -- field coherency, frequency domain
     for group_i = 1:length(analysisGroups.coherenceByCategory.groups)
       group = analysisGroups.coherenceByCategory.groups{group_i};
       groupName = analysisGroups.coherenceByCategory.names{group_i};
       for channel_i = 1:length(channelNames)
         for channel2_i = channel_i:length(lfpChannels) %these two lines make sure we only calculate once for each pair
-          if channel2_i > channel_i 
+          if channel2_i > channel_i
             for item_i = 1:length(group)
               if isfield(catInds,group{item_i})
                 lfpByItem = lfpByCategory;
@@ -3782,8 +3755,8 @@ for calc_i = 1:length(tfCalcSwitches)
                 specErrs(item_i,:,1) = Cerr(1,:)-C;
                 specErrs(item_i,:,2) = C-Cerr(2,:);
               else
-                specErrs(item_i,:,:) = confC;  
-              end    
+                specErrs(item_i,:,:) = confC;
+              end
               phaseErrs(item_i,:) = phistd';
               freqs(item_i,:) = 1000*f';
             end
@@ -3797,7 +3770,7 @@ for calc_i = 1:length(tfCalcSwitches)
             ylabel('coherency');
             title(sprintf('%s field - %s field coherence%s',channelNames{channel_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
             clear figData
-            figData.x = freqs; 
+            figData.x = freqs;
             figData.y = spectra;
             figData.e = specErrs;
             drawnow;
@@ -3805,7 +3778,7 @@ for calc_i = 1:length(tfCalcSwitches)
             if closeFig
               close(fh);
             end
-
+            
             %phases %todo: convert from std to sterr?
             fh = figure();
             lineProps.width = 3;
@@ -3820,7 +3793,7 @@ for calc_i = 1:length(tfCalcSwitches)
             if closeFig
               close(fh);
             end
-
+            
             if calcSwitch.meanEvokedTF
               for item_i = 1:length(group)
                 if isfield(catInds,group{item_i})
@@ -3831,7 +3804,7 @@ for calc_i = 1:length(tfCalcSwitches)
                   itemNum = imInds.(group{item_i});
                 end
                 [C,phi,~,~,~,f,confC,phistd, Cerr] = callChronuxCoherency(@coherencyc,squeeze(mean(lfpByItem{itemNum}(1,channel_i,:,:),3)),...
-                  squeeze(mean(lfpByItem{itemNum}(1,channel2_i,:,:),3)),chronuxParams); 
+                  squeeze(mean(lfpByItem{itemNum}(1,channel2_i,:,:),3)),chronuxParams);
                 if item_i == 1
                   spectra = zeros(length(group),length(C));
                   specErrs = zeros(length(group),length(C),2); % support for asymmetric error bars, as from jacknife
@@ -3845,12 +3818,12 @@ for calc_i = 1:length(tfCalcSwitches)
                   specErrs(item_i,:,1) = Cerr(1,:)-C;
                   specErrs(item_i,:,2) = C-Cerr(2,:);
                 else
-                  specErrs(item_i,:,:) = confC;  
-                end    
+                  specErrs(item_i,:,:) = confC;
+                end
                 phaseErrs(item_i,:) = phistd';
                 freqs(item_i,:) = 1000*f';
               end
-
+              
               fh = figure();
               lineProps.width = 3;
               lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
@@ -3860,7 +3833,7 @@ for calc_i = 1:length(tfCalcSwitches)
               ylabel('coherency');
               title(sprintf('Trial mean %s field - %s field coherence%s',channelNames{channel_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
               clear figData
-              figData.x = freqs; 
+              figData.x = freqs;
               figData.y = spectra;
               figData.e = specErrs;
               drawnow;
@@ -3868,7 +3841,7 @@ for calc_i = 1:length(tfCalcSwitches)
               if closeFig
                 close(fh);
               end
-
+              
               %phases %todo: convert from std to sterr?
               fh = figure();
               lineProps.width = 3;
@@ -3895,7 +3868,7 @@ for calc_i = 1:length(tfCalcSwitches)
       groupName = analysisGroups.coherenceByCategory.names{group_i};
       for channel_i = 1:length(channelNames)
         for channel2_i = channel_i:length(lfpChannels) %these two lines make sure we only calculate once for each pair
-          if channel2_i > channel_i 
+          if channel2_i > channel_i
             for item_i = 1:length(group)
               if isfield(catInds,group{item_i})
                 lfpByItem = lfpByCategory;
@@ -3917,9 +3890,9 @@ for calc_i = 1:length(tfCalcSwitches)
               phaseErrs(1,:,:) = phi+phistd;
               phaseErrs(2,:,:) = phi-phistd;
               
-              fh = figure(); 
+              fh = figure();
               imagesc(t,f,C'); axis xy
-              xlabel('Time (ms)'); 
+              xlabel('Time (ms)');
               ylabel('Frequency (Hz)');
               c = colorbar();
               ylabel(c,'Coherency');
@@ -3936,10 +3909,10 @@ for calc_i = 1:length(tfCalcSwitches)
               if closeFig
                 close(fh);
               end
-
+              
               fh = figure();
               imagesc(t,f,phi'); axis xy
-              xlabel('Time (ms)'); 
+              xlabel('Time (ms)');
               ylabel('Frequency (Hz)');
               c = colorbar();
               ylabel(c,'phase');
@@ -3957,13 +3930,13 @@ for calc_i = 1:length(tfCalcSwitches)
               if closeFig
                 close(fh);
               end
-
-
+              
+              
               if isfield(plotSwitch,'tfErrs') && plotSwitch.tfErrs
-                fh = figure(); 
+                fh = figure();
                 subplot(2,3,1);
                 imagesc(t,f,C'); axis xy
-                xlabel('Time (ms)'); 
+                xlabel('Time (ms)');
                 ylabel('Frequency (Hz)');
                 c = colorbar();
                 ylabel(c,'Coherency');
@@ -3971,10 +3944,10 @@ for calc_i = 1:length(tfCalcSwitches)
                 draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 title(sprintf('%s field - %s field coherence, %s%s',channelNames{channel_i},channelNames{channel2_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
+                
                 subplot(2,3,2);
                 imagesc(t,f,squeeze(Cerr(1,:,:))'); axis xy
-                xlabel('Time (ms)'); 
+                xlabel('Time (ms)');
                 ylabel('Frequency (Hz)');
                 c = colorbar();
                 ylabel(c,'Coherency');
@@ -3982,10 +3955,10 @@ for calc_i = 1:length(tfCalcSwitches)
                 draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 title('coherence, upper confidence bound','FontSize',18);
-
+                
                 subplot(2,3,3);
                 imagesc(t,f,squeeze(Cerr(2,:,:))'); axis xy
-                xlabel('Time (ms)'); 
+                xlabel('Time (ms)');
                 ylabel('Frequency (Hz)');
                 c = colorbar();
                 ylabel(c,'Coherency');
@@ -3993,11 +3966,11 @@ for calc_i = 1:length(tfCalcSwitches)
                 draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 title('coherence, lower confidence bound','FontSize',18);
-
-
-                ax = subplot(2,3,4); 
+                
+                
+                ax = subplot(2,3,4);
                 imagesc(t,f,phi'); axis xy
-                xlabel('Time (ms)'); 
+                xlabel('Time (ms)');
                 ylabel('Frequency (Hz)');
                 c = colorbar();
                 ylabel(c,'phase');
@@ -4007,10 +3980,10 @@ for calc_i = 1:length(tfCalcSwitches)
                 draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 title(sprintf('%s field - %s field phase, face%s',channelNames{channel_i},channelNames{channel2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
+                
                 ax =subplot(2,3,5);
                 imagesc(t,f,squeeze(phistd(1,:,:))'); axis xy
-                xlabel('Time (ms)'); 
+                xlabel('Time (ms)');
                 ylabel('Frequency (Hz)');
                 c = colorbar();
                 ylabel(c,'phase');
@@ -4019,12 +3992,12 @@ for calc_i = 1:length(tfCalcSwitches)
                 ylabel(c,'phase std');
                 hold on
                 draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);  
+                draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 title('phase, upper confidence bound','FontSize',18);
-
+                
                 ax =subplot(2,3,6);
-                imagesc(t,f,squeeze(phistd(2,:,:))'); axis xy 
-                xlabel('Time (ms)'); 
+                imagesc(t,f,squeeze(phistd(2,:,:))'); axis xy
+                xlabel('Time (ms)');
                 ylabel('Frequency (Hz)');
                 c = colorbar();
                 ylabel(c,'phase');
@@ -4035,7 +4008,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                 title('phase, lower confidence bound','FontSize',18);
-
+                
                 saveFigure(outDir,sprintf('coh_TF_errs_%s_LFP-%s_LFP_%s%s_Run%s',channelNames{channel_i},channelNames{channel2_i},group{item_i},tfCalcSwitchFnameSuffixes{calc_i},runNum), figData, saveFig, exportFig, saveFigData, figTag );
                 if closeFig
                   close(fh);
@@ -4062,7 +4035,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 continue
               end
               %if intrachannel, check that pair is unique and non-self
-              if channel_i == channel2_i && unit_i >= unit2_i 
+              if channel_i == channel2_i && unit_i >= unit2_i
                 continue
               end
               for item_i = 1:length(group)
@@ -4092,12 +4065,12 @@ for calc_i = 1:length(tfCalcSwitches)
                   shifts =  zeros(length(group),length(C));
                 end
                 spectra(item_i,:) = C';
-                specErrs(item_i,:,:) = confC;  
+                specErrs(item_i,:,:) = confC;
                 shifts(item_i,:) = shiftList';
                 t = -psthPre:psthImDur+psthPost;
-                fh = figure(); 
+                fh = figure();
                 imagesc(t,t,Cgram'); axis xy
-                xlabel(sprintf('Time, %s %s (ms)', channelNames{channel_i},channelUnitNames{channel_i}{unit_i})); 
+                xlabel(sprintf('Time, %s %s (ms)', channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
                 ylabel(sprintf('Time, %s %s (ms)', channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i}));
                 c = colorbar();
                 ylabel(c,'Correlation');
@@ -4127,7 +4100,7 @@ for calc_i = 1:length(tfCalcSwitches)
               ylabel('correlation');
               title(sprintf('%s %s - %s %s correlation %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
               clear figData
-              figData.x = shifts; 
+              figData.x = shifts;
               figData.y = spectra;
               figData.e = specErrs;
               drawnow;
@@ -4156,7 +4129,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 continue
               end
               %if intrachannel, check that pair is unique and non-self
-              if channel_i == channel2_i && unit_i >= unit2_i 
+              if channel_i == channel2_i && unit_i >= unit2_i
                 continue
               end
               for item_i = 1:length(group)
@@ -4189,12 +4162,12 @@ for calc_i = 1:length(tfCalcSwitches)
                   specErrs(item_i,:,1) = Cerr(1,:)-C;
                   specErrs(item_i,:,2) = C-Cerr(2,:);
                 else
-                  specErrs(item_i,:,:) = confC;  
-                end   
+                  specErrs(item_i,:,:) = confC;
+                end
                 phaseErrs(item_i,:) = phistd';
                 freqs(item_i,:) = 1000*f';
               end
-
+              
               fh = figure();
               lineProps.width = 3;
               lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
@@ -4204,7 +4177,7 @@ for calc_i = 1:length(tfCalcSwitches)
               ylabel('coherency');
               title(sprintf('%s %s - %s %s coherence%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
               clear figData
-              figData.x = freqs; 
+              figData.x = freqs;
               figData.y = spectra;
               figData.e = specErrs;
               drawnow;
@@ -4212,7 +4185,7 @@ for calc_i = 1:length(tfCalcSwitches)
               if closeFig
                 close(fh);
               end
-
+              
               %phases %todo: convert from std to sterr?
               fh = figure();
               lineProps.width = 3;
@@ -4227,7 +4200,7 @@ for calc_i = 1:length(tfCalcSwitches)
               if closeFig
                 close(fh);
               end
-
+              
               if calcSwitch.meanEvokedTF
                 for item_i = 1:length(group)
                   if isfield(catInds,group{item_i})
@@ -4263,12 +4236,12 @@ for calc_i = 1:length(tfCalcSwitches)
                     specErrs(item_i,:,1) = Cerr(1,:)-C;
                     specErrs(item_i,:,2) = C-Cerr(2,:);
                   else
-                    specErrs(item_i,:,:) = confC;  
-                  end   
+                    specErrs(item_i,:,:) = confC;
+                  end
                   phaseErrs(item_i,:) = phistd';
                   freqs(item_i,:) = 1000*f';
                 end
-
+                
                 fh = figure();
                 lineProps.width = 3;
                 lineProps.col = analysisGroups.coherenceByCategory.colors{group_i};
@@ -4278,7 +4251,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 ylabel('coherency');
                 title(sprintf('Trial mean %s %s - %s %s coherence%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
                 clear figData
-                figData.x = freqs; 
+                figData.x = freqs;
                 figData.y = spectra;
                 figData.e = specErrs;
                 drawnow;
@@ -4286,7 +4259,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 if closeFig
                   close(fh);
                 end
-
+                
                 %phases %todo: convert from std to sterr?
                 fh = figure();
                 lineProps.width = 3;
@@ -4323,7 +4296,7 @@ for calc_i = 1:length(tfCalcSwitches)
                 continue
               end
               %if intrachannel, check that pair is unique and non-self
-              if channel_i == channel2_i && unit_i >= unit2_i 
+              if channel_i == channel2_i && unit_i >= unit2_i
                 continue
               end
               for item_i = 1:length(group)
@@ -4336,7 +4309,7 @@ for calc_i = 1:length(tfCalcSwitches)
                   spikesByItemForTF = spikesByEventForTF;
                   itemNum = imInds.(group{item_i});
                 end
-                if calcSwitch.spikeTimes 
+                if calcSwitch.spikeTimes
                   [C,phi,~,~,~,t,f,~,confC,phistd]=callChronuxCoherency(@cohgrampt,spikesByItemForTF{itemNum}{channel_i}{unit_i},...
                     spikesByItemForTF{itemNum}{channel2_i}{unit2_i}, movingWin,chronuxParams);
                 else
@@ -4354,9 +4327,9 @@ for calc_i = 1:length(tfCalcSwitches)
                 phaseErrs(1,:,:) = phi+phistd;
                 phaseErrs(2,:,:) = phi-phistd;
                 
-                fh = figure(); 
+                fh = figure();
                 imagesc(t,f,C'); axis xy
-                xlabel('Time (ms)'); 
+                xlabel('Time (ms)');
                 ylabel('Frequency (Hz)');
                 c = colorbar();
                 ylabel(c,'Coherency');
@@ -4373,10 +4346,10 @@ for calc_i = 1:length(tfCalcSwitches)
                 if closeFig
                   close(fh);
                 end
-
+                
                 fh = figure();
                 imagesc(t,f,phi'); axis xy
-                xlabel('Time (ms)'); 
+                xlabel('Time (ms)');
                 ylabel('Frequency (Hz)');
                 c = colorbar();
                 ylabel(c,'phase');
@@ -4394,13 +4367,13 @@ for calc_i = 1:length(tfCalcSwitches)
                 if closeFig
                   close(fh);
                 end
-
-
+                
+                
                 if isfield(plotSwitch,'tfErrs') && plotSwitch.tfErrs
-                  fh = figure(); 
+                  fh = figure();
                   subplot(2,3,1);
                   imagesc(t,f,C'); axis xy
-                  xlabel('Time (ms)'); 
+                  xlabel('Time (ms)');
                   ylabel('Frequency (Hz)');
                   c = colorbar();
                   ylabel(c,'Coherency');
@@ -4408,10 +4381,10 @@ for calc_i = 1:length(tfCalcSwitches)
                   draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   title(sprintf('%s %s - %s %s coherence, %s%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},group{item_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
+                  
                   subplot(2,3,2);
                   imagesc(t,f,squeeze(Cerr(1,:,:))'); axis xy
-                  xlabel('Time (ms)'); 
+                  xlabel('Time (ms)');
                   ylabel('Frequency (Hz)');
                   c = colorbar();
                   ylabel(c,'Coherency');
@@ -4419,10 +4392,10 @@ for calc_i = 1:length(tfCalcSwitches)
                   draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   title('coherence, upper confidence bound','FontSize',18);
-
+                  
                   subplot(2,3,3);
                   imagesc(t,f,squeeze(Cerr(2,:,:))'); axis xy
-                  xlabel('Time (ms)'); 
+                  xlabel('Time (ms)');
                   ylabel('Frequency (Hz)');
                   c = colorbar();
                   ylabel(c,'Coherency');
@@ -4430,11 +4403,11 @@ for calc_i = 1:length(tfCalcSwitches)
                   draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   title('coherence, lower confidence bound','FontSize',18);
-
-
-                  ax = subplot(2,3,4); 
+                  
+                  
+                  ax = subplot(2,3,4);
                   imagesc(t,f,phi'); axis xy
-                  xlabel('Time (ms)'); 
+                  xlabel('Time (ms)');
                   ylabel('Frequency (Hz)');
                   c = colorbar();
                   ylabel(c,'phase');
@@ -4444,10 +4417,10 @@ for calc_i = 1:length(tfCalcSwitches)
                   draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   title(sprintf('%s %s - %s %s phase, face%s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i},channelNames{channel2_i},channelUnitNames{channel2_i}{unit2_i},tfCalcSwitchTitleSuffixes{calc_i}),'FontSize',18);
-
+                  
                   ax = subplot(2,3,5);
                   imagesc(t,f,squeeze(phistd(1,:,:))'); axis xy
-                  xlabel('Time (ms)'); 
+                  xlabel('Time (ms)');
                   ylabel('Frequency (Hz)');
                   c = colorbar();
                   ylabel(c,'phase');
@@ -4456,12 +4429,12 @@ for calc_i = 1:length(tfCalcSwitches)
                   ylabel(c,'phase std');
                   hold on
                   draw_vert_line(0,'Color',[0.8,0.8,0.9],'LineWidth',4);
-                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);  
+                  draw_vert_line(psthImDur,'Color',[0.8,0.8,0.9],'LineWidth',4);
                   title('phase, upper confidence bound','FontSize',18);
-
+                  
                   ax = subplot(2,3,6);
-                  imagesc(t,f,squeeze(phistd(2,:,:))'); axis xy 
-                  xlabel('Time (ms)'); 
+                  imagesc(t,f,squeeze(phistd(2,:,:))'); axis xy
+                  xlabel('Time (ms)');
                   ylabel('Frequency (Hz)');
                   c = colorbar();
                   ylabel(c,'phase');
@@ -4483,7 +4456,7 @@ for calc_i = 1:length(tfCalcSwitches)
         end
       end
     end
-                  
+    
     % clean up temporary variables and restore stable variables
     if strcmp(tfCalcSwitchNames{calc_i},'inducedCoupling')
       spikesByCategoryBinned = spikesByCategoryBinnedEvokedTmp;
@@ -4661,7 +4634,7 @@ psthPre = psthParams.psthPre;
 stimStartInd = psthPre+lfpPaddedBy;
 stimEndInd = stimStartInd + psthImDur;
 extractEye = @(n) squeeze(n(:,1:2,:,stimStartInd:stimEndInd)); %Reshapes analogInByEvent into eye signal.
-eyeInByEventAll = cellfun(extractEye,analogInByEvent, 'UniformOutput', false);  
+eyeInByEventAll = cellfun(extractEye,analogInByEvent, 'UniformOutput', false);
 
 %Run each stimuli presented
 for stim_i = 1:length(eventIDs)
@@ -4676,7 +4649,7 @@ for stim_i = 1:length(eventIDs)
   stimVid = VideoReader(stimVidPath);
   stimFs = stimVid.FrameRate;
   % Grab the eye signal for an event, and down sample it to the frame rate of the video
-  eyeInByEvent = downSampleSig(eyeInByEventAll{stim_i}, psthParams, stimFs); 
+  eyeInByEvent = downSampleSig(eyeInByEventAll{stim_i}, psthParams, stimFs);
   
   %Shift to pixel space
   pixelOrigin = [stimVid.Width/2 stimVid.Height/2];
@@ -4779,7 +4752,7 @@ for stim_i = 1:length(eventIDs)
   for eye_ind = 1:size(eyeInByEvent,1)
     eyeInByEvent(eye_ind, :, :) = (eyeInByEvent(eye_ind, :, :)*PixelsPerDegree(eye_ind)) + pixelOrigin(eye_ind);
   end
-
+  
   %Initialize the output cell array and store max frame.
   attendedObjVect{stim_i} = cell(size(eyeInByEvent, 2), size(eyeInByEvent, 3));
   if ~(maxFrame > size(eyeInByEvent, 3))
@@ -5000,7 +4973,7 @@ function [updatedByImageGroup, updatedEventIDs, resortInd] = clusterPaths(byImag
 % and 2 are eyeX and eyeY, respectively.
 % - psthParams and lfpPaddedBy, to parse analogInByEvent and extract eye
 % signal during stim presentation.
-% - eventIDs, an events*1 cell array of titles for the stim. 
+% - eventIDs, an events*1 cell array of titles for the stim.
 % - taskData
 %Outputs:
 % - resortInd, the index used to further split events into distinct events
@@ -5030,7 +5003,7 @@ for stim_i = 1:eventCount
   end
   
   %To-do: Implement some sort of distance metric to compare different total
-  %paths. 
+  %paths.
   
 end
 
@@ -5043,30 +5016,129 @@ function [downSampledEyeInByEvent,frameStartInd, frameEndInd] = downSampleSig(ey
 %dimension of the input vector (2 eyes * trials * samples for eye signal)
 %by averaging across samples present between points of interest.
 
-  frames  = ceil((psthParams.psthImDur/1000)*stimFs);
-  sampFreq = psthParams.psthImDur/frames;
-  clear frameCountArray frameIndArray
-  frameCountArray = diff(round((1:frames)*sampFreq)); %each index is the number of points averaged to make a frame.
-  frameCountArray = [frameCountArray frameCountArray(end)]; %Diff chops off the end, so repeat it
-  frameIndArray = ones(frameCountArray(1), 1);
-  for avg_ind = 2:length(frameCountArray)
-    frameIndArray = [frameIndArray; ones(frameCountArray(avg_ind), 1)*avg_ind];
-  end
-  %Downsample the signal
-  eyeInAvg = zeros(size(eyeInByEvent,1), size(eyeInByEvent, 2), frames);
-  for eye_ind = 1:frames
-    eyeInAvg(:,:,eye_ind) = mean((eyeInByEvent(:,:,frameIndArray == eye_ind)),3);
-  end
-  downSampledEyeInByEvent = eyeInAvg;
-  
-  %Frames to ms, for other functions to easily compare to 1kS/sec data.
-  frameStartInd = [0 round((1:frames-1)*sampFreq)+1]; %Create an index of when each frame starts
-  frameEndInd = round((1:frames)*sampFreq); %each index is the number of points averaged to make a frame.
+frames  = ceil((psthParams.psthImDur/1000)*stimFs);
+sampFreq = psthParams.psthImDur/frames;
+clear frameCountArray frameIndArray
+frameCountArray = diff(round((1:frames)*sampFreq)); %each index is the number of points averaged to make a frame.
+frameCountArray = [frameCountArray frameCountArray(end)]; %Diff chops off the end, so repeat it
+frameIndArray = ones(frameCountArray(1), 1);
+for avg_ind = 2:length(frameCountArray)
+  frameIndArray = [frameIndArray; ones(frameCountArray(avg_ind), 1)*avg_ind];
+end
+%Downsample the signal
+eyeInAvg = zeros(size(eyeInByEvent,1), size(eyeInByEvent, 2), frames);
+for eye_ind = 1:frames
+  eyeInAvg(:,:,eye_ind) = mean((eyeInByEvent(:,:,frameIndArray == eye_ind)),3);
+end
+downSampledEyeInByEvent = eyeInAvg;
+
+%Frames to ms, for other functions to easily compare to 1kS/sec data.
+frameStartInd = [0 round((1:frames-1)*sampFreq)+1]; %Create an index of when each frame starts
+frameEndInd = round((1:frames)*sampFreq); %each index is the number of points averaged to make a frame.
 end
 
-function sigStruct = stimPSTHoverlay(psthByImage, sortMask, inclusionMask, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, taskEventList, outDir)
+function [sigStruct, imageSortOrder, nullModelPvalues, nullTraceMeans, nullTraceSD] = genStats(psthByImage, spikeCountsByImageByEpoch, firingRatesByImageByEpoch, firingRateErrsByImageByEpoch, trialCountsByImage, analysisGroups, epochLabels, eventIDs, ephysParams)
+
+groups = analysisGroups.stimulusLabelGroups.groups{1};
+channelNames = ephysParams.channelNames;
+
+[imageSortOrder, imageSortedRates] = deal(initNestedCellArray(spikeCountsByImageByEpoch, 'cell', [0, 0], 3));
+[nullModelPvalues, nullTraceMeans, nullTraceSD] = deal(initNestedCellArray(spikeCountsByImageByEpoch, 'cell', [length(groups), 1], 3));
+
+
+for epoch_i = 1:length(spikeCountsByImageByEpoch)
+  for channel_i = 1:length(spikeCountsByImageByEpoch{epoch_i})
+    for unit_i = 1:size(spikeCountsByImageByEpoch{epoch_i}{channel_i},1)
+      % Sort the firingRatesByImageByEpoch
+      [imageSortedRates{epoch_i}{channel_i}{unit_i}, imageSortOrder{epoch_i}{channel_i}{unit_i}] = sort(firingRatesByImageByEpoch{epoch_i}{channel_i}(unit_i,:),2,'descend');  %todo: write the firing rates to file
+      %       if sum(imageSortedRates) == 0
+      %         imageSortedRates(1) = 1; %Defense against this causing problems later.
+      %       end
+      
+      imFrErrSorted = firingRateErrsByImageByEpoch{epoch_i}{channel_i}(unit_i,imageSortOrder{epoch_i}{channel_i}{unit_i});
+      %       sortedImageLabels = eventLabels(imageSortOrder{epoch_i}{channel_i}{unit_i});
+      %       sortedEventIDs = eventIDs(imageSortOrder{epoch_i}{channel_i}{unit_i});
+      trialCountsByImageSorted = trialCountsByImage(imageSortOrder{epoch_i}{channel_i}{unit_i});
+      
+      %Calculate the Null model
+      imageSortedUnit = imageSortedRates{epoch_i}{channel_i}{unit_i};
+      mu = mean(imageSortedUnit);
+      rawSigmas = imFrErrSorted(trialCountsByImageSorted > 1).*sqrt(trialCountsByImageSorted(trialCountsByImageSorted > 1))';
+      mixSigmas = horzcat(imFrErrSorted(trialCountsByImageSorted > 1),randsample(rawSigmas,sum(trialCountsByImageSorted == 1),true));
+      nulltrials = 100;
+      nullDistSortsMix = zeros(nulltrials,length(imageSortedUnit));
+      for i = 1:length(imageSortedUnit)
+        nullDistSortsMix(:,i) = normrnd(mu,mixSigmas(i),nulltrials,1);
+      end
+      nullDistSortsMix = sort(nullDistSortsMix,2,'descend');
+      nullDistSortsMix(nullDistSortsMix < 0) = 0;
+      muNull = mean(nullDistSortsMix);
+      nullTraceSD{epoch_i}{channel_i}{unit_i} = std(nullDistSortsMix);
+      nullTraceMeans{epoch_i}{channel_i}{unit_i} = muNull;
+      
+      %Calculate significance
+      estimatedDiff = imageSortedUnit - muNull;
+      zScore = estimatedDiff./imFrErrSorted;
+      nullModelPvalues{epoch_i}{channel_i}{unit_i} = exp(-0.717.*zScore-0.416*(zScore.^2));
+    end
+  end
+end
+
+
+% After generate p values with the null model, generate the sigStruct.
+% sigStruct.channels = ephysParams.spikeChannels;
+groupingType = {'Unsorted','Unit','MUA'};
+dataType = {'PSTH', 'Label','Stimuli'};
+sigStruct.IndInfo = {epochLabels, groupingType, dataType};
+sigStruct.channelNames = channelNames;
+sigStruct.unitCount = zeros(length(channelNames),1);
+
+
+for channel_i = 1:length(psthByImage)
+  data = cell([length(epochLabels), length(groupingType), length(dataType)]);
+  sigStruct.unitCount(channel_i) = length(psthByImage{channel_i}) - 2;
+  for unit_i = 1:length(psthByImage{channel_i})
+    unitPSTH = psthByImage{channel_i}{unit_i};
+    for epoch_i = 1:length(data)
+      %       if unit_i == 1
+      %         sigStruct.sigMUA{epoch_i}{channel_i} = 0;
+      %         sigStruct.sigUnsorted{epoch_i}{channel_i} = 0;
+      %       end
+      runMask = (nullModelPvalues{epoch_i}{channel_i}{unit_i} < 0.05);   % Find out which stimuli produced the significant activity
+      if sum(runMask) ~= 0
+        sortVec = imageSortOrder{epoch_i}{channel_i}{unit_i};
+        stimOfInterest = sortVec(runMask);
+        PSTHtoPlot = unitPSTH(stimOfInterest,:);       % Recover vectors of interest
+        stimtoPlot = eventIDs(stimOfInterest);         % Sort the eventList
+        if unit_i == 1
+          groupingInd = 1;
+          unitLabel = groupingType{groupingInd};
+        elseif unit_i == length(psthByImage{channel_i})
+          groupingInd = 3;
+          unitLabel = groupingType{groupingInd};
+        else
+          groupingInd = 2;
+          unitLabel = ['U' num2str(unit_i - 1)];
+        end
+        %{sprintf('Ch%d U%d',[channel_i, unit_i+1])}
+        dataArray = cell(length(dataType),1);
+        dataArray{1} = PSTHtoPlot;
+        dataArray{2} = repmat({sprintf('Ch%d %s',[channel_i, unitLabel])}, [3,1]);
+        dataArray{3} = stimtoPlot;
+      end
+      for data_i = 1:length(dataArray)
+        data{epoch_i, groupingInd, data_i} = [data{epoch_i, groupingInd, data_i}; dataArray{data_i}];
+      end
+    end
+  end
+  sigStruct.data{channel_i} = data;
+end
+
+end
+
+
+function stimPSTHoverlay(psthByImage, sortMask, inclusionMask, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, taskEventList, outDir)
 %Rearrange PSTH due to sorting which takes place w/ signifiance bars
-sigStructOnly = 1;
 %Creates a copy of the video of the stimulus with the PSTH traced below.
 psthPre = psthParams.psthPre;
 psthImDur = psthParams.psthImDur;
@@ -5074,119 +5146,109 @@ psthPost = psthParams.psthPost;
 times = -psthPre:psthImDur+psthPost;
 stimStartInd = psthPre+lfpPaddedBy + 1;
 stimEndInd = stimStartInd + psthImDur - 1;
-
-%initialize outputs
-sigStruct.channels = ephysParams.spikeChannels;
-sigStruct.epochLabels = epochLabels;
-[sigStruct.sigUnits, sigStruct.sigStim, sigStruct.sigMUA, sigStruct.sigUnsorted] = deal(cell(1, length(inclusionMask)));
-[sigStruct.sigUnits{:}, sigStruct.sigStim{:}, sigStruct.sigMUA{:}, sigStruct.sigUnsorted{:}] = deal(cell(1, length(sigStruct.channels)));
+groupingType = {'Unsorted','Unit','MUA'};
 
 for channel_i = 1:length(psthByImage)
-  sigStruct.totalUnits{channel_i} = length(psthByImage{channel_i})-2; %Unsorted and MUA don't count.
   for unit_i = 1:length(psthByImage{channel_i})
     unitPSTH = psthByImage{channel_i}{unit_i};
+    yMax = max(max(unitPSTH));
+    if yMax == 0
+      yMax = 1; % 0 spike unit protection.
+    end
+    yMin = min(min(unitPSTH));
+    
+    if unit_i == 1
+      unitLabel = groupingType{1};
+    elseif unit_i == length(psthByImage{channel_i})
+      unitLabel = groupingType{3};
+    else
+      unitLabel = ['U' num2str(unit_i - 1)];
+    end
+    
     for epoch_i = 1:length(inclusionMask)
-      if unit_i == 1
-        sigStruct.sigMUA{epoch_i}{channel_i} = 0;
-        sigStruct.sigUnsorted{epoch_i}{channel_i} = 0;
-      end
-      for group_i = 1:length(sortMask{epoch_i}{channel_i}{unit_i})
-        yMax = max(max(unitPSTH));
-        if yMax == 0
-          yMax = 1; %Another 0 unit spike protection.
-        end
-        yMin = min(min(unitPSTH));
-        unitPSTHSorted = unitPSTH(sortMask{epoch_i}{channel_i}{unit_i}{group_i},:);
-        taskEventListSorted = taskEventList(sortMask{epoch_i}{channel_i}{unit_i}{group_i});
-        %Get the trials we care about
-        runMask = (inclusionMask{epoch_i}{channel_i}{unit_i}{group_i} < 0.05);
-        if sum(runMask) ~= 0
-          PSTHtoPlot = unitPSTHSorted(runMask,:);
-          stimtoPlot = taskEventListSorted(runMask,:);         % Grab the stimuli names for these events.
-          if unit_i == 1
-            sigStruct.sigUnsorted{epoch_i}{channel_i} = 1;
-          elseif unit_i == length(psthByImage{channel_i})
-            sigStruct.sigMUA{epoch_i}{channel_i} = 1;
-          else
-            sigStruct.sigUnits{epoch_i}{channel_i} = [sigStruct.sigUnits{epoch_i}{channel_i}, {sprintf('Ch%d U%d, G%d',[channel_i, unit_i+1, group_i])}];
-          end
-          sigStruct.sigStim{epoch_i}{channel_i} = [sigStruct.sigStim{epoch_i}{channel_i}; stimtoPlot];
-        end
-        if sigStructOnly
-          stimtoPlot = [];
-        end
-        if ~isempty(stimtoPlot)
-          for ii = 1:length(stimtoPlot)
-            %Isolate the stimuli, its name, and path.
-            stimInfo = dir(strcat(stimDir, '/**/', stimtoPlot{ii})); %use the taskEventList to find the file
-            stimPath = [stimInfo(1).folder filesep stimInfo(1).name]; %create its path.
-            
-            %Open the Video, Get some Info on it
-            stimVid = VideoReader(stimPath);
-            
-            %Draw the PSTH video to be added.
-            psthTrace = PSTHtoPlot(ii, psthPre:psthPre+psthImDur);
-            timeInd = 1:psthImDur;
-            PSTHVideoPath =  [outDir 'tmpPSTH_' stimInfo(1).name];
-            outputVideoPath = [outDir sprintf('PSTH_Ch%d_U%d_G%d_%s', [channel_i, unit_i, group_i, stimInfo(1).name])];
-            
-            % new video
-            PSTHVideo = VideoWriter(PSTHVideoPath);
-            PSTHVideo.FrameRate = stimVid.FrameRate;%
-            framesPerSecond = round(1000/stimVid.FrameRate);
-            open(PSTHVideo);
-            
-            %Initialize the line, make the figure plot the right size for later
-            %adjoining to the stimulus.
-            currFig = figure();
-            an = animatedline('color',[1 0 0],'LineWidth',2);
-            currFig.Children.Color = [0 0 0];
-            currFig.Children.Units = 'pixels';
-            currFig.Children.Position = [0 0 stimVid.Width stimVid.Height/5];
-            currFig.Position(3:4) = [stimVid.Width stimVid.Height/5];
-            axis([timeInd(1), timeInd(end), yMin, yMax])
-            
-            for time_ind = 1:timeInd(end)
-              if mod(time_ind,framesPerSecond) == 0
-                addpoints(an, timeInd(time_ind), psthTrace(time_ind));
-                frame = getframe(gcf);
-                writeVideo(PSTHVideo, frame.cdata);
-              end
+      
+      runMask = (inclusionMask{epoch_i}{channel_i}{unit_i} < 0.05);   % Find out which stimuli produced the significant activity
+      if sum(runMask) ~= 0
+        
+        sortVec = sortMask{epoch_i}{channel_i}{unit_i};
+        stimOfInterest = sortVec(runMask);
+        PSTHtoPlot = unitPSTH(stimOfInterest,:);       % Recover vectors of interest
+        stimtoPlot = taskEventList(stimOfInterest);    % Sort the eventList
+        
+        for ii = 1:length(stimtoPlot)
+          
+          %Isolate the stimuli, its name, and path.
+          stimInfo = dir(strcat(stimDir, '/**/', stimtoPlot{ii})); %use the taskEventList to find the file
+          stimPath = [stimInfo(1).folder filesep stimInfo(1).name]; %create its path.
+          
+          %Open the Video, Get some Info on it
+          stimVid = VideoReader(stimPath);
+          
+          %Draw the PSTH video to be added.
+          psthTrace = PSTHtoPlot(ii, psthPre:psthPre+psthImDur);
+          timeInd = 1:psthImDur;
+          PSTHVideoPath =  [outDir 'tmpPSTH_' stimInfo(1).name];
+          outputVideoPath = fullfile(outDir, sprintf('PSTH_Ch%d_%s_%s', channel_i, unitLabel, stimInfo(1).name));
+          
+          % new video
+          PSTHVideo = VideoWriter(PSTHVideoPath);
+          PSTHVideo.FrameRate = stimVid.FrameRate;
+          framesPerSecond = round(1000/stimVid.FrameRate);
+          open(PSTHVideo);
+          
+          %Initialize the line, make the figure plot the right size for later
+          %adjoining to the stimulus.
+          currFig = figure();
+          an = animatedline('color',[1 0 0],'LineWidth',2);
+          currFig.Children.Color = [0 0 0];
+          currFig.Children.Units = 'pixels';
+          currFig.Children.Position = [0 0 stimVid.Width stimVid.Height/5];
+          currFig.Position(3:4) = [stimVid.Width stimVid.Height/5];
+          axis([timeInd(1), timeInd(end), yMin, yMax])
+          
+          for time_ind = 1:timeInd(end)
+            if mod(time_ind,framesPerSecond) == 0
+              addpoints(an, timeInd(time_ind), psthTrace(time_ind));
+              frame = getframe(gcf);
+              writeVideo(PSTHVideo, frame.cdata);
             end
-            
-            close(currFig);
-            close(PSTHVideo);
-            
-            %Open the stimulus video, play it frame by frame with the PSTH, and save
-            %as a new movie.
-            
-            PSTHVideo = VideoReader(PSTHVideoPath);
-            
-            %videoPlayer = vision.VideoPlayer;
-            outputVideo = VideoWriter(outputVideoPath);
-            outputVideo.FrameRate = stimVid.FrameRate;
-            open(outputVideo);
-            
-            while hasFrame(stimVid) && hasFrame(PSTHVideo)
-              img1 = readFrame(stimVid);
-              img2 = readFrame(PSTHVideo);
-              imgt = vertcat(img1, img2);
-              % play video
-              %step(videoPlayer, imgt);
-              % record new video
-              writeVideo(outputVideo, imgt);
-            end
-            
-            %release(videoPlayer);
-            close(outputVideo);
-            clear PSTHVideo
-            delete(PSTHVideoPath);
           end
+          
+          close(currFig);
+          close(PSTHVideo);
+          
+          %Open the stimulus video, play it frame by frame with the PSTH, and save
+          %as a new movie.
+          
+          PSTHVideo = VideoReader(PSTHVideoPath);
+          
+          %videoPlayer = vision.VideoPlayer;
+          outputVideo = VideoWriter(outputVideoPath);
+          outputVideo.FrameRate = stimVid.FrameRate;
+          open(outputVideo);
+          
+          while hasFrame(stimVid) && hasFrame(PSTHVideo)
+            img1 = readFrame(stimVid);
+            img2 = readFrame(PSTHVideo);
+            imgt = vertcat(img1, img2);
+            % play video
+            %step(videoPlayer, imgt);
+            % record new video
+            writeVideo(outputVideo, imgt);
+          end
+          
+          %release(videoPlayer);
+          close(outputVideo);
+          clear PSTHVideo
+          delete(PSTHVideoPath);
         end
       end
+      
     end
   end
 end
+
+
 end
 
 function clusterFixBin(stimDir, psthPre, psthImDur, lfpPaddedBy, analogInByEvent, taskEventList, colors)

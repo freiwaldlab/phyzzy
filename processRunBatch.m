@@ -137,7 +137,7 @@ if replaceAnalysisOut
   breakString = @(x) strsplit(x, filesep);
   joinStrings = @(x) strjoin([x(length(x)-2), x(length(x))],'');
   
-  outputVolume = 'D:\DataAnalysis\FullTime';
+  outputVolume = 'D:\DataAnalysis\Jan2020';
   analysisOutFilename = dir([outputVolume '\**\analyzedData.mat']);
   analysisOutFilename = {analysisOutFilename.folder}';
   [errorsMsg, startTimes, endTimes] = deal(cell(length(analysisOutFilename),1));
@@ -159,13 +159,13 @@ true_ind = 1;
 
 for ii = 1:length(analysisOutFilename)
   if ~isempty((analysisOutFilename{ii}))
-    tmp = load(analysisOutFilename{ii}, 'stimCatANOVATable','sigStruct','frEpochs'); %Relies on psth Overlay function in runAnalyses.
+    tmp = load(analysisOutFilename{ii}, 'stimCatANOVATable','sigStruct','frEpochs'); %Relies on genStats function in runAnalyses.
     true_ind_page = true_ind;
-    for epoch_i = 1:length(tmp.sigStruct.sigUnits)
-      for channel_ind = 1:length(tmp.sigStruct.channels) %Add channel count here.
+    for epoch_i = 1:length(tmp.sigStruct.IndInfo{1})
+      for channel_ind = 1:length(tmp.sigStruct.data) 
         % Null model based significance testing
-        channel = tmp.sigStruct.channels(channel_ind);
-        UnitCount = tmp.sigStruct.totalUnits{channel_ind};
+        channel = tmp.sigStruct.channelNames(channel_ind);
+        UnitCount = tmp.sigStruct.unitCount(channel_ind);
         sigUnits = length(tmp.sigStruct.sigUnits{epoch_i}{channel_ind});
         sigUnsorted = tmp.sigStruct.sigUnsorted{epoch_i}{channel_ind};
         sigMUA = tmp.sigStruct.sigMUA{epoch_i}{channel_ind};
