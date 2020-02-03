@@ -162,6 +162,7 @@ function [stimPSTH, meanPSTHStruct] = meanPSTH(spikeDataBank, params)
 % Function which combines stimulus presentations across all runs in the spikeDataBank.
 % Inputs include spikeDataBank and list of parameters.
 disp('Starting mean PSTH Analysis...');
+exportFig = params.exportFig;
 
 % Rebuild variables
 % extract the eventIDs field, generate a cell array of unique stimuli
@@ -191,23 +192,27 @@ animParam.plotLabels = {'animSocialInteraction', 'animControl'};
 [tmp, ~, ~] = plotIndex(allStimuliVec, animParam);
 animInd = logical(sum(tmp,2));
 
+%Generate the reward directory
+dirTags = {'without Rewards','fixAligned','Normalized','Pres Threshold'};
+dirTagSwitch = [params.removeRewardEpoch, params.fixAlign, params.normalize, params.plotTopStim];
+params.outputDir = [params.outputDir strjoin(dirTags(logical(dirTagSwitch)),' - ')];
+
 if params.stimInclude == 1
   stimPresCounts = stimPresCounts(animInd);
   small2BigInd = small2BigInd(animInd,:);
   allStimuliVec = allStimuliVec(animInd,:);
-  params.outputDir = [params.outputDir '_AnimOnly'];
+  params.outputDir = [params.outputDir '- AnimOnly'];
 elseif params.stimInclude == 2
   stimPresCounts = stimPresCounts(~animInd);
   small2BigInd = small2BigInd(~animInd,:);
   allStimuliVec = allStimuliVec(~animInd,:);
-  params.outputDir = [params.outputDir '_NoAnim'];
+  params.outputDir = [params.outputDir '- NoAnim'];
 end
 
 [plotMat, briefStimList, params] = plotIndex(allStimuliVec, params);
 
 if params.normalize
   normTag = ' - normalized';
-  params.outputDir = [params.outputDir ' - normalized'];
 else
   normTag = '';
 end
@@ -227,6 +232,7 @@ meanPSTHStruct.IndStructs{2} = groupingType;
 meanPSTHStruct.IndStructs{3} = dataType;
 %stimPSTH{stim,grouping,dataType}
 stimPSTH = cell([length(allStimuliVec), length(groupingType), length(dataType)]);
+rewardStart = abs(spikeDataBank.(runList{1}).start) + spikeDataBank.(runList{1}).stimDur;
 
 totalPopCount = 0;
 maxAct = [];
@@ -246,6 +252,16 @@ for stim_ind = 1:length(allStimuliVec)
         % Retrieve correct PSTH from run
         unitActivity = tmpRunStruct.psthByImage{chan_ind}{unit_ind}(psthStimIndex(subRun_ind),:);
         unitErr = tmpRunStruct.psthErrByImage{chan_ind}{unit_ind}(psthStimIndex(subRun_ind),:);
+        
+        if sum(unitActivity) < 3
+          continue
+        end
+        
+        if params.removeRewardEpoch
+          unitActivity = unitActivity(1:rewardStart);
+          unitErr = unitErr(1:rewardStart);
+          params.psthPost = 0;
+        end
         presCount = tmpRunStruct.stimPresCount(psthStimIndex(subRun_ind));
         gridHole = tmpRunStruct.gridHoles;
         depth = tmpRunStruct.recDepth;
@@ -253,18 +269,12 @@ for stim_ind = 1:length(allStimuliVec)
         
         daysSinceLastPres = tmpRunStruct.daysSinceLastPres(psthStimIndex(subRun_ind));
         daysSinceLastRec = tmpRunStruct.daysSinceLastRec;
-        if sum(unitActivity) == 0 % This will get rid of unsorted unit activity which is 0 (all sorted).
-          continue
-        end
         % If desired, Z score PSTHs here based on fixation period activity.
         if params.normalize
           tmp = tmpRunStruct.psthByImage{chan_ind}{unit_ind}(:,1:abs(tmpRunStruct.start));
           tmp = reshape(tmp, [size(tmp,1) * size(tmp,2), 1]);
           fixMean = mean(tmp); %Find activity during fixation across all stim.
           if params.normalize == 1
-            unitActivity = ((unitActivity - fixMean)/fixMean) * 100;
-            unitErr = ((unitErr - fixMean)/fixMean) * 100;
-          elseif params.normalize == 2
             fixSD = std(tmp);
             unitActivity = ((unitActivity - fixMean)/fixSD);
             unitErr = ((unitErr - fixMean)/fixSD);
@@ -376,9 +386,8 @@ for broad_ind = 1:length(params.plotLabels)
     cbHandle.Position(1) = cbHandle.Position(1) + .03;
     psthAxes.Position = tmp;
     
-    saveFigure(params.outputDir, psthTitle, [], 1, 1, 0, {''})
-    close(h);
-    
+    saveFigure(params.outputDir, ['1.' psthTitle], [], 1, exportFig, 0, {''})
+    close(h);  
   end
   
 end
@@ -403,11 +412,19 @@ for group_ind = 1:size(stimPSTH,2)
   
   catPSTHTitle = sprintf('%s Mean PSTH - All Stimuli, %s', groupingType{group_ind}, normTag);
   h = figure('NumberTitle', 'off', 'Name', catPSTHTitle);
-  catPSTHAxes = plotPSTH(plotData, axes(), params, 'color', catPSTHTitle, allStimuliLabel);
+  [catPSTHAxes, cbh] = plotPSTH(plotData, axes(), params, 'color', catPSTHTitle, allStimuliLabel);
+  if params.normalize == 1
+    ylabel('Normalized Activity (Baseline Z scored)');
+    cbh.Label.String = 'Signal Change relative to Baseline (%)';
+  elseif params.normalize == 2
+    cbh.Label.String = 'Z scored relative to fixation';
+    ylabel('Normalized Activity (Baseline Z scored)');
+  else
+    ylabel('Activity (Firing Rate)');
+  end
   title(catPSTHTitle);
   xlabel('Time (ms)');
-  ylabel('Normalized Activity (Baseline Z scored)');
-  savefig(h, fullfile(params.outputDir, catPSTHTitle));
+  saveFigure(params.outputDir, ['2.' catPSTHTitle], [], 1, exportFig, 0, {''})
   close(h)
   clear allStimuliLabel
 end
@@ -486,7 +503,7 @@ for stim_i = 1:length(stimPSTH)
       end
       set(gca,'FontSize',10,'TickLength',[.01 .01],'LineWidth',.25);
     end
-    saveFigure(params.outputDir, figTitle, [], 1, 1, 0, {''})
+    saveFigure(params.outputDir, ['3.' figTitle], [], 1, exportFig, 0, {''})
     close(h)
   end
 end
@@ -539,8 +556,8 @@ for group_ind = 1:size(stimPSTH,2)
   xlabel('Time (ms)');
   ylabel('Normalized Activity (Baseline Z scored)');
   title(catPSTHTitle);
-  %saveFigure(params.outputDir, catPSTHTitle, [], 1, 1, 0, {''})
-  %close(h)
+  saveFigure(params.outputDir, ['4.' catPSTHTitle], [], 1, exportFig, 0, {''})
+  close(h)
 end
 
 % Generate line plots across different labeling schemes.
@@ -602,7 +619,7 @@ for fig_ind = 1:length(figIncInd)
       %       if group_ind ~= 2
       %         ylim([-0.2, yL(2)])
       %       end
-      saveFigure(params.outputDir, ['1.' plotTitle], [], 1, 1, 0, {''})
+      saveFigure(params.outputDir, ['5.' plotTitle], [], 1, exportFig, 0, {''})
       close(h)
     end
   end

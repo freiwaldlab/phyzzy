@@ -339,6 +339,8 @@ psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a c
 load(psthParams.psthColormapFilename);
 psthParams.colormap = map;
 
+genStatsParams.ANOVAParams.target = 'socialInteraction';    % When performing a one way ANOVA, the label from groups which is used. the rest are 'non-' label.
+
 correlParams.maxShift = []; % a number, or empty
 correlParams.matchTimeRanges = 1;
 correlParams.timeDifferenceBound = [0,200];

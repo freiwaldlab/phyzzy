@@ -51,12 +51,12 @@ meanPSTHParams.plotHist = 0;
 meanPSTHParams.plotTopStim = 0;                 % Only plot stimuli which have been present on at least a certain number of runs.
 meanPSTHParams.topStimPresThreshold = 10;       % At least this many stim presentations to be plotted when plotTopStim is on.
 meanPSTHParams.broadLabel = 0;                  % Transitions individual stimuli to broad catagory (e.g. chasing).
-meanPSTHParams.normalize = 2;                   % Normalizes PSTH values to the recording's fixation period. 1 = percentile Signal change, 2 = Z score.
+meanPSTHParams.normalize = 1;                   % Normalizes PSTH values to the recording's fixation period. 1 = Z score.
 meanPSTHParams.maxStimOnly = 1;                 % The max value and max index taken from the PSTH is only in the area of the stimulus presentation.
 meanPSTHParams.plotLabels = {'chasing','fighting','mounting','grooming','following',...
     'objects','goalDirected','idle','scramble','scene','socialInteraction','animControl','animSocialInteraction','agents','headTurning'}; %If broadLabel is on, all stimuli will have their labels changed to one of the labels in this array.
-meanPSTHParams.sortPresCount = 1;                % Sorts images based on counts.
-meanPSTHParams.fixAlign = 0;                    % For cross catagory comparison lines, shift everything to the mean of the fix period.
+meanPSTHParams.sortPresCount = 1;               % Sorts images based on counts.
+meanPSTHParams.fixAlign = 1;                    % For cross catagory comparison lines, shift everything to the mean of the fix period.
 meanPSTHParams.topPSTHRunExtract = 3;           % meanPSTH will return a structure of run indices of the top PSTHes by activity (influenced by Z-scoring). This number dictates how many of the top are returned.
 meanPSTHParams.type = 'normal'; %options are 'normal', 'baselineSub', 'meanWhite'
 meanPSTHParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
@@ -77,6 +77,8 @@ meanPSTHParams.colormap = map;
 meanPSTHParams.tmpFileName = 'tmpStructPrcSigChange.mat';
 meanPSTHParams.plotTest = 1; % Avoids running completed plot code.
 meanPSTHParams.stimInclude = 2; % 0 = everything, 1 = Only Animations, 2 = Exclude Animations. 
+meanPSTHParams.removeRewardEpoch = 1;   % Removes the reward period activity when generating plots.
+meanPSTHParams.exportFig = 0;   % Removes the reward period activity when generating plots.
 
 
 frameFiringParams.stimParamsFilename = stimParamsFilename;
