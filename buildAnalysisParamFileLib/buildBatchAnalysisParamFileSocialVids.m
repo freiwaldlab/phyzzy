@@ -55,19 +55,19 @@ meanPSTHParams.normalize = 1;                   % Normalizes PSTH values to the 
 meanPSTHParams.maxStimOnly = 1;                 % The max value and max index taken from the PSTH is only in the area of the stimulus presentation.
 meanPSTHParams.plotLabels = {'chasing','fighting','mounting','grooming','following',...
     'objects','goalDirected','idle','scramble','scene','socialInteraction','animControl','animSocialInteraction','agents','headTurning'}; %If broadLabel is on, all stimuli will have their labels changed to one of the labels in this array.
-meanPSTHParams.sortPresCount = 1;               % Sorts images based on counts.
+meanPSTHParams.sortPresCountSort = 1;           % Sorts images based on counts.
 meanPSTHParams.fixAlign = 1;                    % For cross catagory comparison lines, shift everything to the mean of the fix period.
 meanPSTHParams.topPSTHRunExtract = 3;           % meanPSTH will return a structure of run indices of the top PSTHes by activity (influenced by Z-scoring). This number dictates how many of the top are returned.
-meanPSTHParams.type = 'normal'; %options are 'normal', 'baselineSub', 'meanWhite'
-meanPSTHParams.psthPre = 800; % if e.g. +200, then start psth 200ms before trial onset; 
-meanPSTHParams.psthImDur = 2800;  % only need to set this for variable length stim runs; else, comes from log file
+meanPSTHParams.type = 'normal';         % options are 'normal', 'baselineSub', 'meanWhite'
+meanPSTHParams.psthPre = 800;           % if e.g. +200, then start psth 200ms before trial onset; 
+meanPSTHParams.psthImDur = 2800;        % only need to set this for variable length stim runs; else, comes from log file
 meanPSTHParams.psthPost = 500;
 meanPSTHParams.latency = 0;
 meanPSTHParams.movingWin = [200 5];
-meanPSTHParams.smoothingWidth = 25;  %psth smoothing width, in ms
-meanPSTHParams.Zscore = 1;  % 0: raw PSTH, 1: pre-trial baseline subtraction Z Scored PSTH, 2: whole trial baseline subtracted Z Scored PSTH
-meanPSTHParams.errorType = 2; %chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
-meanPSTHParams.errorRangeZ = 1; %how many standard errors to show
+meanPSTHParams.smoothingWidth = 25;     % psth smoothing width, in ms
+meanPSTHParams.Zscore = 1;              % 0: raw PSTH, 1: pre-trial baseline subtraction Z Scored PSTH
+meanPSTHParams.errorType = 2;           % chronux convention: 1 is poisfStimson, 2 is trialwise bootstrap, 3 is across trial std for binned spikes, bootstrap for spike times 
+meanPSTHParams.errorRangeZ = 1;         % how many standard errors to show
 meanPSTHParams.bootstrapSamples = 100;
 meanPSTHParams.sortStim = 1;
 meanPSTHParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble';'allStim'};
@@ -75,11 +75,15 @@ meanPSTHParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable,
 load(meanPSTHParams.psthColormapFilename);
 meanPSTHParams.colormap = map;
 meanPSTHParams.tmpFileName = 'tmpStructPrcSigChange.mat';
-meanPSTHParams.plotTest = 1; % Avoids running completed plot code.
-meanPSTHParams.stimInclude = 2; % 0 = everything, 1 = Only Animations, 2 = Exclude Animations. 
+meanPSTHParams.plotSingleUnitTests = 1; % Avoids running completed plot code.
+meanPSTHParams.stimInclude = 2;         % 0 = everything, 1 = Only Animations, 2 = Exclude Animations. 
 meanPSTHParams.removeRewardEpoch = 1;   % Removes the reward period activity when generating plots.
-meanPSTHParams.exportFig = 0;   % Removes the reward period activity when generating plots.
+meanPSTHParams.plotMeanLine = 0;        % For 'All Chasing' plots, include a additional axis as a line plot.
+meanPSTHParams.includeMeanTrace = 0;    % For 'All Chasing' plots, include the mean of all traces at the bottom of the PSTH.
+meanPSTHParams.traceCountLabel = 0;     % labels on the catagory specific plots include 'n = X' to highlight trace value.
 
+meanPSTHParams.plotSize = [.7 .7];           % Turns on the 'exportFig' feature of saveFigure, which generates .pngs.
+meanPSTHParams.exportFig = 0;           % Turns on the 'exportFig' feature of saveFigure, which generates .pngs.
 
 frameFiringParams.stimParamsFilename = stimParamsFilename;
 frameFiringParams.outputDir = fullfile(outputDir,'frameFiring');
@@ -90,15 +94,16 @@ frameFiringParams.useRates = 0;     % collected data per frame can be in rates o
 frameFiringParams.delay = 70;       % Hypothetical delay between frame and the activity it causes. deduced from Mean PSTHs.
 frameFiringParams.plotRuns = 0;     % Plot Histograms of values across individual runs. 
 
-slidingANOVAParams.plotANOVA = 0;   % Plot individual cell pVectors. Saves these to individual files.
-slidingANOVAParams.binSize = 100;
-slidingANOVAParams.binStep = 25;
-slidingANOVAParams.scrambleCount = 100;    % Count of trials to come up with control p values.
-slidingANOVAParams.Omega = 1; %switch to convert ANOVA curves to Omega curves.
-slidingANOVAParams.target = {'socialInteraction','agents','interaction'};  %Labels which must exist in the stimParamFile associated with the runs. 
-slidingANOVAParams.stimParamFile = stimParamsFilename;
-slidingANOVAParams.outputDir = fullfile(outputDir,'slidingANOVA');
-slidingANOVAParams.spikeDataFileName = preprocessParams.spikeDataFileName;
+slidingTestParams.plotTest = 0;   % Plot individual cell pVectors. Saves these to individual files.
+slidingTestParams.binSize = 100;
+slidingTestParams.binStep = 25;
+slidingTestParams.scrambleCount = 100;    % Count of trials to come up with control p values.
+slidingTestParams.Omega = 1;       %switch to convert ANOVA curves to Omega curves.
+slidingTestParams.target = {'socialInteraction','agents','interaction'};  %Labels which must exist in the stimParamFile associated with the runs. 
+slidingTestParams.stimParamFile = stimParamsFilename;
+slidingTestParams.outputDir = fullfile(outputDir,'slidingTest');
+slidingTestParams.spikeDataFileName = preprocessParams.spikeDataFileName;
+slidingTestParams.exportFig = 1; 
 
 noveltyParams.outputDir = fullfile(outputDir,'noveltyAnalysis');
 

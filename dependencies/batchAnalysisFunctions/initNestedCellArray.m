@@ -50,6 +50,8 @@ if depth == 0 || ~strcmp(class(inCell), originalInput) || isempty(inCell)
       OutCellArray = NaN(fillSize);
     case 'cell'
       OutCellArray = cell(fillSize);
+    case 'struct'
+      OutCellArray = struct();
   end
 else
   switch originalInput

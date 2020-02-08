@@ -467,9 +467,9 @@ epochLabels = {'Presentation','Fixation','Reward'};
 genStatsParams.ANOVAParams.group = group;
 genStatsParams.ANOVAParams.groupLabelsByImage = groupLabelsByImage;
 genStatsParams.ANOVAParams.target = 'socialInteraction';
-[sigStruct, imageSortOrder, nullModelPvalues, nullTraceMeans, nullTraceSD] = genStats(psthByImage, spikeCountsByImageByEpoch, firingRatesByImageByEpoch, firingRateErrsByImageByEpoch, ...
+[sigStruct, imageSortOrder, nullModelPvalues, nullTraceMeans, nullTraceSD, stimStatsTable] = genStats(psthByImage, spikeCountsByImageByEpoch, firingRatesByImageByEpoch, firingRateErrsByImageByEpoch, ...
                                                                               trialCountsByImage, analysisGroups, epochLabels, eventIDs, ephysParams, genStatsParams);
-save(analysisOutFilename,'sigStruct','-append');
+save(analysisOutFilename,'sigStruct','stimStatsTable','-append');
 
 for epoch_i = 1:length(firingRatesByImageByEpoch)
   epochTag = sprintf('%d-%d ms',frEpochs(epoch_i,1), frEpochs(epoch_i,2));
@@ -856,19 +856,8 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
 end
 
 if isfield(plotSwitch, 'stimPSTHoverlay') && plotSwitch.stimPSTHoverlay
-  epochLabels = {'Presentation','Fixation','Reward'};
   % (psthByImage, sortMask, inclusionMask, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, taskEventList, outDir)
-  stimPSTHoverlay(psthByImage, imageSortOrder, nullModelPvalues, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, eventIDs, outDir);
-end
-
-%likely should be a Calc switch, but not sure of what filters exist b/t
-%buildparamfile script and here.
-if isfield(plotSwitch, 'stimCatANOVA') && plotSwitch.stimCatANOVA
-  % will use the stimulus wide average PSTH value for now, but may need to
-  % get closer to raw spikes to do correctly. "group" variable will not be
-  % correct in cases with multiple groupings.
-  stimCatANOVATable = stimCatTwoWayANOVA(spikeCountsByImageByEpoch, eventLabels, groupLabelsByImage, group, 'socialInteraction');
-  save(analysisOutFilename,'stimCatANOVATable','-append');
+  stimPSTHoverlay(psthByImage, imageSortOrder, nullModelPvalues, stimDir, psthParams, lfpPaddedBy, eventIDs, outDir);
 end
 
 plotSwitch.spikeCorr = 1;
@@ -5041,11 +5030,10 @@ frameStartInd = [0 round((1:frames-1)*sampFreq)+1]; %Create an index of when eac
 frameEndInd = round((1:frames)*sampFreq); %each index is the number of points averaged to make a frame.
 end
 
-function [sigStruct, imageSortOrder, nullModelPvalues, nullTraceMeans, nullTraceSD, frEpochsANOVA] = genStats(psthByImage, spikeCountsByImageByEpoch, firingRatesByImageByEpoch, firingRateErrsByImageByEpoch, trialCountsByImage, analysisGroups, epochLabels, eventIDs, ephysParams, genStatsParams)
+function [sigStruct, imageSortOrder, nullModelPvalues, nullTraceMeans, nullTraceSD, frEpochsStats] = genStats(psthByImage, spikeCountsByImageByEpoch, firingRatesByImageByEpoch, firingRateErrsByImageByEpoch, trialCountsByImage, analysisGroups, epochLabels, eventIDs, ephysParams, genStatsParams)
 
 groups = analysisGroups.stimulusLabelGroups.groups{1};
 channelNames = ephysParams.channelNames;
-epochLabels = {'Presentation','Fixation','Reward'};
 
 [imageSortOrder, imageSortedRates] = deal(initNestedCellArray(spikeCountsByImageByEpoch, 'cell', [0, 0], 3));
 [nullModelPvalues, nullTraceMeans, nullTraceSD] = deal(initNestedCellArray(spikeCountsByImageByEpoch, 'cell', [length(groups), 1], 3));
@@ -5054,18 +5042,16 @@ for epoch_i = 1:length(spikeCountsByImageByEpoch)
   for channel_i = 1:length(spikeCountsByImageByEpoch{epoch_i})
     for unit_i = 1:size(spikeCountsByImageByEpoch{epoch_i}{channel_i},1)
       % Sort the firingRatesByImageByEpoch
-      [imageSortedRates{epoch_i}{channel_i}{unit_i}, imageSortOrder{epoch_i}{channel_i}{unit_i}] = sort(firingRatesByImageByEpoch{epoch_i}{channel_i}(unit_i,:),2,'descend');  %todo: write the firing rates to file
-      %       if sum(imageSortedRates) == 0
-      %         imageSortedRates(1) = 1; %Defense against this causing problems later.
-      %       end
-      
-      imFrErrSorted = firingRateErrsByImageByEpoch{epoch_i}{channel_i}(unit_i,imageSortOrder{epoch_i}{channel_i}{unit_i});
+      [imageSortedUnit, imageSortOrderUnit] = sort(firingRatesByImageByEpoch{epoch_i}{channel_i}(unit_i,:),2,'descend');  %todo: write the firing rates to file
+      imageSortedRates{epoch_i}{channel_i}{unit_i} = imageSortedUnit;
+      imageSortOrder{epoch_i}{channel_i}{unit_i} = imageSortOrderUnit;
+      spikeCountsUnitSorted = spikeCountsByImageByEpoch{epoch_i}{channel_i}{unit_i}(imageSortOrderUnit);
+      imFrErrSorted = firingRateErrsByImageByEpoch{epoch_i}{channel_i}(unit_i,imageSortOrderUnit);
       %       sortedImageLabels = eventLabels(imageSortOrder{epoch_i}{channel_i}{unit_i});
       %       sortedEventIDs = eventIDs(imageSortOrder{epoch_i}{channel_i}{unit_i});
-      trialCountsByImageSorted = trialCountsByImage(imageSortOrder{epoch_i}{channel_i}{unit_i});
+      trialCountsByImageSorted = trialCountsByImage(imageSortOrderUnit);
       
       %Calculate the Null model
-      imageSortedUnit = imageSortedRates{epoch_i}{channel_i}{unit_i};
       mu = mean(imageSortedUnit);
       rawSigmas = imFrErrSorted(trialCountsByImageSorted > 1).*sqrt(trialCountsByImageSorted(trialCountsByImageSorted > 1))';
       mixSigmas = horzcat(imFrErrSorted(trialCountsByImageSorted > 1),randsample(rawSigmas,sum(trialCountsByImageSorted == 1),true));
@@ -5076,14 +5062,18 @@ for epoch_i = 1:length(spikeCountsByImageByEpoch)
       end
       nullDistSortsMix = sort(nullDistSortsMix,2,'descend');
       nullDistSortsMix(nullDistSortsMix < 0) = 0;
-      muNull = mean(nullDistSortsMix);
-      nullTraceSD{epoch_i}{channel_i}{unit_i} = std(nullDistSortsMix);
+      muNull = mean(nullDistSortsMix, 1);
+      nullTraceSD{epoch_i}{channel_i}{unit_i} = std(nullDistSortsMix)./sqrt(nulltrials);
       nullTraceMeans{epoch_i}{channel_i}{unit_i} = muNull;
       
       %Calculate significance
-      estimatedDiff = imageSortedUnit - muNull;
-      zScore = estimatedDiff./imFrErrSorted;
+      zScore = (imageSortedUnit - muNull)./imFrErrSorted;
       nullModelPvalues{epoch_i}{channel_i}{unit_i} = exp(-0.717.*zScore-0.416*(zScore.^2));
+      
+      % Different Approach - generate null distribution, calculate t test
+      % for each spot.
+      % Check how error is calculated in spikeCounter - (std(s.rates)/sqrt(n))*sqrt(2/(n-1))*(gamma(n/2)/gamma((n-1)/2))
+      
     end
   end
 end
@@ -5139,15 +5129,14 @@ for channel_i = 1:length(psthByImage)
   sigStruct.data{channel_i} = data;
 end
 
-% ANOVA Code
-
+% Linear Model Code
+% ANOVA - functions performs a two-way ANOVA, comparing the firing rates for each
+%Epoch for all members of "target" and all members of the rest of the
+%groups. Returns the ANOVA table for each such comparison.
 group = genStatsParams.ANOVAParams.group;
 target = genStatsParams.ANOVAParams.target;
 groupLabelsByImage = genStatsParams.ANOVAParams.groupLabelsByImage;
 
-%functions performs a two-way ANOVA, comparing the firing rates for each
-%Epoch for all members of "target" and all members of the rest of the
-%groups. Returns the ANOVA table for each such comparison.
 
 %a phase 2 trial w/ only social stuff
 if length(strcmp(group,target)) == 1
@@ -5158,6 +5147,8 @@ end
 %Will likely need changes in the future with respect to group variable
 %will lead to errors on cases with more than one group.
 %Cycle through structure, concatonating the correct events.
+frEpochsStats = initNestedCellArray(spikeCountsByImageByEpoch{1}, 'struct',[0,0],2);
+
 for channel_i = 1:length(spikeCountsByImageByEpoch{1})
   for unit_i = 1:length(spikeCountsByImageByEpoch{1}{channel_i})
     [trialSpikes, trialLabels, trialEpoch]  = deal([]);
@@ -5197,33 +5188,30 @@ for channel_i = 1:length(spikeCountsByImageByEpoch{1})
       end
     end
     % Check for task modulation
-    [p, ~, ~] = anovan(trialSpikes,{trialEpoch},'model','interaction','varnames',{'Epoch'}, 'alpha', 0.05,'display','off');
-    frEpochsANOVA{channel_i}{unit_i}.taskModulatedP = p;
+    [p, ~, ~] = anova1(trialSpikes, trialEpoch, 'off');%,'model','interaction','varnames',{'Epoch'}, 'alpha', 0.05,'display','off');
+    frEpochsStats{channel_i}{unit_i}.taskModulatedP = p;
     if p < 0.05
-      trialSpikesPres = trialSpikes(strcmp(trialEpoch,'Presentation'));
-      trialLabelsPres = trialLabels(strcmp(trialEpoch,'Presentation'));
-      trialSpikesFix = trialSpikes(strcmp(trialEpoch,'Fixation'));
-      trialLabelsFix = trialLabels(strcmp(trialEpoch,'Fixation'));
-      trialSpikesReward = trialSpikes(strcmp(trialEpoch,'Reward'));
-      trialLabelsReward = trialLabels(strcmp(trialEpoch,'Reward'));
-      [Presp, ~, Pstats] = anovan(trialSpikesPres,{trialLabelsPres},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05,'display','off');
-      [Fixp, ~, Fstats] = anovan(trialSpikesFix,{trialLabelsFix},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05,'display','off');
-      [Rewardp, ~, Rstats] = anovan(trialSpikesReward,{trialLabelsReward},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05,'display','off');
-      % Construct the output for the unit
-      frEpochsANOVA{channel_i}{unit_i}.ANOVA.pp = Presp;
-      frEpochsANOVA{channel_i}{unit_i}.ANOVA.fp = Fixp;
-      frEpochsANOVA{channel_i}{unit_i}.ANOVA.rp = Rewardp;
-      frEpochsANOVA{channel_i}{unit_i}.ANOVA.Pstats = Pstats;
-      frEpochsANOVA{channel_i}{unit_i}.ANOVA.Fstats = Fstats;
-      frEpochsANOVA{channel_i}{unit_i}.ANOVA.Rstats = Rstats;
-      frEpochsANOVA{channel_i}{unit_i}.target = target;
+      [pVal, stats] = deal(cell(length(epochLabels),1));
+      % Perform t test on each epoch
+      for epoch_i = 1:length(epochLabels)
+        socSpikesPres = trialSpikes((strcmp(trialEpoch,epochLabels{epoch_i}) + strcmp(trialLabels, target)) == 2);
+        nonSocSpikesPres = trialSpikes((strcmp(trialEpoch,epochLabels{epoch_i}) + ~strcmp(trialLabels, target)) == 2);
+        %[Presp, ~, Pstats] = anovan(trialSpikesPres,{trialLabelsPres},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05,'display','off');
+        %[Presp, ~, Pstats] = anova1(trialSpikesPres, trialLabelsPres, 'off'); %'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05,'display','off');
+        [~, pVal{epoch_i}, ~, stats{epoch_i}] = ttest2(socSpikesPres,nonSocSpikesPres);
+      end
+      % Store in struct
+      frEpochsStats{channel_i}{unit_i}.tTest.epochLabels = epochLabels;
+      frEpochsStats{channel_i}{unit_i}.tTest.target = target;
+      frEpochsStats{channel_i}{unit_i}.tTest.pVals = pVal;
+      frEpochsStats{channel_i}{unit_i}.tTest.stats = stats;
     end
   end
 end
 
 end
 
-function stimPSTHoverlay(psthByImage, sortMask, inclusionMask, epochLabels, stimDir, psthParams, ephysParams, lfpPaddedBy, taskEventList, outDir)
+function stimPSTHoverlay(psthByImage, sortMask, inclusionMask, stimDir, psthParams, lfpPaddedBy, taskEventList, outDir)
 %Rearrange PSTH due to sorting which takes place w/ signifiance bars
 %Creates a copy of the video of the stimulus with the PSTH traced below.
 psthPre = psthParams.psthPre;
@@ -5445,10 +5433,6 @@ end
 %Properly package outputs with the right names, save them.
 psthByStim = psthByItem;
 psthErrByStim = psthErrByItem;
-end
-
-function frEpochsANOVA = stimCatTwoWayANOVA(spikeCountsByImageByEpoch, eventIDs, groupLabelsByImage, group, target)
-
 end
 
 function spikeBinCorr = spikeCorr(spikesByEventBinned)

@@ -8,7 +8,7 @@ if ~isempty(varargin)
   text(ax, .025,.5,footer, 'fontsize',12);
 end
 if saveFig     
-  savefig(fullfile(outDir, [filename,'.fig']));
+  savefig(fullfile(outDir, strcat(filename, '.fig')));
 end
 if exportFig
   export_fig(fullfile(outDir, strcat(filename, '.png')),'-m1.2','-transparent','-opengl');

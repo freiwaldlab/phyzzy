@@ -16,6 +16,7 @@ set(0, 'CurrentFigure', figHandle)
 preAlign = psthParams.psthPre;
 postAlign = psthParams.psthPost;
 imDur = psthParams.psthImDur;
+rasterAxes = axes();
 
 xlim([-preAlign,imDur+postAlign]);
 hold on;
@@ -126,7 +127,6 @@ hold off;
 %Create a legend which gives the color code for the shaded region or the
 %individual spikes. Invisible axes with bar plots for each color.
 invisAx = axes('Color','none','XColor','none');
-%addlistener(figHandle,'SizeChanged',@(varargin)set(invisAx,'Position',get(figHandle.Children(end),'Position')));
 
 handleToThisBarSeries = gobjects(length(attendedObjData.objList),1);
 for b = 1 : length(attendedObjData.objList)
@@ -136,11 +136,7 @@ for b = 1 : length(attendedObjData.objList)
 end
 legend(attendedObjData.objList, 'Location', 'southeastoutside');
 invisAx.Visible = 'off';
-invisAx.Position = figHandle.Children(end).Position;
-
-%3 instead of 2 because saveFigure adds axes to add text.
-figHandle.SizeChangedFcn = @(src,event) set(src.Children(3),'Position',get(src.Children(end),'Position'));
-
+linkprop([rasterAxes invisAx],'Position');
 
 end
 

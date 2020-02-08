@@ -1,4 +1,4 @@
-function [trueCellInd, runInfo, unitCountStruct] = trueCellCount(batchRunxls, recordingLogxls)
+function [trueCellInd, runInfo, unitCountStruct, resultTable, nullSigCell] = trueCellCount(batchRunxls, recordingLogxls)
 %% Function
 % uses information from batchRunxls and recordingLogxls to determine which 
 % units within recordings are new (as opposed to phase 2, or slight changes in depth.)
@@ -99,7 +99,7 @@ if performSigCounts
   % each run. ANOVAs are represented as a string of brackets, 1 per unit, including Unsorted and MUA (per phyzzy convention).
   sheetNames = {'Presentation','Fixation','Reward'};
   unitCountStruct.epochs = sheetNames;
-  resultTable = struct();
+  resultTable = cell(3,1);
   lengthPerBlock = 0;
   [unitCountStruct.sigUnitCountNull , unitCountStruct.sigUnitCountANOVA] = deal(zeros(length(sheetNames),1));
   
@@ -116,6 +116,9 @@ if performSigCounts
     
     fractionSig = sum(sigUnitCounts)/unitCount;                            % Percent Significant
     
+    if table_ind == 1
+      nullSigCell = sum(sigUnitCounts);
+    end
     % ANOVA counts
     
     % Parse ANOVA strings.
@@ -130,6 +133,9 @@ if performSigCounts
     ANOVACells = ANOVACells(trueCellInd);
     
     % Initialize vectors for counts
+    groupType = {'Unsorted','Units','MUA'};
+    dataType = {'Total Tally', 'Task Modulated', 'SocialSig', 'sigRun', 'sigHole'};
+    countMat = cell(length(groupType),length(dataType));
     [TaskModUnsortedCount, TaskModMUACount, TaskModUnitCount] = deal(0);
     [SocSigUnsortedCount,  SocSigMUACount,  SocSigUnitCount] = deal(0);
     [sigUnitRunIndA, sigUnitRunIndTM, sigUnitGridHole] = deal([]);
@@ -137,94 +143,89 @@ if performSigCounts
     % Iteratate accross runs and count.
     [sigANOVAUnitCounts, sigANOVA, sigANOVAGrid] = deal([]);
     for run_ind = 1:length(ANOVACells)
-      sigUnitCountTmp = 0;
-      addRunAndHoleToList = 0;
       for cell_ind = 1:length(ANOVACells{run_ind})
         ANOVAResult = ANOVACells{run_ind}{cell_ind};
-        
         % first index identifies task modulation.
+        if cell_ind == 1
+          groupInd = 1;
+        elseif cell_ind == length(ANOVACells{run_ind})
+          groupInd = 3;
+        else
+          groupInd = 2;
+        end
+        % {'Total Tally', 'Task Modulated', 'SocialSig', 'sigRun', 'sigHole'};
+        countMat{groupInd, strcmp(dataType, 'Total Tally')} = [countMat{groupInd, strcmp(dataType, 'Total Tally')}; 1];
         if str2double(ANOVAResult(1))
-          if cell_ind == 1
-            TaskModUnsortedCount = TaskModUnsortedCount + 1;
-          elseif cell_ind == length(ANOVACells{run_ind})
-            TaskModMUACount = TaskModMUACount + 1;
-          else
-            TaskModUnitCount = TaskModUnitCount + 1;
-            sigUnitRunIndTM = [sigUnitRunIndTM; run_ind];
-          end
+          countMat{groupInd, strcmp(dataType, 'Task Modulated')} = [countMat{groupInd, strcmp(dataType, 'Task Modulated')}; 1];
         end
         
         % 2nd number (index 3) identifies social selectivity on ANOVA.
         if str2double(ANOVAResult(3))
-          if cell_ind == 1
-            SocSigUnsortedCount = SocSigUnsortedCount + 1;
-          elseif cell_ind == length(ANOVACells{run_ind})
-            SocSigMUACount = SocSigMUACount + 1;
-          else
-            sigUnitCountTmp = sigUnitCountTmp + 1;
-            addRunAndHoleToList = 1;
-          end
+          countMat{groupInd, strcmp(dataType, 'SocialSig')} = [countMat{groupInd, strcmp(dataType, 'SocialSig')}; 1];
+          countMat{groupInd, strcmp(dataType, 'sigRun')} = [countMat{groupInd, strcmp(dataType, 'sigRun')}; validTaskRuns(run_ind)];
+          countMat{groupInd, strcmp(dataType, 'sigHole')} = [countMat{groupInd, strcmp(dataType, 'sigHole')}; validGridHoles(run_ind,:)];
         end
       end
-      if addRunAndHoleToList
-        sigANOVAUnitCounts = [sigANOVAUnitCounts; sigUnitCountTmp];
-        sigANOVA = [sigANOVA; validTaskRuns(run_ind)];
-        sigANOVAGrid = [sigANOVAGrid; validGridHoles(run_ind,:)];
-      end
+%       if addRunAndHoleToList    
+%         sigANOVAUnitCounts = [sigANOVAUnitCounts; SocSigUnitCountTmp];
+%         sigANOVA = [sigANOVA; validTaskRuns(run_ind)];
+%         sigANOVAGrid = [sigANOVAGrid; validGridHoles(run_ind,:)];
+%       end
     end
     
     % Save the total counts into a cell for the table.
-    resultTable(table_ind).taskMod = unique(validTaskRuns(sigUnitRunIndTM));
-    resultTable(table_ind).sigNullUnitCounts = sigUnitCounts;
-    resultTable(table_ind).sigNullTaskRuns = sigTaskRuns;
-    resultTable(table_ind).sigNullGrid = sigGridHoles;
-    resultTable(table_ind).sigANOVAUnitCounts = sigANOVAUnitCounts;
-    resultTable(table_ind).sigANOVATaskRuns = sigANOVA;
-    resultTable(table_ind).sigANOVAGrid = sigANOVAGrid;
+    resultTable{table_ind} = countMat;
+%     resultTable(table_ind).taskMod = unique(validTaskRuns(sigUnitRunIndTM));
+%     resultTable(table_ind).sigNullUnitCounts = sigUnitCounts;
+%     resultTable(table_ind).sigNullTaskRuns = sigTaskRuns;
+%     resultTable(table_ind).sigNullGrid = sigGridHoles;
+%     resultTable(table_ind).sigANOVAUnitCounts = sigANOVAUnitCounts;
+%     resultTable(table_ind).sigANOVATaskRuns = sigANOVA;
+%     resultTable(table_ind).sigANOVAGrid = sigANOVAGrid;
 
-    % Report
-    if table_ind == 1
-      fprintf('Total Non-repeat units: %d \n',unitCount)
-    end
-    fprintf('Total Null Model %s Sig units: %d \n',sheetNames{table_ind}, sum(sigUnitCounts))
-    fprintf('\n');
-    fprintf('Total task modulated units: %d \n',TaskModUnitCount)
-    fprintf('Total %s units found via ANOVA : %d \n', sheetNames{table_ind},SocSigUnitCount)
-    
-    % output will be an excel table. This number below will be used for proper formating.
-    lengthPerBlock = max([lengthPerBlock; length(sigUnitRunIndA); length(sigTaskRuns)]);
+%     % Report
+%     if table_ind == 1
+%       fprintf('Total Non-repeat units: %d \n',unitCount)
+%     end
+%     fprintf('Total Null Model %s Sig units: %d \n',sheetNames{table_ind}, sum(sigUnitCounts))
+%     fprintf('\n');
+%     fprintf('Total task modulated units: %d \n',TaskModUnitCount)
+%     fprintf('Total %s units found via ANOVA : %d \n', sheetNames{table_ind},SocSigUnitCount)
+%     
+%     % output will be an excel table. This number below will be used for proper formating.
+%     lengthPerBlock = max([lengthPerBlock; length(sigUnitRunIndA); length(sigTaskRuns)]);
   end
-  
+%   
   % Significant unit counts per grid hole for Presentation epoch (table_ind = 1)
-  AugustInd = find(strncmp(resultTable(1).sigNullTaskRuns,'201808',6),1);
-  unitCountStruct.nullSigNullTaskRunsPresJJ = resultTable(1).sigNullTaskRuns(1:AugustInd-1,:);
-  unitCountStruct.nullSigNullTaskRunsPresAug = resultTable(1).sigNullTaskRuns(AugustInd:end,:);
-  unitCountStruct.nullSigGridHolesPresJJ = resultTable(1).sigNullGrid(1:AugustInd-1,:);
-  unitCountStruct.nullSigGridHolesPresAug = resultTable(1).sigNullGrid(AugustInd:end,:);
-  unitCountStruct.nullSigCountPerHolePresJJ = resultTable(1).sigNullUnitCounts(1:AugustInd-1,:);
-  unitCountStruct.nullSigCountPerHolePresAug = resultTable(1).sigNullUnitCounts(AugustInd:end,:);
-  
-  AugustInd = find(strncmp(resultTable(1).sigANOVATaskRuns,'201808',6),1);
-  unitCountStruct.ANOVASigNullTaskRunsPresJJ = resultTable(1).sigANOVATaskRuns(1:AugustInd-1,:);
-  unitCountStruct.ANOVASigNullTaskRunsPresAug = resultTable(1).sigANOVATaskRuns(AugustInd:end,:);
-  unitCountStruct.ANOVASigGridHolesPresJJ = resultTable(1).sigANOVAGrid(1:AugustInd-1,:);
-  unitCountStruct.ANOVASigGridHolesPresAug = resultTable(1).sigANOVAGrid(AugustInd:end,:);
-  unitCountStruct.ANOVASigCountPerHolePresJJ = resultTable(1).sigANOVAUnitCounts(1:AugustInd-1,:);
-  unitCountStruct.ANOVASigCountPerHolePresAug = resultTable(1).sigANOVAUnitCounts(AugustInd:end,:);
-  
-  tableCell = cell((lengthPerBlock + 1) * 2,3);
-  fileParts = split(fileparts(batchRunxls),filesep);
-  resultName = fileParts{end};
-  [tableCell(1,1:3), tableCell(2 + lengthPerBlock ,1:3)] = deal(sheetNames);
-  
-  for result_ind = 1:length(resultTable)
-    columnLength = length(resultTable(result_ind).sigNullTaskRuns);
-    columnLength2 = length(resultTable(result_ind).sigANOVATaskRuns);
-    tableCell(2:columnLength+1,result_ind) = resultTable(result_ind).sigNullTaskRuns;
-    tableCell(lengthPerBlock+3:lengthPerBlock+2+columnLength2,result_ind) = resultTable(result_ind).sigANOVATaskRuns;
-  end
-  
-  T = cell2table(tableCell);
-  writetable(T,fullfile(fileparts(batchRunxls),sprintf('%s_sigRuns.xlsx',resultName)))
+%   AugustInd = find(strncmp(resultTable(1).sigNullTaskRuns,'201808',6),1);
+%   unitCountStruct.nullSigNullTaskRunsPresJJ = resultTable(1).sigNullTaskRuns(1:AugustInd-1,:);
+%   unitCountStruct.nullSigNullTaskRunsPresAug = resultTable(1).sigNullTaskRuns(AugustInd:end,:);
+%   unitCountStruct.nullSigGridHolesPresJJ = resultTable(1).sigNullGrid(1:AugustInd-1,:);
+%   unitCountStruct.nullSigGridHolesPresAug = resultTable(1).sigNullGrid(AugustInd:end,:);
+%   unitCountStruct.nullSigCountPerHolePresJJ = resultTable(1).sigNullUnitCounts(1:AugustInd-1,:);
+%   unitCountStruct.nullSigCountPerHolePresAug = resultTable(1).sigNullUnitCounts(AugustInd:end,:);
+%   
+%   AugustInd = find(strncmp(resultTable(1).sigANOVATaskRuns,'201808',6),1);
+%   unitCountStruct.ANOVASigNullTaskRunsPresJJ = resultTable(1).sigANOVATaskRuns(1:AugustInd-1,:);
+%   unitCountStruct.ANOVASigNullTaskRunsPresAug = resultTable(1).sigANOVATaskRuns(AugustInd:end,:);
+%   unitCountStruct.ANOVASigGridHolesPresJJ = resultTable(1).sigANOVAGrid(1:AugustInd-1,:);
+%   unitCountStruct.ANOVASigGridHolesPresAug = resultTable(1).sigANOVAGrid(AugustInd:end,:);
+%   unitCountStruct.ANOVASigCountPerHolePresJJ = resultTable(1).sigANOVAUnitCounts(1:AugustInd-1,:);
+%   unitCountStruct.ANOVASigCountPerHolePresAug = resultTable(1).sigANOVAUnitCounts(AugustInd:end,:);
+%   
+%   tableCell = cell((lengthPerBlock + 1) * 2,3);
+%   fileParts = split(fileparts(batchRunxls),filesep);
+%   resultName = fileParts{end};
+%   [tableCell(1,1:3), tableCell(2 + lengthPerBlock ,1:3)] = deal(sheetNames);
+%   
+%   for result_ind = 1:length(resultTable)
+%     columnLength = length(resultTable(result_ind).sigNullTaskRuns);
+%     columnLength2 = length(resultTable(result_ind).sigANOVATaskRuns);
+%     tableCell(2:columnLength+1,result_ind) = resultTable(result_ind).sigNullTaskRuns;
+%     tableCell(lengthPerBlock+3:lengthPerBlock+2+columnLength2,result_ind) = resultTable(result_ind).sigANOVATaskRuns;
+%   end
+%   
+%   T = cell2table(tableCell);
+%   writetable(T,fullfile(fileparts(batchRunxls),sprintf('%s_sigRuns.xlsx',resultName)))
 end
 

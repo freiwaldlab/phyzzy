@@ -132,8 +132,7 @@ end
 %runAnalyses. Cycle through them and extract desired information (# of
 %units, significance), which you can add to the output file.
 %[UnitCount, sigUnits, sigStim, sigStimLen] = deal(cell(size(analysisOutFilename)));
-replaceAnalysisOut = 1;
-if replaceAnalysisOut
+if 1%replaceAnalysisOut
   addEnd = @(x) fullfile(x, 'analyzedData.mat');
   breakString = @(x) strsplit(x, filesep);
   joinStrings = @(x) strjoin([x(length(x)-2), x(length(x))],'');
@@ -164,8 +163,9 @@ dataType = tmp.sigStruct.IndInfo{3};
 
 for ii = 1:length(analysisOutFilename)
   if ~isempty((analysisOutFilename{ii}))
-    tmp = load(analysisOutFilename{ii}, 'stimCatANOVATable','sigStruct','frEpochs'); %Relies on genStats function in runAnalyses.
+    tmp = load(analysisOutFilename{ii}, 'stimStatsTable','sigStruct','frEpochs'); %Relies on genStats function in runAnalyses.
     true_ind_page = true_ind;
+    epochLabels = unitStructs{1}.tTest.epochLabels;
     for epoch_i = 1:length(tmp.sigStruct.IndInfo{1})
       for channel_ind = 1:length(tmp.sigStruct.data)
         
@@ -185,18 +185,12 @@ for ii = 1:length(analysisOutFilename)
         end
         
         % ANOVA based significance
-        unitStructs = tmp.stimCatANOVATable{channel_ind};
+        unitStructs = tmp.stimStatsTable{channel_ind};
         ANOVASigString = ' ';
         for unit_ind = 1:length(unitStructs)
           anovaSig = 0;
-          if isfield(unitStructs{unit_ind}, 'ANOVA')
-            if epoch_i == 1
-              anovaSig = unitStructs{unit_ind}.ANOVA.pp < 0.05;
-            elseif epoch_i == 2
-              anovaSig = unitStructs{unit_ind}.ANOVA.fp < 0.05;
-            elseif epoch_i == 3
-              anovaSig = unitStructs{unit_ind}.ANOVA.rp < 0.05;
-            end
+          if isfield(unitStructs{unit_ind}, 'tTest')
+            anovaSig = unitStructs{unit_ind}.tTest.pVals{epoch_i} < 0.05;
           end
           ANOVASigString = [ANOVASigString ['[' num2str(unitStructs{unit_ind}.taskModulatedP < 0.05) ';' num2str(anovaSig(1)) ']']];
         end
