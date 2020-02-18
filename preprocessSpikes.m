@@ -101,7 +101,7 @@ if isfield(params, 'waveClus') && params.waveClus
       tmpSpikes.Threshold(ii) = WC.threshold;
     catch
       warning('threshold in wrong spot');
-      tmpSpikes.Threshold(ii) = WC.par.threshold;
+      tmpSpikes.Threshold(ii) = WC.par.threshold(end);
     end
   end
   

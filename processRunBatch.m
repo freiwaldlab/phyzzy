@@ -11,30 +11,31 @@ function [] = processRunBatch(varargin)
 %       'buildAnalysisParamFileSocVid'. User will be prompted to select
 %       directory with files.
 
-replaceAnalysisOut = 0; % This generates an excel file at the end based on previous analyses. Don't use when running anew.
-usePreprocessed = 0;    % uses preprocessed version of Phyzzy, only do when changing plotSwitch or calcSwitch and nothing else.
-
+replaceAnalysisOut = 0;                         % This generates an excel file at the end based on previous analyses. Don't use when running a new.
+outputVolume = 'D:\DataAnalysis\Feb2020_V2';    % Only used for the excel doc. change in analysisParamFile to change destination.
+usePreprocessed = 0;                            % uses preprocessed version of Phyzzy, only do when changing plotSwitch or calcSwitch and nothing else.
+runParallel = 1;                                % Use parfor loop to go through processRun. Can't be debugged within the loop.
 
 %% Load Appropriate variables and paths
 addpath(genpath('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy'))
-
-if nargin == 1
+if ~replaceAnalysisOut
+  if nargin == 1
     %If there is only 1 file, it loads the analysisParamFile and composes a
     %list from all the data files in the ephysVolume.
     analysisParamFile = varargin{1};
     load(feval(analysisParamFile));
     runListFolder = ephysVolume;
     runList = buildRunList(runListFolder, 'nev');
-elseif nargin >= 2 || nargin == 0
+  elseif nargin >= 2 || nargin == 0
     disp('Must have 1 input.')
     return
-end
-
-%% Create all of the appropriate AnalysisParamFiles as a cell array.
-[analysisParamFileList, analysisParamFileName] = deal(cell(0));
-meta_ind = 1;
-
-for dateSubj_i = 1:length(runList)
+  end
+  
+  %% Create all of the appropriate AnalysisParamFiles as a cell array.
+  [analysisParamFileList, analysisParamFileName] = deal(cell(0));
+  meta_ind = 1;
+  
+  for dateSubj_i = 1:length(runList)
     dateSubject = runList{dateSubj_i}{1};
     for run_i = 1:length(runList{dateSubj_i}{2})
       runNum = runList{dateSubj_i}{2}{run_i};
@@ -73,71 +74,71 @@ for dateSubj_i = 1:length(runList)
       analysisParamFileName{meta_ind} = [dateSubject runNum];
       meta_ind = meta_ind + 1;
     end
-end
-
-%% Process the runs
-[errorsMsg, startTimes, endTimes, analysisOutFilename] = deal(cell(length(analysisParamFileList),1));
-if usePreprocessed
-  for path_ind = 1:length(analysisParamFileList)
-    analysisParamFileList{path_ind} = [fileparts(analysisParamFileList{path_ind}) filesep 'preprocessedData.mat'];
   end
-end
-
-if license('test','Distrib_Computing_Toolbox')
-  parfor run_ind = 1:length(analysisParamFileList)
-    fprintf('run_ind reads %d... \n', run_ind);
-    fprintf('Processing %s... \n', analysisParamFileList{run_ind});
-    startTimes{run_ind} = datetime('now');
-    try
-      if usePreprocessed
-        [~, analysisOutFilename{run_ind}] = processRun('paramBuilder','buildAnalysisParamFileSocialVids','preprocessed',analysisParamFileList{run_ind});
-      else
-        [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
-      end
-      errorsMsg{run_ind} = 'None';
-      endTimes{run_ind} = datetime('now');
-    catch MyErr
-      errorsMsg{run_ind} = MyErr.message;
-      endTimes{run_ind} = datetime('now');
-      fprintf('Ran into Error, Moving to next File. \n');
-      continue
+  
+  %% Process the runs
+  [errorsMsg, startTimes, endTimes, analysisOutFilename] = deal(cell(length(analysisParamFileList),1));
+  if usePreprocessed
+    for path_ind = 1:length(analysisParamFileList)
+      analysisParamFileList{path_ind} = [fileparts(analysisParamFileList{path_ind}) filesep 'preprocessedData.mat'];
     end
-    close all;
-    fprintf('Done! \n');
   end
+  
+  tmp  = load(analysisParamFileList{1}, 'outputVolume');
+  outputVolume = tmp.outputVolume;
+  
+  if license('test','Distrib_Computing_Toolbox') && runParallel
+    parfor run_ind = 1:length(analysisParamFileList)
+      fprintf('run_ind reads %d... \n', run_ind);
+      fprintf('Processing %s... \n', analysisParamFileList{run_ind});
+      startTimes{run_ind} = datetime('now');
+      try
+        if usePreprocessed
+          [~, analysisOutFilename{run_ind}] = processRun('paramBuilder','buildAnalysisParamFileSocialVids','preprocessed',analysisParamFileList{run_ind});
+        else
+          [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
+        end
+        errorsMsg{run_ind} = 'None';
+        endTimes{run_ind} = datetime('now');
+      catch MyErr
+        errorsMsg{run_ind} = MyErr.message;
+        endTimes{run_ind} = datetime('now');
+        fprintf('Ran into Error, Moving to next File. \n');
+        continue
+      end
+      close all;
+      fprintf('Done! \n');
+    end
+  else
+    for run_ind = 1:length(analysisParamFileList)
+      fprintf('Processing %s... \n', analysisParamFileList{run_ind});
+      startTimes{run_ind} = datetime('now');
+      try
+        if usePreprocessed
+          [~, analysisOutFilename{run_ind}] = processRun('paramBuilder','buildAnalysisParamFileSocialVids','preprocessed',analysisParamFileList{run_ind});
+        else
+          [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
+        end
+        errorsMsg{run_ind} = 'None';
+        endTimes{run_ind} = datetime('now');
+      catch MyErr
+        errorsMsg{run_ind} = MyErr.message;
+        endTimes{run_ind} = datetime('now');
+        fprintf('Ran into Error, Moving to next File. \n');
+        continue
+      end
+      clc; 
+      close all;
+      fprintf('Done! \n');
+    end
+  end
+  
 else
-  for run_ind = 1:length(analysisParamFileList)
-    fprintf('Processing %s... \n', analysisParamFileList{run_ind});
-    startTimes{run_ind} = datetime('now');
-    try
-      if usePreprocessed
-        [~, analysisOutFilename{run_ind}] = processRun('paramBuilder','buildAnalysisParamFileSocialVids','preprocessed',analysisParamFileList{run_ind});
-      else
-        [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
-      end
-      errorsMsg{run_ind} = 'None';
-      endTimes{run_ind} = datetime('now');
-    catch MyErr
-      errorsMsg{run_ind} = MyErr.message;
-      endTimes{run_ind} = datetime('now');
-      fprintf('Ran into Error, Moving to next File. \n');
-      continue
-    end
-    clc; close all;
-    fprintf('Done! \n');
-  end
-end
-%%
-%analysisOutFilename is now a cell array of the filepaths to the outputs of
-%runAnalyses. Cycle through them and extract desired information (# of
-%units, significance), which you can add to the output file.
-%[UnitCount, sigUnits, sigStim, sigStimLen] = deal(cell(size(analysisOutFilename)));
-if 1%replaceAnalysisOut
+  disp('Recompiling structures for excel output')
   addEnd = @(x) fullfile(x, 'analyzedData.mat');
   breakString = @(x) strsplit(x, filesep);
   joinStrings = @(x) strjoin([x(length(x)-2), x(length(x))],'');
   
-  outputVolume = 'D:\DataAnalysis\Jan2020';
   analysisOutFilename = dir([outputVolume '\**\analyzedData.mat']);
   analysisOutFilename = {analysisOutFilename.folder}';
   [errorsMsg, startTimes, endTimes] = deal(cell(length(analysisOutFilename),1));
@@ -148,6 +149,11 @@ if 1%replaceAnalysisOut
   [startTimes{:}, endTimes{:}] = deal(datetime(now,'ConvertFrom','datenum'));
   [errorsMsg{:}] = deal('None');
 end
+
+%analysisOutFilename is now a cell array of the filepaths to the outputs of
+%runAnalyses. Cycle through them and extract desired information (# of
+%units, significance), which you can add to the output file.
+
 titles = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Channel', 'Unit_Count', 'Sig Unit count', 'Sig Unsorted','Sig MUA', 'Stimuli_count', 'Stimuli','ANOVA','Other Info'};
 sigMUAInd = strcmp(titles,'Sig MUA');
 sigUnsortedInd = strcmp(titles,'Sig Unsorted');
@@ -156,16 +162,15 @@ epochCount = 3; %Hardcoding 3 Epochs here.
 table = cell(epochCount,1);
 [table{:}] = deal(cell(length(analysisOutFilename), length(titles)));
 true_ind = 1;
-tmp.sigStruct.IndInfo
+tmp = load(analysisOutFilename{1},'sigStruct');
 epochType = tmp.sigStruct.IndInfo{1};
 groupingType = tmp.sigStruct.IndInfo{2};
 dataType = tmp.sigStruct.IndInfo{3};
 
-for ii = 1:length(analysisOutFilename)
+for ii = 1:length(analysisParamFileName)
   if ~isempty((analysisOutFilename{ii}))
     tmp = load(analysisOutFilename{ii}, 'stimStatsTable','sigStruct','frEpochs'); %Relies on genStats function in runAnalyses.
     true_ind_page = true_ind;
-    epochLabels = unitStructs{1}.tTest.epochLabels;
     for epoch_i = 1:length(tmp.sigStruct.IndInfo{1})
       for channel_ind = 1:length(tmp.sigStruct.data)
         
@@ -203,10 +208,19 @@ for ii = 1:length(analysisOutFilename)
         true_ind = true_ind + 1;     
       end
       
-      if epoch_i ~= length(tmp.sigStruct.sigUnits) % More pages to do = let count reset.
+      if epoch_i ~= length(tmp.sigStruct.IndInfo{1}) % More pages to do = let count reset.
         true_ind = true_ind_page;
       end
       
+    end
+  else
+    true_ind_page = true_ind;
+    for epoch_i = 1:3
+      table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorsMsg(ii), {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {' '}];
+      true_ind = true_ind + 1;
+      if epoch_i ~= 3 % More pages to do = let count reset.
+        true_ind = true_ind_page;
+      end
     end
   end
 end
@@ -216,7 +230,7 @@ for table_ind = 1:length(table)
   table{table_ind}{3,end} = sprintf('%d - %d ms', tmp.frEpochs(table_ind,1), tmp.frEpochs(table_ind,2));
   T = cell2table(table{table_ind});
   T.Properties.VariableNames = titles;
-  writetable(T,sprintf('%s/BatchRunResults.xlsx',outputVolume),'Sheet', sprintf('%s Epoch', tmp.sigStruct.epochLabels{table_ind}))
+  writetable(T,sprintf('%s/BatchRunResults.xlsx',outputVolume),'Sheet', sprintf('%s Epoch', epochType{table_ind}))
 end
 % %PDF Summary
 % %Remove empty cells from analysisOutFilename

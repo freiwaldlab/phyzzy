@@ -330,7 +330,7 @@ if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
       if length(channelUnitNames{channel_i}) == 2 && unit_i == 1 %if no isolated unit defined, plot just MUA, not also unsorted (since it's identical)
         continue;
       end
-      figure('Name',psthTitle,'NumberTitle','off');
+      figure('Name',psthTitle,'NumberTitle','off','units','normalized','outerposition',figPos);
       if isfield(psthParams, 'sortStim') && psthParams.sortStim
         if ~exist('NewStimOrder')
           sortOrder = psthParams.sortOrder;
@@ -368,7 +368,7 @@ if isfield(plotSwitch,'categoryPsth') && plotSwitch.categoryPsth
         continue;
       end
       psthTitle = sprintf('Per Catagory PSTH %s, %s',channelNames{channel_i}, channelUnitNames{channel_i}{unit_i});
-      figure('Name',psthTitle,'NumberTitle','off');
+      figure('Name',psthTitle,'NumberTitle','off','units','normalized','outerposition',figPos);
       plotPSTH(psthByCategory{channel_i}{unit_i}, [], psthParams, 'color', psthTitle, categoryList);
       clear figData
       title(psthTitle);
@@ -426,18 +426,19 @@ if ~isempty(spikesByCategory)
       analysisGroups.stimulusLabelGroups.colors{group_i} = groupColors;
     end
     
-    %Maybe just make the above colors into cells?
-    %Swap colors defined above to numbers
-    colors_tmp = zeros(length(colors),3);
-    for item_i = 1:length(colors)
-      if ischar(colors{item_i})
-        colors_tmp(item_i,:) = rem(floor((strfind('kbgcrmyw', colors{item_i}) - 1) * [0.25 0.5 1]), 2);
-      else
-        colors_tmp(item_i,:) = colors{item_i};
+    if group_i == 1
+      %Maybe just make the above colors into cells?
+      %Swap colors defined above to numbers
+      colors_tmp = zeros(length(colors),3);
+      for item_i = 1:length(colors)
+        if ischar(colors{item_i})
+          colors_tmp(item_i,:) = rem(floor((strfind('kbgcrmyw', colors{item_i}) - 1) * [0.25 0.5 1]), 2);
+        else
+          colors_tmp(item_i,:) = colors{item_i};
+        end
       end
+      colors = colors_tmp;
     end
-    colors = colors_tmp;
-    
     
     for image_i = 1:length(eventLabels)
       for item_i = 1:length(group)
@@ -464,9 +465,11 @@ save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpo
 
 % Calculate sort orders and statistics
 epochLabels = {'Presentation','Fixation','Reward'};
+assert(length(analysisGroups.stimulusLabelGroups.groups) == 1, 'genStats will make mistakes in a multi-stimulusLabelGroups setting')
 genStatsParams.ANOVAParams.group = group;
 genStatsParams.ANOVAParams.groupLabelsByImage = groupLabelsByImage;
-genStatsParams.ANOVAParams.target = 'socialInteraction';
+genStatsParams.ANOVAParams.target = group{1};
+%[sigStruct, imageSortOrder, nullModelPvalues, nullTraceMeans, nullTraceSD, frEpochsStats]
 [sigStruct, imageSortOrder, nullModelPvalues, nullTraceMeans, nullTraceSD, stimStatsTable] = genStats(psthByImage, spikeCountsByImageByEpoch, firingRatesByImageByEpoch, firingRateErrsByImageByEpoch, ...
                                                                               trialCountsByImage, analysisGroups, epochLabels, eventIDs, ephysParams, genStatsParams);
 save(analysisOutFilename,'sigStruct','stimStatsTable','-append');
@@ -512,7 +515,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
             topStimToPlot = 5;
           end
           prefImRasterTitle = sprintf('Preferred Image Raster - %s, %s',chanUnitTag, epochTag);
-          fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
+          fh = figure('Name',prefImRasterTitle,'NumberTitle','off','units','normalized','outerposition',figPos);
           clear figData
           figData.z = spikesByEvent(imageSortOrderInd(1:topStimToPlot));
           figData.x = -psthPre:psthImDur+psthPost;
@@ -532,7 +535,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
             topStimToPlot = 5;
           end
           prefImRasterTitle = sprintf('Preferred Image Raster, Color coded - %s, %s',chanUnitTag, epochTag);
-          fh = figure('Name',prefImRasterTitle,'NumberTitle','off');
+          fh = figure('Name',prefImRasterTitle,'NumberTitle','off','units','normalized','outerposition',figPos);
           clear figData
           figData.z = spikesByEvent(imageSortOrderInd(1:topStimToPlot));
           figData.x = -psthPre:psthImDur+psthPost;
@@ -622,6 +625,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
     multiChMua = zeros(length(spikeChannels),length(eventLabels));
     multiChMuaNorm = zeros(length(spikeChannels),length(eventLabels));
     for channel_i = 1:length(spikeChannels) %todo: deal with MUA vs. units
+      imFr = firingRatesByImageByEpoch{epoch_i};
       multiChMua(channel_i,:) = imFr{channel_i}(end,:);
       multiChMuaNorm(channel_i,:) = imFr{channel_i}(end,:)/max(imFr{channel_i}(end,:));
     end
@@ -629,52 +633,52 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
     multiChSpikesMinNorm = min(multiChMuaNorm);
     multiChSpikesMeanNorm = mean(multiChMuaNorm);
     % multi-channel preferred images
-    [imageSortedRates, imageSortOrder] = sort(multiChSpikesMin,2,'descend');
+    [imageSortedRatesMulti, imageSortOrderMulti] = sort(multiChSpikesMin,2,'descend');
     
-    sortedImageLabels = eventLabels(imageSortOrder);
-    multiChMinFrSort.imageSortedRates = imageSortedRates';
+    sortedImageLabels = eventLabels(imageSortOrderMulti);
+    multiChMinFrSort.imageSortedRates = imageSortedRatesMulti';
     multiChMinFrSort.imageSortOrder = imageSortOrder';
     multiChMinFrSort.sortedImageLabels = sortedImageLabels';
     save(analysisOutFilename,'multiChMinFrSort','-append');
     
     fprintf('\n\n\nMulti-channel Preferred Images, Maximin\n\n');
     for i = 1:min(10,length(eventLabels))
-      fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
+      fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRatesMulti(i));
     end
     fprintf('\n\nMulti-channel Least preferred Images, Maximin\n\n');
     for i = 0:min(4,length(eventLabels)-1)
-      fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
+      fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRatesMulti(end-i));
     end
     
-    [imageSortedRates, imageSortOrder] = sort(multiChSpikesMinNorm,2,'descend');
-    sortedImageLabels = eventLabels(imageSortOrder);
-    multiChMinNormFrSort.imageSortedRates = imageSortedRates';
-    multiChMinNormFrSort.imageSortOrder = imageSortOrder';
+    [imageSortedRatesMulti, imageSortOrderMulti] = sort(multiChSpikesMinNorm,2,'descend');
+    sortedImageLabels = eventLabels(imageSortOrderMulti);
+    multiChMinNormFrSort.imageSortedRates = imageSortedRatesMulti';
+    multiChMinNormFrSort.imageSortOrder = imageSortOrderMulti';
     multiChMinNormFrSort.sortedImageLabels = sortedImageLabels';
     save(analysisOutFilename,'multiChMinNormFrSort','-append');
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Maximin\n\n');
     for i = 1:min(10, length(sortedImageLabels))
-      fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
+      fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRatesMulti(i));
     end
     fprintf('\n\nMulti-channel Least preferred Images, Channel-Normalized Maximin\n\n');
     for i = 0:min(4, length(sortedImageLabels)-1)
-      fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
+      fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRatesMulti(end-i));
     end
     
-    [imageSortedRates, imageSortOrder] = sort(multiChSpikesMeanNorm,2,'descend');
-    sortedImageLabels = eventLabels(imageSortOrder);
-    multiChMeanNormFrSort.imageSortedRates = imageSortedRates';
-    multiChMeanNormFrSort.imageSortOrder = imageSortOrder';
+    [imageSortedRatesMulti, imageSortOrderMulti] = sort(multiChSpikesMeanNorm,2,'descend');
+    sortedImageLabels = eventLabels(imageSortOrderMulti);
+    multiChMeanNormFrSort.imageSortedRates = imageSortedRatesMulti';
+    multiChMeanNormFrSort.imageSortOrder = imageSortOrderMulti';
     multiChMeanNormFrSort.sortedImageLabels = sortedImageLabels';
     save(analysisOutFilename,'multiChMeanNormFrSort','-append');
     
     fprintf('\n\n\nMulti-channel Preferred Images, Channel-Normalized Mean\n\n');
     for i = 1:min(10,length(eventLabels))
-      fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRates(i));
+      fprintf('%d) %s: %.2f Hz\n',i,sortedImageLabels{i},imageSortedRatesMulti(i));
     end
     fprintf('\n\nMulti-channel Least preferred Images, Channel-Normalized Mean\n\n');
     for i = 0:min(4,length(eventLabels)-1)
-      fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRates(end-i));
+      fprintf('%d) %s: %.2f Hz \n',i,sortedImageLabels{end-i},imageSortedRatesMulti(end-i));
     end
   end
   % selectivity indices
@@ -5054,16 +5058,16 @@ for epoch_i = 1:length(spikeCountsByImageByEpoch)
       %Calculate the Null model
       mu = mean(imageSortedUnit);
       rawSigmas = imFrErrSorted(trialCountsByImageSorted > 1).*sqrt(trialCountsByImageSorted(trialCountsByImageSorted > 1))';
-      mixSigmas = horzcat(imFrErrSorted(trialCountsByImageSorted > 1),randsample(rawSigmas,sum(trialCountsByImageSorted == 1),true));
+      mixSEs = horzcat(imFrErrSorted(trialCountsByImageSorted > 1),randsample(rawSigmas,sum(trialCountsByImageSorted == 1),true));
       nulltrials = 100;
       nullDistSortsMix = zeros(nulltrials,length(imageSortedUnit));
       for i = 1:length(imageSortedUnit)
-        nullDistSortsMix(:,i) = normrnd(mu,mixSigmas(i),nulltrials,1);
+        nullDistSortsMix(:,i) = normrnd(mu,mixSEs(i),nulltrials,1);
       end
       nullDistSortsMix = sort(nullDistSortsMix,2,'descend');
       nullDistSortsMix(nullDistSortsMix < 0) = 0;
       muNull = mean(nullDistSortsMix, 1);
-      nullTraceSD{epoch_i}{channel_i}{unit_i} = std(nullDistSortsMix)./sqrt(nulltrials);
+      nullTraceSD{epoch_i}{channel_i}{unit_i} = std(nullDistSortsMix, 1);
       nullTraceMeans{epoch_i}{channel_i}{unit_i} = muNull;
       
       %Calculate significance
@@ -5120,9 +5124,9 @@ for channel_i = 1:length(psthByImage)
         dataArray{1} = PSTHtoPlot;
         dataArray{2} = repmat({sprintf('Ch%d %s',[channel_i, unitLabel])}, [3,1]);
         dataArray{3} = stimtoPlot;
-      end
-      for data_i = 1:length(dataArray)
-        data{epoch_i, groupingInd, data_i} = [data{epoch_i, groupingInd, data_i}; dataArray{data_i}];
+        for data_i = 1:length(dataArray)
+          data{epoch_i, groupingInd, data_i} = [data{epoch_i, groupingInd, data_i}; dataArray{data_i}];
+        end
       end
     end
   end
@@ -5136,7 +5140,6 @@ end
 group = genStatsParams.ANOVAParams.group;
 target = genStatsParams.ANOVAParams.target;
 groupLabelsByImage = genStatsParams.ANOVAParams.groupLabelsByImage;
-
 
 %a phase 2 trial w/ only social stuff
 if length(strcmp(group,target)) == 1
@@ -5188,24 +5191,22 @@ for channel_i = 1:length(spikeCountsByImageByEpoch{1})
       end
     end
     % Check for task modulation
-    [p, ~, ~] = anova1(trialSpikes, trialEpoch, 'off');%,'model','interaction','varnames',{'Epoch'}, 'alpha', 0.05,'display','off');
-    frEpochsStats{channel_i}{unit_i}.taskModulatedP = p;
-    if p < 0.05
-      [pVal, stats] = deal(cell(length(epochLabels),1));
-      % Perform t test on each epoch
-      for epoch_i = 1:length(epochLabels)
-        socSpikesPres = trialSpikes((strcmp(trialEpoch,epochLabels{epoch_i}) + strcmp(trialLabels, target)) == 2);
-        nonSocSpikesPres = trialSpikes((strcmp(trialEpoch,epochLabels{epoch_i}) + ~strcmp(trialLabels, target)) == 2);
-        %[Presp, ~, Pstats] = anovan(trialSpikesPres,{trialLabelsPres},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05,'display','off');
-        %[Presp, ~, Pstats] = anova1(trialSpikesPres, trialLabelsPres, 'off'); %'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05,'display','off');
-        [~, pVal{epoch_i}, ~, stats{epoch_i}] = ttest2(socSpikesPres,nonSocSpikesPres);
-      end
-      % Store in struct
-      frEpochsStats{channel_i}{unit_i}.tTest.epochLabels = epochLabels;
-      frEpochsStats{channel_i}{unit_i}.tTest.target = target;
-      frEpochsStats{channel_i}{unit_i}.tTest.pVals = pVal;
-      frEpochsStats{channel_i}{unit_i}.tTest.stats = stats;
+    [frEpochsStats{channel_i}{unit_i}.taskModulatedP, ~, ~] = anova1(trialSpikes, trialEpoch, 'off');%,'model','interaction','varnames',{'Epoch'}, 'alpha', 0.05,'display','off');
+    [pVal, cohensD] = deal(cell(length(epochLabels),1));
+    % Perform t test on each epoch
+    for epoch_i = 1:length(epochLabels)
+      socSpikesPres = trialSpikes((strcmp(trialEpoch,epochLabels{epoch_i}) + strcmp(trialLabels, target)) == 2);
+      nonSocSpikesPres = trialSpikes((strcmp(trialEpoch,epochLabels{epoch_i}) + ~strcmp(trialLabels, target)) == 2);
+      %[Presp, ~, Pstats] = anovan(trialSpikesPres,{trialLabelsPres},'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05,'display','off');
+      %[Presp, ~, Pstats] = anova1(trialSpikesPres, trialLabelsPres, 'off'); %'model','interaction','varnames',{ANOVAvarName}, 'alpha', 0.05,'display','off');
+      [~, pVal{epoch_i}, ~, tmpStats] = ttest2(socSpikesPres,nonSocSpikesPres);
+      cohensD{epoch_i} = (mean(socSpikesPres) - mean(nonSocSpikesPres))/tmpStats.sd;
     end
+    % Store in struct
+    frEpochsStats{channel_i}{unit_i}.tTest.epochLabels = epochLabels;
+    frEpochsStats{channel_i}{unit_i}.tTest.target = target;
+    frEpochsStats{channel_i}{unit_i}.tTest.pVals = pVal;
+    frEpochsStats{channel_i}{unit_i}.tTest.cohensD = cohensD;
   end
 end
 

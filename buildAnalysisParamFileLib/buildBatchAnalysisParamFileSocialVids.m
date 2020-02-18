@@ -6,7 +6,7 @@ machine = machine(~isspace(machine));
 
 switch machine
   case 'Alienware_FA'
-    analysisDirectory = slashSwap('D:\DataAnalysis\Jan2020');
+    analysisDirectory = slashSwap('D:\DataAnalysis\Feb2020');
     outputDir = [analysisDirectory '/batchAnalysis'];
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
   case 'HomeDesktop'
@@ -20,17 +20,17 @@ preprocessedDataFilenameStem = 'preprocessedData.mat';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 
 saveFig = 1;                
-closeFig = 0;               %#ok
+closeFig = 1;               %#ok
 exportFig = 0;              %#ok
 saveFigData = 0;            %#ok
 verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 
 %% Switches
 calcSwitch.excludeRepeats = 0;
-plotSwitch.stimPresCount = 1;         % Figures showing presentation counts across all runs, in development.
+plotSwitch.stimPresCount = 0;         % Figures showing presentation counts across all runs, in development.
 plotSwitch.meanPSTH = 1;              % figure showing mean PSTH across all units, MUA, and Unsorted.
 plotSwitch.frameFiringRates = 0;      % Figures showing raw, max, mean rates per object depending on viewing during frame.
-plotSwitch.novelty = 0;       % Seeing whether 10th percentile values in previous analyses line up with 'novel' stimuli
+plotSwitch.novelty = 0;               % Seeing whether 10th percentile values in previous analyses line up with 'novel' stimuli
 plotSwitch.slidingWindowANOVA = 0;
 
 %% Parameters
@@ -48,13 +48,17 @@ cellCountParams.recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\Recordi
 meanPSTHParams.outputDir = fullfile(outputDir,'meanPSTH');
 meanPSTHParams.stimParamsFilename = stimParamsFilename;
 meanPSTHParams.plotHist = 0;
-meanPSTHParams.plotTopStim = 0;                 % Only plot stimuli which have been present on at least a certain number of runs.
-meanPSTHParams.topStimPresThreshold = 10;       % At least this many stim presentations to be plotted when plotTopStim is on.
+meanPSTHParams.rateThreshold = 0;               % Include only activity with a mean rate of X Hz. 0 for off, over 0 for threshold.
+meanPSTHParams.plotTopStim = 1;                 % Only plot stimuli which have been present on at least a certain number of runs.
+meanPSTHParams.topStimPresThreshold = 5;        % At least this many stim presentations to be plotted when plotTopStim is on.
 meanPSTHParams.broadLabel = 0;                  % Transitions individual stimuli to broad catagory (e.g. chasing).
 meanPSTHParams.normalize = 1;                   % Normalizes PSTH values to the recording's fixation period. 1 = Z score.
 meanPSTHParams.maxStimOnly = 1;                 % The max value and max index taken from the PSTH is only in the area of the stimulus presentation.
 meanPSTHParams.plotLabels = {'chasing','fighting','mounting','grooming','following',...
     'objects','goalDirected','idle','scramble','scene','socialInteraction','animControl','animSocialInteraction','agents','headTurning'}; %If broadLabel is on, all stimuli will have their labels changed to one of the labels in this array.
+meanPSTHParams.plotLabelSocialInd = [1 1 1 1 1 0 0 0 0 0 0 0 0 0 0]; %Index for single catagory labels which are social.
+meanPSTHParams.socialColor = [240/255 62/255 47/255];
+meanPSTHParams.nonSocialColor = [9/255 217/255 107/255];
 meanPSTHParams.sortPresCountSort = 1;           % Sorts images based on counts.
 meanPSTHParams.fixAlign = 1;                    % For cross catagory comparison lines, shift everything to the mean of the fix period.
 meanPSTHParams.topPSTHRunExtract = 3;           % meanPSTH will return a structure of run indices of the top PSTHes by activity (influenced by Z-scoring). This number dictates how many of the top are returned.
@@ -79,11 +83,21 @@ meanPSTHParams.plotSingleUnitTests = 1; % Avoids running completed plot code.
 meanPSTHParams.stimInclude = 2;         % 0 = everything, 1 = Only Animations, 2 = Exclude Animations. 
 meanPSTHParams.removeRewardEpoch = 1;   % Removes the reward period activity when generating plots.
 meanPSTHParams.plotMeanLine = 0;        % For 'All Chasing' plots, include a additional axis as a line plot.
-meanPSTHParams.includeMeanTrace = 0;    % For 'All Chasing' plots, include the mean of all traces at the bottom of the PSTH.
+meanPSTHParams.includeMeanTrace = 1;    % For 'All Chasing' plots, include the mean of all traces at the bottom of the PSTH.
 meanPSTHParams.traceCountLabel = 0;     % labels on the catagory specific plots include 'n = X' to highlight trace value.
 
-meanPSTHParams.plotSize = [.7 .7];           % Turns on the 'exportFig' feature of saveFigure, which generates .pngs.
-meanPSTHParams.exportFig = 0;           % Turns on the 'exportFig' feature of saveFigure, which generates .pngs.
+meanPSTHParams.catPSTH = 1;                     %  Catagory PSTH Plot - 'All Chasing Stimuli, mean PSTH'
+meanPSTHParams.allStimPSTH = 1;                 % All Stimuli means in the same plot.
+meanPSTHParams.allRunStimPSTH = 1;              % Stimuli Plot - 'All chasing 1 PSTHs, sorted by...'
+meanPSTHParams.lineCatPlot = 1;                 % Line plot with Line per Catagory
+meanPSTHParams.lineBroadCatPlot = 1;            % Means Line plot across broad catagorizations (like Social vs non Social)
+meanPSTHParams.exportFig = 0;                   % Turns on the 'exportFig' feature of saveFigure, which generates .pngs.
+
+meanPSTHParams.plotSizeCatPSTH = [.8 .6];       
+meanPSTHParams.plotSizeAllStimPSTH = [.5 1];           
+meanPSTHParams.plotSizeAllRunStimPSTH = [1 1];           
+meanPSTHParams.plotSizeLineCatPlot = [.5 .6];           
+meanPSTHParams.plotSizeLineBroadCatPlot = [.5 .6];           
 
 frameFiringParams.stimParamsFilename = stimParamsFilename;
 frameFiringParams.outputDir = fullfile(outputDir,'frameFiring');
@@ -104,6 +118,7 @@ slidingTestParams.stimParamFile = stimParamsFilename;
 slidingTestParams.outputDir = fullfile(outputDir,'slidingTest');
 slidingTestParams.spikeDataFileName = preprocessParams.spikeDataFileName;
 slidingTestParams.exportFig = 1; 
+slidingTestParams.plotSize = [.8 .6];        
 
 noveltyParams.outputDir = fullfile(outputDir,'noveltyAnalysis');
 

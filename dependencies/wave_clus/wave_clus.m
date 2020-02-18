@@ -621,8 +621,11 @@ par = struct;
 par = update_parameters(par,used_par,'relevant');
 par = update_parameters(par,used_par,'batch_plot');
 par.sorting_date = datestr(now);
-threshold = par.threshold; %Preserve similarity to batch file output.
-
+if isfield(par, 'threshold')
+  threshold = par.threshold; %Preserve similarity to batch file output.
+elseif isfield(used_par, 'thr')
+  threshold = used_par.thr; %Preserve similarity to batch file output.
+end
 gui_status = struct();
 gui_status.current_temp =  gui_classes_data(1,1);
 gui_status.original_classes = gui_classes_data(1:end,4);

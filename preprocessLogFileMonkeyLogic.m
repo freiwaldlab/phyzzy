@@ -353,42 +353,52 @@ assert(sum(taskEventIDsLog == taskEventIDsBlk) == length(taskEventIDsLog), 'Blac
 
 %What is the discrepency?
 offsets = zeros(sum(packetData == rewardMarker),1);
+taskEventStartTimesBlkPreStrobe = taskEventStartTimesBlk; %Saving these for Eye signal related processing.
 
 %Using Photodiode to define true start times.
+
 if params.usePhotodiode
-  taskEventStartTimesBlkPreStrobe = taskEventStartTimesBlk; %Saving these for Eye signal related processing.
   if length(diodeTriggers.low) < length(diodeTriggers.mid)
     % For each of the event start times, find the closest transition in
     % the photodiode and overwrite the time stamp with this time.
     for ii = 1:length(taskEventStartTimesBlk)
-      [offsets(ii), ind_truestart] = min(abs(diodeTriggers.highToMid-taskEventStartTimesBlk(ii)));
-      taskEventStartTimesBlk(ii) = diodeTriggers.highToMid(ind_truestart);
+      if ~isnan(taskEventStartTimesBlk(ii))
+        [offsets(ii), ind_truestart] = min(abs(diodeTriggers.highToMid-taskEventStartTimesBlk(ii)));
+        taskEventStartTimesBlk(ii) = diodeTriggers.highToMid(ind_truestart);
+      end
     end
     %do the same for the end times, except referencing the nearest Low to high
     %transition.
     for ii = 1:length(taskEventEndTimesBlk)
-      [offsets(ii), ind_truestart] = min(abs(diodeTriggers.midToHigh-taskEventEndTimesBlk(ii)));
-      taskEventEndTimesBlk(ii) = diodeTriggers.midToHigh(ind_truestart);
+      if ~isnan(taskEventStartTimesBlk(ii))
+        [offsets(ii), ind_truestart] = min(abs(diodeTriggers.midToHigh-taskEventEndTimesBlk(ii)));
+        taskEventEndTimesBlk(ii) = diodeTriggers.midToHigh(ind_truestart);
+      end
     end
   else
     for ii = 1:length(taskEventStartTimesBlk)
-      [offsets(ii), ind_truestart] = min(abs(diodeTriggers.highToLow-taskEventStartTimesBlk(ii)));
-      taskEventStartTimesBlk(ii) = diodeTriggers.highToLow(ind_truestart);
+      if ~isnan(taskEventStartTimesBlk(ii))
+        [offsets(ii), ind_truestart] = min(abs(diodeTriggers.highToLow-taskEventStartTimesBlk(ii)));
+        taskEventStartTimesBlk(ii) = diodeTriggers.highToLow(ind_truestart);
+      end
     end
     %do the same for the end times, except referencing the nearest Low to high
     %transition.
     for ii = 1:length(taskEventEndTimesBlk)
-      [offsets(ii), ind_truestart] = min(abs(diodeTriggers.lowToHigh-taskEventEndTimesBlk(ii)));
-      taskEventEndTimesBlk(ii) = diodeTriggers.lowToHigh(ind_truestart);
+      if ~isnan(taskEventStartTimesBlk(ii))
+        [offsets(ii), ind_truestart] = min(abs(diodeTriggers.lowToHigh-taskEventEndTimesBlk(ii)));
+        taskEventEndTimesBlk(ii) = diodeTriggers.lowToHigh(ind_truestart);
+      end
     end
   end
 end
+
 
 %% In cases where the stimuli are .avi's, we should check for the appropriate frameMotion data (representing)
 if any(strfind(translationTable{1},'.avi'))
   %assumes filename below sitting in directory with stimuli
   frameMotionFile = dir([params.stimDir '/**/frameMotion_complete.mat']);
-  load([frameMotionFile(1).folder filesep frameMotionFile(1).name],'frameMotionData'); 
+  load([frameMotionFile(1).folder filesep frameMotionFile(1).name],'frameMotionData');
   %go through the translation table, comparing to frameMotionData.stimVid
   frameMotionNames = [{frameMotionData(:).stimVid}'];
   tmpFrameMotionData = struct('stimVid',[],'objNames',[],'objShapes',[],'objRadii',[],'vidB_XShift',[],'objLoc',[],'fps',[],'width',[],'height',[]);
@@ -407,10 +417,10 @@ if any(strfind(translationTable{1},'.avi'))
     end
   end
 end
-%% Now, calculate stimulation log to ephys clock conversion 
-  %Make the Model by comparing Blackrock event start times to monkeylogic.
-  logVsBlkModel = fitlm(taskEventStartTimesLog, taskEventStartTimesBlkPreStrobe);
-  disp(logVsBlkModel)
+%% Now, calculate stimulation log to ephys clock conversion
+%Make the Model by comparing Blackrock event start times to monkeylogic.
+logVsBlkModel = fitlm(taskEventStartTimesLog, taskEventStartTimesBlkPreStrobe);
+disp(logVsBlkModel)
 
   taskEventStartTimesFit = predict(logVsBlkModel, taskEventStartTimesLog);
 
@@ -445,10 +455,11 @@ end
 %% Output
 %Adding random numbers to these - they aren't relevant for my current task,
 %nor are they directly recorded by MKL.
-fixSpotFlashStartTimesBlk = taskEventStartTimesBlk(1);
-fixSpotFlashEndTimesBlk = taskEventEndTimesBlk(1);
-fixationInTimesBlk = taskEventStartTimesBlk(1);
-fixationOutTimesBlk = taskEventEndTimesBlk(1);
+firstNonNaN = find(~isnan(taskEventStartTimesBlk),1);
+fixSpotFlashStartTimesBlk = taskEventStartTimesBlk(firstNonNaN);
+fixSpotFlashEndTimesBlk = taskEventEndTimesBlk(firstNonNaN);
+fixationInTimesBlk = taskEventStartTimesBlk(firstNonNaN);
+fixationOutTimesBlk = taskEventEndTimesBlk(firstNonNaN);
 
 % finally, build the output structure - This Structure is rebuilt
 % selectively in the 
@@ -581,6 +592,9 @@ RosettaStone = {...
 {'Cut_Order1Mounting3.avi', 'monkeyMounting_1133.avi'}; ...
 {'Cut_Order1Mounting4.avi', 'monkeyMounting_1134.avi'}; ...
 {'Cut_Order1Mounting5.avi', 'monkeyMounting_1135.avi'}; ...
+
+{'monkeyGrooming_11413.avi', 'monkeyGrooming_11413A.avi'}; ...
+{'monkeyGrooming_11413_C1.avi', 'monkeyGrooming_11413A_C1.avi'}; ...
 
 };
 

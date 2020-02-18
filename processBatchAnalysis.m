@@ -51,6 +51,15 @@ else
   preprocessedList = dir([analysisDirectory filesep '**' filesep 'preprocessedData.mat']);
   analyzedList = dir([analysisDirectory filesep '**' filesep 'analyzedData.mat']);
   assert(length(preprocessedList) == length(analyzedList), 'Lists arent same length, confirm every preprocessed file has an analyzed file')
+  analysisParamList = dir([analysisDirectory filesep '**' filesep 'AnalysisParams.mat']);
+  
+  analyzedListTmp = {analyzedList.folder}';
+  paramList = {analysisParamList.folder}';
+  setdiff(analyzedListTmp, paramList)
+  disp('folders without analyzed files:')
+  disp(setdiff(paramList, analyzedListTmp));
+  
+  
   fprintf('Found %d processed runs.\n', length(analyzedList));
   
   sessionList = cell(length(preprocessedList),1);
@@ -61,7 +70,7 @@ else
       fprintf('processing run %d... \n', ii)      
     end
     tmp = load([preprocessedList(ii).folder filesep preprocessedList(ii).name],'spikesByEvent','eventIDs','eventCategories','preAlign','postAlign');
-    tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'analysisParamFilename','dateSubject', 'runNum', 'groupLabelsByImage','psthByImage','psthErrByImage','attendedObjData');
+    tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'analysisParamFilename','dateSubject', 'runNum', 'groupLabelsByImage','psthByImage','psthErrByImage','attendedObjData', 'stimStatsTable');
     tmp3 = load([analyzedList(ii).folder filesep 'AnalysisParams.mat'], 'psthParams');
     
     sessField = sprintf('S%s%s', tmp2.dateSubject, tmp2.runNum);
@@ -72,9 +81,11 @@ else
     spikeDataBank.(sessField).psthByImage = tmp2.psthByImage;
     spikeDataBank.(sessField).psthErrByImage = tmp2.psthErrByImage;
     spikeDataBank.(sessField).attendedObjData = tmp2.attendedObjData;
+    spikeDataBank.(sessField).groupLabelsByImage = tmp2.groupLabelsByImage;
+    spikeDataBank.(sessField).tTest = tmp2.stimStatsTable;
+
     spikeDataBank.(sessField).eventIDs = tmp.eventIDs;
     spikeDataBank.(sessField).eventCategories = tmp.eventCategories;
-    spikeDataBank.(sessField).groupLabelsByImage = tmp2.groupLabelsByImage;
     spikeDataBank.(sessField).start = -tmp3.psthParams.psthPre;
     spikeDataBank.(sessField).stimDur = tmp3.psthParams.psthImDur;
     spikeDataBank.(sessField).end = tmp3.psthParams.psthImDur + tmp3.psthParams.psthPost;

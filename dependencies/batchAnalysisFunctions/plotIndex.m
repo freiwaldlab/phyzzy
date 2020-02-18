@@ -48,6 +48,9 @@ end
 keepInd = sum(plotMat,1) > 0;
 plotMat = plotMat(:,keepInd);
 params.plotLabels = params.plotLabels(keepInd);
+if isfield(params, 'plotLabelSocialInd')
+  params.plotLabelSocialInd = params.plotLabelSocialInd(keepInd);
+end
 
 
 end

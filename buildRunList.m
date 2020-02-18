@@ -45,7 +45,11 @@ listCheck.Max = length(theList);
 selectButton = uicontrol(listCheckFig,'style','pushbutton','String','Select','Units','Normalized','Position',[.055 .9 0.3 0.1]);
 selectButton.Callback = @(src,event)uiresume();
 %Wait for the select button to be hit
-uiwait()
-filesOfInterestUpdated = filesOfInterest(listCheck.Value);
-close(listCheckFig)
+uiwait(listCheckFig, 30)
+try
+  filesOfInterestUpdated = filesOfInterest(listCheck.Value);
+  close(listCheckFig)
+catch
+  error('Nothing selected');
+end
 end
