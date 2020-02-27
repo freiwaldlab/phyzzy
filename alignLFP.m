@@ -18,7 +18,14 @@ for item_i = 1:length(alignPointsByItem)
   onsets = int32(alignPointsByItem{item_i});
   lfpArray = zeros(1,length(lfpChannels),length(onsets),samplesPreAlign+samplesPostAlign+1); %(1,channel,trial,sample)
   for trial_i = 1:length(onsets)
-    lfpArray(1,:,trial_i,:) = lfpData(:,samPerMS*(onsets(trial_i)-samplesPreAlign):samPerMS*(onsets(trial_i)+samplesPostAlign));
+    try
+      lfpArray(1,:,trial_i,:) = lfpData(:,samPerMS*(onsets(trial_i)-samplesPreAlign):samPerMS*(onsets(trial_i)+samplesPostAlign));
+    catch
+      % Case where subEvent near end of all trials exceeds index. Fill in
+      % what can be filled, leave rest 0's.
+      samplesAvailable = lfpData(:,samPerMS*(onsets(trial_i)-samplesPreAlign):end);
+      lfpArray(1,:,trial_i,1:length(samplesAvailable)) = samplesAvailable;      
+    end
     if any(DCSUB_SAM(1,:))
       for ch_i = 1:size(lfpArray,2)
         lfpArray(1,ch_i,trial_i,:) = lfpArray(1,ch_i,trial_i,:) - mean(lfpArray(1,ch_i,trial_i,DCSUB_SAM(1,1):DCSUB_SAM(1,2)),4); %set the first 20ms mean equal across trials and stimuli

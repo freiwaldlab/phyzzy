@@ -165,12 +165,36 @@ for ii = 1:length(stimList)
   end
 end
 
+%% Adding subEvents
+% events within Phyzzy may be stimuli or subEvents within the stimuli. to
+% facilitate the latter, the code below looks for an 'eventData.mat', and
+% add each event within as a 'subEvent'.
+
+eventDataPath = dir([StimFolder{1} '\**\eventData.mat']);
+load(fullfile(eventDataPath(1).folder, eventDataPath(1).name), 'eventData');
+subEvents2Add = eventData.Properties.VariableNames;
+[stimAdd, labelAdd] = deal(cell(length(subEvents2Add),1));
+for event_i = 1:length(subEvents2Add)
+  event = subEvents2Add{event_i};
+  stimLabels = ['subEvents', strsplit(event,'_')];
+  stimAdd{event_i} = {event, stimLabels{:}};
+  % Generate Label
+  stimParts = strsplit(event,'_');
+  if length(stimParts) > 1
+    labelAdd{event_i} = [stimParts{1}, '_' upper(stimParts{2}(1))];
+  else
+    labelAdd{event_i} = stimParts{1};
+  end
+end
+stimList = [stimList; stimAdd];
+pictureLabels = [pictureLabels; labelAdd];
+
 %% Package Outputs
 %pictureLabels = pictureLabels(:,1);
 
 categoryLabels = {'agents', 'objects', 'scramble', 'scene', 'interaction', 'nonInteraction', 'idle', 'socialInteraction','nonSocialInteraction'...
   'goalDirected', 'chasing', 'fighting', 'mounting', 'grooming', 'holding', 'following', 'observing','animSocialInteraction', 'animControl',...
-  'foraging','sitting','faces','bodies','hands','background','allStim'};
+  'foraging','sitting','faces','bodies','hands','background', 'subEvents', 'headTurn', 'bodyTurn', 'allStim'};
   
 paramArray = stimList;
 

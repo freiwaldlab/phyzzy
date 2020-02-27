@@ -11,10 +11,11 @@ function [] = processRunBatch(varargin)
 %       'buildAnalysisParamFileSocVid'. User will be prompted to select
 %       directory with files.
 
-replaceAnalysisOut = 0;                         % This generates an excel file at the end based on previous analyses. Don't use when running a new.
-outputVolume = 'D:\DataAnalysis\Feb2020_V2';    % Only used for the excel doc. change in analysisParamFile to change destination.
-usePreprocessed = 0;                            % uses preprocessed version of Phyzzy, only do when changing plotSwitch or calcSwitch and nothing else.
-runParallel = 1;                                % Use parfor loop to go through processRun. Can't be debugged within the loop.
+replaceAnalysisOut = 0;                             % This generates an excel file at the end based on previous analyses. Don't use when running a new.
+outputVolume = 'D:\DataAnalysis\Feb2020_V2';        % Only used for the excel doc. change in analysisParamFile to change destination.
+dataLog = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\RecordingsMoUpdated.xlsx';  % Only used to find recording log, used to overwrite params.
+usePreprocessed = 0;                                % uses preprocessed version of Phyzzy, only do when changing plotSwitch or calcSwitch and nothing else.
+runParallel = 1;                                    % Use parfor loop to go through processRun. Can't be debugged within the loop.
 
 %% Load Appropriate variables and paths
 addpath(genpath('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy'))
@@ -35,14 +36,29 @@ if ~replaceAnalysisOut
   [analysisParamFileList, analysisParamFileName] = deal(cell(0));
   meta_ind = 1;
   
+  % Load in a page from an excel sheet in the data directory.
+  if exist(dataLog, 'file')
+    paramTable = readtable(dataLog,'Sheet','analysisParamSwap','ReadRowNames',true, 'PreserveVariableNames',true);
+  end
+  
   for dateSubj_i = 1:length(runList)
     dateSubject = runList{dateSubj_i}{1};
     for run_i = 1:length(runList{dateSubj_i}{2})
+      % Generate appropriate Paths
       runNum = runList{dateSubj_i}{2}{run_i};
       analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
-      lfpFilename = sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum);
+      [lfpFilename, photodiodeFilename, lineNoiseTriggerFilename] = deal(sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum));
       spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
       taskFilename = sprintf('%s/%s/%s%s.bhv2',stimulusLogVolume,dateSubject,dateSubject,runNum); %information on stimuli and performance
+      [outDir, stimSyncParams.outDir, stimSyncParams.outDir]  = deal(sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum));
+      analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
+      preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
+      
+      % Generate Directories
+      if ~exist(outDir,'dir')
+        mkdir(outDir);
+      end
+      
       % In case difference logfile is being used.
       if ~logical(exist(taskFilename,'file'))
         [A, B, C] = fileparts(taskFilename);
@@ -53,22 +69,24 @@ if ~replaceAnalysisOut
             taskFilename = [A '/' B '.mat'];
         end
       end
-      %Autodetecting spike channels
-      %If the file is parsed, retrieve channels present
+      %Autodetecting spike channels - If the file is parsed, retrieve channels present
       parsedFolderName = sprintf('%s/%s/%s%s_parsed',ephysVolume,dateSubject,dateSubject,runNum);
       if exist(parsedFolderName,'dir') == 7
         [ephysParams.spikeChannels, ephysParams.lfpChannels, ephysParams.channelNames] = autoDetectChannels(parsedFolderName);
       end
-      outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
-      stimSyncParams.outDir = outDir;
-      ephysParams.outDir = outDir;
-      photodiodeFilename = lfpFilename;                %#ok
-      lineNoiseTriggerFilename = lfpFilename; %#ok
-      analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
-      preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
-      if ~exist(outDir,'dir')
-        mkdir(outDir);
+
+      % Load variables from paramTable.
+      paramTableRow = paramTable([dateSubject runNum], :);
+      paramTableVars = paramTable.Properties.VariableNames;
+      for param_i = 1:width(paramTableRow)
+        if isa(paramTableRow.(paramTableVars{param_i}), 'double')
+          eval(sprintf('%s = %d;', paramTableVars{param_i}, paramTableRow.(paramTableVars{param_i})))
+        elseif isa(paramTableRow.(paramTableVars{param_i}), 'cell')
+          eval(sprintf('%s = %s;', paramTableVars{param_i}, paramTableRow.(paramTableVars{param_i}){1}))
+        end
       end
+      
+      % Save files
       save(analysisParamFilename);
       analysisParamFileList{meta_ind} = analysisParamFilename;
       analysisParamFileName{meta_ind} = [dateSubject runNum];

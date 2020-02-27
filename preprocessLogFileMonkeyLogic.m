@@ -401,7 +401,7 @@ if any(strfind(translationTable{1},'.avi'))
   load([frameMotionFile(1).folder filesep frameMotionFile(1).name],'frameMotionData');
   %go through the translation table, comparing to frameMotionData.stimVid
   frameMotionNames = [{frameMotionData(:).stimVid}'];
-  tmpFrameMotionData = struct('stimVid',[],'objNames',[],'objShapes',[],'objRadii',[],'vidB_XShift',[],'objLoc',[],'fps',[],'width',[],'height',[]);
+  tmpFrameMotionData = struct('stimVid',[],'objNames',[],'objShapes',[],'objRadii',[],'vidB_XShift',[],'objLoc',[],'frameCount',[],'timePerFrame',[],'fps',[],'width',[],'height',[]);
   for table_i = 1:length(translationTable)
     dataInd = find(strcmp(frameMotionNames, translationTable{table_i}));
     if ~isempty(dataInd)
@@ -417,6 +417,7 @@ if any(strfind(translationTable{1},'.avi'))
     end
   end
 end
+
 %% Now, calculate stimulation log to ephys clock conversion
 %Make the Model by comparing Blackrock event start times to monkeylogic.
 logVsBlkModel = fitlm(taskEventStartTimesLog, taskEventStartTimesBlkPreStrobe);
@@ -452,6 +453,81 @@ disp(logVsBlkModel)
   
   fprintf('average offset %s ms\n', num2str(mean(offsets)));
   fprintf('range of offset %d ms - %d ms \n', [min(offsets), max(offsets)])
+  
+%% If en eventData file is present, search it, and generate composite subEvents.
+% this structure will generate elements to insert into 
+eventDataFile = dir([params.stimDir '/**/eventData.mat']);
+if ~isempty(eventDataFile)
+  load(fullfile(eventDataFile(1).folder, eventDataFile(1).name), 'eventData');
+  [eventDataRun, taskData.eventDataRun] = deal(eventData(translationTable, :));
+  eventsInEventData = eventDataRun.Properties.VariableNames;
+  % Cycle through events, generating startTimes.
+  for event_i = 1:length(eventsInEventData)
+    subEventRunData = eventDataRun(:, eventsInEventData{event_i});
+    emptyIndTmp = rowfun(@(x) isempty(x{1}), subEventRunData);
+    emptyInd = ~emptyIndTmp.Var1;
+    subEventRunData = subEventRunData(emptyInd,:);
+    stimSourceArray = subEventRunData.Properties.RowNames;
+    for subEvent_i = 1:length(stimSourceArray)
+      eventTable = subEventRunData{stimSourceArray(subEvent_i),:}{1};
+      entryCount = size(eventTable,1);
+      if subEvent_i == 1 && event_i == 1
+        eventStimTable = [repmat(eventsInEventData(event_i), [entryCount, 1]), repmat(stimSourceArray(subEvent_i), [entryCount, 1]), eventTable(:,'startFrame'), eventTable(:,'endFrame')];
+      else
+        eventStimTable = [eventStimTable; [repmat(eventsInEventData(event_i), [entryCount, 1]), repmat(stimSourceArray(subEvent_i), [entryCount, 1]), eventTable(:,'startFrame'), eventTable(:,'endFrame')]];
+      end
+    end
+  end
+  
+  % After Event compilation, begin generating the necessary output structures
+  for event_i = 1:length(eventsInEventData)
+    eventData = eventStimTable(strcmp(eventStimTable.Var1, eventsInEventData{event_i}),2:end);
+    stimWithEvent = unique(eventData.Var2);
+    for stim_i = 1:length(stimWithEvent)
+      % Get the appropriate start and end frames, convert to 
+      eventsInStim = table2array(eventData(strcmp(eventData.Var2, stimWithEvent(stim_i)), 2:3));
+      frameMotionDataInd = strcmp({frameMotionData.stimVid}, stimWithEvent(stim_i));
+      if ~any(frameMotionDataInd)
+        stimVid = dir([params.stimDir '/**/' stimWithEvent{stim_i}]);
+        vidObj = VideoReader(fullfile(stimVid(1).folder, stimVid(1).name));
+        msPerFrame = (vidObj.Duration/vidObj.NumFrames) * 1000;
+        clear vidObj
+      else
+        msPerFrame = frameMotionData(frameMotionDataInd).timePerFrame;
+      end
+      eventsInStimTimes = eventsInStim .* msPerFrame;
+      
+      % Find out when the stimulus happens
+      stimInd = strcmp(taskEventIDs, stimWithEvent(stim_i));
+      eventErrorArray = errorArray(stimInd);
+      eventStartTimesTmp = taskEventStartTimesBlk(stimInd) + eventsInStimTimes(1);
+      eventStartTimesTmp = eventStartTimesTmp(eventErrorArray == 0);
+      eventEndTimesTmp = taskEventEndTimesBlk(stimInd) + eventsInStimTimes(2);
+      eventEndTimesTmp = eventEndTimesTmp(eventErrorArray == 0);
+      eventArrayTmp = repmat(eventsInEventData(event_i),[length(eventStartTimesTmp),1]);
+      
+      if stim_i == 1 && event_i == 1
+        eventStartTimes = eventStartTimesTmp;
+        eventEndTimes = eventEndTimesTmp;
+        eventNames = eventArrayTmp;
+      else
+        eventStartTimes = [eventStartTimes; eventStartTimesTmp];
+        eventEndTimes = [eventEndTimes; eventEndTimesTmp];
+        eventNames = [eventNames; eventArrayTmp];
+      end
+    end
+  end
+  
+  % Combine and sort output structures
+  taskEventStartTimesBlk = [taskEventStartTimesBlk; eventStartTimes];
+  taskEventEndTimesBlk = [taskEventEndTimesBlk; eventEndTimes];
+  taskEventIDs = [taskEventIDs; eventNames];
+  errorArray = [errorArray; zeros(length(eventNames),1)];
+  stimFramesLost = [stimFramesLost; zeros(length(eventNames),1)];
+  juiceOnTimesBlk = [juiceOnTimesBlk; nan(length(eventNames),1)];
+  juiceOffTimesBlk = [juiceOffTimesBlk; nan(length(eventNames),1)];
+end
+
 %% Output
 %Adding random numbers to these - they aren't relevant for my current task,
 %nor are they directly recorded by MKL.
@@ -468,7 +544,6 @@ taskData.errorArray = errorArray;
 taskData.taskEventIDs = taskEventIDs;
 taskData.taskEventList = translationTable;
 taskData.frameMotionData = tmpFrameMotionData';
-%taskData.stimJumps = stimJumps;
 taskData.stimFramesLost = stimFramesLost;
 taskData.taskEventStartTimes = taskEventStartTimesBlk;
 %taskData.taskEventStartTimesFit = taskEventStartTimesFit;

@@ -4,8 +4,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '001';
-dateSubject = '20181206Mo';
+runNum = '002';
+dateSubject = '20190930Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -21,7 +21,7 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data');
     stimulusLogVolume = ephysVolume;
-    outputVolume = slashSwap('D:\DataAnalysis\Feb2020_noWaveClus');
+    outputVolume = slashSwap('D:\DataAnalysis\Feb2020_paramTable');
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code');
   case 'DataAnalysisPC'
@@ -154,17 +154,17 @@ ephysParams.lfpChannels = [1];
 ephysParams.channelNames = {'Ch1'};
 % ephysParams.channelNames = {'8B'};
 ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764]; %converts raw values to microvolts
-ephysParams.offlineSorted = 0; %Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 0; %Does automated offline sorting using wave_clus.
+ephysParams.offlineSorted = 0;        % Checks for a '*.xls' Structure in the folder, with resorted spikes.
+ephysParams.waveClus = 1;             % Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
-ephysParams.waveClusReclass = 1; %Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
+ephysParams.waveClusReclass = 1;      % Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
-ephysParams.waveClusProjPlot = 1; %Plots all the clusters in higher dimensional space (defined in type and number in wave_clus parameters).
-ephysParams.waveClusClear = 1; %1 deletes all files associated with analysis (leaves processed NSX files), 2 deletes the entire associated '_parsed' folder.
-ephysParams.commonRef = [0]; %not yet implemented; will allow software re-refrence across headstages
-ephysParams.stimulationChannels = []; %not yet implemented; will read stimulation currents recorded at headstage
-ephysParams.cPtCal = 1/30; % conversion from spike sample indices to timestep of decimated LFP
-ephysParams.decimateFactorPass1 = 6; %note: product of the two decimate factors should be 30, if 1 khz samples desired
+ephysParams.waveClusProjPlot = 1;     % Plots all the clusters in higher dimensional space (defined in type and number in wave_clus parameters).
+ephysParams.waveClusClear = 1;        % 1 deletes all files associated with analysis (leaves processed NSX files), 2 deletes the entire associated '_parsed' folder.
+ephysParams.commonRef = [0];          % not yet implemented; will allow software re-refrence across headstages
+ephysParams.stimulationChannels = []; % not yet implemented; will read stimulation currents recorded at headstage
+ephysParams.cPtCal = 1/30;            % conversion from spike sample indices to timestep of decimated LFP
+ephysParams.decimateFactorPass1 = 6;  % note: product of the two decimate factors should be 30, if 1 khz samples desired
 ephysParams.decimateFactorPass2 = 5;
 ephysParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to LFP (should be raw rate/productOfDecimateFactors)
 %note: use Blackrock indexing for unitsToUnsort and unitsToDiscard, so unsorted is 0, first defined unit is 1, etc.
@@ -207,19 +207,19 @@ analogInParams.plotFilterResult = 1;
 photodiodeParams.needStrobe = 1;
 photodiodeParams.inputDataType = 'blackrockFilename';
 photodiodeParams.dataChannel = 131;
-photodiodeParams.dataLoader = []; %Incase you're using something besides a raw array or a blackrock file.
-photodiodeParams.peakTimeOffset = 0; %this is the offset, in ms, of the peak from the event it's coupled to (note: will be subtracted, so should be > 0 if peak follows event, type: numeric)
-photodiodeParams.strobeTroughs = 1; %Strobe causes troughs.
-photodiodeParams.peakFreq = 85; %approximate number of peaks per second
-photodiodeParams.levelCalibType = 'auto'; %'hardcode', 'hardcodeAndPlot', 'hardcodeAndCheck', 'auto', 'autoAndPlot','autoAndCheck', 'manual'
+photodiodeParams.dataLoader = [];         % Incase you're using something besides a raw array or a blackrock file.
+photodiodeParams.peakTimeOffset = 0;      % this is the offset, in ms, of the peak from the event it's coupled to (note: will be subtracted, so should be > 0 if peak follows event, type: numeric)
+photodiodeParams.strobeTroughs = 1;       % Strobe causes troughs.
+photodiodeParams.peakFreq = 85;           % approximate number of peaks per second
+photodiodeParams.levelCalibType = 'auto'; % 'hardcode', 'hardcodeAndPlot', 'hardcodeAndCheck', 'auto', 'autoAndPlot','autoAndCheck', 'manual'
 photodiodeParams.numLevels = 1;
 photodiodeParams.saveCalibFile = 0;
 photodiodeParams.centerCornerOffset = 5.3;
 photodiodeParams.stimulusTriggerChannel = [];
-photodiodeParams.peaksToPlot = 50; %number of peaks to show in calibration plots
+photodiodeParams.peaksToPlot = 50;        % number of peaks to show in calibration plots
 photodiodeParams.cleanPeaks = 1;
-photodiodeParams.useRisingEdge = 0; % 0 = peaks, 1 = rising edge.
-photodiodeParams.numLevels = 3; %Number of levels the strobe is acting at.
+photodiodeParams.useRisingEdge = 0;       % 0 = peaks, 1 = rising edge.
+photodiodeParams.numLevels = 3;           % Number of levels the strobe is acting at.
 photodiodeParams.levelHigh = 5350;
 photodiodeParams.levelMid = 4000;
 photodiodeParams.levelLow = 1250;
@@ -335,7 +335,7 @@ psthParams.errorType = 2; %chronux convention: 1 is poisfStimson, 2 is trialwise
 psthParams.errorRangeZ = 1; %how many standard errors to show
 psthParams.bootstrapSamples = 100;
 psthParams.sortStim = 1;
-psthParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble';'allStim'};
+psthParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble';'headTurn';'subEvents';'allStim'};
 psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
 load(psthParams.psthColormapFilename);
 psthParams.colormap = map;
@@ -393,15 +393,15 @@ epochLabels = {'Presentation','Fixation','Reward'};
 analysisGroups.selectivityIndex.groups = {{'socialInteraction';'nonInteraction'},{'socialInteraction';'goalDirected'}};
 
 %Barplots showing average activity across all members of a catagory
-analysisGroups.stimPrefBarPlot.groups = {{{'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble'}}};
-analysisGroups.stimPrefBarPlot.colors  = {{{[0.55 0.13 0.16];[0.93 .2 0.15];[.98 0.65 0.13];[0 0.55 0.25];[0.15, 0.20, 0.5];[0.15, 0.20, 0.5]}}};
+analysisGroups.stimPrefBarPlot.groups = {{{'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble';'headTurn';'bodyTurn'}}};
+analysisGroups.stimPrefBarPlot.colors  = {{{[0.55 0.13 0.16];[0.93 .2 0.15];[.98 0.65 0.13];[0 0.55 0.25];[0.15, 0.20, 0.5];[0.15, 0.20, 0.5]; [.5 0 .5]; [0 0.5 0.5]}}};
 analysisGroups.stimPrefBarPlot.names = {'Barplots per label'};
 analysisGroups.stimPrefBarPlot.groupDepth = 2; %2 subplots, each figure is defined by a cell array in the first item (groups).
 
 %
-analysisGroups.stimulusLabelGroups.groups = {{'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble'}, {'animSocialInteraction';'animControl'}};
+analysisGroups.stimulusLabelGroups.groups = {{'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble'; 'headTurn'}, {'animSocialInteraction';'animControl'}};
 analysisGroups.stimulusLabelGroups.names = {'Preferred Stimulus', 'Preferred Stimulus'};
-analysisGroups.stimulusLabelGroups.colors = {{[0.55 0.13 0.16];[0.93 .2 0.15];[.98 0.65 0.13];[0 0.55 0.25];[0.15, 0.20, 0.5];[0.15, 0.20, 0.5]}, {[0.55 0.13 0.16];[0.93 .2 0.15]}};
+analysisGroups.stimulusLabelGroups.colors = {{[0.55 0.13 0.16];[0.93 .2 0.15];[.98 0.65 0.13];[0 0.55 0.25];[0.15, 0.20, 0.5];[0.15, 0.20, 0.5]; [.5 0 .5]}, {[0.55 0.13 0.16];[0.93 .2 0.15]}};
 
 %Essentially LFP selectivity/strength/quality
 analysisGroups.evokedPotentials.groups = {{'socialInteraction';'nonInteraction';'objects'};{'socialInteraction';'nonInteraction'}};

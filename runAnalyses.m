@@ -4740,75 +4740,80 @@ maxFrame = 0;
 for stim_i = 1:length(eventIDs)
   %find the correct frameMotionData
   frameMotionDataInd = strcmp(frameMotionDataNames, eventIDs(stim_i));
-  stimFrameMotionData = frameMotionData(frameMotionDataInd);
-  
-  % Grab the eye signal for an event, and down sample it to the frame rate of the video
-  [eyeInByEvent, frameStartInd{stim_i}, frameEndInd{stim_i}] = downSampleSig(eyeInByEventAll{stim_i}, psthParams, stimFrameMotionData.fps);
-  %Shift to pixel space
-  pixelOrigin = [frameMotionData(stim_i).width/2 frameMotionData(stim_i).height/2];
-  for eye_ind = 1:size(eyeInByEvent,1)
-    eyeInByEvent(eye_ind, :, :) = (eyeInByEvent(eye_ind, :, :)*PixelsPerDegree(eye_ind)) + pixelOrigin(eye_ind);
-  end
-  
-  %Initialize the output cell array and store max frame.
-  attendedObjVect{stim_i} = cell(size(eyeInByEvent, 2), size(eyeInByEvent, 3));
-  if ~(maxFrame > size(eyeInByEvent, 3))
-    maxFrame = size(eyeInByEvent, 3);
-  end
-  
-  if ~isempty(stimFrameMotionData.objNames) %Landscapes/Scrambles
-    %Make variables for each object. Not a clean way of doing this
-    objects = stimFrameMotionData.objNames;
-    for obj_i = 1:length(objects)
-      eval(sprintf('%s = stimFrameMotionData.objLoc{%d};', objects{obj_i}, obj_i));
+  if any(frameMotionDataInd)
+    stimFrameMotionData = frameMotionData(frameMotionDataInd);
+    
+    % Grab the eye signal for an event, and down sample it to the frame rate of the video
+    [eyeInByEvent, frameStartInd{stim_i}, frameEndInd{stim_i}] = downSampleSig(eyeInByEventAll{stim_i}, psthParams, stimFrameMotionData.fps);
+    %Shift to pixel space
+    pixelOrigin = [stimFrameMotionData.width/2 stimFrameMotionData.height/2];
+    for eye_ind = 1:size(eyeInByEvent,1)
+      eyeInByEvent(eye_ind, :, :) = (eyeInByEvent(eye_ind, :, :)*PixelsPerDegree(eye_ind)) + pixelOrigin(eye_ind);
     end
     
-    %Reshape the info to make it easy to compare
-    objRads = stimFrameMotionData.objRadii;
-    objLocStack = [stimFrameMotionData.objLoc{:}];
+    %Initialize the output cell array and store max frame.
+    attendedObjVect{stim_i} = cell(size(eyeInByEvent, 2), size(eyeInByEvent, 3));
+    if ~(maxFrame > size(eyeInByEvent, 3))
+      maxFrame = size(eyeInByEvent, 3);
+    end
     
-    for frame_i = 1:size(eyeInByEvent, 3)
-      %for each frame, pull and reshape the apporpriate shape coords and
-      %compare to the eye signal across trials.
-      objLoc = reshape(objLocStack(frame_i,:)', 2,12);
-      eyeCoord = [eyeInByEvent(1, :, frame_i)' eyeInByEvent(2, :, frame_i)'];
-      for trial_i = 1:length(eyeCoord)
-        %Calculate distances
-        objDist = sqrt(sum((objLoc - eyeCoord(trial_i,:)').^2, 1));
-        objInd = objDist < objRads;
-        %Assign the correct object.
-        if sum(objInd) == 0
-          attendedObjVect{stim_i}(trial_i, frame_i) = {'bkg'};
-        elseif sum(objInd) == 1
-          attendedObjVect{stim_i}(trial_i, frame_i) = stimFrameMotionData.objNames(objInd);
-        elseif sum(objInd) > 1
-          [~,I] = min(objDist(objInd));
-          indArray = find(objInd);
-          objInd = indArray(I);
-          attendedObjVect{stim_i}(trial_i, frame_i) = stimFrameMotionData.objNames(objInd);
+    if ~isempty(stimFrameMotionData.objNames) %Landscapes/Scrambles
+      %Make variables for each object. Not a clean way of doing this
+      objects = stimFrameMotionData.objNames;
+      for obj_i = 1:length(objects)
+        eval(sprintf('%s = stimFrameMotionData.objLoc{%d};', objects{obj_i}, obj_i));
+      end
+      
+      %Reshape the info to make it easy to compare
+      objRads = stimFrameMotionData.objRadii;
+      objLocStack = [stimFrameMotionData.objLoc{:}];
+      
+      for frame_i = 1:size(eyeInByEvent, 3)
+        %for each frame, pull and reshape the apporpriate shape coords and
+        %compare to the eye signal across trials.
+        objLoc = reshape(objLocStack(frame_i,:)', 2,12);
+        eyeCoord = [eyeInByEvent(1, :, frame_i)' eyeInByEvent(2, :, frame_i)'];
+        for trial_i = 1:length(eyeCoord)
+          %Calculate distances
+          objDist = sqrt(sum((objLoc - eyeCoord(trial_i,:)').^2, 1));
+          objInd = objDist < objRads;
+          %Assign the correct object.
+          if sum(objInd) == 0
+            attendedObjVect{stim_i}(trial_i, frame_i) = {'bkg'};
+          elseif sum(objInd) == 1
+            attendedObjVect{stim_i}(trial_i, frame_i) = stimFrameMotionData.objNames(objInd);
+          elseif sum(objInd) > 1
+            [~,I] = min(objDist(objInd));
+            indArray = find(objInd);
+            objInd = indArray(I);
+            attendedObjVect{stim_i}(trial_i, frame_i) = stimFrameMotionData.objNames(objInd);
+          end
         end
       end
+    else
+      attendedObjVect{stim_i}(:) = {'bkg'}; %Landscapes/Scrambles
     end
-  else
-    attendedObjVect{stim_i}(:) = {'bkg'}; %Landscapes/Scrambles
+    
   end
 end
 
 %Scaling everything to the max frame count to make it stackable later.
 updatedFramesInd = [];
 for stim_i = 1:length(attendedObjVect)
-  if size(attendedObjVect{stim_i},2) < maxFrame
-    updatedFramesInd = [updatedFramesInd stim_i];
-    %for now, since I know this solution works for the videos I'm using,
-    %I'll be doubling the vector, then chopping off any extra at the end.
-    tmpArray = cell(size(attendedObjVect{stim_i},1), size(attendedObjVect{stim_i},2)*2);
-    for frame_ind = 1:size(attendedObjVect{stim_i},2)
-      tmpArray(:,frame_ind*2) = attendedObjVect{stim_i}(:,frame_ind);
-      tmpArray(:,(frame_ind*2)-1) = attendedObjVect{stim_i}(:,frame_ind);
+  if ~isempty(attendedObjVect{stim_i})
+    if size(attendedObjVect{stim_i},2) < maxFrame
+      updatedFramesInd = [updatedFramesInd stim_i];
+      %for now, since I know this solution works for the videos I'm using,
+      %I'll be doubling the vector, then chopping off any extra at the end.
+      tmpArray = cell(size(attendedObjVect{stim_i},1), size(attendedObjVect{stim_i},2)*2);
+      for frame_ind = 1:size(attendedObjVect{stim_i},2)
+        tmpArray(:,frame_ind*2) = attendedObjVect{stim_i}(:,frame_ind);
+        tmpArray(:,(frame_ind*2)-1) = attendedObjVect{stim_i}(:,frame_ind);
+      end
+      attendedObjVect{stim_i} = tmpArray(:,1:maxFrame);
+    else
+      frameIndSwapIndex = stim_i;
     end
-    attendedObjVect{stim_i} = tmpArray(:,1:maxFrame);
-  else
-    frameIndSwapIndex = stim_i;
   end
 end
 
@@ -4830,11 +4835,13 @@ switch plotType
       for event_i = 1:length(eventIDs)
         %For every event, grab the correct color
         attendedObjectEvent = attendedObjVect{event_i};
-        attendObjColorMat = cellfun(tag2color, attendedObjectEvent, 'UniformOutput', false); % a Trial * Frame array of the first letter of each object.
-        tracePlotData{event_i} = zeros(size(attendObjColorMat, 1), size(attendObjColorMat, 2), 3); %Frames * Unique * colors objects
-        for trial_i = 1:size(attendObjColorMat,1)
-          for frame_i = 1:size(attendObjColorMat,2)
-            tracePlotData{event_i}(trial_i, frame_i, :) = attendObjColorMat{trial_i, frame_i};
+        if ~isempty(attendedObjectEvent)
+          attendObjColorMat = cellfun(tag2color, attendedObjectEvent, 'UniformOutput', false); % a Trial * Frame array of the first letter of each object.
+          tracePlotData{event_i} = zeros(size(attendObjColorMat, 1), size(attendObjColorMat, 2), 3); %Frames * Unique * colors objects
+          for trial_i = 1:size(attendObjColorMat,1)
+            for frame_i = 1:size(attendObjColorMat,2)
+              tracePlotData{event_i}(trial_i, frame_i, :) = attendObjColorMat{trial_i, frame_i};
+            end
           end
         end
       end
@@ -4848,54 +4855,57 @@ switch plotType
         %For every event, grab the relevant data and initialize the "counts"
         %matrix for each object.
         attendedObjectEvent = attendedObjVect{event_i};
-        areaPlotData = zeros(size(attendedObjectEvent, 2), length(objList)); %Frames * Unique objects
-        for frame_ind = 1:size(attendedObjectEvent, 2)
-          %For each frame, cycle through objects and see whats attended. Create a
-          %total count of the 13 objects and the number of trials in which they
-          %are attended to.
-          frameObjAttended = attendedObjectEvent(:,frame_ind);
-          [A, ~, C] = unique(frameObjAttended);
-          a_counts = accumarray(C,1);
-          for obj_ind = 1:length(A)
-            dataInd = strcmp(objList, A{obj_ind});
-            assert(sum(dataInd) == 1);
-            areaPlotData(frame_ind, dataInd) = a_counts(obj_ind);
+        if ~isempty(attendedObjectEvent)
+          
+          areaPlotData = zeros(size(attendedObjectEvent, 2), length(objList)); %Frames * Unique objects
+          for frame_ind = 1:size(attendedObjectEvent, 2)
+            %For each frame, cycle through objects and see whats attended. Create a
+            %total count of the 13 objects and the number of trials in which they
+            %are attended to.
+            frameObjAttended = attendedObjectEvent(:,frame_ind);
+            [A, ~, C] = unique(frameObjAttended);
+            a_counts = accumarray(C,1);
+            for obj_ind = 1:length(A)
+              dataInd = strcmp(objList, A{obj_ind});
+              assert(sum(dataInd) == 1);
+              areaPlotData(frame_ind, dataInd) = a_counts(obj_ind);
+            end
           end
-        end
-        areaPlotDataNorm = areaPlotData./size(attendedObjectEvent,1);
-        areaPlotHandle = area(areaPlotDataNorm); %Plot normalized values
-        %Make it presentable.
-        title(eventIDs{event_i})
-        xlim([1 size(attendedObjectEvent, 2)])
-        ylim([0 1])
-        for face_i = 1:length(areaPlotHandle)
-          areaPlotHandle(face_i).FaceColor = areaColors{face_i};
-        end
-        legend([frameMotionData(1).objNames {'bkg'}])
-        
-        %Underneath, plot the activity of all identified units with a PSTH
-        unitCount = length(psthByImage{channel_i});
-        psthHandle = subplot(2, 1, 2);
-        %Create a PSTH of responses to this event specifically
-        eventPSTH = zeros(unitCount, stimEndInd-stimStartInd);
-        %Labeling related code
-        if unitCount > 2
-          unitLabels = cell(unitCount,1);
-          unitLabels{1} = 'Unsorted';
-          unitLabels{end} = 'MUA';
-          for unit_ind = 1:unitCount - 2
-            unitLabels{unit_ind+1} = ['Unit ' num2str(unit_ind)];
+          areaPlotDataNorm = areaPlotData./size(attendedObjectEvent,1);
+          areaPlotHandle = area(areaPlotDataNorm); %Plot normalized values
+          %Make it presentable.
+          title(eventIDs{event_i})
+          xlim([1 size(attendedObjectEvent, 2)])
+          ylim([0 1])
+          for face_i = 1:length(areaPlotHandle)
+            areaPlotHandle(face_i).FaceColor = areaColors{face_i};
           end
-        else
-          unitLabels = {'Unsorted', 'MUA'};
+          legend([frameMotionData(1).objNames {'bkg'}])
+          
+          %Underneath, plot the activity of all identified units with a PSTH
+          unitCount = length(psthByImage{channel_i});
+          psthHandle = subplot(2, 1, 2);
+          %Create a PSTH of responses to this event specifically
+          eventPSTH = zeros(unitCount, stimEndInd-stimStartInd);
+          %Labeling related code
+          if unitCount > 2
+            unitLabels = cell(unitCount,1);
+            unitLabels{1} = 'Unsorted';
+            unitLabels{end} = 'MUA';
+            for unit_ind = 1:unitCount - 2
+              unitLabels{unit_ind+1} = ['Unit ' num2str(unit_ind)];
+            end
+          else
+            unitLabels = {'Unsorted', 'MUA'};
+          end
+          %Gather the correct data
+          for unit_i = 1:unitCount
+            eventPSTH(unit_i,:) = psthByImage{channel_i}{unit_i}(event_i,stimStartInd:stimEndInd-1);
+          end
+          psthParams.psthPre = 0;
+          psthParams.psthPost = 0;
+          plotPSTH(eventPSTH, psthHandle, psthParams, 'color', psthTitle, unitLabels);
         end
-        %Gather the correct data
-        for unit_i = 1:unitCount
-          eventPSTH(unit_i,:) = psthByImage{channel_i}{unit_i}(event_i,stimStartInd:stimEndInd-1);
-        end
-        psthParams.psthPre = 0;
-        psthParams.psthPost = 0;
-        plotPSTH(eventPSTH, psthHandle, psthParams, 'color', psthTitle, unitLabels);
       end
     end
   case 'trace'
@@ -4907,40 +4917,42 @@ switch plotType
         subplot(2, 1, 1)
         %For every event, grab the correct color
         attendedObjectEvent = attendedObjVect{event_i};
-        attendObjColorMat = cellfun(tag2color, attendedObjectEvent, 'UniformOutput', false); % a Trial * Frame array of the first letter of each object.
-        tracePlotData{event_i} = zeros(size(attendObjColorMat, 1), size(attendObjColorMat, 2), 3); %Frames * Unique * colors objects
-        for trial_i = 1:size(attendObjColorMat,1)
-          for frame_i = 1:size(attendObjColorMat,2)
-            tracePlotData{event_i}(trial_i, frame_i, :) = attendObjColorMat{trial_i, frame_i};
+        if ~isempty(attendedObjectEvent)
+          attendObjColorMat = cellfun(tag2color, attendedObjectEvent, 'UniformOutput', false); % a Trial * Frame array of the first letter of each object.
+          tracePlotData{event_i} = zeros(size(attendObjColorMat, 1), size(attendObjColorMat, 2), 3); %Frames * Unique * colors objects
+          for trial_i = 1:size(attendObjColorMat,1)
+            for frame_i = 1:size(attendObjColorMat,2)
+              tracePlotData{event_i}(trial_i, frame_i, :) = attendObjColorMat{trial_i, frame_i};
+            end
           end
-        end
-        image(tracePlotData{event_i});
-        %Make it presentable.
-        title(eventIDs{event_i});
-        legend([frameMotionData(1).objNames {'bkg'}]);
-        %Underneath, plot the activity of all identified units with a PSTH
-        unitCount = length(psthByImage{channel_i});
-        psthHandle = subplot(2, 1, 2);
-        %Create a PSTH of responses to this event specifically
-        eventPSTH = zeros(unitCount, stimEndInd-stimStartInd);
-        %Labeling related code
-        if unitCount > 2
-          unitLabels = cell(unitCount,1);
-          unitLabels{1} = 'Unsorted';
-          unitLabels{end} = 'MUA';
-          for unit_ind = 1:unitCount - 2
-            unitLabels{unit_ind+1} = ['Unit ' num2str(unit_ind)];
+          image(tracePlotData{event_i});
+          %Make it presentable.
+          title(eventIDs{event_i});
+          legend([frameMotionData(1).objNames {'bkg'}]);
+          %Underneath, plot the activity of all identified units with a PSTH
+          unitCount = length(psthByImage{channel_i});
+          psthHandle = subplot(2, 1, 2);
+          %Create a PSTH of responses to this event specifically
+          eventPSTH = zeros(unitCount, stimEndInd-stimStartInd);
+          %Labeling related code
+          if unitCount > 2
+            unitLabels = cell(unitCount,1);
+            unitLabels{1} = 'Unsorted';
+            unitLabels{end} = 'MUA';
+            for unit_ind = 1:unitCount - 2
+              unitLabels{unit_ind+1} = ['Unit ' num2str(unit_ind)];
+            end
+          else
+            unitLabels = {'Unsorted', 'MUA'};
           end
-        else
-          unitLabels = {'Unsorted', 'MUA'};
+          %Gather the correct data
+          for unit_i = 1:unitCount
+            eventPSTH(unit_i,:) = psthByImage{channel_i}{unit_i}(event_i,stimStartInd:stimEndInd-1);
+          end
+          psthParams.psthPre = 0;
+          psthParams.psthPost = 0;
+          plotPSTH(eventPSTH, psthHandle, psthParams, 'color', psthTitle, unitLabels);
         end
-        %Gather the correct data
-        for unit_i = 1:unitCount
-          eventPSTH(unit_i,:) = psthByImage{channel_i}{unit_i}(event_i,stimStartInd:stimEndInd-1);
-        end
-        psthParams.psthPre = 0;
-        psthParams.psthPost = 0;
-        plotPSTH(eventPSTH, psthHandle, psthParams, 'color', psthTitle, unitLabels);
       end
     end
     
