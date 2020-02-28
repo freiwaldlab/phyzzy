@@ -457,7 +457,7 @@ disp(logVsBlkModel)
 %% If en eventData file is present, search it, and generate composite subEvents.
 % this structure will generate elements to insert into 
 eventDataFile = dir([params.stimDir '/**/eventData.mat']);
-if ~isempty(eventDataFile)
+if 0%~isempty(eventDataFile)
   load(fullfile(eventDataFile(1).folder, eventDataFile(1).name), 'eventData');
   [eventDataRun, taskData.eventDataRun] = deal(eventData(translationTable, :));
   eventsInEventData = eventDataRun.Properties.VariableNames;

@@ -61,12 +61,13 @@ verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 figPos = [0 0 .6 0.7];      % Normalized units for figure position
 
 %% Plot switches
-plotSwitch.imageEyeMap = 0;
-plotSwitch.eyeCorralogram = 0; %Eye Gram
-plotSwitch.attendedObject = 1; %Vectors to distinguish where subject is looking.
-plotSwitch.eyeStimOverlay = 0; %Visualize eye traces on stimuli.
-plotSwitch.clusterOnEyePaths = 0; %Resort spikes based on distinct eye paths, make "New events".
-plotSwitch.stimPSTHoverlay = 0; %grabs stimuli and overlays PSTH on it.
+plotSwitch.subEventAnalysis = 1;            % plot traces comparing activity surrounding an event (defined in eventData, generated w/ eventDetectionApp), vs null.
+plotSwitch.imageEyeMap = 0;                 
+plotSwitch.eyeCorralogram = 0;              % Eye Gram
+plotSwitch.attendedObject = 1;              % Vectors to distinguish where subject is looking.
+plotSwitch.eyeStimOverlay = 0;              % Visualize eye traces on stimuli.
+plotSwitch.clusterOnEyePaths = 0;           % Resort spikes based on distinct eye paths, make "New events".
+plotSwitch.stimPSTHoverlay = 0;             % grabs stimuli and overlays PSTH on it.
 plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
 plotSwitch.stimCatANOVA = 1;
@@ -232,7 +233,6 @@ photodiodeParams.saveFigures = 0;
 photodiodeParams.displayStats = 1;
 lineNoiseTriggerParams.needStrobe = 0;
 
-
 %     - cleanPeaks: if true, keep peaks only if the signal dropped below the low-peak threshold between them;
 %                   for a series of peaks without a sub-threshold trough, keep only the highest (type: logical)
 %     - useRisingEdge: define threshold using peaks, then use rising edge
@@ -342,6 +342,11 @@ psthParams.colormap = map;
 
 genStatsParams.ANOVAParams.target = 'socialInteraction';    % When performing a one way ANOVA, the label from groups which is used. the rest are 'non-' label.
 
+subEventAnalysisParams.preAlign = 0;
+subEventAnalysisParams.postAlign = 0;
+subEventAnalysisParams.nullAllStim = 1;
+subEventAnalysisParams.stimDir = stimDir;
+
 correlParams.maxShift = []; % a number, or empty
 correlParams.matchTimeRanges = 1;
 correlParams.timeDifferenceBound = [0,200];
@@ -390,7 +395,7 @@ epochLabels = {'Presentation','Fixation','Reward'};
               
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 %Defined for Groups of 2, A-B/A+B type index.
-analysisGroups.selectivityIndex.groups = {{'socialInteraction';'nonInteraction'},{'socialInteraction';'goalDirected'}};
+analysisGroups.selectivityIndex.groups = {{'socialInteraction';'nonInteraction'},{'socialInteraction';'agents'}};
 
 %Barplots showing average activity across all members of a catagory
 analysisGroups.stimPrefBarPlot.groups = {{{'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble';'headTurn';'bodyTurn'}}};
@@ -399,7 +404,7 @@ analysisGroups.stimPrefBarPlot.names = {'Barplots per label'};
 analysisGroups.stimPrefBarPlot.groupDepth = 2; %2 subplots, each figure is defined by a cell array in the first item (groups).
 
 %
-analysisGroups.stimulusLabelGroups.groups = {{'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble'; 'headTurn'}, {'animSocialInteraction';'animControl'}};
+analysisGroups.stimulusLabelGroups.groups = {{'socialInteraction';'goalDirected';'idle';'objects';'scene';'scramble'; 'headTurn'}};
 analysisGroups.stimulusLabelGroups.names = {'Preferred Stimulus', 'Preferred Stimulus'};
 analysisGroups.stimulusLabelGroups.colors = {{[0.55 0.13 0.16];[0.93 .2 0.15];[.98 0.65 0.13];[0 0.55 0.25];[0.15, 0.20, 0.5];[0.15, 0.20, 0.5]; [.5 0 .5]}, {[0.55 0.13 0.16];[0.93 .2 0.15]}};
 

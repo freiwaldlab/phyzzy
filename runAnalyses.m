@@ -277,6 +277,10 @@ end
 %   end
 % end
 
+if isfield(plotSwitch, 'subEventAnalysis') && plotSwitch.subEventAnalysis
+  subEventAnalysis(spikesByEvent, taskData, subEventAnalysisParams);
+end
+
 if calcSwitch.imagePSTH && calcSwitch.spikeTimes
   [psthByImage, psthErrByImage] = calcStimPSTH(spikesByEvent, eventLabels, psthEmptyByEvent, channelNames, channelUnitNames, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
   save(analysisOutFilename,'psthByImage','psthErrByImage', '-append');
@@ -4464,6 +4468,84 @@ end
 end
 
 %% Individual Analysis Functions
+
+function subEventAnalysis(spikesByEvent, taskData, params)
+
+% subEventAnalysis
+% Description - looks through spikesByEvent, calculates PSTH for activity
+% aligned to a specific event as well as a null distribution from the
+% remaining stimuli. Produces statistical tests for the traces.
+% Parameters
+% eventData - in the form produced by eventDetectionApp.
+% stimDir - finds where the stimuli are. (Maybe this instead of eventData?)
+% PreAlign, PostAlign, - How long before and after the event Onset to plot.
+
+% Unpack Variables
+frameMotionData = taskData.frameMotionData;
+eventIDs = taskData.taskEventList;
+
+% Find events which take place in the stimuli presented
+eventDataFile = dir([params.stimDir '/**/eventData.mat']);
+
+if ~isempty(eventDataFile)
+  load(fullfile(eventDataFile(1).folder, eventDataFile(1).name), 'eventData');
+  eventDataRun = eventData(eventIDs, :);
+  eventsInEventData = eventDataRun.Properties.VariableNames(logical(sum(cellfun(@(x) ~isempty(x), table2cell(eventDataRun)),1)));
+  % Cycle through events, generating startTimes.
+  for event_i = 1:length(eventsInEventData)
+    subEventRunData = eventDataRun(:, eventsInEventData{event_i});
+    emptyIndTmp = rowfun(@(x) ~isempty(x{1}), subEventRunData);
+    keepInd = emptyIndTmp.Var1;
+    subEventRunData = subEventRunData(keepInd,:);
+    stimSourceArray = subEventRunData.Properties.RowNames;
+    for stim_i = 1:length(stimSourceArray)
+      %Identify time for each frame, and convert values to them.
+      frameMotionDataInd = strcmp({frameMotionData.stimVid}, stimSourceArray(stim_i));
+      if ~any(frameMotionDataInd)
+        stimVid = dir([params.stimDir '/**/' stimSourceArray{stim_i}]);
+        vidObj = VideoReader(fullfile(stimVid(1).folder, stimVid(1).name));
+        msPerFrame = (vidObj.Duration/vidObj.NumFrames) * 1000;
+        clear vidObj
+      else
+        msPerFrame = frameMotionData(frameMotionDataInd).timePerFrame;
+      end
+      
+      % Add Tables
+      eventTable = subEventRunData{stimSourceArray(stim_i),:}{1};
+      eventTable.startFrame = eventTable.startFrame * msPerFrame;
+      eventTable.endFrame = eventTable.endFrame * msPerFrame;
+      entryCount = size(eventTable,1);
+      if stim_i == 1 && event_i == 1
+        eventStimTable = [repmat(eventsInEventData(event_i), [entryCount, 1]), repmat(stimSourceArray(stim_i), [entryCount, 1]), eventTable(:,'startFrame'), eventTable(:,'endFrame')];
+      else
+        eventStimTable = [eventStimTable; [repmat(eventsInEventData(event_i), [entryCount, 1]), repmat(stimSourceArray(stim_i), [entryCount, 1]), eventTable(:,'startFrame'), eventTable(:,'endFrame')]];
+      end
+    end
+  end
+  
+  % After Event compilation, beginning gather spikes for events and null
+  % representations
+  for event_i = 1:length(eventsInEventData)
+    % Identify spaces with the events in the presented stimuli.
+    eventData = eventStimTable(strcmp(eventStimTable.Var1, eventsInEventData{event_i}),2:end);
+    stimWithEvent = unique(eventData.Var2);
+    stimEventMat = zeros(length(eventIDs), 2800);
+    for stim_i = 1:length(stimWithEvent)
+      % Get the appropriate start and end frames, convert to 
+      stimMatIndex = strcmp(eventIDs, stimWithEvent{stim_i});
+      stimEventData = eventData(strcmp(eventData.Var2, stimWithEvent{stim_i}), :);
+      for tab_i = 1:size(stimEventData,1)
+        stimEventMat(stimMatIndex, round(stimEventData.startFrame(tab_i)):round(stimEventData.endFrame(tab_i))) = deal(1);
+      end
+      
+    end
+  end
+  
+end
+
+
+
+end
 
 function eyeCorrelogram(analogInByEvent, lfpAlignParams, psthImDur, eventLabels, outDir, dateSubject, runNum, saveFig, exportFig, saveFigData)
 stimStartInd = lfpAlignParams.msPreAlign;

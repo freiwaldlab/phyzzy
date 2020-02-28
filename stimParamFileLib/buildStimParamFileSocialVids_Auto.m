@@ -10,58 +10,24 @@ function [ ] = buildStimParamFileSocialVids_Auto()
 % Updated 2019.13.1 to include full stim set, including August stuff.
 
 %Find the folder with what you want
-StimFolder = {'D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories';...
-  'D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\Animations';...
-  'D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\Animation Phase 2'};
+StimFolder = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories';
+stimType = '.avi';
 
 %Find every file in this folder with the extension desired.
 %Add other files
+tmpStimFilesStack = [];
 for ii = 1:length(StimFolder)
-  tmpStimFiles = dir(StimFolder{ii});
-  tmpStimFiles = tmpStimFiles(3:end); %Remove the '.' and '..'
-  if ii == 1
-    tmpStimFilesStack = tmpStimFiles;
-  else
-    tmpStimFilesStack = [tmpStimFilesStack; tmpStimFiles];
-  end
+  tmpStimFiles = dir(fullfile(StimFolder, '**', ['*' stimType]));
+  tmpStimFilesStack = [tmpStimFilesStack; tmpStimFiles];
 end
 
-tmpStimFiles = tmpStimFilesStack;
-
-%Anything that is not a directory, add to the list...
-
-stimInd = find([tmpStimFiles.isdir] == 0);
-if ~isempty(stimInd)
-    stimList = cell(length(stimInd),1);
-    for ii = 1:length(stimInd)
-        stimList{ii} = tmpStimFiles(stimInd(ii)).name;
-    end
-else
-    stimList = cell(0);
-end
-
-%Look through the remaining lists, going as deep as needed.
-dirInd = find([tmpStimFiles.isdir] == 1);
-for ii = 1:length(dirInd)
-  tmpStimFolder = dir([tmpStimFiles(dirInd(ii)).folder filesep tmpStimFiles(dirInd(ii)).name]);
-  subStimFolder = struct2cell(tmpStimFolder(3:end));
-  subStimList = subStimFolder(1,:)';
-  stimList = vertcat(stimList, subStimList);
-end
-
-%Make sure the stimList only has files of interest (.avi for now)
-stimInd = cellfun(@(x)strcmp(x(end-3:end),'.avi'),stimList);
-stimList = stimList(stimInd);
+% Remove duplicates
+stimNames = {tmpStimFilesStack.name};
+[~, uniInd] = unique(stimNames);
+stimList = {tmpStimFilesStack(uniInd).name}';
 
 %% Turn that list into the appropriate file for phyzzy..
-%pictureLabels = split(stimList, '.'); %Due to some names being
-%.avi_Dephased.avi, split won't work. Going to just chop off the last 4
-%characters, assuming these are a 3 character extension + dot.
-
-%pictureLabels = cellfun(@(x) x(1:end-4), stimList, 'UniformOutput', false);
-stimListTmp = stimList;
 pictureLabels = cell(size(stimList));
-headTurnStimNames = generateHeadTurnList();
 
 for ii = 1:length(stimList)
   stim = stimList{ii};
@@ -81,44 +47,39 @@ for ii = 1:length(stimList)
     case '1';            stimLabels = horzcat(stimLabels, 'interaction');
     case '3';            stimLabels = horzcat(stimLabels, 'idle');
   end
+  % Make sure to not catch controls for animated stimuli
   if ((length(stimParts) > 2) && ~strncmp(stimParts(3),'C',1)) || (length(stimParts) == 2)
     switch code(3)
-      case '1';            stimLabels = horzcat(stimLabels ,'chasing');
-      case '2';            stimLabels = horzcat(stimLabels ,'fighting');
-      case '3';            stimLabels = horzcat(stimLabels ,'mounting');
-      case '4';            stimLabels = horzcat(stimLabels ,'grooming');
-      case '5';            stimLabels = horzcat(stimLabels ,'holding');
-      case '6';            stimLabels = horzcat(stimLabels ,'following');
-      case '7';            stimLabels = horzcat(stimLabels ,'observing');
-      case '8';            stimLabels = horzcat(stimLabels ,'foraging');
-      case '9';            stimLabels = horzcat(stimLabels ,'sitting');
+      case '0';            stimLabels = horzcat(stimLabels ,'goalDirected');
+      case '1';            stimLabels = horzcat(stimLabels ,'chasing', 'socialInteraction');
+      case '2';            stimLabels = horzcat(stimLabels ,'fighting', 'socialInteraction');
+      case '3';            stimLabels = horzcat(stimLabels ,'mounting', 'socialInteraction');
+      case '4';            stimLabels = horzcat(stimLabels ,'grooming', 'socialInteraction');
+      case '5';            stimLabels = horzcat(stimLabels ,'holding', 'socialInteraction');
+      case '6';            stimLabels = horzcat(stimLabels ,'following', 'socialInteraction');
+      case '7';            stimLabels = horzcat(stimLabels ,'observing', 'socialInteraction');
+      case '8';            stimLabels = horzcat(stimLabels ,'foraging', 'socialInteraction');
+      case '9';            stimLabels = horzcat(stimLabels ,'sitting', 'socialInteraction');
     end
   elseif ((length(stimParts) > 2) && strncmp(stimParts(3),'C',1))
     stimLabels = horzcat(stimLabels ,'animControl');
   end
-  %Due to issues w/ grouping of controls, adding this below.
-  if (strcmp(code(1:2),'11'))
-    if strcmp(code(3),'0')
-      stimLabels = horzcat(stimLabels ,'goalDirected');
-    else
-      %A change needed for the naming convention on animated stimuli controls
-      if (length(stimParts) == 2) || (length(stimParts) > 2 && ~strncmp(stimParts(3),'C',1))
-        if strcmp(stimParts{2}(end),'A')
-          stimLabels = horzcat(stimLabels ,'animSocialInteraction');
-        else
-          stimLabels = horzcat(stimLabels ,'socialInteraction');
-        end
-      end
+  
+  % Animation Processing
+  if strcmp(stimParts{2}(end),'A')
+    stimLabels = horzcat(stimLabels ,'animated');
+    %A change needed for the naming convention on animated stimuli controls
+    if length(stimParts) > 2 && strncmp(stimParts(3),'C',1)
+      stimLabels = horzcat(stimLabels ,'animControl');
     end
   end
-  if any(strcmp(stim, headTurnStimNames))
-    stimLabels = horzcat(stimLabels ,'headTurning');
-  end
-
+  
+  % Decomposed Stimuli processing
   if any(strcmp(stimParts, 'Dephased'))
     stimLabels = {'scramble'};
     label = 'Scrambled';
   end
+  
   if (length(stimParts) > 2)
     if strncmp(stimParts(3),'Decomp',5)
       modWord = 'no';
@@ -145,9 +106,14 @@ for ii = 1:length(stimList)
       label = strjoin(stimParts(3:end));
     end
   end
-  stimLabels = horzcat(stimLabels, 'allStim');
+  
+  % Accounts for stimuli with no Labels
+  stimLabels = horzcat(stimLabels, 'allStim'); %#ok<*AGROW>
+  
+  % Generate final structure
   stimList{ii} = horzcat(stimList{ii}, stimLabels);
-  %Make the picture Label
+  
+  % Make the picture Label
   if (strcmp(code(1),'1'))
     eventTag = stimParts{1};
     cutStartInd = find(isstrprop(eventTag, 'upper'));
@@ -163,6 +129,7 @@ for ii = 1:length(stimList)
   else
     pictureLabels{ii} = [stimParts{1} '_' stimParts{2}(end) modWord label];
   end
+  
 end
 
 %% Adding subEvents
@@ -170,16 +137,16 @@ end
 % facilitate the latter, the code below looks for an 'eventData.mat', and
 % add each event within as a 'subEvent'.
 
-eventDataPath = dir([StimFolder{1} '\**\eventData.mat']);
+eventDataPath = dir([StimFolder '\**\eventData.mat']);
 load(fullfile(eventDataPath(1).folder, eventDataPath(1).name), 'eventData');
 subEvents2Add = eventData.Properties.VariableNames;
 [stimAdd, labelAdd] = deal(cell(length(subEvents2Add),1));
 for event_i = 1:length(subEvents2Add)
-  event = subEvents2Add{event_i};
-  stimLabels = ['subEvents', strsplit(event,'_')];
-  stimAdd{event_i} = {event, stimLabels{:}};
+  event = subEvents2Add(event_i);
+  stimLabels = ['subEvents', strsplit(event{1},'_')];
+  stimAdd{event_i} = [event, stimLabels];
   % Generate Label
-  stimParts = strsplit(event,'_');
+  stimParts = strsplit(event{1},'_');
   if length(stimParts) > 1
     labelAdd{event_i} = [stimParts{1}, '_' upper(stimParts{2}(1))];
   else
@@ -193,7 +160,7 @@ pictureLabels = [pictureLabels; labelAdd];
 %pictureLabels = pictureLabels(:,1);
 
 categoryLabels = {'agents', 'objects', 'scramble', 'scene', 'interaction', 'nonInteraction', 'idle', 'socialInteraction','nonSocialInteraction'...
-  'goalDirected', 'chasing', 'fighting', 'mounting', 'grooming', 'holding', 'following', 'observing','animSocialInteraction', 'animControl',...
+  'goalDirected', 'chasing', 'fighting', 'mounting', 'grooming', 'holding', 'following', 'observing','animated', 'animControl',...
   'foraging','sitting','faces','bodies','hands','background', 'subEvents', 'headTurn', 'bodyTurn', 'allStim'};
   
 paramArray = stimList;
@@ -210,38 +177,4 @@ paramArray = paramArray(uInd);
 pictureLabels = pictureLabels(uInd);
 
 save('StimParamFileSocialVids_Full.mat','paramArray','categoryLabels','pictureLabels')
-end
-
-function headTurnStimNames = generateHeadTurnList()
-
-    headTurnStimNames = [
-    {'monkeyChasing_1111.avi'  }
-    {'monkeyChasing_1112.avi'  }
-    {'monkeyChasing_1113.avi'  }
-    {'monkeyChasing_1114.avi'  }
-    {'monkeyChasing_1115.avi'  }
-    {'monkeyFighting_1121.avi' }
-    {'monkeyFighting_1123.avi' }
-    {'monkeyFighting_1124.avi' }
-    {'monkeyFighting_1125.avi' }
-    {'monkeyFollowing_1161.avi'}
-    {'monkeyFollowing_1162.avi'}
-    {'monkeyFollowing_1163.avi'}
-    {'monkeyFollowing_1164.avi'}
-    {'monkeyFollowing_1165.avi'}
-    {'monkeyForaging_1181.avi' }
-    {'monkeyGoalDir_1101.avi'  }
-    {'monkeyGoalDir_1102.avi'  }
-    {'monkeyGoalDir_1104.avi'  }
-    {'monkeyIdle_1301.avi'     }
-    {'monkeyIdle_1302.avi'     }
-    {'monkeyIdle_1303.avi'     }
-    {'monkeyIdle_1305.avi'     }
-    {'monkeyMounting_1131.avi' }
-    {'monkeyMounting_1132.avi' }
-    {'monkeyMounting_1133.avi' }
-    {'monkeyMounting_1134.avi' }
-    {'monkeyMounting_1135.avi' }
-    {'monkeyMounting_1136.avi' }];
-  
 end
