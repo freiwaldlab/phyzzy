@@ -291,7 +291,6 @@ if ~usePreprocessed
   spikeAlignParamsToCoverMovingWin.preAlign = lfpAlignParams.msPreAlign; % need to include spikes throughout the window chronux will use to calculate spectra
   spikeAlignParamsToCoverMovingWin.postAlign = lfpAlignParams.msPostAlign;
   spikeAlignParamsToCoverMovingWin.refOffset = 0;  
-  spikeAlignParams.refOffset = 0;
   [spikesByEvent, psthEmptyByEvent] = alignSpikes( spikesByChannel, onsetsByEvent, spikeChannels, spikeAlignParamsToCoverMovingWin);
   [spikesByCategory, psthEmptyByCategory] = alignSpikes( spikesByChannel, onsetsByCategory, spikeChannels, spikeAlignParamsToCoverMovingWin);
 

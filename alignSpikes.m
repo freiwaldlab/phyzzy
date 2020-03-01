@@ -12,8 +12,7 @@ preAlign = params.preAlign;
 postAlign = params.postAlign;
 refOffset = params.refOffset; % this value is subtracted from all times; so, to have all positive times, should be -msPreAlign
 
-spikesByItem = cell(length(alignPointsByItem),1);
-psthEmptyByItem = cell(length(alignPointsByItem),1);
+[spikesByItem, psthEmptyByItem] = deal(cell(length(alignPointsByItem),1));
 for item_i = 1:length(alignPointsByItem)
   itemSpikesByChannel = cell(length(spikeChannels),1); %channels x 1
   itemEmptyByChannel = cell(length(spikeChannels),1);

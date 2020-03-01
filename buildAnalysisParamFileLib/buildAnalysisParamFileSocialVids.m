@@ -4,8 +4,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %   todo: option to load 'fixed' params from file, for ease accross days
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '002';
-dateSubject = '20190930Mo';
+runNum = '001';
+dateSubject = '20191001Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -149,7 +149,7 @@ calcSwitch.useJacknife = 0;
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
-autoChannelDetect = 0;
+autoChannelDetect = 1;
 ephysParams.spikeChannels = [1]; %note: spikeChannels and lfpChannels must be the same length, in the same order, if analyzing both
 ephysParams.lfpChannels = [1];
 ephysParams.channelNames = {'Ch1'};
@@ -342,9 +342,10 @@ psthParams.colormap = map;
 
 genStatsParams.ANOVAParams.target = 'socialInteraction';    % When performing a one way ANOVA, the label from groups which is used. the rest are 'non-' label.
 
-subEventAnalysisParams.preAlign = 0;
-subEventAnalysisParams.postAlign = 0;
+subEventAnalysisParams.preAlign = 300;
+subEventAnalysisParams.postAlign = 300;
 subEventAnalysisParams.nullAllStim = 1;
+subEventAnalysisParams.nullSampleMult = 10;       % For every n stimuli with the event, sample all other stimuli this number of times for the null distribution.
 subEventAnalysisParams.stimDir = stimDir;
 
 correlParams.maxShift = []; % a number, or empty
