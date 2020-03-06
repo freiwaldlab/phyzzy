@@ -55,8 +55,8 @@ else
   
   analyzedListTmp = {analyzedList.folder}';
   paramList = {analysisParamList.folder}';
-  setdiff(analyzedListTmp, paramList)
-  disp('folders without analyzed files:')
+%   disp('folders without analyzed files:')
+%   setdiff(analyzedListTmp, paramList)
   disp(setdiff(paramList, analyzedListTmp));
   
   
@@ -70,7 +70,7 @@ else
       fprintf('processing run %d... \n', ii)      
     end
     tmp = load([preprocessedList(ii).folder filesep preprocessedList(ii).name],'spikesByEvent','eventIDs','eventCategories','preAlign','postAlign');
-    tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'analysisParamFilename','dateSubject', 'runNum', 'groupLabelsByImage','psthByImage','psthErrByImage','attendedObjData', 'stimStatsTable');
+    tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'analysisParamFilename','dateSubject', 'runNum', 'groupLabelsByImage','psthByImage','psthErrByImage','attendedObjData', 'stimStatsTable', 'subEventSigStruct');
     tmp3 = load([analyzedList(ii).folder filesep 'AnalysisParams.mat'], 'psthParams');
     
     sessField = sprintf('S%s%s', tmp2.dateSubject, tmp2.runNum);
@@ -83,7 +83,7 @@ else
     spikeDataBank.(sessField).attendedObjData = tmp2.attendedObjData;
     spikeDataBank.(sessField).groupLabelsByImage = tmp2.groupLabelsByImage;
     spikeDataBank.(sessField).tTest = tmp2.stimStatsTable;
-
+    spikeDataBank.(sessField).subEventSigStruct = tmp2.subEventSigStruct;
     spikeDataBank.(sessField).eventIDs = tmp.eventIDs;
     spikeDataBank.(sessField).eventCategories = tmp.eventCategories;
     spikeDataBank.(sessField).start = -tmp3.psthParams.psthPre;

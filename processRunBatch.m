@@ -11,8 +11,8 @@ function [] = processRunBatch(varargin)
 %       'buildAnalysisParamFileSocVid'. User will be prompted to select
 %       directory with files.
 
-replaceAnalysisOut = 0;                             % This generates an excel file at the end based on previous analyses. Don't use when running a new.
-outputVolume = 'D:\DataAnalysis\Feb2020_V2';        % Only used for the excel doc. change in analysisParamFile to change destination.
+replaceAnalysisOut = 1;                             % This generates an excel file at the end based on previous analyses. Don't use when running a new.
+outputVolume = 'D:\DataAnalysis\March2020';        % Only used for the excel doc. change in analysisParamFile to change destination.
 dataLog = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\RecordingsMoUpdated.xlsx';  % Only used to find recording log, used to overwrite params.
 usePreprocessed = 0;                                % uses preprocessed version of Phyzzy, only do when changing plotSwitch or calcSwitch and nothing else.
 runParallel = 1;                                    % Use parfor loop to go through processRun. Can't be debugged within the loop.
@@ -75,17 +75,18 @@ if ~replaceAnalysisOut
         [ephysParams.spikeChannels, ephysParams.lfpChannels, ephysParams.channelNames] = autoDetectChannels(parsedFolderName);
       end
 
-      % Load variables from paramTable.
-      paramTableRow = paramTable([dateSubject runNum], :);
-      paramTableVars = paramTable.Properties.VariableNames;
-      for param_i = 1:width(paramTableRow)
-        if isa(paramTableRow.(paramTableVars{param_i}), 'double')
-          eval(sprintf('%s = %d;', paramTableVars{param_i}, paramTableRow.(paramTableVars{param_i})))
-        elseif isa(paramTableRow.(paramTableVars{param_i}), 'cell')
-          eval(sprintf('%s = %s;', paramTableVars{param_i}, paramTableRow.(paramTableVars{param_i}){1}))
+      % Load variables from paramTable, if the row is present.
+      if any(strcmp(paramTable.Properties.RowNames, {[dateSubject runNum]}))
+        paramTableRow = paramTable([dateSubject runNum], :);
+        paramTableVars = paramTable.Properties.VariableNames;
+        for param_i = 1:width(paramTableRow)
+          if isa(paramTableRow.(paramTableVars{param_i}), 'double')
+            eval(sprintf('%s = %d;', paramTableVars{param_i}, paramTableRow.(paramTableVars{param_i})))
+          elseif isa(paramTableRow.(paramTableVars{param_i}), 'cell')
+            eval(sprintf('%s = %s;', paramTableVars{param_i}, paramTableRow.(paramTableVars{param_i}){1}))
+          end
         end
       end
-      
       % Save files
       save(analysisParamFilename);
       analysisParamFileList{meta_ind} = analysisParamFilename;
@@ -95,7 +96,7 @@ if ~replaceAnalysisOut
   end
   
   %% Process the runs
-  [errorsMsg, startTimes, endTimes, analysisOutFilename] = deal(cell(length(analysisParamFileList),1));
+  [errorMsg, startTimes, endTimes, analysisOutFilename] = deal(cell(length(analysisParamFileList),1));
   if usePreprocessed
     for path_ind = 1:length(analysisParamFileList)
       analysisParamFileList{path_ind} = [fileparts(analysisParamFileList{path_ind}) filesep 'preprocessedData.mat'];
@@ -116,16 +117,19 @@ if ~replaceAnalysisOut
         else
           [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
         end
-        errorsMsg{run_ind} = 'None';
-        endTimes{run_ind} = datetime('now');
+        errorMsg{run_ind} = 'None';
       catch MyErr
-        errorsMsg{run_ind} = MyErr.message;
-        endTimes{run_ind} = datetime('now');
-        fprintf('Ran into Error, Moving to next File. \n');
-        continue
+        errorMsg{run_ind} = MyErr.message;
       end
+      endTimes{run_ind} = datetime('now');
       close all;
       fprintf('Done! \n');
+    end
+    
+    %Since save can't be called in a parfor loop.
+    for run_ind = 1:length(analysisParamFileList)
+      errorMsgRun = errorMsg{run_ind};
+      save(analysisParamFileList{run_ind}, 'errorMsgRun', '-append');
     end
   else
     for run_ind = 1:length(analysisParamFileList)
@@ -137,15 +141,12 @@ if ~replaceAnalysisOut
         else
           [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
         end
-        errorsMsg{run_ind} = 'None';
-        endTimes{run_ind} = datetime('now');
+        [errorMsg{run_ind}, errorMsgRun] = deal('None');
       catch MyErr
-        errorsMsg{run_ind} = MyErr.message;
-        endTimes{run_ind} = datetime('now');
-        fprintf('Ran into Error, Moving to next File. \n');
-        continue
+        [errorMsg{run_ind}, errorMsgRun] = deal(MyErr.message);
       end
-      clc; 
+      save(analysisParamFileList{run_ind}, 'errorMsgRun', '-append');
+      endTimes{run_ind} = datetime('now');
       close all;
       fprintf('Done! \n');
     end
@@ -158,21 +159,26 @@ else
   joinStrings = @(x) strjoin([x(length(x)-2), x(length(x))],'');
   
   analysisOutFilename = dir([outputVolume '\**\analyzedData.mat']);
+  analysisParamList = dir([outputVolume filesep '**' filesep 'AnalysisParams.mat']);
   analysisOutFilename = {analysisOutFilename.folder}';
-  [errorsMsg, startTimes, endTimes] = deal(cell(length(analysisOutFilename),1));
+  analysisParamFilename = {analysisParamList.folder}';
+  [~, B] = setdiff(analysisParamFilename, analysisOutFilename);
+  analysisParamFilename(B) = [];
+  tmp = cellfun(@(x) load(fullfile(x, 'AnalysisParams.mat'), 'errorMsgRun'), analysisParamFilename, 'UniformOutput', false);
+  errorMsg = cellfun(@(x) x.errorMsgRun, tmp, 'UniformOutput', false);
+  [startTimes, endTimes] = deal(cell(length(analysisOutFilename),1));
   
   tmpAnalysisParamFileName = cellfun(breakString, analysisOutFilename, 'UniformOutput',0);
   analysisParamFileName = cellfun(joinStrings, tmpAnalysisParamFileName, 'UniformOutput',0);
   analysisOutFilename = cellfun(addEnd, analysisOutFilename,'UniformOutput',0);
   [startTimes{:}, endTimes{:}] = deal(datetime(now,'ConvertFrom','datenum'));
-  [errorsMsg{:}] = deal('None');
 end
 
 %analysisOutFilename is now a cell array of the filepaths to the outputs of
 %runAnalyses. Cycle through them and extract desired information (# of
 %units, significance), which you can add to the output file.
-
-titles = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Channel', 'Unit_Count', 'Sig Unit count', 'Sig Unsorted','Sig MUA', 'Stimuli_count', 'Stimuli','ANOVA','Other Info'};
+          %[analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorMsg(ii), channel, UnitCount, UnsortSESig, UnitSESig, MUASESig, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, ' ']
+titles = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Channel', 'Unit_Count', 'SubEvent Unsorted', 'SubEvent Unit', 'SubEvent MUA', 'Sig Unit count', 'Sig Unsorted', 'Sig MUA', 'Stimuli_count', 'Stimuli','ANOVA','Other Info'};
 sigMUAInd = strcmp(titles,'Sig MUA');
 sigUnsortedInd = strcmp(titles,'Sig Unsorted');
 
@@ -187,7 +193,7 @@ dataType = tmp.sigStruct.IndInfo{3};
 
 for ii = 1:length(analysisParamFileName)
   if ~isempty((analysisOutFilename{ii}))
-    tmp = load(analysisOutFilename{ii}, 'stimStatsTable','sigStruct','frEpochs'); %Relies on genStats function in runAnalyses.
+    tmp = load(analysisOutFilename{ii}, 'stimStatsTable','sigStruct','frEpochs', 'subEventSigStruct'); %Relies on genStats function in runAnalyses.
     true_ind_page = true_ind;
     for epoch_i = 1:length(tmp.sigStruct.IndInfo{1})
       for channel_ind = 1:length(tmp.sigStruct.data)
@@ -218,8 +224,30 @@ for ii = 1:length(analysisParamFileName)
           ANOVASigString = [ANOVASigString ['[' num2str(unitStructs{unit_ind}.taskModulatedP < 0.05) ';' num2str(anovaSig(1)) ']']];
         end
         
+        % Event based analysis significance
+        subEventSigStruct = tmp.subEventSigStruct;
+        if ~subEventSigStruct.noSubEvent 
+          chanInfo = subEventSigStruct.testResults{channel_ind};
+          chanInfo = cell2mat([chanInfo{:}]);
+          chanSig = chanInfo < 0.05;
+          UnsortSESig = strjoin(subEventSigStruct.events(chanSig(:,1)), ', ');
+          MUASESig = strjoin(subEventSigStruct.events(chanSig(:,end)), ', ');
+          if size(chanSig,2) > 2
+            unitSig = chanSig(:, 2:end-1);
+            UnitSESig = strjoin(subEventSigStruct.events(any(unitSig,2)), ', ');
+          end
+          subECell = [{UnsortSESig}, {UnitSESig}, {MUASESig}];
+          for jj = 1:length(subECell)
+            if isempty(subECell{jj})
+              subECell{jj} = ' ';
+            end
+          end
+        else
+          subECell = [{' '}, {' '}, {' '}];
+        end
+        
         % Package Outputs into structure for table
-        table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorsMsg(ii), channel, UnitCount, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, ' '];
+        table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorMsg(ii), channel, UnitCount, subECell, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, {' '}];
         if ii == 1 && epoch_i == 1
           %           table{epoch_i}{true_ind, 11} = sprintf('Comparison: %s Vs %s', strjoin(unitStructs{1}.ANOVA.stats.grpnames{1}), strjoin(unitStructs{1}.ANOVA.stats.grpnames{2}));
         end
@@ -234,7 +262,7 @@ for ii = 1:length(analysisParamFileName)
   else
     true_ind_page = true_ind;
     for epoch_i = 1:3
-      table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorsMsg(ii), {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {' '}];
+      table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorMsg(ii), {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {' '}];
       true_ind = true_ind + 1;
       if epoch_i ~= 3 % More pages to do = let count reset.
         true_ind = true_ind_page;

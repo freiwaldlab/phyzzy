@@ -96,9 +96,15 @@ else
 end
 
 %% Combine PSTH across all runs for a particular stimulus.
-
 %This will crash if the PSTHs aren't the same length.
-if plotSwitch.meanPSTH %&& ~exist('meanPSTHStruct','var')
+if plotSwitch.meanPSTH 
+  [stimPSTH, meanPSTHStruct] = meanPSTH(spikeDataBank, meanPSTHParams);
+  saveEnv()
+end
+
+%% Combine PSTH across all runs for a particular event.
+
+if plotSwitch.subEventPSTH %&& ~exist('meanPSTHStruct','var')
   [stimPSTH, meanPSTHStruct] = meanPSTH(spikeDataBank, meanPSTHParams);
   saveEnv()
 end
@@ -370,7 +376,7 @@ if params.allStimPSTH
     
     catPSTHTitle = sprintf('All Stimuli, Mean PSTH %s, %s', normTag, groupingType{group_ind});
     h = figure('NumberTitle', 'off', 'Name', catPSTHTitle,'units','normalized','outerposition',[0 0 params.plotSizeAllStimPSTH]);
-    [catPSTHAxes, cbh] = plotPSTH(plotData, axes(), params, 'color', catPSTHTitle, allStimuliLabel);
+    [catPSTHAxes, cbh] = plotPSTH(plotData, [], axes(), params, 'color', catPSTHTitle, allStimuliLabel);
     if params.normalize == 1
       cbh.Label.String = 'Signal Change relative to Baseline (%)';
     elseif params.normalize == 2
@@ -443,7 +449,7 @@ if params.catPSTH
       psthTitle = sprintf('All %s Stimuli - Mean %s%s, %s', params.plotLabels{broad_ind}, dataType{1}, normTag, groupingType{group_ind});
       % Plot the Activity
       h = figure('NumberTitle', 'off', 'Name', psthTitle,'units','normalized','outerposition',[0 0 params.plotSizeCatPSTH]);
-      [psthAxes, cbHandle] = plotPSTH(plotData, axes(), params, 'color', psthTitle, plotLabels);
+      [psthAxes, cbHandle] = plotPSTH(plotData, [], axes(), params, 'color', psthTitle, plotLabels);
       psthAxes.FontSize = 15;
       psthAxes.YLabel.String = 'Stimulus Name';
       title(psthTitle)
@@ -562,7 +568,7 @@ if params.allRunStimPSTH
           plotData = stimPSTH{stim_i,group_i,1}(plotStarts(plot_i):plotEnds(plot_i), :);
           %sortIndex = sortMat{stim_i, group_i, sort_i}(plotStarts(plot_i):plotEnds(plot_i));
           psthAxes = subplot(1,subplot2Plot,plot_i);
-          [subplotAxes(plot_i), cbHandle(plot_i)] = plotPSTH(plotData, psthAxes, params, 'color', [], plotLabels); %(sortIndex,:)
+          [subplotAxes(plot_i), cbHandle(plot_i)] = plotPSTH(plotData, [], psthAxes, params, 'color', [], plotLabels); %(sortIndex,:)
           cbHandle(plot_i).Label.FontSize = 12;
           if plot_i == subplot2Plot
             if params.normalize == 1

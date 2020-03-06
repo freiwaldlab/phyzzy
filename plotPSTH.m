@@ -9,7 +9,6 @@ psthPost = psthParams.psthPost;
 xrange= [-psthPre psthImDur+psthPost]; 
 nrows = size(psthArray,1);
 yaxis = [1 nrows];
-title(psthTitle); 
 if strcmp(plotType,'color')
   try
     caxis([min(min(psthArray)),max(max(psthArray))]);
@@ -28,13 +27,16 @@ if strcmp(plotType,'color')
   end
   colorBarh = colorbar;
   ylabel(colorBarh,'Firing Rate [Hz]','FontSize',14);
-  colormap(psthParams.colormap);
+  if isfield(psthParams, 'colormap')
+    colormap(psthParams.colormap);
+  end
   ylimits= ylim();
   yRange = ylimits(2) - ylimits(1);
   set(gca,'YTick',linspace(ylimits(1)+yRange/(2*nrows),ylimits(2)-yRange/(2*nrows),nrows),'YTicklabel',ylabels,...
     'box','off','TickDir','out','FontSize',14,'TickLength',[.012 .012],'LineWidth',1.3);
   
 elseif strcmp(plotType,'line')
+  colorBarh = [];
   if isempty(psthError)
     psthError = zeros(size(psthArray));    
   end
@@ -45,12 +47,16 @@ elseif strcmp(plotType,'line')
     lineProps = [];
   end
   
-  mseb(xrange(1):xrange(2), psthArray, psthError, lineProps)
+  if ~isempty(psthAxes)
+    axes(psthAxes);
+  end
+  
+  psthAxes = mseb(xrange(1):xrange(2), psthArray, psthError, lineProps);
+
   xlim(xrange);
   legend(ylabels, 'location', 'northeastoutside', 'AutoUpdate', 'off');
-
 end
-
+title(psthTitle); 
 % Deliniate stimulus presentation period
 hold on
 if (psthPre+psthPost)/psthImDur > 20

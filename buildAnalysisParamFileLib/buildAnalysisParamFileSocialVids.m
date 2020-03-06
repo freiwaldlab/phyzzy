@@ -5,7 +5,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '001';
-dateSubject = '20191001Mo';
+dateSubject = '20191014Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -21,7 +21,7 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data');
     stimulusLogVolume = ephysVolume;
-    outputVolume = slashSwap('D:\DataAnalysis\Feb2020_paramTable');
+    outputVolume = slashSwap('D:\DataAnalysis\March2020');
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code');
   case 'DataAnalysisPC'
@@ -346,6 +346,20 @@ subEventAnalysisParams.preAlign = 300;
 subEventAnalysisParams.postAlign = 300;
 subEventAnalysisParams.nullAllStim = 1;
 subEventAnalysisParams.nullSampleMult = 10;       % For every n stimuli with the event, sample all other stimuli this number of times for the null distribution.
+subEventAnalysisParams.psthParams = psthParams;
+subEventAnalysisParams.psthParams.psthPre = subEventAnalysisParams.preAlign - 100;
+subEventAnalysisParams.psthParams.psthImDur = subEventAnalysisParams.postAlign - 100;
+subEventAnalysisParams.psthParams.psthPost = 0;
+subEventAnalysisParams.psthParams.smoothingWidth = 10;
+subEventAnalysisParams.psthParams.movingWin = psthParams.movingWin;
+subEventAnalysisParams.stimPlotParams.psthPre = psthParams.psthPre;
+subEventAnalysisParams.stimPlotParams.psthPre = psthParams.psthPre;
+subEventAnalysisParams.stimPlotParams.psthImDur = psthParams.psthImDur;
+subEventAnalysisParams.stimPlotParams.psthPost = psthParams.psthPost;
+subEventAnalysisParams.saveFig = 1;                
+subEventAnalysisParams.closeFig = 0;               
+subEventAnalysisParams.exportFig = 0;              
+%subEventAnalysisParams.stimPlotParams.lineprops = [];
 subEventAnalysisParams.stimDir = stimDir;
 
 correlParams.maxShift = []; % a number, or empty

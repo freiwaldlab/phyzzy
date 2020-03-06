@@ -6,7 +6,7 @@ machine = machine(~isspace(machine));
 
 switch machine
   case 'Alienware_FA'
-    analysisDirectory = slashSwap('D:\DataAnalysis\Feb2020');
+    analysisDirectory = slashSwap('D:\DataAnalysis\March2020');
     outputDir = [analysisDirectory '/batchAnalysis'];
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
   case 'HomeDesktop'
