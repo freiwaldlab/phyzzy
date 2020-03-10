@@ -69,7 +69,8 @@ end
 if colorType == 2
   attObjData = cat(1, attendedObjData.tracePlotData{1:end});
   im = image(attObjData);
-  im.XData(2) = psthParams.psthImDur;
+  imOffset = 20;
+  im.XData = [0+imOffset psthParams.psthImDur-imOffset];
   im.AlphaData = 0.5;
   im.YData = [im.YData(1)-0.5 im.YData(2)-0.5];
   figHandle.UserData.shadedAreaHandle = im;
@@ -83,10 +84,10 @@ trialLabels = [];
 
 for item_i = 1:length(spikesByItem)
   yLevelStart = yLevel;
+  trialLabels = [trialLabels 1:length(spikesByItem{item_i}{channel_i}{unit_i})];
   for trial_i = 1:length(spikesByItem{item_i}{channel_i}{unit_i})
     yLevel = yLevel + 1;
     trialSpikes = spikesByItem{item_i}{channel_i}{unit_i}(trial_i);
-    trialLabels = [trialLabels 1:length(spikesByItem{item_i}{channel_i}{unit_i})];
     for spike_i = 1:length(trialSpikes.times)
       if colorType == 1
         trialColors = spikeColor{item_i}{trial_i}.color;

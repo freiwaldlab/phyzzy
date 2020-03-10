@@ -1,11 +1,10 @@
 function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )    
 %buildAnalysisParamFile saves a mat file of parameters, which control the
-%behavior of analyzeSession
-%   todo: option to load 'fixed' params from file, for ease accross days
+%behavior of processRun, runAnalysis
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '001';
-dateSubject = '20191014Mo';
+dateSubject = '20191002Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -21,7 +20,7 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data');
     stimulusLogVolume = ephysVolume;
-    outputVolume = slashSwap('D:\DataAnalysis\March2020');
+    outputVolume = slashSwap('D:\DataAnalysis\March2020_V2');
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code');
   case 'DataAnalysisPC'
@@ -61,24 +60,24 @@ verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 figPos = [0 0 .6 0.7];      % Normalized units for figure position
 
 %% Plot switches
-plotSwitch.subEventAnalysis = 1;            % plot traces comparing activity surrounding an event (defined in eventData, generated w/ eventDetectionApp), vs null.
+plotSwitch.subEventAnalysis = 0;            % plot traces comparing activity surrounding an event (defined in eventData, generated w/ eventDetectionApp), vs null.
 plotSwitch.imageEyeMap = 0;                 
 plotSwitch.eyeCorralogram = 0;              % Eye Gram
 plotSwitch.attendedObject = 1;              % Vectors to distinguish where subject is looking.
 plotSwitch.eyeStimOverlay = 0;              % Visualize eye traces on stimuli.
 plotSwitch.clusterOnEyePaths = 0;           % Resort spikes based on distinct eye paths, make "New events".
 plotSwitch.stimPSTHoverlay = 0;             % grabs stimuli and overlays PSTH on it.
-plotSwitch.imagePsth = 1;
+plotSwitch.imagePsth = 0;
 plotSwitch.categoryPsth = 0;
 plotSwitch.stimCatANOVA = 1;
-plotSwitch.prefImRaster = 0; % Raster, Not color coded.
-plotSwitch.topStimToPlot = 5;
-plotSwitch.prefImRasterColorCoded = 2; % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background.
-plotSwitch.prefImRasterEvokedOverlay = 0; %Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
+plotSwitch.prefImRaster = 0;                % Raster, Not color coded.
+plotSwitch.prefImRasterColorCoded = 2;      % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background.
+plotSwitch.topStimToPlot = 5;               % Determines number of stimuli for which rasters are plotted.
+plotSwitch.prefImRasterEvokedOverlay = 0;   % Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 1;
 plotSwitch.prefImMultiChRasterEvokedOverlay = 0;
-plotSwitch.imageTuningSorted = 1; %Barplot per image, Required for stimPSTHoverlay, sigStruct
-plotSwitch.stimPrefBarPlot = 0; %Per event bar graph.
+plotSwitch.imageTuningSorted = 1;           % Barplot per image, Required for stimPSTHoverlay, sigStruct
+plotSwitch.stimPrefBarPlot = 0;             % Per event bar graph.
 plotSwitch.stimPrefBarPlotEarly = 0;
 plotSwitch.stimPrefBarPlotLate = 0;
 plotSwitch.tuningCurves = 0;
@@ -351,6 +350,7 @@ subEventAnalysisParams.psthParams.psthPre = subEventAnalysisParams.preAlign - 10
 subEventAnalysisParams.psthParams.psthImDur = subEventAnalysisParams.postAlign - 100;
 subEventAnalysisParams.psthParams.psthPost = 0;
 subEventAnalysisParams.psthParams.smoothingWidth = 10;
+subEventAnalysisParams.testPeriod = [0 200];                            % The period during which spikes are counted and a t-test is performed.
 subEventAnalysisParams.psthParams.movingWin = psthParams.movingWin;
 subEventAnalysisParams.stimPlotParams.psthPre = psthParams.psthPre;
 subEventAnalysisParams.stimPlotParams.psthPre = psthParams.psthPre;
@@ -402,9 +402,9 @@ end
 %                 {-800, 60}; ...
 %                 {100, 1100}}; %#ok
 %               
-              frEpochsCell = {{60, @(stimDur) stimDur+60};...
-                {-800, 60}; ...
-                {@(stimDur) stimDur+60, @(stimDur) stimDur+460}}; %#ok
+              frEpochsCell = {{60, @(stimDur) stimDur+60}};...
+%                 {-800, 60}; ...
+%                 {@(stimDur) stimDur+60, @(stimDur) stimDur+460}}; %#ok
               
 epochLabels = {'Presentation','Fixation','Reward'};
               

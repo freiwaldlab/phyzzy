@@ -70,7 +70,7 @@ else
       fprintf('processing run %d... \n', ii)      
     end
     tmp = load([preprocessedList(ii).folder filesep preprocessedList(ii).name],'spikesByEvent','eventIDs','eventCategories','preAlign','postAlign');
-    tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'analysisParamFilename','dateSubject', 'runNum', 'groupLabelsByImage','psthByImage','psthErrByImage','attendedObjData', 'stimStatsTable', 'subEventSigStruct');
+    tmp2 = load([analyzedList(ii).folder filesep analyzedList(ii).name], 'analysisParamFilename','dateSubject', 'runNum', 'groupLabelsByImage','psthByImage','psthErrByImage','attendedObjData', 'stimStatsTable', 'subEventSigStruct', 'psthBySubEvent');
     tmp3 = load([analyzedList(ii).folder filesep 'AnalysisParams.mat'], 'psthParams');
     
     sessField = sprintf('S%s%s', tmp2.dateSubject, tmp2.runNum);
@@ -84,6 +84,7 @@ else
     spikeDataBank.(sessField).groupLabelsByImage = tmp2.groupLabelsByImage;
     spikeDataBank.(sessField).tTest = tmp2.stimStatsTable;
     spikeDataBank.(sessField).subEventSigStruct = tmp2.subEventSigStruct;
+    spikeDataBank.(sessField).psthBySubEvent = tmp2.psthBySubEvent;
     spikeDataBank.(sessField).eventIDs = tmp.eventIDs;
     spikeDataBank.(sessField).eventCategories = tmp.eventCategories;
     spikeDataBank.(sessField).start = -tmp3.psthParams.psthPre;

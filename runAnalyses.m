@@ -277,14 +277,6 @@ end
 %   end
 % end
 
-if isfield(plotSwitch, 'subEventAnalysis') && plotSwitch.subEventAnalysis
-  ephysParams.spikeTimes = calcSwitch.spikeTimes;
-  ephysParams.channelUnitNames = channelUnitNames;
-  subEventAnalysisParams.outDir = outDir;
-  [psthBySubEvent, psthBySubEventNull, subEventSigStruct] = subEventAnalysis(spikesByChannel, taskData, ephysParams, subEventAnalysisParams);
-  save(analysisOutFilename,'psthBySubEvent','psthBySubEventNull','subEventSigStruct', '-append');
-end
-
 if calcSwitch.imagePSTH && calcSwitch.spikeTimes
   %calcStimPSTH(spikesByStim, psthEmptyByStim, spikeTimes, psthParams, spikeAlignParams)
   [psthByImage, psthErrByImage] = calcStimPSTH(spikesByEvent, psthEmptyByEvent, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
@@ -293,6 +285,15 @@ elseif calcSwitch.imagePSTH
   [psthByImage, psthErrByImage] = calcStimPSTH(spikesByEventBinned, psthEmptyByEvent, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
   save(analysisOutFilename,'psthByImage','psthErrByImage', '-append');
 end 
+
+if isfield(plotSwitch, 'subEventAnalysis') && plotSwitch.subEventAnalysis
+  ephysParams.spikeTimes = calcSwitch.spikeTimes;
+  ephysParams.channelUnitNames = channelUnitNames;
+  subEventAnalysisParams.outDir = outDir;
+  [psthBySubEvent, psthBySubEventNull, subEventSigStruct] = subEventAnalysis(spikesByChannel, taskData, ephysParams, subEventAnalysisParams);
+  save(analysisOutFilename,'psthBySubEvent','psthBySubEventNull','subEventSigStruct', '-append');
+end
+
 
 if calcSwitch.categoryPSTH && calcSwitch.spikeTimes
   [psthByCategory, psthErrByCategory] = calcStimPSTH(spikesByCategory, psthEmptyByCategory, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
@@ -4642,7 +4643,10 @@ if ~isempty(eventDataFile)
     end
     
     subEventSigStruct = struct();
+    
     subEventSigStruct.testResults = testResults;
+    subEventSigStruct.testPeriod = testPeriod;
+    subEventSigStruct.psthWindow = [-subEventParams.psthParams.psthPre subEventParams.psthParams.psthImDur];
     subEventSigStruct.cohensD = cohensD;
     subEventSigStruct.sigInd = "{channel}{unit}{event}";
     subEventSigStruct.events = eventsInEventData;
@@ -4872,18 +4876,15 @@ eyeInByEventAll = cellfun(extractEye,analogInByEvent, 'UniformOutput', false);
 
 %Run each stimuli presented
 for stim_i = 1:length(eventIDs)
-  if shapeOverlay
-    %find the correct frameMotionData
-    frameMotionDataInd = strcmp(frameMotionDataNames, eventIDs(stim_i));
-    stimFrameMotionData = frameMotionData(frameMotionDataInd);
-  end
+  %find the correct frameMotionData
+  frameMotionDataInd = strcmp(frameMotionDataNames, eventIDs(stim_i));
+  stimFrameMotionData = frameMotionData(frameMotionDataInd);
   
   stimVidStruct = dir([stimDir '/**/' eventIDs{stim_i}]);
   stimVidPath = [stimVidStruct(1).folder filesep stimVidStruct(1).name];
   stimVid = VideoReader(stimVidPath);
-  stimFs = stimVid.FrameRate;
   % Grab the eye signal for an event, and down sample it to the frame rate of the video
-  eyeInByEvent = downSampleSig(eyeInByEventAll{stim_i}, psthParams, stimFs);
+  eyeInByEvent = downSampleSig(eyeInByEventAll{stim_i}, psthParams, stimFrameMotionData);
   
   %Shift to pixel space
   pixelOrigin = [stimVid.Width/2 stimVid.Height/2];
@@ -4962,7 +4963,7 @@ PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
 frameMotionData = taskData.frameMotionData;
 frameMotionDataNames = {frameMotionData(:).stimVid}';
 
-stimStartInd = psthParams.psthPre+lfpPaddedBy;
+stimStartInd = psthParams.psthPre;
 stimEndInd = stimStartInd + psthParams.psthImDur;
 attendedObjVect = cell(length(analogInByEvent), 1);
 extractEye = @(n) squeeze(n(:,1:2,:,stimStartInd:stimEndInd)); %Reshapes analogInByEvent into eye signal.
@@ -4972,29 +4973,26 @@ shapeColors = {[1. 0. 0.];[0 .4 1.];[.1 .8 .1];[.1 .8 .1];[0 0 0];[1 .4 0]; ...
   [.7 0 0];[0 0 .7];[0 .5 0];[0 .5 0];[0 0 0];[1 .6 0]};
 
 [frameStartInd, frameEndInd] = deal(cell(length(eventIDs),1));%Initialize vector of indicies which will be passed out.
-maxFrame = 0;
 
 for stim_i = 1:length(eventIDs)
-  %find the correct frameMotionData
+  % find the correct frameMotionData
   frameMotionDataInd = strcmp(frameMotionDataNames, eventIDs(stim_i));
   if any(frameMotionDataInd)
     stimFrameMotionData = frameMotionData(frameMotionDataInd);
     
     % Grab the eye signal for an event, and down sample it to the frame rate of the video
-    [eyeInByEvent, frameStartInd{stim_i}, frameEndInd{stim_i}] = downSampleSig(eyeInByEventAll{stim_i}, psthParams, stimFrameMotionData.fps);
+    [eyeInByEvent, frameStartInd{stim_i}, frameEndInd{stim_i}] = downSampleSig(eyeInByEventAll{stim_i}, psthParams, stimFrameMotionData);
     %Shift to pixel space
     pixelOrigin = [stimFrameMotionData.width/2 stimFrameMotionData.height/2];
     for eye_ind = 1:size(eyeInByEvent,1)
       eyeInByEvent(eye_ind, :, :) = (eyeInByEvent(eye_ind, :, :)*PixelsPerDegree(eye_ind)) + pixelOrigin(eye_ind);
     end
     
-    %Initialize the output cell array and store max frame.
-    attendedObjVect{stim_i} = cell(size(eyeInByEvent, 2), size(eyeInByEvent, 3));
-    if ~(maxFrame > size(eyeInByEvent, 3))
-      maxFrame = size(eyeInByEvent, 3);
-    end
+    % Initialize the output cell array.
+    attendedObjVect{stim_i} = cell(size(eyeInByEvent, 2), size(eyeInByEvent, 3));    
     
     if ~isempty(stimFrameMotionData.objNames) %Landscapes/Scrambles
+      
       %Make variables for each object. Not a clean way of doing this
       objects = stimFrameMotionData.objNames;
       for obj_i = 1:length(objects)
@@ -5034,29 +5032,36 @@ for stim_i = 1:length(eventIDs)
   end
 end
 
-%Scaling everything to the max frame count to make it stackable later.
-updatedFramesInd = [];
-for stim_i = 1:length(attendedObjVect)
-  if ~isempty(attendedObjVect{stim_i})
-    if size(attendedObjVect{stim_i},2) < maxFrame
-      updatedFramesInd = [updatedFramesInd stim_i];
-      %for now, since I know this solution works for the videos I'm using,
-      %I'll be doubling the vector, then chopping off any extra at the end.
-      tmpArray = cell(size(attendedObjVect{stim_i},1), size(attendedObjVect{stim_i},2)*2);
-      for frame_ind = 1:size(attendedObjVect{stim_i},2)
-        tmpArray(:,frame_ind*2) = attendedObjVect{stim_i}(:,frame_ind);
-        tmpArray(:,(frame_ind*2)-1) = attendedObjVect{stim_i}(:,frame_ind);
+% if some of the stimuli have a different frame count, resample the ones
+% with fewer frames to bring them in line.
+frameCounts = cellfun(@(x) size(x, 2), attendedObjVect);
+if length(unique(frameCounts)) > 1
+  maxFrame = max(frameCounts);
+  updatedFramesInd = [];
+  for stim_i = 1:length(attendedObjVect)
+    if ~isempty(attendedObjVect{stim_i})
+      if size(attendedObjVect{stim_i},2) < maxFrame
+        updatedFramesInd = [updatedFramesInd stim_i];
+        %for now, since I know this solution works for the videos I'm using,
+        %I'll be doubling the vector, then chopping off any extra at the end.
+        tmpArray = cell(size(attendedObjVect{stim_i},1), size(attendedObjVect{stim_i},2)*2);
+        for frame_ind = 1:size(attendedObjVect{stim_i},2)
+          tmpArray(:,frame_ind*2) = attendedObjVect{stim_i}(:,frame_ind);
+          tmpArray(:,(frame_ind*2)-1) = attendedObjVect{stim_i}(:,frame_ind);
+        end
+        attendedObjVect{stim_i} = tmpArray(:,1:maxFrame);
+      else
+        frameIndSwapIndex = stim_i;
       end
-      attendedObjVect{stim_i} = tmpArray(:,1:maxFrame);
-    else
-      frameIndSwapIndex = stim_i;
     end
   end
+  
+  %Overwrite the frame indexes with previous written ones for a longer stimuli
+  [frameStartInd{updatedFramesInd}] = deal(frameStartInd{frameIndSwapIndex});
+  [frameEndInd{updatedFramesInd}] = deal(frameEndInd{frameIndSwapIndex});
+  
 end
 
-%Overwrite the frame indexes with previous written ones for a longer stimuli
-[frameStartInd{updatedFramesInd}] = deal(frameStartInd{frameIndSwapIndex});
-[frameEndInd{updatedFramesInd}] = deal(frameEndInd{frameIndSwapIndex});
 
 %Plot the Result as an area plot, where X = frames
 areaColors = [shapeColors{:} {[.5 .5 .5]}]'; %Shape colors + Background
@@ -5067,6 +5072,7 @@ tracePlotData = cell(1,length(eventIDs));
 
 switch plotType
   case 'none'
+    % Used in the case of wanting colorCodedRaster.
     tag2color = @(n) areaColors{strcmp(objList, n)}; %Returns appropriate color for each object
     for channel_i = 1:length(psthByImage)
       for event_i = 1:length(eventIDs)
@@ -5075,14 +5081,17 @@ switch plotType
         if ~isempty(attendedObjectEvent)
           attendObjColorMat = cellfun(tag2color, attendedObjectEvent, 'UniformOutput', false); % a Trial * Frame array of the first letter of each object.
           tracePlotData{event_i} = zeros(size(attendObjColorMat, 1), size(attendObjColorMat, 2), 3); %Frames * Unique * colors objects
+          % Give each frame its correct color
           for trial_i = 1:size(attendObjColorMat,1)
             for frame_i = 1:size(attendObjColorMat,2)
               tracePlotData{event_i}(trial_i, frame_i, :) = attendObjColorMat{trial_i, frame_i};
             end
           end
+          
         end
       end
     end
+    
   case 'area'
     for channel_i = 1:length(psthByImage)
       for event_i = 1:length(eventIDs)
@@ -5257,12 +5266,12 @@ end
 
 end
 
-function [downSampledEyeInByEvent,frameStartInd, frameEndInd] = downSampleSig(eyeInByEvent, psthParams, stimFs)
+function [downSampledEyeInByEvent,frameStartInd, frameEndInd] = downSampleSig(eyeInByEvent, psthParams, stimFrameMotionData)
 %Function which down samples a signal (assumed to be 3D) present in the 3rd
 %dimension of the input vector (2 eyes * trials * samples for eye signal)
 %by averaging across samples present between points of interest.
 
-frames  = ceil((psthParams.psthImDur/1000)*stimFs);
+frames  = stimFrameMotionData.frameCount;
 sampFreq = psthParams.psthImDur/frames;
 clear frameCountArray frameIndArray
 frameCountArray = diff(round((1:frames)*sampFreq)); %each index is the number of points averaged to make a frame.
@@ -5274,18 +5283,16 @@ end
 %Downsample the signal
 eyeInAvg = zeros(size(eyeInByEvent,1), size(eyeInByEvent, 2), frames);
 for eye_ind = 1:frames
-  eyeInAvg(:,:,eye_ind) = mean((eyeInByEvent(:,:,frameIndArray == eye_ind)),3);
+  eyeInAvg(:,:,eye_ind) = mean(eyeInByEvent(:,:,frameIndArray == eye_ind),3);
 end
 downSampledEyeInByEvent = eyeInAvg;
 
 %Frames to ms, for other functions to easily compare to 1kS/sec data.
-frameStartInd = [0 round((1:frames-1)*sampFreq)+1]; %Create an index of when each frame starts
+frameStartInd = round((0:frames-1)*sampFreq)+1; %Create an index of when each frame starts
 frameEndInd = round((1:frames)*sampFreq); %each index is the number of points averaged to make a frame.
 end
 
 function [sigStruct, imageSortOrder, nullModelPvalues, nullTraceMeans, nullTraceSD, frEpochsStats] = genStats(psthByImage, spikeCountsByImageByEpoch, firingRatesByImageByEpoch, firingRateErrsByImageByEpoch, trialCountsByImage, analysisGroups, epochLabels, eventIDs, ephysParams, genStatsParams)
-
-
 
 groups = analysisGroups.stimulusLabelGroups.groups{1};
 channelNames = ephysParams.channelNames;
@@ -5344,15 +5351,11 @@ sigStruct.sigInfo = zeros(length(channelNames), length(groupingType));
 
 
 for channel_i = 1:length(psthByImage)
-  data = cell([length(epochLabels), length(groupingType), length(dataType)]);
+  data = cell([length(spikeCountsByImageByEpoch), length(groupingType), length(dataType)]);
   sigStruct.unitCount(channel_i) = length(psthByImage{channel_i}) - 2;
   for unit_i = 1:length(psthByImage{channel_i})
     unitPSTH = psthByImage{channel_i}{unit_i};
-    for epoch_i = 1:length(data)
-      %       if unit_i == 1
-      %         sigStruct.sigMUA{epoch_i}{channel_i} = 0;
-      %         sigStruct.sigUnsorted{epoch_i}{channel_i} = 0;
-      %       end
+    for epoch_i = 1:size(data,1)
       runMask = (nullModelPvalues{epoch_i}{channel_i}{unit_i} < 0.05);   % Find out which stimuli produced the significant activity
       if sum(runMask) ~= 0
         sortVec = imageSortOrder{epoch_i}{channel_i}{unit_i};

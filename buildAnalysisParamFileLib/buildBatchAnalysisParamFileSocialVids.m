@@ -9,10 +9,7 @@ switch machine
     analysisDirectory = slashSwap('D:\DataAnalysis\March2020');
     outputDir = [analysisDirectory '/batchAnalysis'];
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
-  case 'HomeDesktop'
-    analysisDirectory = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\AnalysisSample');
-    outputDir = [analysisDirectory '/batchAnalysis'];
-    stimParamsFilename = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
+    stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
 end
 
 analysisLabel = 'Basic';
@@ -28,7 +25,8 @@ verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 %% Switches
 calcSwitch.excludeRepeats = 0;
 plotSwitch.stimPresCount = 0;         % Figures showing presentation counts across all runs, in development.
-plotSwitch.meanPSTH = 1;              % figure showing mean PSTH across all units, MUA, and Unsorted.
+plotSwitch.meanPSTH = 0;              % figure showing mean PSTH across all units, MUA, and Unsorted.
+plotSwitch.subEventPSTH = 1;          % Analysis of subEvents taking place during stimuli.
 plotSwitch.frameFiringRates = 0;      % Figures showing raw, max, mean rates per object depending on viewing during frame.
 plotSwitch.novelty = 0;               % Seeing whether 10th percentile values in previous analyses line up with 'novel' stimuli
 plotSwitch.slidingWindowANOVA = 0;
@@ -79,25 +77,34 @@ meanPSTHParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable,
 load(meanPSTHParams.psthColormapFilename);
 meanPSTHParams.colormap = map;
 meanPSTHParams.tmpFileName = 'tmpStructPrcSigChange.mat';
-meanPSTHParams.plotSingleUnitTests = 1; % Avoids running completed plot code.
-meanPSTHParams.stimInclude = 2;         % 0 = everything, 1 = Only Animations, 2 = Exclude Animations. 
-meanPSTHParams.removeRewardEpoch = 1;   % Removes the reward period activity when generating plots.
-meanPSTHParams.plotMeanLine = 0;        % For 'All Chasing' plots, include a additional axis as a line plot.
-meanPSTHParams.includeMeanTrace = 1;    % For 'All Chasing' plots, include the mean of all traces at the bottom of the PSTH.
-meanPSTHParams.traceCountLabel = 0;     % labels on the catagory specific plots include 'n = X' to highlight trace value.
-
+meanPSTHParams.plotSingleUnitTests = 1;         % Avoids running completed plot code.
+meanPSTHParams.stimInclude = 2;                 % 0 = everything, 1 = Only Animations, 2 = Exclude Animations. 
+meanPSTHParams.removeRewardEpoch = 1;           % Removes the reward period activity when generating plots.
+meanPSTHParams.plotMeanLine = 0;                % For 'All Chasing' plots, include a additional axis as a line plot.
+meanPSTHParams.includeMeanTrace = 1;            % For 'All Chasing' plots, include the mean of all traces at the bottom of the PSTH.
+meanPSTHParams.traceCountLabel = 0;             % labels on the catagory specific plots include 'n = X' to highlight trace value.
 meanPSTHParams.catPSTH = 1;                     %  Catagory PSTH Plot - 'All Chasing Stimuli, mean PSTH'
 meanPSTHParams.allStimPSTH = 1;                 % All Stimuli means in the same plot.
 meanPSTHParams.allRunStimPSTH = 1;              % Stimuli Plot - 'All chasing 1 PSTHs, sorted by...'
 meanPSTHParams.lineCatPlot = 1;                 % Line plot with Line per Catagory
 meanPSTHParams.lineBroadCatPlot = 1;            % Means Line plot across broad catagorizations (like Social vs non Social)
 meanPSTHParams.exportFig = 0;                   % Turns on the 'exportFig' feature of saveFigure, which generates .pngs.
-
 meanPSTHParams.plotSizeCatPSTH = [.8 .6];       
 meanPSTHParams.plotSizeAllStimPSTH = [.5 1];           
 meanPSTHParams.plotSizeAllRunStimPSTH = [1 1];           
 meanPSTHParams.plotSizeLineCatPlot = [.5 .6];           
 meanPSTHParams.plotSizeLineBroadCatPlot = [.5 .6];           
+
+subEventPSTHParams.outputDir = fullfile(outputDir,'subEventPSTH');
+subEventPSTHParams.eventData = fullfile(stimDir,'eventData.mat');
+subEventPSTHParams.stimParamsFilename = stimParamsFilename;
+subEventPSTHParams.normalize = 1;                                 % Grab activity from same unit, Z score fixation activity with respect to fixation period activity.
+subEventPSTHParams.fixBuffer = 150;                                % normalization acts on the fixation period. Some effects of the fix dot appearance or stimulus onset may be driving neurons away from the true baseline. this number is the millisecond after true fix start, before fix end.
+subEventPSTHParams.allRunStimPSTH = 1;
+subEventPSTHParams.plotSizeAllRunStimPSTH = [1 1];
+subEventPSTHParams.exportFig = 0;
+subEventPSTHParams.saveFig = 1;
+subEventPSTHParams.sparseLabels = 1;                              % In the 'sorted' individual runs, sparse labeling only labels the first entry of that kind in the PSTH.
 
 frameFiringParams.stimParamsFilename = stimParamsFilename;
 frameFiringParams.outputDir = fullfile(outputDir,'frameFiring');

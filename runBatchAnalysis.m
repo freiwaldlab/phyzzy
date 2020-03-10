@@ -37,33 +37,6 @@ if 1%~exist('unitCounts','var')
 %   saveEnv()
 end
 
-plotPies = 0;
-if plotPies
-  unitCount = sum(resultTable{1}{3,1});
-  taskModUnits = sum(resultTable{1}{3,2});
-  socSigUnits = sum(resultTable{1}{3,3});
-  
-  nonTaskMod = (unitCount-taskModUnits)/unitCount;
-  TaskMod = (taskModUnits-socSigUnits)/unitCount;
-  socSig = (socSigUnits)/unitCount;
-  sigFrac = [nonTaskMod, TaskMod, socSig];
-  sigTitle = {sprintf('Non Task Modulated (n = %d, %s%%)', nonTaskMod*unitCount, num2str(round(nonTaskMod,3)*100)),...
-    sprintf('Task Modulated (n = %d, %s%%)', round(TaskMod*unitCount), num2str(round(TaskMod,3)*100)),...
-    sprintf('Socially activated (n = %d, %s%%)', socSig*unitCount, num2str(round(socSig,3)*100)),...
-    };
-  patchColor = {[0.25, 0.25, 0.25]; [0, 0.4470, 0.7410]; 	[0.6350, 0.0780, 0.1840]};
-  
-  for fig_i = 1:length(sigFrac)
-    figure('NumberTitle', 'off','units','normalized','outerposition',[0 0 params.plotSize]);
-    h = pie(sigFrac(1:fig_i), sigTitle(1:fig_i));
-    for patch_i = 1:fig_i
-      obj_i = ((patch_i - 1) * 2) + 1;
-      h(obj_i).FaceColor = patchColor{patch_i};
-    end
-    saveFigure([], num2str(fig_i), [], 0, 1, 0, {''})
-  end
-end
-
 meanPSTHParams.tTestTable = resultTable;
 
 % Remove repeated Runs
@@ -105,7 +78,7 @@ end
 %% Combine PSTH across all runs for a particular event.
 
 if plotSwitch.subEventPSTH %&& ~exist('meanPSTHStruct','var')
-  [stimPSTH, meanPSTHStruct] = meanPSTH(spikeDataBank, meanPSTHParams);
+  subEventPSTHStruct = subEventPSTH(spikeDataBank, subEventPSTHParams);
   saveEnv()
 end
 
@@ -487,8 +460,7 @@ if params.allRunStimPSTH
   sortType = {'Run of Day', 'Grid Hole', 'Recording Depth', 'Run Ind'};
   % {'Run of Day', 'Grid Hole', 'Recording Depth', 'Run Ind'};
   % Must be the same order as the final parts of stimPSTH
-  sortMat = cell(size(stimPSTH,1), size(stimPSTH,2), length(sortType));
-  sortLabel = cell(size(stimPSTH,1), size(stimPSTH,2), length(sortType));
+  [sortMat, sortLabel] = deal(cell(size(stimPSTH,1), size(stimPSTH,2), length(sortType)));
   
   % Generate the PSTH sorting indicies
   for stim_i = 1:size(stimPSTH,1)
@@ -746,6 +718,248 @@ if params.lineBroadCatPlot
   end
   
 end
+
+end
+
+function [subEventPSTHStruct] = subEventPSTH(spikeDataBank, params)
+% Function compiles all the PSTHes of subEvents and plots them.
+
+if params.normalize
+  normTag = ' - normalized';
+else
+  normTag = '';
+end
+
+if ~exist(params.outputDir, 'dir')
+  mkdir(params.outputDir)
+end
+
+% Identify Events, stimuli
+load(params.eventData);
+eventList = eventData.Properties.VariableNames;
+stimList = eventData.Properties.RowNames;
+
+% Remove runs with no events from spikeDataBank;
+stimEventList = ~cellfun(@(x) isempty(x), table2cell(eventData));
+subEventInd = logical(structfun(@(x) x.subEventSigStruct.noSubEvent, spikeDataBank));
+spikeDataBankFields = fields(spikeDataBank);
+fields2Remove = spikeDataBankFields(subEventInd);
+spikeDataBank = rmfield(spikeDataBank, fields2Remove);
+runList = fields(spikeDataBank);
+
+% Gather data across all the spikeDataBank Structure, generating a cell
+% array with the indicies 
+%eventDataArray{event_i}{group_i}{data_i}
+% event_i = eventList
+groupType = {'Unsorted', 'Unit', 'MUA'};
+dataType = {'PSTH', 'Null PSTH', 'pVal', 'Cohens D', 'Run of the Day', 'Grid Hole', 'Recording Depth', 'Run Index'};
+eventDataArray = cell(length(eventList), length(groupType), length(dataType));
+
+for run_i = 1:length(runList)
+  runData = spikeDataBank.(runList{run_i});
+  subEventSig = runData.subEventSigStruct;
+  subEventData = runData.psthBySubEvent(:,1);
+  subEventNull = runData.psthBySubEvent(:,2);
+  for event_i = 1:length(subEventSig.events)
+    eventInd = strcmp(subEventSig.events{event_i}, eventList);
+    for chan_i = 1:length(subEventData)
+      gridHole = {num2str(runData.gridHoles{chan_i})};
+      recordingDepth = runData.recDepth{chan_i};
+      for unit_i = 1:length(subEventData{chan_i})
+        % Grouping Index
+        if unit_i == 1
+          groupInd = 1;
+        elseif unit_i == length(subEventData{chan_i})
+          groupInd = 3;
+        else
+          groupInd = 2;
+        end
+        PSTHData = subEventData{chan_i}{unit_i}(event_i,:);
+        if sum(PSTHData) < 1
+          continue % Units which are empty
+        end
+        PSTHNull = subEventNull{chan_i}{unit_i}(event_i,:);
+        pVal = subEventSig.testResults{chan_i}{unit_i}{event_i};
+        cohensD = subEventSig.cohensD{chan_i}{unit_i}{event_i};
+        runOfDay = str2double(runData.runNum);
+        runLabel = runList(run_i);
+        
+        % Normalize with respect to baseline
+        if params.normalize
+          fixStart = params.fixBuffer;
+          fixEnd = -spikeDataBank.(runList{run_i}).start - params.fixBuffer;
+          fixActivity = spikeDataBank.(runList{run_i}).psthByImage{chan_i}{unit_i}(:,fixStart:fixEnd);          
+          fixActivity = reshape(fixActivity, [], 1);
+          
+          fixMean = mean(fixActivity);
+          fixSD = std(fixActivity);
+          
+          PSTHData = (PSTHData - fixMean)/fixSD;
+          PSTHNull = (PSTHNull - fixMean)/fixSD;
+        end
+        
+        %{'PSTH', 'Null PSTH', 'pVal', 'Cohens D', 'Run of Day', 'Grid Hole', 'Recording Depth', 'Run index'};
+        newEntry = [PSTHData PSTHNull pVal cohensD runOfDay {gridHole} recordingDepth {runLabel}];
+        
+        % Compile relevant data from run
+        for data_i = 1:length(dataType)
+          eventDataArray{eventInd, groupInd, data_i} = [eventDataArray{eventInd, groupInd, data_i}; newEntry{data_i}];
+        end
+      end
+    end
+  end
+end
+
+% groupType = {'Unsorted', 'Unit', 'MUA'};
+eventListPlot = strrep(eventList, '_', ' ');
+
+% Temp to account for lack of parameters in data
+psthParam.psthPre = 200;
+psthParam.psthImDur = 200;
+psthParam.psthPost = 0;
+
+% Plot all individual PSTHes available
+if params.allRunStimPSTH
+  % Make a PSTH of each stimulus across all its repetitions.
+  sortType = {'Run of the Day', 'Grid Hole', 'Recording Depth', 'Run Index'};
+  % {'Run of Day', 'Grid Hole', 'Recording Depth', 'Run Ind'};
+  % Must be the same order as the final parts of stimPSTH
+  [sortMat, sortLabel] = deal(cell(size(eventDataArray,1), size(eventDataArray,2), length(sortType)));
+
+  % Generate the PSTH sorting indicies
+  for event_i = 1:size(sortMat,1)
+    for group_i = 1:size(sortMat,2)
+      for sort_i = 1:length(sortType) % the sortings that need processing
+        
+        if sort_i == 1 || sort_i == 2
+          % Store indicies in 1st, labels in 2nd %Grid Holes --> Indicies
+          [tmpLabels , sortMat{event_i, group_i, sort_i}] = sort(eventDataArray{event_i, group_i,strcmp(dataType, sortType{sort_i})});
+          
+          % Generate Labeling index - these are the first of elements with
+          % this label, and the only ones we want to see on the y axis.
+          uniqueLabels = unique(tmpLabels);
+          labeledIndex = zeros(length(uniqueLabels),1);
+          for uni_i = 1:length(uniqueLabels)
+            if sort_i == 1
+              labeledIndex(uni_i) = find(tmpLabels == uniqueLabels(uni_i), 1);
+            else
+              labeledIndex(uni_i) = find(strcmp(tmpLabels, uniqueLabels(uni_i)),1);
+            end
+          end
+          
+        elseif sort_i == 3 %Recording Depth --> Indicies
+          tmpDepths = [eventDataArray{event_i, group_i,strcmp(dataType, sortType{sort_i})}];
+          [tmpLabels , sortMat{event_i, group_i, sort_i}] = sort(tmpDepths);
+          labeledIndex = 1:5:length(tmpLabels);
+          
+        elseif sort_i == 4
+          sortMat{event_i, group_i, sort_i} = [1:length(eventDataArray{event_i, group_i, strcmp(dataType, sortType{sort_i})})]';
+          tmpLabels = eventDataArray{event_i, group_i,strcmp(dataType, sortType{sort_i})};
+          labeledIndex = 1:5:length(tmpLabels);
+        end
+        
+        % Use the labeledIndex to generate the proper label array with 0's
+        % everywhere else.
+        if params.sparseLabels
+          finalLabels = cell(length(tmpLabels),1);
+          for tmp_i = 1:length(labeledIndex)
+            if sort_i == 4 || sort_i == 2
+              finalLabels{labeledIndex(tmp_i)} = tmpLabels{labeledIndex(tmp_i)};
+            else
+              finalLabels{labeledIndex(tmp_i)} = tmpLabels(labeledIndex(tmp_i));
+            end
+          end
+        else
+          finalLabels = tmpLabels;
+        end
+        
+        % Store vector into larger array for later rference
+        sortLabel{event_i, group_i, sort_i} = finalLabels;
+        
+      end
+    end
+  end
+  
+  % Iterate through PSTH, generating plots
+  for event_i = 1:size(eventDataArray,1)
+    for sort_i = 4%1:length(sortType)
+      for group_i = 2:size(eventDataArray,2)
+        figTitle = sprintf('%s - %s PSTHs, Sorted by %s, %s', eventListPlot{event_i}, groupType{group_i} ,sortType{sort_i}, normTag);
+        h = figure('NumberTitle', 'off', 'Name', figTitle,'units','normalized','outerposition',[0 0 params.plotSizeAllRunStimPSTH]);
+        sgtitle(figTitle)
+        
+        sortIndex = sortMat{event_i, group_i, sort_i};
+        
+        % Break up PSTHes with many lines into subplots.
+        TracesPerPlot = ceil(length(sortIndex)/3);
+        if TracesPerPlot < 20
+          subplot2Plot = 1;
+        elseif TracesPerPlot < 45
+          subplot2Plot = 2;
+        else
+          subplot2Plot = 3;
+        end
+        TracesPerPlot = ceil(length(sortIndex)/subplot2Plot);
+        
+        plotStarts = 1:TracesPerPlot:length(sortIndex);
+        plotEnds = [plotStarts(2:end)-1, length(sortIndex)];
+        
+        subplotAxes = gobjects(subplot2Plot,1);
+        cbHandle = gobjects(subplot2Plot,1);
+        for plot_i = 1:subplot2Plot
+          plotLabels = sortLabel{event_i, group_i, sort_i}(plotStarts(plot_i):plotEnds(plot_i));
+          plotData = eventDataArray{event_i,group_i,1}(plotStarts(plot_i):plotEnds(plot_i), :);
+          %sortIndex = sortMat{event_i, group_i, sort_i}(plotStarts(plot_i):plotEnds(plot_i));
+          psthAxes = subplot(1,subplot2Plot,plot_i);
+          [subplotAxes(plot_i), cbHandle(plot_i)] = plotPSTH(plotData, [], psthAxes, psthParam, 'color', [], plotLabels); %(sortIndex,:)
+          cbHandle(plot_i).Label.FontSize = 12;
+          if plot_i == subplot2Plot
+            if params.normalize == 1
+              cbHandle(plot_i).Label.String = 'Signal Change relative to Baseline (%)';
+            elseif params.normalize == 2
+              cbHandle(plot_i).Label.String = 'Z score relative to fixation';
+            end
+          else
+            delete(cbHandle(plot_i))
+          end
+          set(gca,'FontSize',10,'TickLength',[.01 .01],'LineWidth',.25);
+        end
+        linkprop(subplotAxes, 'CLim');
+        
+        saveFigure(params.outputDir, ['1.' figTitle], [], params.saveFig, params.exportFig, 0, {''})
+        %close(h)
+      end
+    end
+  end
+  
+end
+
+% Plot Event vs Null single traces
+for event_i = 1:length(eventListPlot)
+  tmp = sprintf('Sub Event PSTH for %s %s', eventListPlot{event_i}, normTag);
+  figure('NumberTitle', 'off', 'Name', tmp,'units','normalized','outerposition',[0 0 0.5 1]);
+  sgtitle(tmp)
+  for group_i = 1:length(groupType)
+    subplot(length(groupType), 1, group_i);
+    plotData = mean([eventDataArray{event_i, group_i, 1}]);
+    plotErr = std([eventDataArray{event_i, group_i, 1}]); % This will not go well. Probably need every individual raw trace.
+    
+    plotNull = mean([eventDataArray{event_i, group_i, 2}]);
+    plotErrNull = std([eventDataArray{event_i, group_i, 2}]); % This will not go well. Probably need every individual raw trace.
+    
+    traceData = [plotData; plotNull];
+    errData = [plotErr; plotErrNull];
+    
+    plotPSTH(traceData, errData, [], psthParam, 'line', groupType{group_i}, {'Event', 'Null'})
+  end
+end
+
+% When normalizing, something happens that reliably drives the null firing
+% rate to be negative. Not sure if this is what I'd expect. 
+
+% Need to do an average of just the significant activity, see if this
+% effects things. 
+
 
 end
 
