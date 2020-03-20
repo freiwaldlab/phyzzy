@@ -3,8 +3,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %behavior of processRun, runAnalysis
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '001';
-dateSubject = '20191002Mo';
+runNum = '003';
+dateSubject = '20180628Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -20,7 +20,7 @@ switch machine
   case 'Alienware_FA'
     ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data');
     stimulusLogVolume = ephysVolume;
-    outputVolume = slashSwap('D:\DataAnalysis\March2020_V2');
+    outputVolume = slashSwap('D:\DataAnalysis\March2020');
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code');
   case 'DataAnalysisPC'
@@ -63,8 +63,9 @@ figPos = [0 0 .6 0.7];      % Normalized units for figure position
 plotSwitch.subEventAnalysis = 0;            % plot traces comparing activity surrounding an event (defined in eventData, generated w/ eventDetectionApp), vs null.
 plotSwitch.imageEyeMap = 0;                 
 plotSwitch.eyeCorralogram = 0;              % Eye Gram
-plotSwitch.attendedObject = 1;              % Vectors to distinguish where subject is looking.
-plotSwitch.eyeStimOverlay = 0;              % Visualize eye traces on stimuli.
+plotSwitch.attendedObject = 1;              % Vectors to distinguish where subject is looking. Required for prefImRasterColorCoded.
+plotSwitch.eyeStimOverlay = 1;              % Visualize eye traces on stimuli.
+plotSwitch.saccadeDetect = 1;               % use ClusterFix to generate a vector characterizing eye movements (Fix later).
 plotSwitch.clusterOnEyePaths = 0;           % Resort spikes based on distinct eye paths, make "New events".
 plotSwitch.stimPSTHoverlay = 0;             % grabs stimuli and overlays PSTH on it.
 plotSwitch.imagePsth = 0;

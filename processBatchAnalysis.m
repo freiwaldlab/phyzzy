@@ -47,7 +47,7 @@ if ~isempty(files) && usePreprocessedSpikeData
   end
 else
   fprintf('spikeDataBank Not found, generating now... \n')
-  %Cycle through analyzedData.mat files, store and organize the relevant structures.
+  % Cycle through analyzedData.mat files, store and organize the relevant structures.
   preprocessedList = dir([analysisDirectory filesep '**' filesep 'preprocessedData.mat']);
   analyzedList = dir([analysisDirectory filesep '**' filesep 'analyzedData.mat']);
   assert(length(preprocessedList) == length(analyzedList), 'Lists arent same length, confirm every preprocessed file has an analyzed file')

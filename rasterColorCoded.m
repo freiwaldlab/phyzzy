@@ -5,8 +5,8 @@ function [ ] = rasterColorCoded(figHandle, spikesByItem, pictureLabels, psthPara
 %    Note: if no spikes on any trial of an image, that image will not appear in legend
 
 %Color Spikes vs Color Shaded Region
-colorType = 2; %1 = Spikes, 2 = Shaded Regions
-
+colorType = 2;    % 1 = Spikes, 2 = Shaded Regions
+lineSpikes = 1;   % 1 = spikes as Lines, 0 = spikes as img.
 %Set the figure handle as the current handle
 set(0, 'CurrentFigure', figHandle)
 %Attach resizing function
@@ -68,10 +68,15 @@ end
 %Plot the Shaded area, if appropriate
 if colorType == 2
   attObjData = cat(1, attendedObjData.tracePlotData{1:end});
-  im = image(attObjData);
-  imOffset = 20;
+  if length(size(attObjData)) == 3
+    im = image(attObjData);
+  else
+    im = imagesc(attObjData);
+  end
+  imOffset = 0;
   im.XData = [0+imOffset psthParams.psthImDur-imOffset];
   im.AlphaData = 0.5;
+%   im.YData = [im.YData(1)-0.5 im.YData(2)-0.5];
   im.YData = [im.YData(1)-0.5 im.YData(2)-0.5];
   figHandle.UserData.shadedAreaHandle = im;
 end
@@ -81,31 +86,60 @@ yLevel = -0.5; % accumulated trial index, sets height in raster
 legendHandles = [];
 % spikeHandles = [];
 trialLabels = [];
-
-for item_i = 1:length(spikesByItem)
-  yLevelStart = yLevel;
-  trialLabels = [trialLabels 1:length(spikesByItem{item_i}{channel_i}{unit_i})];
-  for trial_i = 1:length(spikesByItem{item_i}{channel_i}{unit_i})
-    yLevel = yLevel + 1;
-    trialSpikes = spikesByItem{item_i}{channel_i}{unit_i}(trial_i);
-    for spike_i = 1:length(trialSpikes.times)
-      if colorType == 1
-        trialColors = spikeColor{item_i}{trial_i}.color;
-        plot([trialSpikes.times(spike_i) trialSpikes.times(spike_i)],[yLevel-0.4 yLevel+0.4],'color', trialColors(spike_i,:));
-      else
-        plot([trialSpikes.times(spike_i) trialSpikes.times(spike_i)],[yLevel-0.4 yLevel+0.4],'color', 'black');
+if lineSpikes
+  % Traditional representation of spikes as lines.
+  for item_i = 1:length(spikesByItem)
+    yLevelStart = yLevel;
+    trialLabels = [trialLabels 1:length(spikesByItem{item_i}{channel_i}{unit_i})];
+    for trial_i = 1:length(spikesByItem{item_i}{channel_i}{unit_i})
+      yLevel = yLevel + 1;
+      trialSpikes = spikesByItem{item_i}{channel_i}{unit_i}(trial_i);
+      for spike_i = 1:length(trialSpikes.times)
+        if colorType == 1
+          trialColors = spikeColor{item_i}{trial_i}.color;
+          plot([trialSpikes.times(spike_i) trialSpikes.times(spike_i)],[yLevel-0.4 yLevel+0.4],'color', trialColors(spike_i,:));
+        else
+          plot([trialSpikes.times(spike_i) trialSpikes.times(spike_i)],[yLevel-0.4 yLevel+0.4],'color', 'black');
+        end
       end
     end
+    %Plot Stim start, stim end, and Bottom dividing bar
+    h = plot([0 0],[yLevelStart+0.5 yLevel+0.5],'color', 'black', 'LineWidth', 2); % Stimulus Onset
+    plot([imDur imDur],[yLevelStart+0.5 yLevel+0.5],'color', 'black', 'LineWidth', 2); % Stimulus Offset
+    if item_i ~= length(spikesByItem)
+      plot([xlim()],[yLevel+0.5 yLevel+0.5],'color','black', 'LineWidth', 2, 'LineStyle', '--'); %Stimuli dividing line
+    end
+    legendHandles = vertcat(legendHandles,h);
   end
-  %Plot Stim start, stim end, and Bottom dividing bar
-  h = plot([0 0],[yLevelStart+0.5 yLevel+0.5],'color', 'black', 'LineWidth', 2); % Stimulus Onset
-  plot([imDur imDur],[yLevelStart+0.5 yLevel+0.5],'color', 'black', 'LineWidth', 2); % Stimulus Offset
-  if item_i ~= length(spikesByItem)
-    plot([xlim()],[yLevel+0.5 yLevel+0.5],'color','black', 'LineWidth', 2, 'LineStyle', '--'); %Stimuli dividing line
+else
+  % Spikes represented as single image. - Seems to not work atm.
+  spikeImg = [];
+  traceTime = preAlign + postAlign + imDur;
+  spikeImgIndOffset = preAlign * 10;
+  spiDi = 1;
+  yLevel = -0.5; % accumulated trial index, sets height in raster
+  for item_i = 1:length(spikesByItem)
+    trialCount = length(spikesByItem{item_i}{channel_i}{unit_i});
+    tmp = ones(trialCount, traceTime*10, 3);  %Grid with Trial rows and 1/10th ms columns
+    yLevelStart = yLevel;
+    for trial_i = 1:trialCount
+      yLevel = yLevel + 1;
+      trialSpikes = spikesByItem{item_i}{channel_i}{unit_i}(trial_i);
+      for spike_i = 1:length(trialSpikes.times)
+        spikeImgInd = round(trialSpikes.times(spike_i) * 10) + spikeImgIndOffset;
+        if spikeImgInd > 0 && spikeImgInd < (traceTime * 10)
+          tmp(trial_i, spikeImgInd-spiDi:spikeImgInd+spiDi, :) = deal(0);
+        end
+      end
+    end
+    spikeImg = [spikeImg; tmp];
   end
-  legendHandles = vertcat(legendHandles,h);
-end
+  spikeImgH = image(spikeImg);
+  spikeImgH.AlphaData = ~squeeze(spikeImg(:,:,1));
+  spikeImgH.XData = [-preAlign postAlign + imDur];
+  ylim([0,size(spikeImg,1)+0.5]);
 
+end
 title(figHandle.Name)
 xlimits = xlim();
 ylim([0,yLevel+0.5]);
@@ -122,7 +156,7 @@ set(gca,'TickLength',[0 0]);
 yticks((1:length(trialLabelsTmp))-0.5)
 xlabel('Time after stimulus onset (ms)');
 ylabel('single trials');
-legend(legendHandles, pictureLabels, 'Location','northeastoutside');
+legend(legendHandles, pictureLabels, 'Location', 'northeastoutside');
 hold off;
 
 %Create a legend which gives the color code for the shaded region or the

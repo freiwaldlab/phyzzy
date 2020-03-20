@@ -10,6 +10,8 @@ switch machine
     outputDir = [analysisDirectory '/batchAnalysis'];
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
+    eventDataPath = fullfile(stimDir, 'eventData.mat');
+    frameMotionDataPath = fullfile(stimDir, 'frameMotion_complete.mat');
 end
 
 analysisLabel = 'Basic';
@@ -25,7 +27,7 @@ verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 %% Switches
 calcSwitch.excludeRepeats = 0;
 plotSwitch.stimPresCount = 0;         % Figures showing presentation counts across all runs, in development.
-plotSwitch.meanPSTH = 0;              % figure showing mean PSTH across all units, MUA, and Unsorted.
+plotSwitch.meanPSTH = 1;              % figure showing mean PSTH across all units, MUA, and Unsorted.
 plotSwitch.subEventPSTH = 1;          % Analysis of subEvents taking place during stimuli.
 plotSwitch.frameFiringRates = 0;      % Figures showing raw, max, mean rates per object depending on viewing during frame.
 plotSwitch.novelty = 0;               % Seeing whether 10th percentile values in previous analyses line up with 'novel' stimuli
@@ -45,6 +47,8 @@ cellCountParams.recordingLogxls = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\Recordi
 
 meanPSTHParams.outputDir = fullfile(outputDir,'meanPSTH');
 meanPSTHParams.stimParamsFilename = stimParamsFilename;
+meanPSTHParams.eventData = eventDataPath;
+meanPSTHParams.frameMotionDataPath = frameMotionDataPath;
 meanPSTHParams.plotHist = 0;
 meanPSTHParams.rateThreshold = 0;               % Include only activity with a mean rate of X Hz. 0 for off, over 0 for threshold.
 meanPSTHParams.plotTopStim = 1;                 % Only plot stimuli which have been present on at least a certain number of runs.
@@ -83,9 +87,11 @@ meanPSTHParams.removeRewardEpoch = 1;           % Removes the reward period acti
 meanPSTHParams.plotMeanLine = 0;                % For 'All Chasing' plots, include a additional axis as a line plot.
 meanPSTHParams.includeMeanTrace = 1;            % For 'All Chasing' plots, include the mean of all traces at the bottom of the PSTH.
 meanPSTHParams.traceCountLabel = 0;             % labels on the catagory specific plots include 'n = X' to highlight trace value.
-meanPSTHParams.catPSTH = 1;                     %  Catagory PSTH Plot - 'All Chasing Stimuli, mean PSTH'
-meanPSTHParams.allStimPSTH = 1;                 % All Stimuli means in the same plot.
+
+meanPSTHParams.catPSTH = 0;                     %  Catagory PSTH Plot - 'All Chasing Stimuli, mean PSTH'
+meanPSTHParams.allStimPSTH = 0;                 % All Stimuli means in the same plot.
 meanPSTHParams.allRunStimPSTH = 1;              % Stimuli Plot - 'All chasing 1 PSTHs, sorted by...'
+
 meanPSTHParams.lineCatPlot = 1;                 % Line plot with Line per Catagory
 meanPSTHParams.lineBroadCatPlot = 1;            % Means Line plot across broad catagorizations (like Social vs non Social)
 meanPSTHParams.exportFig = 0;                   % Turns on the 'exportFig' feature of saveFigure, which generates .pngs.
@@ -96,7 +102,7 @@ meanPSTHParams.plotSizeLineCatPlot = [.5 .6];
 meanPSTHParams.plotSizeLineBroadCatPlot = [.5 .6];           
 
 subEventPSTHParams.outputDir = fullfile(outputDir,'subEventPSTH');
-subEventPSTHParams.eventData = fullfile(stimDir,'eventData.mat');
+subEventPSTHParams.eventData = eventDataPath;
 subEventPSTHParams.stimParamsFilename = stimParamsFilename;
 subEventPSTHParams.normalize = 1;                                 % Grab activity from same unit, Z score fixation activity with respect to fixation period activity.
 subEventPSTHParams.fixBuffer = 150;                                % normalization acts on the fixation period. Some effects of the fix dot appearance or stimulus onset may be driving neurons away from the true baseline. this number is the millisecond after true fix start, before fix end.

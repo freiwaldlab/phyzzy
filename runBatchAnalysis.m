@@ -79,7 +79,6 @@ end
 
 if plotSwitch.subEventPSTH %&& ~exist('meanPSTHStruct','var')
   subEventPSTHStruct = subEventPSTH(spikeDataBank, subEventPSTHParams);
-  saveEnv()
 end
 
 %% Gather information on frame rates
@@ -171,11 +170,17 @@ function [stimPSTH, meanPSTHStruct] = meanPSTH(spikeDataBank, params)
 % Inputs include spikeDataBank and list of parameters.
 disp('Starting mean PSTH Analysis...');
 exportFig = params.exportFig;
+eventColors = 'kbrg';
 
 % Rebuild variables
 % extract the eventIDs field, generate a cell array of unique stimuli
 allStimuliVec = struct2cell(structfun(@(x) x.eventIDs, spikeDataBank,'UniformOutput', 0));
 allStimuliVec = unique(vertcat(allStimuliVec{:}));
+load(params.eventData); % Puts eventData into the workspace.
+eventData = eventData(allStimuliVec, :);
+eventList = eventData.Properties.VariableNames;
+load(params.frameMotionDataPath);
+frameMotionDataNames = {frameMotionData.stimVid};
 
 % Generate grid for indexing into individual runs and extracting relevant
 % PSTHes.
@@ -319,6 +324,7 @@ end
 
 % Step 2 - Plots
 allStimuliNames = cellfun(@(x) extractBetween(x, 1, length(x)-4), allStimuliVec);
+allStimuliNames = strrep(allStimuliNames, '_', ' ');
 
 stimPresMat = cellfun(@(x) size(x,1),stimPSTH(:,:,end));
 meanPSTHStruct.stimPresMat = stimPresMat;
@@ -455,6 +461,7 @@ if params.catPSTH
 end
 
 % Plot 3 - Stimuli Plot - 'All chasing 1 PSTHs, sorted by...'
+
 if params.allRunStimPSTH
   % Make a PSTH of each stimulus across all its repetitions.
   sortType = {'Run of Day', 'Grid Hole', 'Recording Depth', 'Run Ind'};
@@ -511,6 +518,9 @@ if params.allRunStimPSTH
   
   % Iterate through PSTH, generating plots
   for stim_i = 1:length(stimPSTH)
+    % Get the relevant frameMotion/eventData
+    eventDataStim = eventData(allStimuliVec{stim_i},:);
+    stimTimePerFrame = frameMotionData(strcmp(allStimuliVec{stim_i}, frameMotionDataNames)).timePerFrame;
     for sort_i = 4%1:length(sortType)
       for group_i = 2:size(stimPSTH,2)
         figTitle = sprintf('%s - %s PSTHs, Sorted by %s, %s', allStimuliNames{stim_i}, groupingType{group_i} ,sortType{sort_i}, normTag);
@@ -541,8 +551,34 @@ if params.allRunStimPSTH
           %sortIndex = sortMat{stim_i, group_i, sort_i}(plotStarts(plot_i):plotEnds(plot_i));
           psthAxes = subplot(1,subplot2Plot,plot_i);
           [subplotAxes(plot_i), cbHandle(plot_i)] = plotPSTH(plotData, [], psthAxes, params, 'color', [], plotLabels); %(sortIndex,:)
-          cbHandle(plot_i).Label.FontSize = 12;
+          cbHandle(plot_i).Label.FontSize = 10;
+          
+          % Add eventData line if applicable
+          [eventsPres, legendObjs] = deal([]);
+          
+          for event_i = 1:length(eventList)
+            if ~isempty(eventDataStim.(eventList{event_i}){1})
+              eventsPres = [eventsPres; eventList(event_i)];
+              hold on
+              singleEventDataStim = eventDataStim.(eventList{event_i}){1};
+              for ev_i = 1:size(singleEventDataStim, 1)
+                startX = singleEventDataStim.startFrame(ev_i) * stimTimePerFrame;
+                endX = singleEventDataStim.endFrame(ev_i) * stimTimePerFrame;
+                lineLeg = plot([startX startX], ylim(), 'Color', eventColors(event_i), 'LineWidth', 2);
+                plot([endX endX], ylim(), 'Color', eventColors(event_i), 'LineWidth', 2);
+                if ev_i == 1
+                  legendObjs = [legendObjs; lineLeg];
+                end
+              end
+            end
+          end
+          
           if plot_i == subplot2Plot
+            % Add Legend for event lines, if present
+            if ~isempty(legendObjs)
+              legend(legendObjs, eventsPres, 'location', 'northeastoutside', 'Fontsize', 8);
+            end
+            % Label the Y
             if params.normalize == 1
               cbHandle(plot_i).Label.String = 'Signal Change relative to Baseline (%)';
             elseif params.normalize == 2
@@ -551,6 +587,7 @@ if params.allRunStimPSTH
           else
             delete(cbHandle(plot_i))
           end
+          
           set(gca,'FontSize',10,'TickLength',[.01 .01],'LineWidth',.25);
         end
         linkprop(subplotAxes, 'CLim');
@@ -959,7 +996,7 @@ end
 
 % Need to do an average of just the significant activity, see if this
 % effects things. 
-
+subEventPSTHStruct = struct();
 
 end
 

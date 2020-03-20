@@ -47,10 +47,12 @@ for ii = 1:length(stimList)
     case '1';            stimLabels = horzcat(stimLabels, 'interaction');
     case '3';            stimLabels = horzcat(stimLabels, 'idle');
   end
+  if strcmp(code(1:3), '110')
+    stimLabels = horzcat(stimLabels ,'goalDirected');
+  end
   % Make sure to not catch controls for animated stimuli
   if (((length(stimParts) > 2) && ~strncmp(stimParts(3),'C',1)) || (length(stimParts) == 2)) && ~strcmp(stimParts{1}, 'scramble')
     switch code(3)
-      case '0';            stimLabels = horzcat(stimLabels ,'goalDirected');
       case '1';            stimLabels = horzcat(stimLabels ,'chasing', 'socialInteraction');
       case '2';            stimLabels = horzcat(stimLabels ,'fighting', 'socialInteraction');
       case '3';            stimLabels = horzcat(stimLabels ,'mounting', 'socialInteraction');
