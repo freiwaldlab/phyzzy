@@ -1,4 +1,4 @@
-function [fixationstats] = ClusterFix(eyedat,samprate)
+function [fixationstats, eyedatSmooth] = ClusterFix(eyedat,samprate)
 % Copyright 2013-2017 Seth Koenig (skoenig3@uw.edu) & Elizabeth Buffalo,
 % all rights reserved.
 %
@@ -56,6 +56,7 @@ flt = fir2(fltord,[0,lowpasfrq./nyqfrq,lowpasfrq./nyqfrq,1],[1,1,0,0]); %30 Hz l
 
 buffer = 100/samprate/1000; %100 ms buffer for filtering
 fixationstats = cell(1,length(eyedat));
+eyedatSmooth = initNestedCellArray(eyedat, 'zeros', [size(eyedat{1},1), size(eyedat{1},2)]);
 for cndlop = 1:length(eyedat)
     if size(eyedat{cndlop},2) > 500/samprate/1000
         %---Filtering Extract Paramters from Eye Traces---%
@@ -71,6 +72,11 @@ for cndlop = 1:length(eyedat)
         yss = yss(101:end-100); %remove buffer after filtering
         x = x(101:end-100); %remove buffer after filtering
         y = y(101:end-100); %remove buffer after filtering
+        
+        % Return smoothed eye signal
+        eyedatSmooth{cndlop}(1,:) = xss(1:end-1); % Final signal has 1 more sample than original
+        eyedatSmooth{cndlop}(2,:) = yss(1:end-1); % Final signal has 1 more sample than original
+        
         velx = diff(xss);
         vely = diff(yss);
         vel = sqrt(velx.^2+vely.^2); %velocity

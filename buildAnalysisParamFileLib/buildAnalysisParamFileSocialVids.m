@@ -12,17 +12,23 @@ assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal 
 machine = machine(~isspace(machine));
 
 switch machine
-  case {'turing.rockefeller.edu','hopper.rockefeller.edu'}
-    ephysVolume = '/Freiwald/lab_files/raw_data/EPHYS/Farid_ESINRec/Data2018';
+  case 'homeDesktopWork'
+    ephysVolume = slashSwap('D:\OneDrive\Lab\ESIN_Ephys_Files\Data');
     stimulusLogVolume = ephysVolume;
-    outputVolume = '/Freiwald/faboharb/analysis/Analyzed';
-    stimParamsFilename = '/Freiwald/faboharb/analysis/phyzzy/buildStimParamFiles/StimParamFileSocialVids_Full.mat';   %#ok
+    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
+    stimParamsFilename = slashSwap('D:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
+    stimDir = slashSwap('D:\OneDrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
+    stimParamsFilename = 'D:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat';   %#ok
   case 'Alienware_FA'
     ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data');
     stimulusLogVolume = ephysVolume;
     outputVolume = slashSwap('D:\DataAnalysis\March2020');
     stimParamsFilename = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Stimuli and Code');
+  case {'turing.rockefeller.edu','hopper.rockefeller.edu'}
+    ephysVolume = '/Freiwald/lab_files/raw_data/EPHYS/Farid_ESINRec/Data2018';
+    stimulusLogVolume = ephysVolume;
+    outputVolume = '/Freiwald/faboharb/analysis/Analyzed';
   case 'DataAnalysisPC'
     ephysVolume = slashSwap('\\BlackrockPC\nsp\Data');
     stimulusLogVolume = slashSwap('\\CONTROLLERPC\Monkeylogic Experiments');
@@ -34,12 +40,6 @@ switch machine
     stimulusLogVolume = ephysVolume;
     outputVolume = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
     stimParamsFilename = 'C:/Users/aboha/Onedrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_V2.mat';   %#ok
-  case 'HomeDesktop'
-    ephysVolume = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Data');
-    stimulusLogVolume = ephysVolume;
-    outputVolume = 'E:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
-    stimParamsFilename = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
-    stimDir = slashSwap('E:\OneDrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
   case 'SurfaceBook2FA'
     ephysVolume = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/Data 2018';
     stimulusLogVolume = ephysVolume;
@@ -156,7 +156,7 @@ ephysParams.channelNames = {'Ch1'};
 % ephysParams.channelNames = {'8B'};
 ephysParams.lfpChannelScaleBy = [8191/32764, 8191/32764]; %converts raw values to microvolts
 ephysParams.offlineSorted = 0;        % Checks for a '*.xls' Structure in the folder, with resorted spikes.
-ephysParams.waveClus = 1;             % Does automated offline sorting using wave_clus.
+ephysParams.waveClus = 0;             % Does automated offline sorting using wave_clus.
 ephysParams.paramHandle = @set_parameters; %Function which produces param struct for wave_clus. in wave_clus folder.
 ephysParams.waveClusReclass = 1;      % Reclassify clusters (as defined by mean waveform proximity to threshold) to MUA.
 ephysParams.waveClusMUAThreshold = 1.25; %scaling for reclassification of clusters as MUA. 1 = 0 scaling = no reclassification of clusters.
@@ -202,7 +202,10 @@ analogInParams.samPerMS = 1; %THIS IS AFTER DECIMATION, and applies to analogIn 
 % see http://www.mathworks.com/help/signal/examples/filter-design-gallery.html
 butter200Hz_v1 = designfilt('lowpassiir', 'PassbandFrequency', 120, 'StopbandFrequency', 480, 'PassbandRipple', 1,...
   'StopbandAttenuation', 60, 'SampleRate', 1000, 'MatchExactly', 'passband');  %this returns a 3rd order iir filter
-analogInParams.filters = {0, 0, 0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
+nyqfrq = 1000 ./ 2;
+%lowPass30Hz = fir2(60,[0,30./nyqfrq,30./nyqfrq,1],[1,1,0,0]); %60th order, 30 Hz low pass filter
+lowPass30Hz = designfilt('lowpassfir', 'FilterOrder', 3, 'PassbandFrequency', 30, 'StopbandFrequency', 31, 'SampleRate', 1000);
+analogInParams.filters = {0, 0, 0}; %{lowPass30Hz, lowPass30Hz, 0};%{butter200Hz_v1;butter200Hz_v1;butter200Hz_v1}; %filter channel i if filters{i} is digital filter or 1x2 numeric array
 analogInParams.plotFilterResult = 1;
 
 photodiodeParams.needStrobe = 1;
@@ -339,6 +342,12 @@ psthParams.sortOrder = {'socialInteraction';'goalDirected';'idle';'objects';'sce
 psthParams.psthColormapFilename = 'cocode2.mat'; % a file with one variable, a colormap called 'map'
 load(psthParams.psthColormapFilename);
 psthParams.colormap = map;
+
+eyeStatsParams.psthPre = psthParams.psthPre;
+eyeStatsParams.psthImDur = psthParams.psthImDur;
+eyeStatsParams.stimDir = stimDir;
+eyeStatsParams.lfpPaddedBy = tfParams.movingWin(1)/2;
+eyeStatsParams.preSmoothedSwitch = any(cellfun(@(x) isa(x, 'digitalFilter'), analogInParams.filters(1:2))); % Determines whether to skip the filtering step within ClusterFix. Careful with changing these filters - ClusterFix is written to work with the 30 Hz lowpass.
 
 genStatsParams.ANOVAParams.target = 'socialInteraction';    % When performing a one way ANOVA, the label from groups which is used. the rest are 'non-' label.
 
