@@ -1,11 +1,11 @@
-function [ ] = rasterColorCoded(figHandle, spikesByItem, pictureLabels, psthParams, ISI, channel_i, unit_i, attendedObjData)
+function [ ] = rasterColorCoded(figHandle, spikesByItem, pictureLabels, psthParams, ISI, channel_i, unit_i, attendedObjData, saccadeByStim, colorSwitch)
 %RASTER makes a raster plot in the current figure of the specified unit and
 %channel data. Uses information from the attendedObjData structure to color
 %code the spikes based on what object the subject was looking at. 
 %    Note: if no spikes on any trial of an image, that image will not appear in legend
+% colorSwitch (in AnalysisParam): 1 = Spikes, 2 = Shaded Regions, 3 = Shaded region for Saccades
 
-%Color Spikes vs Color Shaded Region
-colorType = 2;    % 1 = Spikes, 2 = Shaded Regions
+% Color Spikes vs Color Shaded Region
 lineSpikes = 1;   % 1 = spikes as Lines, 0 = spikes as img.
 %Set the figure handle as the current handle
 set(0, 'CurrentFigure', figHandle)
@@ -38,7 +38,7 @@ attendedObjData.tracePlotData = attendedObjData.tracePlotData(attendObjInd);
 uniqueColorTrials = zeros(length(attendedObjData.colorCode),1);
 uniqueColorInds = zeros(length(attendedObjData.colorCode),3);
 
-if colorType == 1
+if colorSwitch == 1
   %Create the color index for all the spikes
   for item_i = 1:length(spikesByItem)
     for trial_i = 1:length(spikesByItem{item_i}{channel_i}{unit_i})
@@ -66,19 +66,21 @@ if colorType == 1
 end
 
 %Plot the Shaded area, if appropriate
-if colorType == 2
+if colorSwitch == 2
   attObjData = cat(1, attendedObjData.tracePlotData{1:end});
-  if length(size(attObjData)) == 3
-    im = image(attObjData);
-  else
-    im = imagesc(attObjData);
-  end
+  im = image(attObjData);
   imOffset = 0;
   im.XData = [0+imOffset psthParams.psthImDur-imOffset];
   im.AlphaData = 0.5;
-%   im.YData = [im.YData(1)-0.5 im.YData(2)-0.5];
   im.YData = [im.YData(1)-0.5 im.YData(2)-0.5];
   figHandle.UserData.shadedAreaHandle = im;
+elseif colorSwitch == 3
+    saccadeData = vertcat(saccadeByStim{attendObjInd});
+    im = imagesc(saccadeData);
+    im.XData = [-preAlign,imDur+postAlign];
+    im.YData = [im.YData(1)-0.5 im.YData(2)-0.5];
+    im.AlphaData = 0.5;
+    figHandle.UserData.shadedAreaHandle = im;
 end
 
 %Plot spikes
@@ -95,7 +97,7 @@ if lineSpikes
       yLevel = yLevel + 1;
       trialSpikes = spikesByItem{item_i}{channel_i}{unit_i}(trial_i);
       for spike_i = 1:length(trialSpikes.times)
-        if colorType == 1
+        if colorSwitch == 1
           trialColors = spikeColor{item_i}{trial_i}.color;
           plot([trialSpikes.times(spike_i) trialSpikes.times(spike_i)],[yLevel-0.4 yLevel+0.4],'color', trialColors(spike_i,:));
         else

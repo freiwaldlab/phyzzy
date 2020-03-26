@@ -63,9 +63,9 @@ figPos = [0 0 .6 0.7];      % Normalized units for figure position
 plotSwitch.subEventAnalysis = 0;            % plot traces comparing activity surrounding an event (defined in eventData, generated w/ eventDetectionApp), vs null.
 plotSwitch.imageEyeMap = 0;                 
 plotSwitch.eyeCorralogram = 0;              % Eye Gram
-plotSwitch.attendedObject = 1;              % Vectors to distinguish where subject is looking. Required for prefImRasterColorCoded.
-plotSwitch.eyeStimOverlay = 1;              % Visualize eye traces on stimuli.
 plotSwitch.saccadeDetect = 1;               % use ClusterFix to generate a vector characterizing eye movements (Fix later).
+plotSwitch.attendedObject = 1;              % Vectors to distinguish where subject is looking. Required for prefImRasterColorCoded.
+plotSwitch.eyeStimOverlay = 0;              % Visualize eye traces on stimuli.
 plotSwitch.clusterOnEyePaths = 0;           % Resort spikes based on distinct eye paths, make "New events".
 plotSwitch.stimPSTHoverlay = 0;             % grabs stimuli and overlays PSTH on it.
 plotSwitch.imagePsth = 0;
@@ -347,7 +347,6 @@ eyeStatsParams.psthPre = psthParams.psthPre;
 eyeStatsParams.psthImDur = psthParams.psthImDur;
 eyeStatsParams.stimDir = stimDir;
 eyeStatsParams.lfpPaddedBy = tfParams.movingWin(1)/2;
-eyeStatsParams.preSmoothedSwitch = any(cellfun(@(x) isa(x, 'digitalFilter'), analogInParams.filters(1:2))); % Determines whether to skip the filtering step within ClusterFix. Careful with changing these filters - ClusterFix is written to work with the 30 Hz lowpass.
 
 genStatsParams.ANOVAParams.target = 'socialInteraction';    % When performing a one way ANOVA, the label from groups which is used. the rest are 'non-' label.
 
