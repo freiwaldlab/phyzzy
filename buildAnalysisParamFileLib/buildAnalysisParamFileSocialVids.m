@@ -3,8 +3,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %behavior of processRun, runAnalysis
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '003';
-dateSubject = '20180628Mo';
+runNum = '002';
+dateSubject = '20180710Mo';
 
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
@@ -72,7 +72,7 @@ plotSwitch.imagePsth = 0;
 plotSwitch.categoryPsth = 0;
 plotSwitch.stimCatANOVA = 1;
 plotSwitch.prefImRaster = 0;                % Raster, Not color coded.
-plotSwitch.prefImRasterColorCoded = 2;      % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background.
+plotSwitch.prefImRasterColorCoded = 3;      % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background, 3 is Saccade Image.
 plotSwitch.topStimToPlot = 5;               % Determines number of stimuli for which rasters are plotted.
 plotSwitch.prefImRasterEvokedOverlay = 0;   % Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 1;

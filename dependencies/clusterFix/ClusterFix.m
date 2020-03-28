@@ -50,13 +50,15 @@ end
 variables = {'Dist','Vel','Accel','Angular Velocity'}; %parameters to be extracted
 
 fltord = 60;
-lowpasfrq = 30;
+lowpasfrq = 25;
 nyqfrq = 1000 ./ 2;
-flt = fir2(fltord,[0,lowpasfrq./nyqfrq,lowpasfrq./nyqfrq,1],[1,1,0,0]); %30 Hz low pass filter
+fltIn = fir2(fltord,[0,lowpasfrq./nyqfrq,lowpasfrq./nyqfrq,1],[1,1,0,0]); %25 Hz low pass filter
+fltOut = fir2(fltord,[0,lowpasfrq./nyqfrq,lowpasfrq./nyqfrq,1],[1,1,0,0]); %30 Hz low pass filter
 
 buffer = 100/samprate/1000; %100 ms buffer for filtering
 fixationstats = cell(1,length(eyedat));
 eyedatSmooth = initNestedCellArray(eyedat, 'zeros', [size(eyedat{1},1), size(eyedat{1},2)]);
+
 for cndlop = 1:length(eyedat)
     if size(eyedat{cndlop},2) > 500/samprate/1000
         %---Filtering Extract Paramters from Eye Traces---%
@@ -66,16 +68,20 @@ for cndlop = 1:length(eyedat)
         y = [y(buffer:-1:1) y y(end:-1:end-buffer)];   %add buffer for filtering
         x = resample(x,samprate*1000,1);%up sample to 1000 Hz
         y = resample(y,samprate*1000,1);%up sample to 1000 Hz
-        xss = filtfilt(flt,1,x);
-        yss = filtfilt(flt,1,y);
+        xss = filtfilt(fltIn,1,x);
+        yss = filtfilt(fltIn,1,y);
+        xss2 = filtfilt(fltOut,1,xss);
+        yss2 = filtfilt(fltOut,1,yss);
         xss = xss(101:end-100); %remove buffer after filtering
         yss = yss(101:end-100); %remove buffer after filtering
+        xss2 = xss2(101:end-100); %remove buffer after filtering
+        yss2 = yss2(101:end-100); %remove buffer after filtering
         x = x(101:end-100); %remove buffer after filtering
         y = y(101:end-100); %remove buffer after filtering
         
         % Return smoothed eye signal
-        eyedatSmooth{cndlop}(1,:) = xss(1:end-1); % Final signal has 1 more sample than original
-        eyedatSmooth{cndlop}(2,:) = yss(1:end-1); % Final signal has 1 more sample than original
+        eyedatSmooth{cndlop}(1,:) = xss2(1:end-1); % Final signal has 1 more sample than original
+        eyedatSmooth{cndlop}(2,:) = yss2(1:end-1); % Final signal has 1 more sample than original
         
         velx = diff(xss);
         vely = diff(yss);
@@ -85,9 +91,10 @@ for cndlop = 1:length(eyedat)
         vel = vel(1:end-1);
         rot = zeros(1,length(xss)-2); %angular velocity
         dist = zeros(1,length(xss)-2); %distance
+        
         for a = 1:length(xss)-2
             rot(a) = abs(angle(a)-angle(a+1));
-            dist(a) = sqrt((xss(a)-xss(a+2)).^2 + (yss(a)-yss(a+2)).^2);
+            dist(a) = sqrt((xss(a)-xss(a+2)).^2 + (yss(a)-yss(a+2)).^2); 
         end
         rot(rot > 180) = rot(rot > 180)-180;
         rot = 360-rot; %want angular velocity to be small so fixation values are all small
@@ -102,10 +109,11 @@ for cndlop = 1:length(eyedat)
         
         %---Global Clustering---%
         sil = zeros(1,5); %determines the number of clusters by comparing the ratio
+        
         %of intercluster and intracluster distances, faster mod of silhouette
         for numclusts = 2:5
             %can save a little bit of computation by only using 3/4 parameters (-distance) and 1/10 of data points
-            T = kmeans(points(1:10:end,2:4),numclusts,'replicate',5); 
+            T = kmeans(points(1:10:end,2:4),numclusts,'replicate',5);
             [silh] = InterVSIntraDist(points(1:10:end,2:4),T);
             sil(numclusts) = mean(silh);
         end
@@ -115,9 +123,9 @@ for cndlop = 1:length(eyedat)
         meanvalues = zeros(max(T),size(points,2));
         stdvalues = zeros(max(T),size(points,2));
         for TIND = 1:max(T)
-            tc = find(T == TIND);
-            meanvalues(TIND,:) = mean(points(tc,:));
-            stdvalues(TIND,:) = std(points(tc,:));
+          tc = find(T == TIND);
+          meanvalues(TIND,:) = mean(points(tc,:));
+          stdvalues(TIND,:) = std(points(tc,:));
         end
         
         % determines fixation clusters by overlapping distributions in velocity
@@ -137,7 +145,10 @@ for cndlop = 1:length(eyedat)
         [fixationtimes] = BehavioralIndex(fixationindexes);
         fixationtimes(:,(diff(fixationtimes,1) < 25)) = []; %25 ms duration threshold
         
-        %---Local Re-Clusteirng---%
+        %fprintf('sil = %s \n', num2str(sil)) %DB
+        
+        
+        %---Local Re-Clustering---%
         notfixations = [];
         for ii = 1:size(fixationtimes,2)
             %select points left and right of fixation for comparison
@@ -161,23 +172,23 @@ for cndlop = 1:length(eyedat)
             % are normal
             medianvalues = zeros(max(T),size(POINTS,2));
             for TIND = 1:max(T)
-                tc = find(T == TIND);
-                if length(tc) == 1
-                    rng(TIND,:) = ones(1,size(rng,2));
-                    medianvalues(TIND,:) = POINTS(tc,:);
-                else
-                    rng(TIND,:) = [max(POINTS(tc,1:end-1)) min(POINTS(tc,1:end-1))];
-                    medianvalues(TIND,:) = median(POINTS(tc,:));
-                end
+              tc = find(T == TIND);
+              if length(tc) == 1
+                rng(TIND,:) = ones(1,size(rng,2));
+                medianvalues(TIND,:) = POINTS(tc,:);
+              else
+                rng(TIND,:) = [max(POINTS(tc,1:end-1)) min(POINTS(tc,1:end-1))];
+                medianvalues(TIND,:) = median(POINTS(tc,:));
+              end
             end
             [~, fixationcluster] = min(sum(medianvalues(:,2:3),2));
             T(T == fixationcluster) = 100;
             fixationcluster2 = find((medianvalues(fixationcluster,2) < rng(:,2) & ...
-                (medianvalues(fixationcluster,2) > rng(:,5))) & (medianvalues(fixationcluster,3)...
-                < rng(:,3) & (medianvalues(fixationcluster,3) > rng(:,6))));
+              (medianvalues(fixationcluster,2) > rng(:,5))) & (medianvalues(fixationcluster,3)...
+              < rng(:,3) & (medianvalues(fixationcluster,3) > rng(:,6))));
             fixationcluster2( fixationcluster2 == fixationcluster)= [];
             for iii = 1:length(fixationcluster2)
-                T(T == fixationcluster2(iii)) = 100;
+              T(T == fixationcluster2(iii)) = 100;
             end
             T(T ~= 100) = 2;
             T(T == 100) = 1;
@@ -198,20 +209,20 @@ for cndlop = 1:length(eyedat)
         %  yes, I purposelfully do not remove these times from fixationtimes!
         notbehav = [];
         for ii = 1:length(tooshort)
-            notbehav = [notbehav fixationtimes(1,tooshort(ii)):fixationtimes(2,tooshort(ii))];
+          notbehav = [notbehav fixationtimes(1,tooshort(ii)):fixationtimes(2,tooshort(ii))];
         end
         saccadeindexes = sort([saccadeindexes notbehav]);
         tooshort = find(diff(saccadetimes,1) < 10); %10 ms duration threshold for saccades
         notbehav = [];
         for ii = 1:length(tooshort)
-            notbehav = [notbehav saccadetimes(1,tooshort(ii)):saccadetimes(2,tooshort(ii))];
+          notbehav = [notbehav saccadetimes(1,tooshort(ii)):saccadetimes(2,tooshort(ii))];
         end
         fixationindexes = sort([fixationindexes notbehav]);
         [fixationtimes] = BehavioralIndex(fixationindexes);
         fixationtimes(:,(diff(fixationtimes,1) < 25))= []; %25 ms duration threshold for fixations
         fixationindexes = [];
         for ii = 1:size(fixationtimes,2)
-            fixationindexes = [fixationindexes fixationtimes(1,ii):fixationtimes(2,ii)];
+          fixationindexes = [fixationindexes fixationtimes(1,ii):fixationtimes(2,ii)];
         end
         [fixationtimes, fixations] = BehavioralIndexXY(fixationindexes,x,y);
         
@@ -241,28 +252,27 @@ for cndlop = 1:length(eyedat)
         %---Calculate Whole Saccade and Fixation Parameters---%
         pointfix = NaN(size(fixationtimes,2),6);
         for i = 1:size(fixationtimes,2)
-            xss = x(fixationtimes(1,i):fixationtimes(2,i));
-            yss = y(fixationtimes(1,i):fixationtimes(2,i));
-            [pp] = extractVariables(xss,yss,samprate);
-            pointfix(i,:) = pp;
+          xss = x(fixationtimes(1,i):fixationtimes(2,i));
+          yss = y(fixationtimes(1,i):fixationtimes(2,i));
+          [pp] = extractVariables(xss,yss,samprate);
+          pointfix(i,:) = pp;
         end
         pointsac = NaN(size(saccadetimes,2),6);
         for i = 1:size(saccadetimes,2)
-            xss = x(saccadetimes(1,i):saccadetimes(2,i));
-            yss = y(saccadetimes(1,i):saccadetimes(2,i));
-            [pp] = extractVariables(xss,yss,samprate);
-            pointsac(i,:) = pp;
+          xss = x(saccadetimes(1,i):saccadetimes(2,i));
+          yss = y(saccadetimes(1,i):saccadetimes(2,i));
+          [pp] = extractVariables(xss,yss,samprate);
+          pointsac(i,:) = pp;
         end
         recalc_meanvalues(1,:) = mean(pointfix,1);
         recalc_meanvalues(2,:) = mean(pointsac,1);
         if size(pointfix,1) == 1
-            recalc_stdvalues(1,:) = NaN;
-            recalc_stdvalues(2,:) = NaN;
+          recalc_stdvalues(1,:) = NaN;
+          recalc_stdvalues(2,:) = NaN;
         else
-            recalc_stdvalues(1,:) = nanstd(pointfix,1);
-            recalc_stdvalues(2,:) = nanstd(pointsac,1);
+          recalc_stdvalues(1,:) = nanstd(pointfix,1);
+          recalc_stdvalues(2,:) = nanstd(pointsac,1);
         end
-        
         
         fixationstats{cndlop}.fixationtimes = fixationtimes;
         fixationstats{cndlop}.fixations = fixations;

@@ -43,7 +43,6 @@ psthColormapFilename = psthParams.psthColormapFilename;
 
 lfpPreAlign = lfpAlignParams.msPreAlign; 
 lfpPostAlign = lfpAlignParams.msPostAlign;
-
 lfpPaddedBy = tfParams.movingWin(1)/2;
 
 movingWin = tfParams.movingWin;
@@ -252,11 +251,15 @@ save(analysisOutFilename,'catInds','imInds', '-append');
 %% Analyses
 
 % Eye Signal Processing
+
 if isfield(plotSwitch, 'saccadeDetect') && plotSwitch.saccadeDetect
-  [saccadeByStim, eyeInByEvent] = saccadeDetect(analogInByEvent, eyeStatsParams);
+  [saccadeByStim, eyeInByEvent] = saccadeDetect(analogInByEvent, eyeStatsParams, taskData.eyeCal.blinkVals);
+  save(analysisOutFilename,'saccadeByStim','-append');
 else
-  %Reshapes analogInByEvent into eye signal.
+  %Reshapes analogInByEvent into eye signal. This isn't smoothed, as the
+  %output above is. Produce empty saccadeByStim struct.
   eyeInByEvent = cellfun(@(n) squeeze(n(:,1:2,:,lfpPaddedBy+1:length(n)-(lfpPaddedBy+1))), analogInByEvent, 'UniformOutput', false);
+  saccadeByStim = cellfun(@(n)  ones(size(n,2), size(n,3)), eyeInByEvent, 'UniformOutput', false);
 end
 
 if isfield(plotSwitch, 'attendedObject') && plotSwitch.attendedObject
@@ -4889,7 +4892,7 @@ PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
 dvaOrigin =  taskData.eyeCal.origin;
 
 %Run each stimuli presented
-for stim_i = 12:length(eventIDs)
+for stim_i = 1:length(eventIDs)
   %find the correct frameMotionData
   frameMotionDataInd = strcmp(frameMotionDataNames, eventIDs(stim_i));
   stimFrameMotionData = frameMotionData(frameMotionDataInd);
@@ -5630,17 +5633,17 @@ end
 
 end
 
-function [eyeBehByStim, eyeInByEventSmooth] = saccadeDetect(analogInByEvent, eyeStatsParams)
+function [eyeBehByStim, eyeInByEventSmooth] = saccadeDetect(analogInByEvent, eyeStatsParams, blinkVals)
 % Function uses ClusterFix to generate a saccade map.
-fixInd = 1;
-sacInd = 2;
-filterSaccades = 1;   % Performs a filter on saccades to exclude microsaccades, defined with respect to duration
-filterThres = 35;     %
+eventInds = [1, 2, 3];  % Fixation, Saccade, Blinks
+eventNames = {'Fix','Saccade','Blink'};
+filterSaccades = 1;     % Performs a filter on saccades to exclude microsaccades, defined with respect to duration
+filterThres = 35;       %
 
 stimDir = eyeStatsParams.stimDir;
 psthPre = eyeStatsParams.psthPre;
 psthImDur = eyeStatsParams.psthImDur;
-lfpPaddedBy = eyeStatsParams.lfpPaddedBy + 1;
+lfpPaddedBy = eyeStatsParams.lfpPaddedBy+1;
 
 % Remove Padding, as this messes with indexing and the code signal pads itself.
 stimStartInd = lfpPaddedBy;
@@ -5649,11 +5652,46 @@ stimEndInd = size(analogInByEvent{1},4) - lfpPaddedBy;
 extractEye = @(n) squeeze(n(:,1:2,:,stimStartInd:stimEndInd)); %Reshapes analogInByEvent into eye signal.
 eyeInByEventAll = cellfun(extractEye, analogInByEvent, 'UniformOutput', false);
 
+[fixStats, eyeInByEventTrialFiltered, blinkTimes] = deal(cell(size(analogInByEvent)));
+
+% Remove Blinks, save their times in the same format clusterFix does.
+blinkThreshold = round(mean(blinkVals)*0.8); % Removes top 20% of values.
+for stim_i = 1:length(eyeInByEventAll)
+  trialCount = size(eyeInByEventAll{stim_i}, 2);
+  blinkTimes{stim_i} = cell(trialCount,1);
+  for trial_i = 1:trialCount
+    for eye_i = 1:size(eyeInByEventAll{stim_i}, 1)
+      trace = squeeze(eyeInByEventAll{stim_i}(eye_i, trial_i, :));
+      val2Replace = trace > blinkThreshold;
+      if sum(val2Replace) > 0
+        % Remove Blinks
+        blinkInds = find(val2Replace);
+        blinkTimesTmp = BehavioralIndex(blinkInds'); % Function from ClusterFix.
+        for blink_i = 1:size(blinkTimesTmp,2)
+          % find a start value - mean of 10 prior values
+          startInds = (blinkTimesTmp(1,blink_i)-12 : blinkTimesTmp(1,blink_i) - 2);
+          startVal = mean(trace(startInds));
+          
+          % Replace values in the trace - easy method, may need to
+          % complicate.
+          trace(blinkTimesTmp(1,blink_i)-2:blinkTimesTmp(2,blink_i)) = deal(startVal);
+        end
+        
+        if eye_i == 1
+          blinkTimes{stim_i}{trial_i} = blinkTimesTmp;
+        end
+        eyeInByEventAll{stim_i}(eye_i, trial_i, :) = trace;
+      else
+        blinkTimes{stim_i}{trial_i} = [];
+      end        
+    end
+  end
+end
+
 % Turn each cell into the properly formated trial structure for clusterFix.
 perTrialBreak = @(x) cellfun(@(y) squeeze(y), mat2cell(x, 2, ones(size(x, 2), 1), size(x, 3)), 'UniformOutput', 0);
 eyeInByEventTrial = cellfun(perTrialBreak, eyeInByEventAll, 'UniformOutput', 0);
 
-[fixStats, eyeInByEventTrialFiltered] = deal(cell(size(eyeInByEventTrial)));
 for stim_i = 1:length(eyeInByEventTrial)
   [fixStats{stim_i}, eyeInByEventTrialFiltered{stim_i}] = ClusterFix(eyeInByEventTrial{stim_i}, 1/1000);
 end
@@ -5668,23 +5706,20 @@ for stim_i = 1:length(eyeInByEventTrialFiltered)
     eyeSigReshaped(1, trial_i, :) = eyeSigTmp{trial_i}(1,:);
     eyeSigReshaped(2, trial_i, :) = eyeSigTmp{trial_i}(2,:);
   end
-  
   eyeInByEventSmooth{stim_i} = eyeSigReshaped;
 end
 
-
 % Convert the output of ClusterFix to an image which can be used behind
 % Rasters.
-[eyeBehByStim, saccadeDur] = deal(cell(length(fixStats),1));
+[eyeBehByStim] = deal(cell(length(fixStats),1));
 for stim_i = 1:length(fixStats)
   stimEye = fixStats{stim_i};
-  [eyeBehImg] = deal(zeros(length(stimEye), stimEndInd-stimStartInd));
-  sacDur = [];
+  [eyeBehImg] = deal(ones(length(stimEye), (stimEndInd-stimStartInd)+1));
   for trial_i = 1:length(stimEye)
     % Extract Fixations and mark their times
     fixationTimes = stimEye{trial_i}.fixationtimes;
     for fix_i = 1:size(fixationTimes,2)
-      eyeBehImg(trial_i, fixationTimes(1, fix_i):fixationTimes(2, fix_i)) = deal(fixInd);
+      eyeBehImg(trial_i, fixationTimes(1, fix_i):fixationTimes(2, fix_i)) = deal(eventInds(strcmp(eventNames, 'Fix')));
     end
     
     % Extract Saccades and mark their times
@@ -5696,23 +5731,23 @@ for stim_i = 1:length(fixStats)
       sacKeepInd = sacDurTmp > filterThres;
       saccadeTimes = saccadeTimes(:, sacKeepInd);
     end
-    
-    sacDur = [sacDur, saccadeTimes(2,:) - saccadeTimes(1,:)];
-      
+         
     for sac_i = 1:size(saccadeTimes,2)
-      eyeBehImg(trial_i, saccadeTimes(1, sac_i):saccadeTimes(2, sac_i)) = deal(sacInd);
+      eyeBehImg(trial_i, saccadeTimes(1, sac_i):saccadeTimes(2, sac_i)) = deal(eventInds(strcmp(eventNames, 'Saccade')));
     end
     
     % 0s represents saccades which don't get over the threshold, for now
     % call them fixations.
     eyeBehImg(eyeBehImg == 0) = 1;
     
+    % Add in Blinks
+    blinksTrial = blinkTimes{stim_i}{trial_i};
+    for blink_i = 1:size(blinksTrial,2)
+      eyeBehImg(trial_i, blinksTrial(1, blink_i):blinksTrial(2, blink_i)) = deal(eventInds(strcmp(eventNames, 'Blink')));
+    end
   end
+
   eyeBehByStim{stim_i} = eyeBehImg;
-  saccadeDur{stim_i} = sacDur;
-%   figure()
-%   histogram(sacDur)
-%   title(num2str(stim_i));
 end
 
 end
@@ -5836,5 +5871,33 @@ for event_i = 1:length(spikesByEventBinned)
       spikeBinCorr{event_i}{channel_i}{unit_i} = corrcoef(spikeBins');
     end
   end
+end
+end
+
+function [behaviortime] = BehavioralIndex(behavind)
+%function turns indexes into times by parsing at breaks in continuity -
+%taken from ClusterFix
+dind = diff(behavind);
+gaps =find(dind > 1);
+behaveind = zeros(length(gaps),50);
+if ~isempty(gaps)
+  for gapind = 1:length(gaps)+1
+    if gapind == 1
+      temp = behavind(1:gaps(gapind));
+    elseif gapind == length(gaps)+1
+      temp = behavind(gaps(gapind-1)+1:end);
+    else
+      temp = behavind(gaps(gapind-1)+1:gaps(gapind));
+    end
+    behaveind(gapind,1:length(temp)) = temp;
+  end
+else
+  behaveind =  behavind;
+end
+behaviortime = zeros(2,size(behaveind,1));
+for index=1:size(behaveind,1)
+  rowfixind = behaveind(index,:);
+  rowfixind(rowfixind == 0) = [];
+  behaviortime(:,index) = [rowfixind(1);rowfixind(end)];
 end
 end

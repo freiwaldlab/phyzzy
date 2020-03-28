@@ -1,4 +1,4 @@
-function [ analogInData ] = preprocessEyeSignals( analogInData,taskData,params )
+function [ analogInData, taskData ] = preprocessEyeSignals( analogInData,taskData,params )
 %preprocessEyeSignals applies gain, flip, and offset calibration to raw eye data
 %   also has methods for computing offsets, and visualizing results
 %   Inputs:
@@ -261,9 +261,11 @@ if params.makePlots
   histogram2(eyeX(~fixInInds)',eyeY(~fixInInds)',[50 50],'Normalization','probability','DisplayStyle','tile','BinMethod','integer');
 end
 
+% Construct outputs
 analogInData(params.eyeXChannelInd,:) = eyeX;
 analogInData(params.eyeYChannelInd,:) = eyeY;
 analogInData(params.eyeDChannelInd,:) = eyeD;
+taskData.eyeCal.blinkVals = [max(eyeX), max(eyeY)];
 
 end
 
