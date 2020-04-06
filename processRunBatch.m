@@ -11,11 +11,11 @@ function [] = processRunBatch(varargin)
 %       'buildAnalysisParamFileSocVid'. User will be prompted to select
 %       directory with files.
 
-replaceAnalysisOut = 1;                             % This generates an excel file at the end based on previous analyses. Don't use when running a new.
-outputVolume = 'D:\DataAnalysis\March2020';        % Only used for the excel doc. change in analysisParamFile to change destination.
-dataLog = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\RecordingsMoUpdated.xlsx';  % Only used to find recording log, used to overwrite params.
-usePreprocessed = 0;                                % uses preprocessed version of Phyzzy, only do when changing plotSwitch or calcSwitch and nothing else.
-runParallel = 1;                                    % Use parfor loop to go through processRun. Can't be debugged within the loop.
+replaceAnalysisOut = 0;                                                       % This generates an excel file at the end based on previous analyses. Don't use when running a new.
+outputVolume = 'D:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed';                                   % Only used for the excel doc. change in analysisParamFile to change destination.
+dataLog = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\RecordingsMoUpdated.xlsx';   % Only used to find recording log, used to overwrite params.
+usePreprocessed = 0;                                                          % uses preprocessed version of Phyzzy, only do when changing plotSwitch or calcSwitch and nothing else.
+runParallel = 1;                                                              % Use parfor loop to go through processRun. Can't be debugged within the loop.
 
 %% Load Appropriate variables and paths
 addpath(genpath('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy'))
@@ -53,6 +53,8 @@ if ~replaceAnalysisOut
       [outDir, stimSyncParams.outDir, stimSyncParams.outDir]  = deal(sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum));
       analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
       preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
+      ephysParams.outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
+
       
       % Generate Directories
       if ~exist(outDir,'dir')
@@ -69,6 +71,7 @@ if ~replaceAnalysisOut
             taskFilename = [A '/' B '.mat'];
         end
       end
+      
       %Autodetecting spike channels - If the file is parsed, retrieve channels present
       parsedFolderName = sprintf('%s/%s/%s%s_parsed',ephysVolume,dateSubject,dateSubject,runNum);
       if exist(parsedFolderName,'dir') == 7
@@ -225,27 +228,31 @@ for ii = 1:length(analysisParamFileName)
         end
         
         % Event based analysis significance
-        subEventSigStruct = tmp.subEventSigStruct;
-        if ~subEventSigStruct.noSubEvent 
-          chanInfo = subEventSigStruct.testResults{channel_ind};
-          chanInfo = cell2mat([chanInfo{:}]);
-          chanSig = chanInfo < 0.05;
-          UnsortSESig = strjoin(subEventSigStruct.events(chanSig(:,1)), ', ');
-          MUASESig = strjoin(subEventSigStruct.events(chanSig(:,end)), ', ');
-          if size(chanSig,2) > 2
-            unitSig = chanSig(:, 2:end-1);
-            UnitSESig = strjoin(subEventSigStruct.events(any(unitSig,2)), ', ');
-          end
-          subECell = [{UnsortSESig}, {UnitSESig}, {MUASESig}];
-          for jj = 1:length(subECell)
-            if isempty(subECell{jj})
-              subECell{jj} = ' ';
+        if isfield(tmp, 'subEventSigStruct')
+          subEventSigStruct = tmp.subEventSigStruct;
+          if ~subEventSigStruct.noSubEvent
+            chanInfo = subEventSigStruct.testResults{channel_ind};
+            chanInfo = cell2mat([chanInfo{:}]);
+            chanSig = chanInfo < 0.05;
+            UnsortSESig = strjoin(subEventSigStruct.events(chanSig(:,1)), ', ');
+            MUASESig = strjoin(subEventSigStruct.events(chanSig(:,end)), ', ');
+            if size(chanSig,2) > 2
+              unitSig = chanSig(:, 2:end-1);
+              UnitSESig = strjoin(subEventSigStruct.events(any(unitSig,2)), ', ');
             end
+            subECell = [{UnsortSESig}, {UnitSESig}, {MUASESig}];
+            for jj = 1:length(subECell)
+              if isempty(subECell{jj})
+                subECell{jj} = ' ';
+              end
+            end
+          else
+            subECell = [{' '}, {' '}, {' '}];
           end
         else
           subECell = [{' '}, {' '}, {' '}];
+          
         end
-        
         % Package Outputs into structure for table
         table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorMsg(ii), channel, UnitCount, subECell, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, {' '}];
         if ii == 1 && epoch_i == 1

@@ -3,9 +3,8 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 %behavior of processRun, runAnalysis
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
-runNum = '002';
-dateSubject = '20180710Mo';
-
+runNum = '003';
+dateSubject = '20180628Mo';
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
 [~, machine] = system('hostname');
@@ -65,7 +64,8 @@ plotSwitch.imageEyeMap = 0;
 plotSwitch.eyeCorralogram = 0;              % Eye Gram
 plotSwitch.saccadeDetect = 1;               % use ClusterFix to generate a vector characterizing eye movements (Fix later).
 plotSwitch.attendedObject = 1;              % Vectors to distinguish where subject is looking. Required for prefImRasterColorCoded.
-plotSwitch.eyeStimOverlay = 0;              % Visualize eye traces on stimuli.
+plotSwitch.eyeStimOverlay = 1;              % Visualize eye traces on stimuli.
+
 plotSwitch.clusterOnEyePaths = 0;           % Resort spikes based on distinct eye paths, make "New events".
 plotSwitch.stimPSTHoverlay = 0;             % grabs stimuli and overlays PSTH on it.
 plotSwitch.imagePsth = 0;
@@ -145,6 +145,8 @@ calcSwitch.spikeTimes = 0;
 calcSwitch.useJacknife = 0;      
 
 %% Parameters
+eyeStatsParams.clusterFixLPFilterIn = 25;                 %Filter used for saccade detection internally in ClusterFix.
+analysisLabel = [analysisLabel '_' num2str(eyeStatsParams.clusterFixLPFilterIn) 'Hz'];
 
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;

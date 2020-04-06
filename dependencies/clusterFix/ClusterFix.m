@@ -1,4 +1,4 @@
-function [fixationstats, eyedatSmooth] = ClusterFix(eyedat,samprate)
+function [fixationstats, eyedatSmooth] = ClusterFix(eyedat,samprate, lpFilterIn)
 % Copyright 2013-2017 Seth Koenig (skoenig3@uw.edu) & Elizabeth Buffalo,
 % all rights reserved.
 %
@@ -15,7 +15,7 @@ function [fixationstats, eyedatSmooth] = ClusterFix(eyedat,samprate)
 % and fixations are required to be longer than 25 ms in duration. Typically
 % the only time that these durations are not met are during false
 % classification at peak acclerations or velocities when having low values in
-% the other parameter.These durations are free parameters (Lines 132,197,204).
+% the other parameter. These durations are free parameters (Lines 132,197,204).
 %
 % INPUTS:
 %       eyedat: cell array aranged by trial containing [x;y] eye position in dva.
@@ -52,8 +52,8 @@ variables = {'Dist','Vel','Accel','Angular Velocity'}; %parameters to be extract
 fltord = 60;
 lowpasfrq = 25;
 nyqfrq = 1000 ./ 2;
-fltIn = fir2(fltord,[0,lowpasfrq./nyqfrq,lowpasfrq./nyqfrq,1],[1,1,0,0]); %25 Hz low pass filter
-fltOut = fir2(fltord,[0,lowpasfrq./nyqfrq,lowpasfrq./nyqfrq,1],[1,1,0,0]); %30 Hz low pass filter
+fltIn = fir2(fltord,[0,lpFilterIn./nyqfrq,lpFilterIn./nyqfrq,1],[1,1,0,0]);     % low pass filter internal, determined by analysisParam.
+fltOut = fir2(fltord,[0,lowpasfrq./nyqfrq,lowpasfrq./nyqfrq,1],[1,1,0,0]);    % 25 Hz low pass filter, for output.
 
 buffer = 100/samprate/1000; %100 ms buffer for filtering
 fixationstats = cell(1,length(eyedat));

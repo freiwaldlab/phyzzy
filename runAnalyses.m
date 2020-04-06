@@ -271,9 +271,12 @@ if isfield(plotSwitch, 'eyeStimOverlay') && plotSwitch.eyeStimOverlay
   eyeStimOverlay(eyeInByEvent, stimDir, outDir, psthParams, saccadeByStim, attendedObjData, eventIDs, taskData);
 end
 
+error('doneEyeStuff');
+
 if isfield(plotSwitch, 'eyeCorrelogram') && plotSwitch.eyeCorrelogram 
   eyeCorrelogram(eyeInByEvent, psthParams, eventLabels, outDir, saveFig, exportFig, saveFigData, figTag)
 end
+
 
 % Spike Processing
 
@@ -4872,10 +4875,11 @@ function eyeStimOverlay(eyeInByEvent, stimDir, outDir, psthParams, saccadeByStim
 
 shapeOverlay = 1;         % Switch for shape overlay.
 trialNumberOverlay = 1;   % Switch for trial number overlay on eye signal.
-colorCodedTrace = 1;      % Trace changes colors corresponding to what is being looked at. 1 = per target of gaze, 2 = Saccade vs fixation.
+colorCodedTrace = 2;      % Trace changes colors corresponding to what is being looked at. 1 = per target of gaze, 2 = Saccade vs fixation.
+frameCountOverlay = 1;    % Places the frame number in the lower left.
 eyeSig.shape = 'Circle';  
 eyeSig.color = {{[1. 0. 0.];[0 .4 1.];[.1 .8 .1];[.1 .8 .1];[0 0 0];[1 .4 0]; ...
-  [.7 0 0];[0 0 .7];[0 .5 0];[0 .5 0];[0 0 0];[1 .6 0]; [1 1 1]}; {'yellow'; 'red'}}; %Faces, Bodies, Hands, Obj, bkg, then Fix v Saccade
+  [.7 0 0];[0 0 .7];[0 .5 0];[0 .5 0];[0 0 0];[1 .6 0]; [1 1 1]}; {[0 .653 .91]; [1 0 0]; [1 1 0]}}; %Faces, Bodies, Hands, Obj, bkg, then Fix v Saccade v Blink
 
 if shapeOverlay
   frameMotionData = taskData.frameMotionData;
@@ -4885,7 +4889,11 @@ end
 % Remove pre and post stimuli eye data, generate variables for eye sig
 % parcing.
 extractStimEye = @(x) x(:,:, psthParams.psthPre:psthParams.psthPre+psthParams.psthImDur);
+extractSaccEye = @(x) x(:, psthParams.psthPre:psthParams.psthPre+psthParams.psthImDur);
+
 eyeInByEvent = cellfun(extractStimEye, eyeInByEvent, 'UniformOutput', 0);
+saccadeByStim = cellfun(extractSaccEye, saccadeByStim, 'UniformOutput', 0);
+
 origInd = 1:psthParams.psthImDur+1;
 stimPresSec = (psthParams.psthImDur/1000);
 PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
@@ -4910,12 +4918,31 @@ for stim_i = 1:length(eventIDs)
   frames  = round(stimFrameMotionData.fps)*stimPresSec;
   dsInd = linspace(origInd(1), origInd(end) - 1000/stimFrameMotionData.fps, frames+1);
   eyeInByEventDS = zeros(2, size(eyeInByEvent{stim_i},2), frames);
+  eyeImgByEventDS = zeros(size(eyeInByEvent{stim_i},2), frames);
   
   for trial_i = 1:size(eyeInByEvent{stim_i},2)
+    % Downsample the eye labels
     for eye_i = 1:2
       tmp = interp1(origInd, squeeze(eyeInByEvent{stim_i}(eye_i, trial_i, :)), dsInd, 'linear');
       eyeInByEventDS(eye_i, trial_i, :) = tmp(1:end-1);
     end
+    % Downsample saccade labels
+    tmp = interp1(origInd, saccadeByStim{stim_i}(trial_i, :), dsInd, 'linear');
+    eyeImgByEventDS(trial_i, :) = tmp(1:end-1);
+    
+    % Brief modification for visual clarity - in cases where saccades are a
+    % single frame, expand.
+    sacInd = find(eyeImgByEventDS(trial_i, :) == 2);
+    for sac_i = 1:length(sacInd)
+      if sacInd(sac_i) ~= 1 && sacInd(sac_i) ~= size(eyeImgByEventDS,2)
+        preFrame = eyeImgByEventDS(sacInd(sac_i)-1);
+        postFrame = eyeImgByEventDS(sacInd(sac_i)+1);
+        if preFrame == 1 && postFrame == 1
+          [eyeImgByEventDS(trial_i, sacInd(sac_i)-1), eyeImgByEventDS(trial_i, sacInd(sac_i)+1)] = deal(2);
+        end
+      end
+    end
+    
   end
   
   % move data to the dVa Origin, then shift to pixel space
@@ -4954,10 +4981,10 @@ for stim_i = 1:length(eventIDs)
   % In cases where things were up sampled for storage, down sample back to
   % the appropriate frame count.
   if ~(size(eyeInByEventDS,3) == size(colorIndMat,2))
-    nInd = 1:size(colorIndMat,2)/size(eyeInByEventDS,3):size(colorIndMat,2);
+    nInd = 1:size(eyeInByEventDS,3);
     oInd = 1:size(colorIndMat,2);
-    tmp = interp1(oInd, colorIndMat', nInd);
-    colorIndMat = tmp';
+    tmp = interp1(oInd, colorIndMat', nInd ,'nearest', 'extrap');
+    colorIndMat = round(tmp');
   end
   
   while hasFrame(stimVid) && frame_i <= size(eyeInByEventDS,3)
@@ -4993,12 +5020,23 @@ for stim_i = 1:length(eventIDs)
     for trial_i = 1:size(eyeInByEventDS, 2)
       coords = (eyeInByEventDS(:, trial_i, frame_i));
       % Place the shapes corresponding to gaze for every trial
-      img1 = insertShape(img1, eyeSig.shape,[coords(1) coords(2) 1],'LineWidth',5,'Color',[eyeSig.color{colorCodedTrace}{colorIndMat(trial_i, frame_i)}.*255]);
+%       if colorCodedTrace ~= 2
+        img1 = insertShape(img1, eyeSig.shape,[coords(1) coords(2) 1],'LineWidth',5,'Color',[eyeSig.color{colorCodedTrace}{colorIndMat(trial_i, frame_i)}.*255]);
+%       else
+%         img1 = insertShape(img1, eyeSig.shape,[coords(1) coords(2) 1],'LineWidth',5,'Color',[eyeSig.color{colorCodedTrace}{colorIndMat(trial_i, frame_i)}]);
+%       end
       % If desired, put number on circle
       if trialNumberOverlay
-        img1 = insertText(img1,[coords(1)-5 coords(2)-7],num2str(trial_i),'BoxOpacity' ,0,'FontSize', 8);
+        img1 = insertText(img1,[coords(1)-5 coords(2)-7],num2str(trial_i), 'BoxOpacity', 0, 'FontSize', 8);
       end
     end
+    
+    % Add the Frame to the lower left of the stimuli
+    if frameCountOverlay
+      img1 = insertText(img1,[10 255], num2str(frame_i), 'BoxOpacity' , 0,'FontSize', 20, 'TextColor', 'yellow');
+    end
+    
+    
     frame_i = frame_i + 1;          % step the video
     writeVideo(outputVideo, img1);  % Add the new Frame
     
@@ -5638,7 +5676,8 @@ function [eyeBehByStim, eyeInByEventSmooth] = saccadeDetect(analogInByEvent, eye
 eventInds = [1, 2, 3];  % Fixation, Saccade, Blinks
 eventNames = {'Fix','Saccade','Blink'};
 filterSaccades = 1;     % Performs a filter on saccades to exclude microsaccades, defined with respect to duration
-filterThres = 35;       %
+saccadeDurThres = 35;       % Additional saccade filtering outside of clusterFix, removes saccades which don't last this long or more.
+saccadeDistThrs = .1;       % As above, removes saccades with mean distances of less than this. 
 
 stimDir = eyeStatsParams.stimDir;
 psthPre = eyeStatsParams.psthPre;
@@ -5693,7 +5732,7 @@ perTrialBreak = @(x) cellfun(@(y) squeeze(y), mat2cell(x, 2, ones(size(x, 2), 1)
 eyeInByEventTrial = cellfun(perTrialBreak, eyeInByEventAll, 'UniformOutput', 0);
 
 for stim_i = 1:length(eyeInByEventTrial)
-  [fixStats{stim_i}, eyeInByEventTrialFiltered{stim_i}] = ClusterFix(eyeInByEventTrial{stim_i}, 1/1000);
+  [fixStats{stim_i}, eyeInByEventTrialFiltered{stim_i}] = ClusterFix(eyeInByEventTrial{stim_i}, 1/1000, eyeStatsParams.clusterFixLPFilterIn);
 end
 
 % Reshape smoothed eye signal from clusterFix back into the appropriate
@@ -5724,14 +5763,26 @@ for stim_i = 1:length(fixStats)
     
     % Extract Saccades and mark their times
     saccadeTimes = stimEye{trial_i}.saccadetimes;
+    saccadeMeanDists = stimEye{trial_i}.SaaccadeClusterValues(:,3)';
     
     % Filter if desired
     if filterSaccades
+      % Filter based on duration (filterThres)
       sacDurTmp = saccadeTimes(2,:) - saccadeTimes(1,:);
-      sacKeepInd = sacDurTmp > filterThres;
+      sacKeepInd = sacDurTmp <= saccadeDurThres;
+      
+      % Filter based on distance
+      sacKeepInd2 = saccadeMeanDists < saccadeDistThrs;
+      
+      % Combine
+      sacKeepInd = ~logical(sacKeepInd + sacKeepInd2);
+      
+      % Remove saccades
       saccadeTimes = saccadeTimes(:, sacKeepInd);
+      
     end
          
+    % Label Saccade times in the image
     for sac_i = 1:size(saccadeTimes,2)
       eyeBehImg(trial_i, saccadeTimes(1, sac_i):saccadeTimes(2, sac_i)) = deal(eventInds(strcmp(eventNames, 'Saccade')));
     end
