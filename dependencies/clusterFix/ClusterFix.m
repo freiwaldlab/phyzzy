@@ -1,4 +1,4 @@
-function [fixationstats, eyedatSmooth] = ClusterFix(eyedat,samprate, lpFilterIn)
+function [fixationstats, eyedatSmooth] = ClusterFix(eyedat,samprate)
 % Copyright 2013-2017 Seth Koenig (skoenig3@uw.edu) & Elizabeth Buffalo,
 % all rights reserved.
 %
@@ -33,6 +33,7 @@ function [fixationstats, eyedatSmooth] = ClusterFix(eyedat,samprate, lpFilterIn)
 %                   4) mean velocity
 %                   5) mean absolute value of the angle
 %                   6) mean angular velocity
+%                   7) max distance (Added by FA, microsaccades exclusion)
 %       fixationstats{cndlop}.SaaccadeClusterValues = pointsac; same as above except for saccades
 %       fixationstats{cndlop}.MeanClusterValues = recalc_meanvalues; mean of parameter values by cluster
 %       fixationstats{cndlop}.STDClusterValues = recalc_stdvalues; standard deviation of parameter values by cluster
@@ -50,10 +51,9 @@ end
 variables = {'Dist','Vel','Accel','Angular Velocity'}; %parameters to be extracted
 
 fltord = 60;
-lowpasfrq = 25;
+lowpasfrq = 30;
 nyqfrq = 1000 ./ 2;
-fltIn = fir2(fltord,[0,lpFilterIn./nyqfrq,lpFilterIn./nyqfrq,1],[1,1,0,0]);     % low pass filter internal, determined by analysisParam.
-fltOut = fir2(fltord,[0,lowpasfrq./nyqfrq,lowpasfrq./nyqfrq,1],[1,1,0,0]);    % 25 Hz low pass filter, for output.
+flt = fir2(fltord,[0,lowpasfrq./nyqfrq,lowpasfrq./nyqfrq,1],[1,1,0,0]);     % low pass filter internal, determined by analysisParam.
 
 buffer = 100/samprate/1000; %100 ms buffer for filtering
 fixationstats = cell(1,length(eyedat));
@@ -68,20 +68,16 @@ for cndlop = 1:length(eyedat)
         y = [y(buffer:-1:1) y y(end:-1:end-buffer)];   %add buffer for filtering
         x = resample(x,samprate*1000,1);%up sample to 1000 Hz
         y = resample(y,samprate*1000,1);%up sample to 1000 Hz
-        xss = filtfilt(fltIn,1,x);
-        yss = filtfilt(fltIn,1,y);
-        xss2 = filtfilt(fltOut,1,xss);
-        yss2 = filtfilt(fltOut,1,yss);
+        xss = filtfilt(flt,1,x);
+        yss = filtfilt(flt,1,y);
         xss = xss(101:end-100); %remove buffer after filtering
         yss = yss(101:end-100); %remove buffer after filtering
-        xss2 = xss2(101:end-100); %remove buffer after filtering
-        yss2 = yss2(101:end-100); %remove buffer after filtering
         x = x(101:end-100); %remove buffer after filtering
         y = y(101:end-100); %remove buffer after filtering
         
         % Return smoothed eye signal
-        eyedatSmooth{cndlop}(1,:) = xss2(1:end-1); % Final signal has 1 more sample than original
-        eyedatSmooth{cndlop}(2,:) = yss2(1:end-1); % Final signal has 1 more sample than original
+        eyedatSmooth{cndlop}(1,:) = xss(1:end-1); % Final signal has 1 more sample than original
+        eyedatSmooth{cndlop}(2,:) = yss(1:end-1); % Final signal has 1 more sample than original
         
         velx = diff(xss);
         vely = diff(yss);
@@ -203,6 +199,7 @@ for cndlop = 1:length(eyedat)
         saccadeindexes(ib) = [];
         
         %---Consolidate & turn indexes into times---%
+        if ~isempty(saccadeindexes)
         [saccadetimes] = BehavioralIndex(saccadeindexes);
         [fixationtimes] = BehavioralIndex(fixationindexes);
         tooshort = find(diff(fixationtimes,1) < 5); %potential accidental fixationtimes
@@ -250,14 +247,14 @@ for cndlop = 1:length(eyedat)
         fixationtimes(fixationtimes > length(x)) = length(x);
         
         %---Calculate Whole Saccade and Fixation Parameters---%
-        pointfix = NaN(size(fixationtimes,2),6);
+        pointfix = NaN(size(fixationtimes,2),7);
         for i = 1:size(fixationtimes,2)
           xss = x(fixationtimes(1,i):fixationtimes(2,i));
           yss = y(fixationtimes(1,i):fixationtimes(2,i));
           [pp] = extractVariables(xss,yss,samprate);
           pointfix(i,:) = pp;
         end
-        pointsac = NaN(size(saccadetimes,2),6);
+        pointsac = NaN(size(saccadetimes,2),7);
         for i = 1:size(saccadetimes,2)
           xss = x(saccadetimes(1,i):saccadetimes(2,i));
           yss = y(saccadetimes(1,i):saccadetimes(2,i));
@@ -273,7 +270,7 @@ for cndlop = 1:length(eyedat)
           recalc_stdvalues(1,:) = nanstd(pointfix,1);
           recalc_stdvalues(2,:) = nanstd(pointsac,1);
         end
-        
+
         fixationstats{cndlop}.fixationtimes = fixationtimes;
         fixationstats{cndlop}.fixations = fixations;
         fixationstats{cndlop}.saccadetimes = saccadetimes;
@@ -283,6 +280,20 @@ for cndlop = 1:length(eyedat)
         fixationstats{cndlop}.STDClusterValues = recalc_stdvalues;
         fixationstats{cndlop}.XY = [x;y];
         fixationstats{cndlop}.variables = variables;
+        else
+          % If no saccades are detected, return fields empty.
+          x = eyedat{cndlop}(1,:);%*24+400; %converts dva to pixel and data from [-400,400] to [0,800]
+          y = eyedat{cndlop}(2,:);%*24+300; %converts dva to pixel and from [-300,300] to [0,600]
+          fixationstats{cndlop}.fixationtimes = [];
+          fixationstats{cndlop}.fixations = [];
+          fixationstats{cndlop}.saccadetimes = [];
+          fixationstats{cndlop}.FixationClusterValues = [];
+          fixationstats{cndlop}.SaaccadeClusterValues = [];
+          fixationstats{cndlop}.MeanClusterValues = [];
+          fixationstats{cndlop}.STDClusterValues = [];
+          fixationstats{cndlop}.XY = [x;y];
+          fixationstats{cndlop}.variables = variables;
+        end
     else
         x = eyedat{cndlop}(1,:);%*24+400; %converts dva to pixel and data from [-400,400] to [0,800]
         y = eyedat{cndlop}(2,:);%*24+300; %converts dva to pixel and from [-300,300] to [0,600]
@@ -374,8 +385,9 @@ end
             pp(4) = mean(vel);
             pp(5) = abs(mean(angle));
             pp(6) = mean(rot);
+            pp(7) = max(dist);
         else
-            pp = NaN(1,6);
+            pp = NaN(1,7);
         end
     end
 

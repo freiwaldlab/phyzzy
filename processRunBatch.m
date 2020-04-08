@@ -3,32 +3,34 @@ function [] = processRunBatch(varargin)
 % with differente dateSubj and run variables
 %   Inputs:
 %   - varargin can have the following forms:
-%     - two arguments, the first being a "runList" cell array of the form 
-%       {{'dateSubj';{'001','002'}} i.e.{{'180314Mo'; {'002';'003'}}}, the
-%       second of the form paramBuilderFunctionName as a string i.e.
-%       'buildAnalysisParamFileSocVid'
 %     - one argument of the form paramBuilderFunctionName as a string i.e.
 %       'buildAnalysisParamFileSocVid'. User will be prompted to select
 %       directory with files.
+%     - two arguments, the first as described above, the second of the form 
+%       {{'param1', 'arg1'}; {'param2','arg2'}}, which will replace
+%       parameters defined in the analysisParamFile and the paramTable.
 
 replaceAnalysisOut = 0;                                                       % This generates an excel file at the end based on previous analyses. Don't use when running a new.
-outputVolume = 'D:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed';                                   % Only used for the excel doc. change in analysisParamFile to change destination.
-dataLog = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\RecordingsMoUpdated.xlsx';   % Only used to find recording log, used to overwrite params.
+outputVolume = 'D:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed';          % Only used for the excel doc. change in analysisParamFile to change destination.
+dataLog = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\analysisParamTable.xlsx';    % Only used to find recording log, used to overwrite params.
 usePreprocessed = 0;                                                          % uses preprocessed version of Phyzzy, only do when changing plotSwitch or calcSwitch and nothing else.
 runParallel = 1;                                                              % Use parfor loop to go through processRun. Can't be debugged within the loop.
+debugNoTry = 1;
 
 %% Load Appropriate variables and paths
 addpath(genpath('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy'))
 if ~replaceAnalysisOut
-  if nargin == 1
+  if nargin == 1 || 2
     %If there is only 1 file, it loads the analysisParamFile and composes a
     %list from all the data files in the ephysVolume.
+    vararginInputs = varargin;
     analysisParamFile = varargin{1};
     load(feval(analysisParamFile));
+    varargin = vararginInputs;
     runListFolder = ephysVolume;
-    runList = buildRunList(runListFolder, 'nev');
-  elseif nargin >= 2 || nargin == 0
-    disp('Must have 1 input.')
+    runList = buildRunList(runListFolder, 'nev');    
+  elseif nargin >= 3 || nargin == 0
+    disp('Must have 1  or 2 inputs.')
     return
   end
   
@@ -38,14 +40,39 @@ if ~replaceAnalysisOut
   
   % Load in a page from an excel sheet in the data directory.
   if exist(dataLog, 'file')
-    paramTable = readtable(dataLog,'Sheet','analysisParamSwap','ReadRowNames',true, 'PreserveVariableNames',true);
+    paramTable = readtable(dataLog,'ReadRowNames', true, 'PreserveVariableNames', true);
   end
   
   for dateSubj_i = 1:length(runList)
     dateSubject = runList{dateSubj_i}{1};
     for run_i = 1:length(runList{dateSubj_i}{2})
-      % Generate appropriate Paths
       runNum = runList{dateSubj_i}{2}{run_i};
+      
+      % Look through paramTable (if available) and replace variables
+      % Load variables from paramTable, if the row is present.
+      if any(strcmp(paramTable.Properties.RowNames, {[dateSubject runNum]}))
+        paramTableRow = paramTable([dateSubject runNum], :);
+        paramTableVars = paramTable.Properties.VariableNames;
+        for param_i = 1:width(paramTableRow)
+          if isa(paramTableRow.(paramTableVars{param_i}), 'double')
+            eval(sprintf('%s = %d;', paramTableVars{param_i}, paramTableRow.(paramTableVars{param_i})))
+          elseif isa(paramTableRow.(paramTableVars{param_i}), 'cell')
+            eval(sprintf('%s = %s;', paramTableVars{param_i}, paramTableRow.(paramTableVars{param_i}){1}))
+          end
+        end
+      end
+      
+      % Evaluates each row of 2nd argument input as a variable argument pair.
+      if nargin == 2
+        for arg_i = 1:size(varargin{2},1)
+          eval(sprintf('%s = %s;', varargin{2}{arg_i, 1}, num2str(varargin{2}{arg_i, 2})));
+        end
+      end
+      
+      % Generate appropriate Paths
+      %eyeStatsParams.clusterFixLPFilterIn = 30;                 % Filter used for saccade detection internally in ClusterFix.
+      analysisLabel = sprintf('Basic %d Hz', eyeStatsParams.clusterFixLPFilterIn);
+      
       analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
       [lfpFilename, photodiodeFilename, lineNoiseTriggerFilename] = deal(sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum));
       spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
@@ -54,7 +81,6 @@ if ~replaceAnalysisOut
       analysisParamFilename = strcat(outDir,analysisParamFilenameStem);
       preprocessedDataFilename = strcat(outDir,preprocessedDataFilenameStem);                     %#ok
       ephysParams.outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
-
       
       % Generate Directories
       if ~exist(outDir,'dir')
@@ -72,24 +98,12 @@ if ~replaceAnalysisOut
         end
       end
       
-      %Autodetecting spike channels - If the file is parsed, retrieve channels present
+      % Autodetecting spike channels - If the file is parsed, retrieve channels present
       parsedFolderName = sprintf('%s/%s/%s%s_parsed',ephysVolume,dateSubject,dateSubject,runNum);
       if exist(parsedFolderName,'dir') == 7
         [ephysParams.spikeChannels, ephysParams.lfpChannels, ephysParams.channelNames] = autoDetectChannels(parsedFolderName);
       end
 
-      % Load variables from paramTable, if the row is present.
-      if any(strcmp(paramTable.Properties.RowNames, {[dateSubject runNum]}))
-        paramTableRow = paramTable([dateSubject runNum], :);
-        paramTableVars = paramTable.Properties.VariableNames;
-        for param_i = 1:width(paramTableRow)
-          if isa(paramTableRow.(paramTableVars{param_i}), 'double')
-            eval(sprintf('%s = %d;', paramTableVars{param_i}, paramTableRow.(paramTableVars{param_i})))
-          elseif isa(paramTableRow.(paramTableVars{param_i}), 'cell')
-            eval(sprintf('%s = %s;', paramTableVars{param_i}, paramTableRow.(paramTableVars{param_i}){1}))
-          end
-        end
-      end
       % Save files
       save(analysisParamFilename);
       analysisParamFileList{meta_ind} = analysisParamFilename;
@@ -98,18 +112,23 @@ if ~replaceAnalysisOut
     end
   end
   
-  %% Process the runs
+  analysisParamFileList = analysisParamFileList';
+  analysisParamFileName = analysisParamFileName';
+  
+  %% Process the runs  
   [errorMsg, startTimes, endTimes, analysisOutFilename] = deal(cell(length(analysisParamFileList),1));
+  
+  tmp  = load(analysisParamFileList{1}, 'outputVolume');
+  outputVolume = tmp.outputVolume;
+  
   if usePreprocessed
     for path_ind = 1:length(analysisParamFileList)
       analysisParamFileList{path_ind} = [fileparts(analysisParamFileList{path_ind}) filesep 'preprocessedData.mat'];
     end
   end
   
-  tmp  = load(analysisParamFileList{1}, 'outputVolume');
-  outputVolume = tmp.outputVolume;
-  
   if license('test','Distrib_Computing_Toolbox') && runParallel
+    
     parfor run_ind = 1:length(analysisParamFileList)
       fprintf('run_ind reads %d... \n', run_ind);
       fprintf('Processing %s... \n', analysisParamFileList{run_ind});
@@ -134,19 +153,32 @@ if ~replaceAnalysisOut
       errorMsgRun = errorMsg{run_ind};
       save(analysisParamFileList{run_ind}, 'errorMsgRun', '-append');
     end
+    
   else
+    
     for run_ind = 1:length(analysisParamFileList)
       fprintf('Processing %s... \n', analysisParamFileList{run_ind});
       startTimes{run_ind} = datetime('now');
-      try
+      if ~debugNoTry
+        try
+          if usePreprocessed
+            [~, analysisOutFilename{run_ind}] = processRun('paramBuilder','buildAnalysisParamFileSocialVids','preprocessed',analysisParamFileList{run_ind});
+          else
+            [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
+          end
+          [errorMsg{run_ind}, errorMsgRun] = deal('None');
+        catch MyErr
+          [errorMsg{run_ind}, errorMsgRun] = deal(MyErr.message);
+        end
+        
+      else
+        % This loop is identical to the one above, without the try clause.
         if usePreprocessed
           [~, analysisOutFilename{run_ind}] = processRun('paramBuilder','buildAnalysisParamFileSocialVids','preprocessed',analysisParamFileList{run_ind});
         else
           [~, analysisOutFilename{run_ind}] = processRun('paramFile', analysisParamFileList{run_ind});
         end
         [errorMsg{run_ind}, errorMsgRun] = deal('None');
-      catch MyErr
-        [errorMsg{run_ind}, errorMsgRun] = deal(MyErr.message);
       end
       save(analysisParamFileList{run_ind}, 'errorMsgRun', '-append');
       endTimes{run_ind} = datetime('now');
@@ -167,7 +199,11 @@ else
   analysisParamFilename = {analysisParamList.folder}';
   [~, B] = setdiff(analysisParamFilename, analysisOutFilename);
   analysisParamFilename(B) = [];
-  tmp = cellfun(@(x) load(fullfile(x, 'AnalysisParams.mat'), 'errorMsgRun'), analysisParamFilename, 'UniformOutput', false);
+  if usePreprocessed
+    tmp = cellfun(@(x) load(fullfile(x, 'preprocessedData.mat'), 'errorMsgRun'), analysisParamFilename, 'UniformOutput', false);
+  else
+    tmp = cellfun(@(x) load(fullfile(x, 'AnalysisParams.mat'), 'errorMsgRun'), analysisParamFilename, 'UniformOutput', false);
+  end
   errorMsg = cellfun(@(x) x.errorMsgRun, tmp, 'UniformOutput', false);
   [startTimes, endTimes] = deal(cell(length(analysisOutFilename),1));
   
@@ -180,25 +216,30 @@ end
 %analysisOutFilename is now a cell array of the filepaths to the outputs of
 %runAnalyses. Cycle through them and extract desired information (# of
 %units, significance), which you can add to the output file.
-          %[analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorMsg(ii), channel, UnitCount, UnsortSESig, UnitSESig, MUASESig, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, ' ']
+%[analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorMsg(ii), channel, UnitCount, UnsortSESig, UnitSESig, MUASESig, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, ' ']
+
+firstEntry = find(~cellfun('isempty', analysisOutFilename), 1);
+if ~isempty(firstEntry)
+  tmp = load(analysisOutFilename{1},'sigStruct');
+  epochType = tmp.sigStruct.IndInfo{1};
+  groupingType = tmp.sigStruct.IndInfo{2};
+  dataType = tmp.sigStruct.IndInfo{3};
+end
+
 titles = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Channel', 'Unit_Count', 'SubEvent Unsorted', 'SubEvent Unit', 'SubEvent MUA', 'Sig Unit count', 'Sig Unsorted', 'Sig MUA', 'Stimuli_count', 'Stimuli','ANOVA','Other Info'};
 sigMUAInd = strcmp(titles,'Sig MUA');
 sigUnsortedInd = strcmp(titles,'Sig Unsorted');
 
-epochCount = 3; %Hardcoding 3 Epochs here.
+epochCount = size(tmp.sigStruct.data{1},1);
 table = cell(epochCount,1);
 [table{:}] = deal(cell(length(analysisOutFilename), length(titles)));
 true_ind = 1;
-tmp = load(analysisOutFilename{1},'sigStruct');
-epochType = tmp.sigStruct.IndInfo{1};
-groupingType = tmp.sigStruct.IndInfo{2};
-dataType = tmp.sigStruct.IndInfo{3};
 
 for ii = 1:length(analysisParamFileName)
   if ~isempty((analysisOutFilename{ii}))
     tmp = load(analysisOutFilename{ii}, 'stimStatsTable','sigStruct','frEpochs', 'subEventSigStruct'); %Relies on genStats function in runAnalyses.
     true_ind_page = true_ind;
-    for epoch_i = 1:length(tmp.sigStruct.IndInfo{1})
+    for epoch_i = 1:epochCount
       for channel_ind = 1:length(tmp.sigStruct.data)
         
         % Null model based significance testing 
@@ -256,7 +297,7 @@ for ii = 1:length(analysisParamFileName)
         % Package Outputs into structure for table
         table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorMsg(ii), channel, UnitCount, subECell, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, {' '}];
         if ii == 1 && epoch_i == 1
-          %           table{epoch_i}{true_ind, 11} = sprintf('Comparison: %s Vs %s', strjoin(unitStructs{1}.ANOVA.stats.grpnames{1}), strjoin(unitStructs{1}.ANOVA.stats.grpnames{2}));
+          % table{epoch_i}{true_ind, 11} = sprintf('Comparison: %s Vs %s', strjoin(unitStructs{1}.ANOVA.stats.grpnames{1}), strjoin(unitStructs{1}.ANOVA.stats.grpnames{2}));
         end
         true_ind = true_ind + 1;     
       end
@@ -278,13 +319,18 @@ for ii = 1:length(analysisParamFileName)
   end
 end
 
-%Save Batch Run Results
-for table_ind = 1:length(table)
-  table{table_ind}{3,end} = sprintf('%d - %d ms', tmp.frEpochs(table_ind,1), tmp.frEpochs(table_ind,2));
-  T = cell2table(table{table_ind});
-  T.Properties.VariableNames = titles;
-  writetable(T,sprintf('%s/BatchRunResults.xlsx',outputVolume),'Sheet', sprintf('%s Epoch', epochType{table_ind}))
+if isempty(firstEntry)
+  fprintf('Done - No Excel sheet to produce')
+else
+  %Save Batch Run Results
+  for table_ind = 1:length(table)
+    table{table_ind}{3,end} = sprintf('%d - %d ms', tmp.frEpochs(table_ind,1), tmp.frEpochs(table_ind,2));
+    T = cell2table(table{table_ind});
+    T.Properties.VariableNames = titles;
+    writetable(T,sprintf('%s/BatchRunResults.xlsx',outputVolume),'Sheet', sprintf('%s Epoch', epochType{table_ind}))
+  end
 end
+
 % %PDF Summary
 % %Remove empty cells from analysisOutFilename
 % nonEmptyCellInd = ~(cellfun('isempty',analysisOutFilename));

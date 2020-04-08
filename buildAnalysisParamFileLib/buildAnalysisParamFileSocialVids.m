@@ -12,12 +12,12 @@ machine = machine(~isspace(machine));
 
 switch machine
   case 'homeDesktopWork'
-    ephysVolume = slashSwap('D:\OneDrive\Lab\ESIN_Ephys_Files\Data');
+    ephysVolume = slashSwap('C:\OneDrive\Lab\ESIN_Ephys_Files\Data');
     stimulusLogVolume = ephysVolume;
-    outputVolume = 'D:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
-    stimParamsFilename = slashSwap('D:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
-    stimDir = slashSwap('D:\OneDrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
-    stimParamsFilename = 'D:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat';   %#ok
+    outputVolume = 'C:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
+    stimParamsFilename = slashSwap('C:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
+    stimDir = slashSwap('C:\OneDrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
+    stimParamsFilename = 'C:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat';   %#ok
   case 'Alienware_FA'
     ephysVolume = slashSwap('D:\Onedrive\Lab\ESIN_Ephys_Files\Data');
     stimulusLogVolume = ephysVolume;
@@ -46,7 +46,8 @@ switch machine
     stimParamsFilename = 'C:/Users/Farid Aboharb/OneDrive/Lab/ESIN_Ephys_Files/Analysis/phyzzy/StimParamFileSocialVids_Full.mat';   %#ok
     stimDir = 'G:/StimuliForFaridfromJulia/SocialCategories';       
 end
-analysisLabel = 'Basic';
+
+analysisLabel = sprintf('Basic %d Hz', eyeStatsParams.clusterFixLPFilterIn);
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 
@@ -145,9 +146,6 @@ calcSwitch.spikeTimes = 0;
 calcSwitch.useJacknife = 0;      
 
 %% Parameters
-eyeStatsParams.clusterFixLPFilterIn = 25;                 %Filter used for saccade detection internally in ClusterFix.
-analysisLabel = [analysisLabel '_' num2str(eyeStatsParams.clusterFixLPFilterIn) 'Hz'];
-
 % parameters preprocessSpikes and preprocessLFP, see functions for details
 ephysParams.needLFP = 1;
 ephysParams.needSpikes = 1;
@@ -349,6 +347,8 @@ eyeStatsParams.psthPre = psthParams.psthPre;
 eyeStatsParams.psthImDur = psthParams.psthImDur;
 eyeStatsParams.stimDir = stimDir;
 eyeStatsParams.lfpPaddedBy = tfParams.movingWin(1)/2;
+eyeStatsParams.outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
+eyeStatsParams.clusterFixLPFilterIn = 25;                 % Filter used for saccade detection internally in ClusterFix.
 
 genStatsParams.ANOVAParams.target = 'socialInteraction';    % When performing a one way ANOVA, the label from groups which is used. the rest are 'non-' label.
 
@@ -413,12 +413,13 @@ end
 %                 {-800, 60}; ...
 %                 {100, 1100}}; %#ok
 %               
-              frEpochsCell = {{60, @(stimDur) stimDur+60}};...
+frEpochsCell = {{60, @(stimDur) stimDur+60}};...
 %                 {-800, 60}; ...
 %                 {@(stimDur) stimDur+60, @(stimDur) stimDur+460}}; %#ok
               
-epochLabels = {'Presentation','Fixation','Reward'};
-              
+epochLabels = {'Presentation'};%,'Fixation','Reward'};
+            
+assert(length(frEpochsCell) == length(epochLabels), 'Epoch time bins and epochLabel lengths must match')
 %%%% note: all analysisGroups cell arrays are nx1, NOT 1xn
 %Defined for Groups of 2, A-B/A+B type index.
 analysisGroups.selectivityIndex.groups = {{'socialInteraction';'nonInteraction'},{'socialInteraction';'agents'}};

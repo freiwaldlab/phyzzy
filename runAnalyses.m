@@ -253,7 +253,10 @@ save(analysisOutFilename,'catInds','imInds', '-append');
 % Eye Signal Processing
 
 if isfield(plotSwitch, 'saccadeDetect') && plotSwitch.saccadeDetect
-  [saccadeByStim, eyeInByEvent] = saccadeDetect(analogInByEvent, eyeStatsParams, taskData.eyeCal.blinkVals);
+  eyeStatsParams.eventIDs = eventIDs;
+  eyeStatsParams.eventLabels = eventLabels;
+  eyeStatsParams.outDir = outDir;
+  [saccadeByStim, eyeInByEvent] = saccadeDetect(analogInByEvent, eyeStatsParams, taskData);
   save(analysisOutFilename,'saccadeByStim','-append');
 else
   %Reshapes analogInByEvent into eye signal. This isn't smoothed, as the
@@ -270,8 +273,6 @@ end
 if isfield(plotSwitch, 'eyeStimOverlay') && plotSwitch.eyeStimOverlay
   eyeStimOverlay(eyeInByEvent, stimDir, outDir, psthParams, saccadeByStim, attendedObjData, eventIDs, taskData);
 end
-
-error('doneEyeStuff');
 
 if isfield(plotSwitch, 'eyeCorrelogram') && plotSwitch.eyeCorrelogram 
   eyeCorrelogram(eyeInByEvent, psthParams, eventLabels, outDir, saveFig, exportFig, saveFigData, figTag)
@@ -5671,18 +5672,26 @@ end
 
 end
 
-function [eyeBehByStim, eyeInByEventSmooth] = saccadeDetect(analogInByEvent, eyeStatsParams, blinkVals)
+function [eyeBehByStim, eyeInByEventSmooth] = saccadeDetect(analogInByEvent, eyeStatsParams, taskData)
 % Function uses ClusterFix to generate a saccade map.
-eventInds = [1, 2, 3];  % Fixation, Saccade, Blinks
+blinkVals = taskData.eyeCal.blinkVals;
+PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
+eventInds = [1, 2, 3];      
 eventNames = {'Fix','Saccade','Blink'};
-filterSaccades = 1;     % Performs a filter on saccades to exclude microsaccades, defined with respect to duration
+filterSaccades = 1;         % Performs a filter on saccades to exclude microsaccades, defined with respect to duration
 saccadeDurThres = 35;       % Additional saccade filtering outside of clusterFix, removes saccades which don't last this long or more.
-saccadeDistThrs = .1;       % As above, removes saccades with mean distances of less than this. 
+saccadeDistThrs = 1;        % As above, removes saccades with mean distances of less than this. 
+
+% visualized trial by trial trace parameters
+saccadeColors = 'rbgcm';
 
 stimDir = eyeStatsParams.stimDir;
 psthPre = eyeStatsParams.psthPre;
 psthImDur = eyeStatsParams.psthImDur;
 lfpPaddedBy = eyeStatsParams.lfpPaddedBy+1;
+eventIDs = eyeStatsParams.eventIDs;
+taskEventIDs = taskData.taskEventList;
+frameMotionInd = cellfun(@(x) find(strcmp(taskEventIDs, x)), eventIDs);
 
 % Remove Padding, as this messes with indexing and the code signal pads itself.
 stimStartInd = lfpPaddedBy;
@@ -5732,11 +5741,128 @@ perTrialBreak = @(x) cellfun(@(y) squeeze(y), mat2cell(x, 2, ones(size(x, 2), 1)
 eyeInByEventTrial = cellfun(perTrialBreak, eyeInByEventAll, 'UniformOutput', 0);
 
 for stim_i = 1:length(eyeInByEventTrial)
-  [fixStats{stim_i}, eyeInByEventTrialFiltered{stim_i}] = ClusterFix(eyeInByEventTrial{stim_i}, 1/1000, eyeStatsParams.clusterFixLPFilterIn);
+  [fixStats{stim_i}, eyeInByEventTrialFiltered{stim_i}] = ClusterFix(eyeInByEventTrial{stim_i}, 1/1000);
+end
+
+% Filter saccades, make output image
+% Convert the output of ClusterFix to an image which can be used behind
+% Rasters.
+[eyeBehByStim] = deal(cell(length(fixStats),1));
+for stim_i = 1:length(fixStats)
+  stimEye = fixStats{stim_i};
+  [eyeBehImg] = deal(ones(length(stimEye), (stimEndInd-stimStartInd)+1));
+  for trial_i = 1:length(stimEye)
+    if ~isempty(stimEye{trial_i}.fixations)
+      
+      % Extract Fixations and mark their times
+      fixationTimes = stimEye{trial_i}.fixationtimes;
+      for fix_i = 1:size(fixationTimes,2)
+        eyeBehImg(trial_i, fixationTimes(1, fix_i):fixationTimes(2, fix_i)) = deal(eventInds(strcmp(eventNames, 'Fix')));
+      end
+      
+      % Extract Saccades and mark their times
+      saccadeTimes = stimEye{trial_i}.saccadetimes;
+      saccadeMaxDists = stimEye{trial_i}.SaaccadeClusterValues(:,7)';
+      
+      % Filter if desired
+      if filterSaccades
+        % Filter based on duration (filterThres)
+        sacDurTmp = saccadeTimes(2,:) - saccadeTimes(1,:);
+        sacKeepInd = sacDurTmp <= saccadeDurThres;
+        
+        % Filter based on distance
+        sacKeepInd2 = saccadeMaxDists < saccadeDistThrs;
+        
+        % Combine
+        sacKeepInd = ~logical(sacKeepInd + sacKeepInd2);
+        
+        % Remove saccades and overwrite clusterFix output.
+        [saccadeTimes, fixStats{stim_i}{trial_i}.saccadetimes] = deal(saccadeTimes(:, sacKeepInd));
+        fixStats{stim_i}{trial_i}.SaaccadeClusterValues = fixStats{stim_i}{trial_i}.SaaccadeClusterValues(sacKeepInd,:);
+      end
+      
+      % Label Saccade times in the image
+      for sac_i = 1:size(saccadeTimes,2)
+        eyeBehImg(trial_i, saccadeTimes(1, sac_i):saccadeTimes(2, sac_i)) = deal(eventInds(strcmp(eventNames, 'Saccade')));
+      end
+      
+      % 0s represents saccades which don't get over the threshold, for now
+      % call them fixations.
+      eyeBehImg(eyeBehImg == 0) = 1;
+      
+      % Add in Blinks
+      blinksTrial = blinkTimes{stim_i}{trial_i};
+      for blink_i = 1:size(blinksTrial,2)
+        eyeBehImg(trial_i, blinksTrial(1, blink_i):blinksTrial(2, blink_i)) = deal(eventInds(strcmp(eventNames, 'Blink')));
+      end
+    else
+      %disp('No saccades detected')
+    end
+
+  end
+  eyeBehByStim{stim_i} = eyeBehImg;
+end
+
+% Generate Images that illustrate Saccade Path
+for stim_i = 1:length(fixStats)
+  % Find the right frame
+  lowerLeft = -([taskData.frameMotionData(frameMotionInd(stim_i)).width/2 taskData.frameMotionData(frameMotionInd(stim_i)).height/2] ./ abs(taskData.eyeCal.PixelsPerDegree));
+  
+  h = figure('Units','normalized','Position', [0 0 1 0.9], 'Name', sprintf('Trial eye Traces - %s', eyeStatsParams.eventIDs{stim_i}));
+  plotHandles = gobjects(length(fixStats{stim_i}),1);
+  objTbGrp = uitabgroup('Parent', h);
+  for trial_i = 1:length(fixStats{stim_i})
+    objTab = uitab('Parent', objTbGrp, 'Title', sprintf('Trial %d', trial_i));
+    plotHandles(trial_i) = axes('parent', objTab);
+    xy = fixStats{stim_i}{trial_i}.XY;
+    rectangle('Position', [[lowerLeft] abs([lowerLeft*2])], 'EdgeColor', 'b', 'LineWidth', 4);
+    fixations = fixStats{stim_i}{trial_i}.fixations;
+    fixationtimes = fixStats{stim_i}{trial_i}.fixationtimes;
+    saccadetimes = fixStats{stim_i}{trial_i}.saccadetimes;
+    saccMeanDist = round(fixStats{stim_i}{trial_i}.SaaccadeClusterValues(:,3), 3);
+    saccMaxDist = round(fixStats{stim_i}{trial_i}.SaaccadeClusterValues(:,7), 3);
+    
+    hold on
+    % Plot the entire trace in black for the sake of microsaccades which
+    % were removed.
+    a = plot(xy(1,:), xy(2,:), 'k');
+      
+    % Plot fixation means
+    for ii = 1:size(fixationtimes, 2)
+      plot(fixations(1,ii),fixations(2,ii),'y*'); % plot mean fixation location, yellow
+    end
+    
+    % Plot saccades
+    saccHandles = gobjects(size(saccadetimes, 2),1);
+    saccLegend = cell(size(saccadetimes, 2),1);
+    for ii = 1:size(saccadetimes,2)
+      saccHandles(ii) = plot(xy(1,saccadetimes(1,ii):saccadetimes(2,ii)),...
+        xy(2, saccadetimes(1,ii): saccadetimes(2,ii)),...
+        saccadeColors(mod(ii - 1, length(saccadeColors)) + 1)); %   Each saccade gets a distinct color.
+      saccLegend{ii} = sprintf('%s, %s', num2str(saccMaxDist(ii)), num2str(saccMeanDist(ii)));
+    end
+    
+    %Plot the start and end
+    text(xy(1,psthPre), xy(2,psthPre), 'S', 'Fontsize', 10, 'FontWeight', 'bold', 'BackgroundColor','white')
+    text(xy(1,psthPre+psthImDur), xy(2,psthPre+psthImDur), 'E', 'Fontsize', 10, 'FontWeight', 'bold', 'BackgroundColor','white', 'Clipping', 'on')
+
+    legend([a; saccHandles], [{'Fixations'}; saccLegend], 'location', 'NorthEastOutside')
+    title(sprintf('Trial %d', trial_i));
+    
+  end
+  % Link all the subplots
+  linkprop(plotHandles, {'XLim', 'YLim', 'Position'});
+  plotHandles(1).XLim = [-12 12];
+  plotHandles(1).YLim = [-7 7];
+  
+  % Save the figure
+  savefig(fullfile(eyeStatsParams.outDir, ['saccadeTraces_' eyeStatsParams.eventLabels{stim_i}]))
+  close(h);
 end
 
 % Reshape smoothed eye signal from clusterFix back into the appropriate
 % form.
+
 eyeInByEventSmooth = cell(size(eyeInByEventAll));
 for stim_i = 1:length(eyeInByEventTrialFiltered)
   eyeSigTmp = eyeInByEventTrialFiltered{stim_i}';
@@ -5748,58 +5874,6 @@ for stim_i = 1:length(eyeInByEventTrialFiltered)
   eyeInByEventSmooth{stim_i} = eyeSigReshaped;
 end
 
-% Convert the output of ClusterFix to an image which can be used behind
-% Rasters.
-[eyeBehByStim] = deal(cell(length(fixStats),1));
-for stim_i = 1:length(fixStats)
-  stimEye = fixStats{stim_i};
-  [eyeBehImg] = deal(ones(length(stimEye), (stimEndInd-stimStartInd)+1));
-  for trial_i = 1:length(stimEye)
-    % Extract Fixations and mark their times
-    fixationTimes = stimEye{trial_i}.fixationtimes;
-    for fix_i = 1:size(fixationTimes,2)
-      eyeBehImg(trial_i, fixationTimes(1, fix_i):fixationTimes(2, fix_i)) = deal(eventInds(strcmp(eventNames, 'Fix')));
-    end
-    
-    % Extract Saccades and mark their times
-    saccadeTimes = stimEye{trial_i}.saccadetimes;
-    saccadeMeanDists = stimEye{trial_i}.SaaccadeClusterValues(:,3)';
-    
-    % Filter if desired
-    if filterSaccades
-      % Filter based on duration (filterThres)
-      sacDurTmp = saccadeTimes(2,:) - saccadeTimes(1,:);
-      sacKeepInd = sacDurTmp <= saccadeDurThres;
-      
-      % Filter based on distance
-      sacKeepInd2 = saccadeMeanDists < saccadeDistThrs;
-      
-      % Combine
-      sacKeepInd = ~logical(sacKeepInd + sacKeepInd2);
-      
-      % Remove saccades
-      saccadeTimes = saccadeTimes(:, sacKeepInd);
-      
-    end
-         
-    % Label Saccade times in the image
-    for sac_i = 1:size(saccadeTimes,2)
-      eyeBehImg(trial_i, saccadeTimes(1, sac_i):saccadeTimes(2, sac_i)) = deal(eventInds(strcmp(eventNames, 'Saccade')));
-    end
-    
-    % 0s represents saccades which don't get over the threshold, for now
-    % call them fixations.
-    eyeBehImg(eyeBehImg == 0) = 1;
-    
-    % Add in Blinks
-    blinksTrial = blinkTimes{stim_i}{trial_i};
-    for blink_i = 1:size(blinksTrial,2)
-      eyeBehImg(trial_i, blinksTrial(1, blink_i):blinksTrial(2, blink_i)) = deal(eventInds(strcmp(eventNames, 'Blink')));
-    end
-  end
-
-  eyeBehByStim{stim_i} = eyeBehImg;
-end
 
 end
 
