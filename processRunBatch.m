@@ -11,8 +11,8 @@ function [] = processRunBatch(varargin)
 %       parameters defined in the analysisParamFile and the paramTable.
 
 replaceAnalysisOut = 0;                                                       % This generates an excel file at the end based on previous analyses. Don't use when running a new.
-outputVolume = 'D:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed';          % Only used for the excel doc. change in analysisParamFile to change destination.
-dataLog = 'D:\Onedrive\Lab\ESIN_Ephys_Files\Data\analysisParamTable.xlsx';    % Only used to find recording log, used to overwrite params.
+outputVolume = 'C:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed';          % Only used for the excel doc. change in analysisParamFile to change destination.
+dataLog = 'C:\Onedrive\Lab\ESIN_Ephys_Files\Data\analysisParamTable.xlsx';    % Only used to find recording log, used to overwrite params.
 usePreprocessed = 0;                                                          % uses preprocessed version of Phyzzy, only do when changing plotSwitch or calcSwitch and nothing else.
 runParallel = 1;                                                              % Use parfor loop to go through processRun. Can't be debugged within the loop.
 debugNoTry = 1;
@@ -70,9 +70,6 @@ if ~replaceAnalysisOut
       end
       
       % Generate appropriate Paths
-      %eyeStatsParams.clusterFixLPFilterIn = 30;                 % Filter used for saccade detection internally in ClusterFix.
-      analysisLabel = sprintf('Basic %d Hz', eyeStatsParams.clusterFixLPFilterIn);
-      
       analogInFilename = sprintf('%s/%s/%s%s.ns2',ephysVolume,dateSubject,dateSubject,runNum);   %#ok
       [lfpFilename, photodiodeFilename, lineNoiseTriggerFilename] = deal(sprintf('%s/%s/%s%s.ns5',ephysVolume,dateSubject,dateSubject,runNum));
       spikeFilename = sprintf('%s/%s/%s%s.nev',ephysVolume,dateSubject,dateSubject,runNum); %note that this file also contains blackrock digital in events
@@ -309,10 +306,10 @@ for ii = 1:length(analysisParamFileName)
     end
   else
     true_ind_page = true_ind;
-    for epoch_i = 1:3
+    for epoch_i = 1:epochCount
       table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorMsg(ii), {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {' '}];
       true_ind = true_ind + 1;
-      if epoch_i ~= 3 % More pages to do = let count reset.
+      if epoch_i ~= epochCount % More pages to do = let count reset.
         true_ind = true_ind_page;
       end
     end

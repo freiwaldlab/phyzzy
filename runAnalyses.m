@@ -256,13 +256,13 @@ if isfield(plotSwitch, 'saccadeDetect') && plotSwitch.saccadeDetect
   eyeStatsParams.eventIDs = eventIDs;
   eyeStatsParams.eventLabels = eventLabels;
   eyeStatsParams.outDir = outDir;
-  [saccadeByStim, eyeInByEvent] = saccadeDetect(analogInByEvent, eyeStatsParams, taskData);
-  save(analysisOutFilename,'saccadeByStim','-append');
+  [saccadeImg, eyeBehStatsByStim, eyeInByEvent] = saccadeDetect(analogInByEvent, eyeStatsParams, taskData);
+  save(analysisOutFilename, 'saccadeImg', 'eyeBehStatsByStim', '-append');
 else
   %Reshapes analogInByEvent into eye signal. This isn't smoothed, as the
   %output above is. Produce empty saccadeByStim struct.
   eyeInByEvent = cellfun(@(n) squeeze(n(:,1:2,:,lfpPaddedBy+1:length(n)-(lfpPaddedBy+1))), analogInByEvent, 'UniformOutput', false);
-  saccadeByStim = cellfun(@(n)  ones(size(n,2), size(n,3)), eyeInByEvent, 'UniformOutput', false);
+  saccadeImg = cellfun(@(n)  ones(size(n,2), size(n,3)), eyeInByEvent, 'UniformOutput', false);
 end
 
 if isfield(plotSwitch, 'attendedObject') && plotSwitch.attendedObject
@@ -271,7 +271,7 @@ if isfield(plotSwitch, 'attendedObject') && plotSwitch.attendedObject
 end
 
 if isfield(plotSwitch, 'eyeStimOverlay') && plotSwitch.eyeStimOverlay
-  eyeStimOverlay(eyeInByEvent, stimDir, outDir, psthParams, saccadeByStim, attendedObjData, eventIDs, taskData);
+  eyeStimOverlay(eyeInByEvent, stimDir, outDir, psthParams, saccadeImg, attendedObjData, eventIDs, taskData);
 end
 
 if isfield(plotSwitch, 'eyeCorrelogram') && plotSwitch.eyeCorrelogram 
@@ -565,7 +565,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
           figData.z = spikesByEvent(imageSortOrderInd(1:topStimToPlot));
           figData.x = -psthPre:psthImDur+psthPost;
           %rasterColorCoded(fh, spikesByEvent(imageSortOrderInd(1:topStimToPlot)), sortedEventIDs(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, attendedObjData);
-          rasterColorCoded(fh, spikesByEvent(imageSortOrderInd(1:topStimToPlot)), sortedEventIDs(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, attendedObjData, saccadeByStim, plotSwitch.prefImRasterColorCoded);
+          rasterColorCoded(fh, spikesByEvent(imageSortOrderInd(1:topStimToPlot)), sortedEventIDs(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, attendedObjData, saccadeImg, plotSwitch.prefImRasterColorCoded);
           title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
           saveFigure(outDir, sprintf('prefImRaster_%s_%s_%s_Run%s',colorTag, chanUnitTag,epochTag,runNum), figData, saveFig, exportFig, saveFigData, figTag );
           if closeFig
@@ -5672,7 +5672,7 @@ end
 
 end
 
-function [eyeBehByStim, eyeInByEventSmooth] = saccadeDetect(analogInByEvent, eyeStatsParams, taskData)
+function [eyeBehImgByStim, eyeBehStatsByStim, eyeInByEventSmooth] = saccadeDetect(analogInByEvent, eyeStatsParams, taskData)
 % Function uses ClusterFix to generate a saccade map.
 blinkVals = taskData.eyeCal.blinkVals;
 PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
@@ -5681,7 +5681,7 @@ eventNames = {'Fix','Saccade','Blink'};
 filterSaccades = 1;         % Performs a filter on saccades to exclude microsaccades, defined with respect to duration
 saccadeDurThres = 35;       % Additional saccade filtering outside of clusterFix, removes saccades which don't last this long or more.
 saccadeDistThrs = 1;        % As above, removes saccades with mean distances of less than this. 
-
+plotPaths = 0;              % Code below which visualizes things trial by trial.
 % visualized trial by trial trace parameters
 saccadeColors = 'rbgcm';
 
@@ -5747,7 +5747,7 @@ end
 % Filter saccades, make output image
 % Convert the output of ClusterFix to an image which can be used behind
 % Rasters.
-[eyeBehByStim] = deal(cell(length(fixStats),1));
+[eyeBehImgByStim] = deal(cell(length(fixStats),1));
 for stim_i = 1:length(fixStats)
   stimEye = fixStats{stim_i};
   [eyeBehImg] = deal(ones(length(stimEye), (stimEndInd-stimStartInd)+1));
@@ -5800,9 +5800,10 @@ for stim_i = 1:length(fixStats)
     end
 
   end
-  eyeBehByStim{stim_i} = eyeBehImg;
+  eyeBehImgByStim{stim_i} = eyeBehImg;
 end
 
+if plotPaths
 % Generate Images that illustrate Saccade Path
 for stim_i = 1:length(fixStats)
   % Find the right frame
@@ -5860,9 +5861,10 @@ for stim_i = 1:length(fixStats)
   close(h);
 end
 
-% Reshape smoothed eye signal from clusterFix back into the appropriate
-% form.
+end
 
+% Reshape smoothed eye signal from clusterFix back into the appropriate
+% form for the rest of phyzzy.
 eyeInByEventSmooth = cell(size(eyeInByEventAll));
 for stim_i = 1:length(eyeInByEventTrialFiltered)
   eyeSigTmp = eyeInByEventTrialFiltered{stim_i}';
@@ -5874,6 +5876,7 @@ for stim_i = 1:length(eyeInByEventTrialFiltered)
   eyeInByEventSmooth{stim_i} = eyeSigReshaped;
 end
 
+eyeBehStatsByStim = fixStats;
 
 end
 

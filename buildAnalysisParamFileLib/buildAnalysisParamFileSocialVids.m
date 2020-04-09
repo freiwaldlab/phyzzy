@@ -47,7 +47,7 @@ switch machine
     stimDir = 'G:/StimuliForFaridfromJulia/SocialCategories';       
 end
 
-analysisLabel = sprintf('Basic %d Hz', eyeStatsParams.clusterFixLPFilterIn);
+analysisLabel = 'Basic';
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 
