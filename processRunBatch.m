@@ -10,17 +10,18 @@ function [] = processRunBatch(varargin)
 %       {{'param1', 'arg1'}; {'param2','arg2'}}, which will replace
 %       parameters defined in the analysisParamFile and the paramTable.
 
-replaceAnalysisOut = 0;                                                       % This generates an excel file at the end based on previous analyses. Don't use when running a new.
-outputVolume = 'C:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\Analyzed';          % Only used for the excel doc. change in analysisParamFile to change destination.
+replaceAnalysisOut = 1;                                                       % This generates an excel file at the end based on previous analyses. Don't use when running a new.
+outputVolume = 'C:\Analyzed';          % Only used for the excel doc. change in analysisParamFile to change destination.
 dataLog = 'C:\Onedrive\Lab\ESIN_Ephys_Files\Data\analysisParamTable.xlsx';    % Only used to find recording log, used to overwrite params.
 usePreprocessed = 0;                                                          % uses preprocessed version of Phyzzy, only do when changing plotSwitch or calcSwitch and nothing else.
 runParallel = 1;                                                              % Use parfor loop to go through processRun. Can't be debugged within the loop.
 debugNoTry = 1;
 
 %% Load Appropriate variables and paths
-addpath(genpath('D:\Onedrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy'))
+addpath('buildAnalysisParamFileLib');
+addpath(genpath('dependencies'));
 if ~replaceAnalysisOut
-  if nargin == 1 || 2
+  if nargin == 1 || nargin == 2
     %If there is only 1 file, it loads the analysisParamFile and composes a
     %list from all the data files in the ephysVolume.
     vararginInputs = varargin;
@@ -112,7 +113,7 @@ if ~replaceAnalysisOut
   analysisParamFileList = analysisParamFileList';
   analysisParamFileName = analysisParamFileName';
   
-  %% Process the runs  
+  %% Process the runs
   [errorMsg, startTimes, endTimes, analysisOutFilename] = deal(cell(length(analysisParamFileList),1));
   
   tmp  = load(analysisParamFileList{1}, 'outputVolume');
@@ -185,29 +186,55 @@ if ~replaceAnalysisOut
   end
   
 else
-  disp('Recompiling structures for excel output')
-  addEnd = @(x) fullfile(x, 'analyzedData.mat');
-  breakString = @(x) strsplit(x, filesep);
-  joinStrings = @(x) strjoin([x(length(x)-2), x(length(x))],'');
+  if nargin >= 1
+    %If there is only 1 file, it loads the analysisParamFile and composes a
+    %list from all the data files in the ephysVolume.
+    vararginInputs = varargin;
+    analysisParamFile = varargin{1};
+    load(feval(analysisParamFile), 'analysisLabel');
+  end
   
-  analysisOutFilename = dir([outputVolume '\**\analyzedData.mat']);
-  analysisParamList = dir([outputVolume filesep '**' filesep 'AnalysisParams.mat']);
+  disp('Recompiling structures for excel output')  
+  analysisOutFilename = dir(fullfile(outputVolume, '**', analysisLabel,'**','analyzedData.mat'));
+  analysisParamList = dir(fullfile(outputVolume, '**', analysisLabel,'**','AnalysisParams.mat'));
+  
   analysisOutFilename = {analysisOutFilename.folder}';
   analysisParamFilename = {analysisParamList.folder}';
   [~, B] = setdiff(analysisParamFilename, analysisOutFilename);
   analysisParamFilename(B) = [];
+  errorMsg = cell(length(analysisParamFilename),1);
+  % If preprocessing was used, the error message is in a different spot.
   if usePreprocessed
-    tmp = cellfun(@(x) load(fullfile(x, 'preprocessedData.mat'), 'errorMsgRun'), analysisParamFilename, 'UniformOutput', false);
+    analysisList = fullfile(analysisParamFilename, 'preprocessedData.mat');
   else
-    tmp = cellfun(@(x) load(fullfile(x, 'AnalysisParams.mat'), 'errorMsgRun'), analysisParamFilename, 'UniformOutput', false);
+    analysisList = fullfile(analysisParamFilename, 'AnalysisParams.mat');
   end
-  errorMsg = cellfun(@(x) x.errorMsgRun, tmp, 'UniformOutput', false);
+  
+  % Iterate through the files, sometimes error message is missing for some
+  % unknown reason. To avoid crashes, loop below. 
+  errorCount = 0;
+  for analysis_i = 1:length(analysisList)
+    tmp = load(analysisList{analysis_i}, 'errorMsgRun');
+    if isfield(tmp, 'errorMsgRun')
+      errorMsg{analysis_i} = tmp.errorMsgRun;
+    else
+      errorCount = errorCount + 1;
+      errorMsg{analysis_i} = 'ERROR MISSING';
+    end
+  end
+  fprintf('Missing Error Count %d \n', errorCount)
+  
   [startTimes, endTimes] = deal(cell(length(analysisOutFilename),1));
+  [startTimes{:}, endTimes{:}] = deal(datetime(now,'ConvertFrom','datenum'));
+  
+  % Process the strings to generate
+  breakString = @(x) strsplit(x, filesep);
+  joinStrings = @(x) strjoin([x(length(x)-2), x(length(x))],'');
   
   tmpAnalysisParamFileName = cellfun(breakString, analysisOutFilename, 'UniformOutput',0);
   analysisParamFileName = cellfun(joinStrings, tmpAnalysisParamFileName, 'UniformOutput',0);
-  analysisOutFilename = cellfun(addEnd, analysisOutFilename,'UniformOutput',0);
-  [startTimes{:}, endTimes{:}] = deal(datetime(now,'ConvertFrom','datenum'));
+  analysisOutFilename = fullfile(analysisOutFilename, 'analyzedData.mat');
+
 end
 
 %analysisOutFilename is now a cell array of the filepaths to the outputs of
@@ -217,7 +244,7 @@ end
 
 firstEntry = find(~cellfun('isempty', analysisOutFilename), 1);
 if ~isempty(firstEntry)
-  tmp = load(analysisOutFilename{1},'sigStruct');
+  tmp = load(analysisOutFilename{firstEntry},'sigStruct');
   epochType = tmp.sigStruct.IndInfo{1};
   groupingType = tmp.sigStruct.IndInfo{2};
   dataType = tmp.sigStruct.IndInfo{3};

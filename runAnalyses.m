@@ -252,11 +252,11 @@ save(analysisOutFilename,'catInds','imInds', '-append');
 
 % Eye Signal Processing
 
-if isfield(plotSwitch, 'saccadeDetect') && plotSwitch.saccadeDetect
+if isfield(plotSwitch, 'eyeStatsAnalysis') && plotSwitch.eyeStatsAnalysis
   eyeStatsParams.eventIDs = eventIDs;
   eyeStatsParams.eventLabels = eventLabels;
   eyeStatsParams.outDir = outDir;
-  [saccadeImg, eyeBehStatsByStim, eyeInByEvent] = saccadeDetect(analogInByEvent, eyeStatsParams, taskData);
+  [saccadeImg, eyeBehStatsByStim, eyeInByEvent] = eyeStatsAnalysis(analogInByEvent, eyeStatsParams, taskData);
   save(analysisOutFilename, 'saccadeImg', 'eyeBehStatsByStim', '-append');
 else
   %Reshapes analogInByEvent into eye signal. This isn't smoothed, as the
@@ -486,7 +486,6 @@ end
 save(analysisOutFilename,'firingRatesByImageByEpoch','firingRateErrsByImageByEpoch','spikeCountsByImageByEpoch','-append');
 
 % Calculate sort orders and statistics
-epochLabels = {'Presentation','Fixation','Reward'};
 assert(length(analysisGroups.stimulusLabelGroups.groups) == 1, 'genStats will make mistakes in a multi-stimulusLabelGroups setting')
 genStatsParams.ANOVAParams.group = group;
 genStatsParams.ANOVAParams.groupLabelsByImage = groupLabelsByImage;
@@ -5672,7 +5671,7 @@ end
 
 end
 
-function [eyeBehImgByStim, eyeBehStatsByStim, eyeInByEventSmooth] = saccadeDetect(analogInByEvent, eyeStatsParams, taskData)
+function [eyeBehImgByStim, eyeBehStatsByStim, eyeInByEventSmooth] = eyeStatsAnalysis(analogInByEvent, eyeStatsParams, taskData)
 % Function uses ClusterFix to generate a saccade map.
 blinkVals = taskData.eyeCal.blinkVals;
 PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
@@ -5874,6 +5873,18 @@ for stim_i = 1:length(eyeInByEventTrialFiltered)
     eyeSigReshaped(2, trial_i, :) = eyeSigTmp{trial_i}(2,:);
   end
   eyeInByEventSmooth{stim_i} = eyeSigReshaped;
+end
+
+
+% Shift saccade times in each stimuli, trial to put it with reference to
+% stimulus onset, and add blinks.
+
+for stim_i = 1:length(fixStats)
+  for trial_i = 1:length(fixStats{stim_i})
+    fixStats{stim_i}{trial_i}.fixationtimes = fixStats{stim_i}{trial_i}.fixationtimes - psthPre;
+    fixStats{stim_i}{trial_i}.saccadetimes = fixStats{stim_i}{trial_i}.saccadetimes - psthPre;
+    fixStats{stim_i}{trial_i}.blinktimes = blinkTimes{stim_i}{trial_i} - psthPre;
+  end
 end
 
 eyeBehStatsByStim = fixStats;

@@ -14,7 +14,7 @@ switch machine
   case 'homeDesktopWork'
     ephysVolume = slashSwap('C:\OneDrive\Lab\ESIN_Ephys_Files\Data');
     stimulusLogVolume = ephysVolume;
-    outputVolume = 'C:/Onedrive/Lab/ESIN_Ephys_Files/Analysis/Analyzed';
+    outputVolume = 'C:/Analyzed';
     stimParamsFilename = slashSwap('C:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat');   %#ok
     stimDir = slashSwap('C:\OneDrive\Lab\ESIN_Ephys_Files\Stimuli and Code\SocialCategories');
     stimParamsFilename = 'C:\OneDrive\Lab\ESIN_Ephys_Files\Analysis\phyzzy\stimParamFileLib\StimParamFileSocialVids_Full.mat';   %#ok
@@ -63,13 +63,13 @@ figPos = [0 0 .6 0.7];      % Normalized units for figure position
 plotSwitch.subEventAnalysis = 0;            % plot traces comparing activity surrounding an event (defined in eventData, generated w/ eventDetectionApp), vs null.
 plotSwitch.imageEyeMap = 0;                 
 plotSwitch.eyeCorralogram = 0;              % Eye Gram
-plotSwitch.saccadeDetect = 1;               % use ClusterFix to generate a vector characterizing eye movements (Fix later).
+plotSwitch.eyeStatsAnalysis = 1;            % use ClusterFix to generate a vector characterizing eye movements.
 plotSwitch.attendedObject = 1;              % Vectors to distinguish where subject is looking. Required for prefImRasterColorCoded.
 plotSwitch.eyeStimOverlay = 1;              % Visualize eye traces on stimuli.
 
 plotSwitch.clusterOnEyePaths = 0;           % Resort spikes based on distinct eye paths, make "New events".
-plotSwitch.stimPSTHoverlay = 0;             % grabs stimuli and overlays PSTH on it.
-plotSwitch.imagePsth = 0;
+plotSwitch.stimPSTHoverlay = 0;             % grabs stimuli and plots the PSTH underneath.
+plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
 plotSwitch.stimCatANOVA = 1;
 plotSwitch.prefImRaster = 0;                % Raster, Not color coded.
