@@ -23,8 +23,8 @@ end
 load(analysisParamFilename);
 eventLabelsTmp = eventLabels; %note: hack to avoid overwriting list of not presented stimuli
 load(stimParamsFilename);
-
 eventLabels = eventLabelsTmp; % conclusion of hack
+
 channelNames = ephysParams.channelNames;
 spikeChannels = ephysParams.spikeChannels;
 lfpChannels = ephysParams.lfpChannels;
@@ -249,35 +249,37 @@ end
 save(analysisOutFilename,'catInds','imInds', '-append');
 
 %% Analyses
-
 % Eye Signal Processing
+eyeStatsParams.eventIDs = eventIDs;
+eyeStatsParams.eventLabels = eventLabels;
+eyeStatsParams.outDir = outDir;
+eyeDataStruct = struct();
+
+if isfield(plotSwitch, 'pupilDilation') && plotSwitch.pupilDilation
+  eyeDataStruct = pupilDilation(analogInByEvent, eyeStatsParams, taskData, eyeDataStruct);
+end
 
 if isfield(plotSwitch, 'eyeStatsAnalysis') && plotSwitch.eyeStatsAnalysis
-  eyeStatsParams.eventIDs = eventIDs;
-  eyeStatsParams.eventLabels = eventLabels;
-  eyeStatsParams.outDir = outDir;
-  [saccadeImg, eyeBehStatsByStim, eyeInByEvent] = eyeStatsAnalysis(analogInByEvent, eyeStatsParams, taskData);
-  save(analysisOutFilename, 'saccadeImg', 'eyeBehStatsByStim', '-append');
+  [eyeDataStruct, eyeBehStatsByStim, eyeInByEvent] = eyeStatsAnalysis(analogInByEvent, eyeStatsParams, taskData, eyeDataStruct);
+  save(analysisOutFilename, 'eyeBehStatsByStim', '-append');
 else
-  %Reshapes analogInByEvent into eye signal. This isn't smoothed, as the
-  %output above is. Produce empty saccadeByStim struct.
+  %Reshapes analogInByEvent into eye signal. not smoothed
   eyeInByEvent = cellfun(@(n) squeeze(n(:,1:2,:,lfpPaddedBy+1:length(n)-(lfpPaddedBy+1))), analogInByEvent, 'UniformOutput', false);
-  saccadeImg = cellfun(@(n)  ones(size(n,2), size(n,3)), eyeInByEvent, 'UniformOutput', false);
 end
 
 if isfield(plotSwitch, 'attendedObject') && plotSwitch.attendedObject
-  attendedObjData = calcEyeObjectTrace(eyeInByEvent, channelUnitNames, psthParams, eventIDs, taskData);
-  save(analysisOutFilename,'attendedObjData','-append');
+  eyeDataStruct = calcEyeObjectTrace(eyeInByEvent, channelUnitNames, psthParams, eventIDs, taskData, eyeDataStruct);
 end
 
+save(analysisOutFilename,'eyeDataStruct','-append');
+
 if isfield(plotSwitch, 'eyeStimOverlay') && plotSwitch.eyeStimOverlay
-  eyeStimOverlay(eyeInByEvent, stimDir, outDir, psthParams, saccadeImg, attendedObjData, eventIDs, taskData);
+  eyeStimOverlay(eyeInByEvent, stimDir, outDir, psthParams, eventIDs, taskData, eyeDataStruct);
 end
 
 if isfield(plotSwitch, 'eyeCorrelogram') && plotSwitch.eyeCorrelogram 
   eyeCorrelogram(eyeInByEvent, psthParams, eventLabels, outDir, saveFig, exportFig, saveFigData, figTag)
 end
-
 
 % Spike Processing
 
@@ -287,28 +289,7 @@ if ~calcSwitch.spikeTimes %use 1 ms bins for spikes
   save(analysisOutFilename,'spikesByEventBinned','spikesByCategoryBinned', '-append');
 end
 
-% for channel_i = 1:length(channelNames)
-%   for event_i = 1:length(eventLabels)
-%     for trial_i = 1:length(trialIDsByEvent{event_i})
-%       fieldName = sprintf('LFP.%s',channelNames{channel_i}(~isspace(channelNames{channel_i})));
-%       trialDB = trialDatabaseSetField(fieldName,squeeze(lfpByEvent{event_i}(1,channel_i,trial_i,:)),trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
-%     end
-%   end
-% end
-
-% if ~isempty(analogInByEvent)
-%   for channel_i = 1:length(analogInChannelNames)
-%     for event_i = 1:length(eventLabels)
-%       for trial_i = 1:length(trialIDsByEvent{event_i})
-%         fieldName = analogInChannelNames{channel_i}(~isspace(analogInChannelNames{channel_i}));
-%         trialDB = trialDatabaseSetField(fieldName,squeeze(analogInByEvent{event_i}(1,channel_i,trial_i,:)),trialDB,trialIDsByEvent{event_i}(trial_i),'dateSubj',dateSubject,'runNum',runNum);
-%       end
-%     end
-%   end
-% end
-
 if calcSwitch.imagePSTH && calcSwitch.spikeTimes
-  %calcStimPSTH(spikesByStim, psthEmptyByStim, spikeTimes, psthParams, spikeAlignParams)
   [psthByImage, psthErrByImage] = calcStimPSTH(spikesByEvent, psthEmptyByEvent, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
   save(analysisOutFilename,'psthByImage','psthErrByImage', '-append');
 elseif calcSwitch.imagePSTH
@@ -320,7 +301,9 @@ if isfield(plotSwitch, 'subEventAnalysis') && plotSwitch.subEventAnalysis
   ephysParams.spikeTimes = calcSwitch.spikeTimes;
   ephysParams.channelUnitNames = channelUnitNames;
   subEventAnalysisParams.outDir = outDir;
-  [psthBySubEvent, psthBySubEventNull, subEventSigStruct] = subEventAnalysis(spikesByChannel, taskData, ephysParams, subEventAnalysisParams);
+  subEventAnalysisParams.onsetsByEvent = onsetsByEvent;
+  taskData.eventIDs = eventIDs;
+  [psthBySubEvent, psthBySubEventNull, subEventSigStruct] = subEventAnalysis(eyeBehStatsByStim, spikesByChannel, taskData, ephysParams, subEventAnalysisParams);
   save(analysisOutFilename,'psthBySubEvent','psthBySubEventNull','subEventSigStruct', '-append');
 end
 
@@ -549,7 +532,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
         end
         % Preferred Image Raster plots, Color coded
         if isfield(plotSwitch,'prefImRasterColorCoded') && plotSwitch.prefImRasterColorCoded
-          colorTagList = {'ColorCodedSpikes', 'AttendedObjShaded', 'SaccadeShaded'};
+          colorTagList = {'ColorCodedSpikes', 'AttendedObjShaded', 'SaccadeShaded', 'PupilDilationShaded'};
           colorTag = sprintf(colorTagList{plotSwitch.prefImRasterColorCoded});
           if isfield(plotSwitch,'topStimToPlot') && plotSwitch.topStimToPlot == 0
             topStimToPlot = length(eventLabels);
@@ -563,8 +546,7 @@ for epoch_i = 1:length(firingRatesByImageByEpoch)
           clear figData
           figData.z = spikesByEvent(imageSortOrderInd(1:topStimToPlot));
           figData.x = -psthPre:psthImDur+psthPost;
-          %rasterColorCoded(fh, spikesByEvent(imageSortOrderInd(1:topStimToPlot)), sortedEventIDs(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, attendedObjData);
-          rasterColorCoded(fh, spikesByEvent(imageSortOrderInd(1:topStimToPlot)), sortedEventIDs(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, attendedObjData, saccadeImg, plotSwitch.prefImRasterColorCoded);
+          rasterColorCoded(fh, spikesByEvent(imageSortOrderInd(1:topStimToPlot)), sortedEventIDs(1:topStimToPlot), psthParams, stimTiming.ISI, channel_i, unit_i, eyeDataStruct,  plotSwitch.prefImRasterColorCoded);
           title(sprintf('Preferred Images, %s %s',channelNames{channel_i},channelUnitNames{channel_i}{unit_i}));
           saveFigure(outDir, sprintf('prefImRaster_%s_%s_%s_Run%s',colorTag, chanUnitTag,epochTag,runNum), figData, saveFig, exportFig, saveFigData, figTag );
           if closeFig
@@ -4497,7 +4479,7 @@ end
 
 %% Individual Analysis Functions
 
-function [subEventPSTH, subEventNullPSTH, subEventSigStruct] = subEventAnalysis(spikesByChannel, taskData, ephysParams, subEventParams)
+function [subEventPSTH, subEventNullPSTH, subEventSigStruct] = subEventAnalysis(eyeBehStatsByStim, spikesByChannel, taskData, ephysParams, subEventParams)
 
 % subEventAnalysis
 % Description - looks through spikesByEvent, calculates PSTH for activity
@@ -4510,13 +4492,18 @@ function [subEventPSTH, subEventNullPSTH, subEventSigStruct] = subEventAnalysis(
 
 % Unpack Variables, some preprocessing
 frameMotionData = taskData.frameMotionData;
-eventIDs = taskData.taskEventList;
+eventIDs = taskData.eventIDs;
 taskEventIDs = taskData.taskEventIDs;
+
+% Generate an index for individual trials that take place during the run,
+% matching them to the stimuli as present in the eventIDs variable.
 taskEventIDInd = zeros(length(taskEventIDs),1);
 for ev_i = 1:length(eventIDs)
   taskEventIDInd = taskEventIDInd + (strcmp(taskEventIDs, eventIDs{ev_i}) * ev_i);
 end
 assert(max(taskEventIDInd) == length(eventIDs))
+
+subEventNames = [];
 
 % Find events which take place in the stimuli presented
 eventDataFile = dir([subEventParams.stimDir '/**/eventData.mat']);
@@ -4525,6 +4512,7 @@ if ~isempty(eventDataFile)
   load(fullfile(eventDataFile(1).folder, eventDataFile(1).name), 'eventData');
   eventDataRun = eventData(eventIDs, :);
   eventsInEventData = eventDataRun.Properties.VariableNames(logical(sum(cellfun(@(x) ~isempty(x), table2cell(eventDataRun)),1)));
+  subEventNames = [subEventNames; eventsInEventData'];
   if ~isempty(eventsInEventData)
     % Cycle through events, generating startTimes.
     for event_i = 1:length(eventsInEventData)
@@ -4624,110 +4612,191 @@ if ~isempty(eventDataFile)
       onsetsByEventNull{event_i} = eventStartTimesNull;
       stimSourceByEvent{event_i} = eventStimSource;
     end
-    %Ideally this would happen in some form after alignSpikes, instead of
-    %before, but the nested cell structure is more difficult to repmat then
-    %this, and may not be read the same way.
-    onsetsByEventNull = cellfun(@(x) repmat(x, [subEventParams.nullSampleMult,1]), onsetsByEventNull, 'UniformOutput', false);
-    subEventParams.refOffset = 0;
-    [spikesBySubEvent, spikesEmptyBySubEvent] = alignSpikes(spikesByChannel, onsetsByEvent, ones(length(spikesByChannel),1), subEventParams);
-    [spikesBySubEventNull, spikesEmptyBySubEventNull] = alignSpikes(spikesByChannel, onsetsByEventNull, ones(length(spikesByChannel),1), subEventParams);
-    
-    % follow with putting spikesBySubEvent into calcPSTH.
-    if ~ephysParams.spikeTimes
-      spikesBySubEventBinned = calcSpikeTimes(spikesBySubEvent, subEventParams.psthParams);
-      spikesBySubEventNullBinned = calcSpikeTimes(spikesBySubEventNull, subEventParams.psthParams);
-      
-      [psthBySubEvent, psthErrBySubEvent] = calcStimPSTH(spikesBySubEventBinned, spikesEmptyBySubEvent, ephysParams.spikeTimes, subEventParams.psthParams, subEventParams);
-      [psthBySubEventNull, psthErrBySubEventNull] = calcStimPSTH(spikesBySubEventNullBinned, spikesEmptyBySubEventNull, ephysParams.spikeTimes, subEventParams.psthParams, subEventParams);
-    else
-      [psthBySubEvent, psthErrBySubEvent] = calcStimPSTH(spikesBySubEvent, spikesEmptyBySubEvent, ephysParams.spikeTimes, subEventParams.psthParams, subEventParams);
-      [psthBySubEventNull, psthErrBySubEventNull] = calcStimPSTH(spikesBySubEventNull, spikesEmptyBySubEventNull, ephysParams.spikeTimes, subEventParams.psthParams, subEventParams);
-    end
-    
-    % Package output
-    subEventPSTH = [psthBySubEvent, psthErrBySubEvent];
-    subEventNullPSTH = [psthBySubEventNull, psthErrBySubEventNull];
-    
-    % Statistics
-    % Method 1 - perform T test on spike rates for the period from 0 to 200
-    % ms post event. See if the Non-event and event differ in this period.
-    testPeriod = [0 200];
-    [spikeCounts, ~, ~] = spikeCounter(spikesBySubEvent, testPeriod(1), testPeriod(2));
-    [spikeCountsNull, ~, ~] = spikeCounter(spikesBySubEventNull, testPeriod(1), testPeriod(2));
-    [testResults, cohensD] = deal(initNestedCellArray(spikeCounts, 'ones', [1 1], 3));
-    for chan_i = 1:length(testResults)
-      for unit_i = 1:length(testResults{chan_i})
-        for event_i = 1:length(testResults{chan_i}{unit_i})
-          eventSpikes = [spikeCounts{chan_i}{unit_i}{event_i}.rates];
-          nullSpikes = [spikeCountsNull{chan_i}{unit_i}{event_i}.rates];
-          [~, testResults{chan_i}{unit_i}{event_i}, ~, tmpStats] = ttest2(eventSpikes,  nullSpikes);
-          cohensD{chan_i}{unit_i}{event_i} = (mean(eventSpikes) - mean(nullSpikes))/tmpStats.sd;
-        end
-      end
-    end
-    
-    subEventSigStruct = struct();
-    
-    subEventSigStruct.testResults = testResults;
-    subEventSigStruct.testPeriod = testPeriod;
-    subEventSigStruct.psthWindow = [-subEventParams.psthParams.psthPre subEventParams.psthParams.psthImDur];
-    subEventSigStruct.cohensD = cohensD;
-    subEventSigStruct.sigInd = "{channel}{unit}{event}";
-    subEventSigStruct.events = eventsInEventData;
-    subEventSigStruct.noSubEvent = 0;
-    
-    % Plot line PSTHes, and events
-    eventsInEventDataPlot = strrep(eventsInEventData, '_',' ');
-    for chan_i = 1:length(psthBySubEvent)
-      for unit_i = 1:length(psthBySubEvent{chan_i})
-        psthTitle = sprintf('SubEvent comparison - %s %s', ephysParams.channelNames{chan_i}, ephysParams.channelUnitNames{chan_i}{unit_i});
-        h = figure('Name',psthTitle,'NumberTitle','off','units','normalized');
-        sgtitle(psthTitle)
-        plotLabels = [{'Event'}, {'Null'}];
-        %eventAxes = subplot(1,2,1);
-        for event_i = 1:length(eventsInEventData)
-          axesH = subplot(length(eventsInEventData), 1, event_i);
-          plotData = [psthBySubEvent{chan_i}{unit_i}(event_i, :); psthBySubEventNull{chan_i}{unit_i}(event_i, :)];
-          plotErr = [psthErrBySubEvent{chan_i}{unit_i}(event_i, :); psthErrBySubEventNull{chan_i}{unit_i}(event_i, :)];
-          plotTitle = sprintf('%s (p = %s, %d ms - %d ms, N = %d)', eventsInEventDataPlot{event_i}, num2str(testResults{chan_i}{unit_i}{event_i}), testPeriod(1), testPeriod(2), length(spikeCounts{chan_i}{unit_i}{event_i}.rates));
-          [~, ~] = plotPSTH(plotData, plotErr, [], subEventParams.psthParams, 'line', plotTitle , plotLabels);
-          if event_i ~= length(eventsInEventData)
-            axesH.XLabel.String = '';
-          end
-        end
-        if subEventParams.closeFig
-          saveFigure(subEventParams.outDir, psthTitle, [], subEventParams.saveFig, subEventParams.exportFig, 0, '', 'close')
-        else
-          saveFigure(subEventParams.outDir, psthTitle, [], subEventParams.saveFig, subEventParams.exportFig, 0)
-        end
-        
-      end
-    end
-    
-    plotName = 'SubEvent Occurances';
-    h = figure('Name', plotName,'NumberTitle','off','units','normalized');
-    for event_i = 1:length(stimEventMat)
-      axesH = subplot(length(stimEventMat), 1, event_i);
-      [~, colorbarH] = plotPSTH(stimEventMat{event_i}, [], [], subEventParams.stimPlotParams, 'color', eventsInEventDataPlot(event_i) , strrep(eventIDs, '_', ' '));
-      delete(colorbarH)
-      axesH.FontSize = 10;
-      if event_i ~= length(eventsInEventData)
-        axesH.XLabel.String = '';
-      end
-    end
-    if subEventParams.closeFig
-      saveFigure(subEventParams.outDir, plotName, [], subEventParams.saveFig, subEventParams.exportFig, 0, '', 'close')
-    else
-      saveFigure(subEventParams.outDir, plotName, [], subEventParams.saveFig, subEventParams.exportFig, 0)
-    end
-
   else
+    % If there are no events in the data
     [subEventPSTH, subEventNullPSTH] = deal({});
     subEventSigStruct = struct();
     subEventSigStruct.noSubEvent = 1;
   end
-  
 end
+
+% Generate/Organize Event times for eye movements here, concatonate onto
+% the 'onsetsByEvent' cue.
+if ~isempty(eyeBehStatsByStim)
+  subEventNames = [subEventNames; 'saccades'; 'blinks'];
+  [saccadeTimes, nullSaccTimes, blinkTimes, nullBlinkTimes] = deal([]);
+  for stim_i = 1:length(eyeBehStatsByStim)
+    % Find all the start times for the stimulus
+    %stimuliStartTimes = subEventParams.onsetsByEvent{stim_i};
+    stimuliStartTimes = subEventParams.onsetsByEvent{stim_i};
+    for trial_i = 1:length(eyeBehStatsByStim{stim_i})
+      % for every trial, extract blink times, adding the appropriate event
+      % Onset to get absolute eye event start times.
+      
+      if ~isempty(eyeBehStatsByStim{stim_i}{trial_i}.saccadetimes)
+        % Store saccade time
+        %trialSaccadeTimes = eyeBehStatsByStim{stim_i}{trial_i}.saccadetimes(1,:)';
+        saccadeTimes = [saccadeTimes; eyeBehStatsByStim{stim_i}{trial_i}.saccadetimes(1,:)'] + stimuliStartTimes(trial_i);
+      end
+      
+      if ~isempty(eyeBehStatsByStim{stim_i}{trial_i}.blinktimes)
+        blinkTimes = [blinkTimes; eyeBehStatsByStim{stim_i}{trial_i}.blinktimes(1,:)'] + stimuliStartTimes(trial_i);
+      end
+    end
+  end
+  
+  % Sort these lists for the next processing steps
+  saccadeTimes = sort(saccadeTimes);
+  blinkTimes = sort(blinkTimes);
+  eyeEventTimes = {saccadeTimes; blinkTimes};
+  eyeEventNullTimes = {nullSaccTimes; nullBlinkTimes};
+  
+  % Generate a distribution of null times for both blinks and saccades
+  firstTime = min([saccadeTimes(1); blinkTimes(1)]);
+  lastTime = max([saccadeTimes(end); blinkTimes(end)]);
+
+  % Generate Null times Take the Saccade times, add a number (100 - 1000), shuffle them and check 
+  % if its close to a number on the list. If not, its a null value.
+  maxShift = 500;
+  minShift = 100;
+  minEventDist = 100;
+  shuffleMult = subEventParams.nullSampleMult;
+  
+  for eyeEvent_i = 1:length(eyeEventTimes)
+    eyeEventsTiled = eyeEventTimes{eyeEvent_i}; %repmat(eyeEventTimes{eyeEvent_i}, [shuffleMult,1]);
+    shiftCount = length(eyeEventsTiled);
+    shifts = [randi([minShift, maxShift],[ceil(shiftCount/2),1]); randi([-maxShift, -minShift],[floor(shiftCount/2),1])];
+    shifts = shifts(randperm(length(shifts)));
+    nullTimesForEvent = eyeEventsTiled + shifts; %repmat(eyeEventTimes{eyeEvent_i}, [shuffleMult,1]) + shifts;
+    
+    % check if any of these null times are close to event times, if not,
+    % remove.
+    nullTimesForEventCheck = repmat(nullTimesForEvent, [1, length(nullTimesForEvent)]);
+    
+    nullTimesForEventCheck = (nullTimesForEventCheck' - eyeEventsTiled)';
+    nullTimesForEventCheckRemoveInd = abs(nullTimesForEventCheck) > minEventDist;
+    keepInd = ~any(~nullTimesForEventCheckRemoveInd,2);
+    nullTimesForEvent = nullTimesForEvent(keepInd);
+    
+    % Remove ones that are after the last time stamp or before the first
+    keepInd = ~logical((nullTimesForEvent < firstTime) + (nullTimesForEvent > lastTime));
+    nullTimesForEvent = nullTimesForEvent(keepInd);
+    
+    % Store into appropriate cell array
+    eyeEventNullTimes{eyeEvent_i} = nullTimesForEvent;
+  end
+  
+  % Save to larger structures
+  if ~exist('onsetsByEvent', 'var')
+    onsetsByEvent = [];
+    onsetsByEventNull = [];
+  end
+  
+  onsetsByEvent = [onsetsByEvent; eyeEventTimes];
+  onsetsByEventNull = [onsetsByEventNull; eyeEventNullTimes];
+
+end
+
+%Ideally this would happen in some form after alignSpikes, instead of
+%before, but the nested cell structure is more difficult to repmat then
+%this, and may not be read the same way.
+
+% Sample the null times, expand each onsertsByEventNull cell by the
+% parameter below (subEventParams.nullSampleMult).
+onsetsByEventNull = cellfun(@(x) repmat(x, [subEventParams.nullSampleMult,1]), onsetsByEventNull, 'UniformOutput', false);
+subEventParams.refOffset = 0;
+[spikesBySubEvent, spikesEmptyBySubEvent] = alignSpikes(spikesByChannel, onsetsByEvent, ones(length(spikesByChannel),1), subEventParams);
+[spikesBySubEventNull, spikesEmptyBySubEventNull] = alignSpikes(spikesByChannel, onsetsByEventNull, ones(length(spikesByChannel),1), subEventParams);
+
+% follow with putting spikesBySubEvent into calcPSTH.
+if ~ephysParams.spikeTimes
+  spikesBySubEventBinned = calcSpikeTimes(spikesBySubEvent, subEventParams.psthParams);
+  spikesBySubEventNullBinned = calcSpikeTimes(spikesBySubEventNull, subEventParams.psthParams);
+  
+  [psthBySubEvent, psthErrBySubEvent] = calcStimPSTH(spikesBySubEventBinned, spikesEmptyBySubEvent, ephysParams.spikeTimes, subEventParams.psthParams, subEventParams);
+  [psthBySubEventNull, psthErrBySubEventNull] = calcStimPSTH(spikesBySubEventNullBinned, spikesEmptyBySubEventNull, ephysParams.spikeTimes, subEventParams.psthParams, subEventParams);
+else
+  [psthBySubEvent, psthErrBySubEvent] = calcStimPSTH(spikesBySubEvent, spikesEmptyBySubEvent, ephysParams.spikeTimes, subEventParams.psthParams, subEventParams);
+  [psthBySubEventNull, psthErrBySubEventNull] = calcStimPSTH(spikesBySubEventNull, spikesEmptyBySubEventNull, ephysParams.spikeTimes, subEventParams.psthParams, subEventParams);
+end
+
+% Package output
+subEventPSTH = [psthBySubEvent, psthErrBySubEvent];
+subEventNullPSTH = [psthBySubEventNull, psthErrBySubEventNull];
+
+% Statistics
+% Method 1 - perform T test on spike rates for the period from 0 to 200
+% ms post event. See if the Non-event and event differ in this period.
+testPeriod = [0 200];
+[spikeCounts, ~, ~] = spikeCounter(spikesBySubEvent, testPeriod(1), testPeriod(2));
+[spikeCountsNull, ~, ~] = spikeCounter(spikesBySubEventNull, testPeriod(1), testPeriod(2));
+[testResults, cohensD] = deal(initNestedCellArray(spikeCounts, 'ones', [1 1], 3));
+for chan_i = 1:length(testResults)
+  for unit_i = 1:length(testResults{chan_i})
+    for event_i = 1:length(testResults{chan_i}{unit_i})
+      eventSpikes = [spikeCounts{chan_i}{unit_i}{event_i}.rates];
+      nullSpikes = [spikeCountsNull{chan_i}{unit_i}{event_i}.rates];
+      [~, testResults{chan_i}{unit_i}{event_i}, ~, tmpStats] = ttest2(eventSpikes,  nullSpikes);
+      cohensD{chan_i}{unit_i}{event_i} = (mean(eventSpikes) - mean(nullSpikes))/tmpStats.sd;
+    end
+  end
+end
+
+subEventSigStruct = struct();
+subEventSigStruct.testResults = testResults;
+subEventSigStruct.testPeriod = testPeriod;
+subEventSigStruct.psthWindow = [-subEventParams.psthParams.psthPre subEventParams.psthParams.psthImDur];
+subEventSigStruct.cohensD = cohensD;
+subEventSigStruct.sigInd = "{channel}{unit}{event}";
+subEventSigStruct.events = subEventNames;
+subEventSigStruct.noSubEvent = 0;
+
+% Plot line PSTHes for each event. 
+eventsInEventDataPlot = strrep(subEventNames, '_',' ');
+for chan_i = 1:length(psthBySubEvent)
+  for unit_i = 1:length(psthBySubEvent{chan_i})
+    psthTitle = sprintf('SubEvent comparison - %s %s', ephysParams.channelNames{chan_i}, ephysParams.channelUnitNames{chan_i}{unit_i});
+    h = figure('Name',psthTitle,'NumberTitle','off','units','normalized');
+    sgtitle(psthTitle)
+    plotLabels = [{'Event'}, {'Null'}];
+    %eventAxes = subplot(1,2,1);
+    for event_i = 1:length(subEventNames)
+      axesH = subplot(length(subEventNames), 1, event_i);
+      plotData = [psthBySubEvent{chan_i}{unit_i}(event_i, :); psthBySubEventNull{chan_i}{unit_i}(event_i, :)];
+      plotErr = [psthErrBySubEvent{chan_i}{unit_i}(event_i, :); psthErrBySubEventNull{chan_i}{unit_i}(event_i, :)];
+      plotTitle = sprintf('%s (p = %s, %d ms - %d ms, N = %d)', eventsInEventDataPlot{event_i}, num2str(testResults{chan_i}{unit_i}{event_i}), testPeriod(1), testPeriod(2), length(spikeCounts{chan_i}{unit_i}{event_i}.rates));
+      [~, ~] = plotPSTH(plotData, plotErr, [], subEventParams.psthParams, 'line', plotTitle , plotLabels);
+      if event_i ~= length(subEventNames)
+        axesH.XLabel.String = '';
+      end
+    end
+    if subEventParams.closeFig
+      saveFigure(subEventParams.outDir, psthTitle, [], subEventParams.saveFig, subEventParams.exportFig, 0, '', 'close')
+    else
+      saveFigure(subEventParams.outDir, psthTitle, [], subEventParams.saveFig, subEventParams.exportFig, 0)
+    end
+    
+  end
+end
+
+% SubEvent Occurances for stimulus visual events, not saccades/blinks.
+plotName = 'SubEvent Occurances';
+h = figure('Name', plotName,'NumberTitle','off','units','normalized');
+for event_i = 1:length(stimEventMat)
+  axesH = subplot(length(stimEventMat), 1, event_i);
+  [~, colorbarH] = plotPSTH(stimEventMat{event_i}, [], [], subEventParams.stimPlotParams, 'color', eventsInEventDataPlot(event_i) , strrep(eventIDs, '_', ' '));
+  delete(colorbarH)
+  axesH.FontSize = 10;
+  if event_i ~= length(eventsInEventData)
+    axesH.XLabel.String = '';
+  end
+end
+if subEventParams.closeFig
+  saveFigure(subEventParams.outDir, plotName, [], subEventParams.saveFig, subEventParams.exportFig, 0, '', 'close')
+else
+  saveFigure(subEventParams.outDir, plotName, [], subEventParams.saveFig, subEventParams.exportFig, 0)
+end
+
 end
 
 function eyeCorrelogram(eyeInByEvent, psthParams, eventLabels, outDir, saveFig, exportFig, saveFigData, figTag)
@@ -4870,8 +4939,11 @@ if saveFig
 end
 end
 
-function eyeStimOverlay(eyeInByEvent, stimDir, outDir, psthParams, saccadeByStim, attendedObjData, eventIDs, taskData)
+function eyeStimOverlay(eyeInByEvent, stimDir, outDir, psthParams, eventIDs, taskData, eyeDataStruct)
 %Function will visualize eye signal (and objects) on top of stimulus.
+
+saccadeByStim = eyeDataStruct.saccadeByStim;
+attendedObjData = eyeDataStruct.attendedObjData;
 
 shapeOverlay = 1;         % Switch for shape overlay.
 trialNumberOverlay = 1;   % Switch for trial number overlay on eye signal.
@@ -5048,7 +5120,7 @@ end
 
 end
 
-function attendedObjData = calcEyeObjectTrace(eyeInByEvent, channelUnitNames, psthParams, eventIDs, taskData)
+function eyeDataStruct = calcEyeObjectTrace(eyeInByEvent, channelUnitNames, psthParams, eventIDs, taskData, eyeDataStruct)
 % Functions goal is to return a vector, of the same structure as
 % "eyeInByEvent", replacing the {event}(1*Channels*Trials*Millseconds)
 % structure with a {event}{trial}{frame*1}, where ever item is the
@@ -5330,6 +5402,7 @@ attendedObjData.objList = objList;
 attendedObjData.frameStartInd = frameStartInd;
 attendedObjData.frameEndInd = frameEndInd;
 attendedObjData.handleArray = handleArray;
+eyeDataStruct.attendedObjData = attendedObjData;
 end
 
 function [updatedByImageGroup, updatedEventIDs, resortInd] = clusterPaths(byImageGroup, psthParams, lfpPaddedBy, analogInByEvent, eventIDs, taskData)
@@ -5671,7 +5744,7 @@ end
 
 end
 
-function [eyeBehImgByStim, eyeBehStatsByStim, eyeInByEventSmooth] = eyeStatsAnalysis(analogInByEvent, eyeStatsParams, taskData)
+function [eyeDataStruct, eyeBehStatsByStim, eyeInByEventSmooth] = eyeStatsAnalysis(analogInByEvent, eyeStatsParams, taskData, eyeDataStruct)
 % Function uses ClusterFix to generate a saccade map.
 blinkVals = taskData.eyeCal.blinkVals;
 PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
@@ -5888,6 +5961,7 @@ for stim_i = 1:length(fixStats)
 end
 
 eyeBehStatsByStim = fixStats;
+eyeDataStruct.saccadeByStim = eyeBehImgByStim;
 
 end
 
@@ -5895,7 +5969,6 @@ function spikesByStimBinned = calcSpikeTimes(spikesByStim, psthParams)
 %Wrapper which cycles through a particular Stimulus tier (Catagory or
 %Event/Image) and feeds it into the chronux binspikes function with bin
 %sizes of 1 ms. spikesByStim must be {event}{channel}{unit}
-
 
 % Unpack Variables
 psthPre = psthParams.psthPre;
@@ -6013,11 +6086,130 @@ for event_i = 1:length(spikesByEventBinned)
 end
 end
 
+function eyeDataStruct = pupilDilation(analogInByEvent, eyeStatsParams, taskData, eyeDataStruct)
+
+blinkVals = taskData.eyeCal.blinkVals;
+PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
+eventInds = [1, 2, 3];      
+eventNames = {'Fix','Saccade','Blink'};
+filterSaccades = 1;         % Performs a filter on saccades to exclude microsaccades, defined with respect to duration
+saccadeDurThres = 35;       % Additional saccade filtering outside of clusterFix, removes saccades which don't last this long or more.
+saccadeDistThrs = 1;        % As above, removes saccades with mean distances of less than this. 
+plotPaths = 0;              % Code below which visualizes things trial by trial.
+% visualized trial by trial trace parameters
+saccadeColors = 'rbgcm';
+
+stimDir = eyeStatsParams.stimDir;
+psthPre = eyeStatsParams.psthPre;
+psthImDur = eyeStatsParams.psthImDur;
+lfpPaddedBy = eyeStatsParams.lfpPaddedBy+1;
+eventIDs = eyeStatsParams.eventIDs;
+taskEventIDs = taskData.taskEventList;
+frameMotionInd = cellfun(@(x) find(strcmp(taskEventIDs, x)), eventIDs);
+stimStartInd = lfpPaddedBy;
+stimEndInd = size(analogInByEvent{1},4) - lfpPaddedBy;
+blinkPad = 15;      % May need to be slightly widdened. Consider simply tiling 1st value.
+pupilImg = cell(length(analogInByEvent),1);
+
+returnBlinks = 0;
+samprate = 1/1000;
+fltord = 60;
+lowpasfrq = 30;
+nyqfrq = 1000 ./ 2;
+flt = fir2(fltord,[0,lowpasfrq./nyqfrq,lowpasfrq./nyqfrq,1],[1,1,0,0]);     % low pass filter internal, determined by analysisParam.
+maxEndTime = size(analogInByEvent{1}, 4);
+
+for stim_i = 1:length(analogInByEvent)
+%   figure()
+%   hold on
+  % Blink processing
+  stimData = squeeze(analogInByEvent{stim_i}(:,3,:,:));
+  blinkThres = mean(mean(stimData)) - (std(std(stimData)) * 2.5);
+  stimThresBlinks = stimData < blinkThres;
+  stimDataDiff = diff(stimData, 1, 2);
+  
+  for trial_i = 1:size(stimData,1)
+    stimDataOrig = stimData(trial_i,:);
+    % Plot original trace
+%     subplot(2,1,1)
+%     hold on
+%     plot(stimDataOrig)
+    
+    % Identify blink locations
+    blinkDiff = stimDataDiff(trial_i, :);
+    blinkEnds = find(blinkDiff > 0.3) + 1;
+    blinkStarts = find(blinkDiff < -0.3) + 1;
+    blinkMid = find(stimThresBlinks(trial_i,:));
+    blinkInds = unique(sort([blinkMid, blinkStarts, blinkEnds]));
+
+    if ~isempty(blinkInds)
+      blinkTimes = BehavioralIndexPlus(blinkInds, maxEndTime);      
+      %blinkTimes = BehavioralIndex(blinkInds);
+      for blink_i = 1:size(blinkTimes, 2)
+        % Slide end further if needed
+        blinkEnd = blinkTimes(2, blink_i);
+        if (blinkEnd ~= maxEndTime)
+          blinkEnd = blinkEnd + find(blinkDiff(blinkEnd:end) < 0, 1);
+          if ~isempty(blinkEnd)
+            blinkTimes(2, blink_i) = blinkEnd;
+          end
+        end
+        % Use this loop to remove blinks from the data.
+        preBlinkInd = max(blinkTimes(1, blink_i) - blinkPad, 1);
+        postBlinkInd = min(blinkTimes(2, blink_i) + blinkPad, maxEndTime);
+        % Interpolate between the two points found, fill in the blink with
+        % this value. If close to the edge, fill with the non-edge point.
+        if (preBlinkInd == 1) || (postBlinkInd == maxEndTime)
+          if preBlinkInd == 1
+            newVal = stimData(trial_i, postBlinkInd);
+          else
+            newVal = stimData(trial_i, preBlinkInd);
+          end
+          stimData(trial_i, preBlinkInd:postBlinkInd) = deal(newVal);
+        else
+          periBlinkVals = [stimData(trial_i, preBlinkInd), stimDataOrig(postBlinkInd)];
+          %Overwrite the blink period with data from the sides. Interp b/t the
+          %points for now.
+          newInd = linspace(1,2, length(stimData(trial_i, preBlinkInd:postBlinkInd)));
+          stimData(trial_i, preBlinkInd:postBlinkInd) = interp1([1 2], periBlinkVals, newInd);
+        end
+        
+      end
+    end
+    
+    % Smooth data
+    stimDataSmooth = filtfilt(flt, 1, stimData(trial_i, :));
+    
+    % return blinks
+    if ~isempty(blinkInds) && returnBlinks
+      for blink_i = 1:size(blinkTimes, 2)
+        stimDataSmooth(blinkTimes(1,:): blinkTimes(2,:)) = stimDataOrig(blinkTimes(1,:): blinkTimes(2,:));
+      end
+    end
+    
+    % Overwrite original
+    stimData(trial_i,:)=  stimDataSmooth;
+    
+    % Plot
+%     subplot(2,1,2)
+%     plot(stimDataSmooth)
+%     hold on
+  end
+%   title(eventIDs{stim_i})
+  pupilImg{stim_i} = stimData;
+end
+ 
+eyeDataStruct.pupilByStim = pupilImg;
+
+end
+
 function [behaviortime] = BehavioralIndex(behavind)
 %function turns indexes into times by parsing at breaks in continuity -
-%taken from ClusterFix
+% taken from ClusterFix
+behavMat = zeros(4401, 1);
+
 dind = diff(behavind);
-gaps =find(dind > 1);
+gaps = find(dind > 1);
 behaveind = zeros(length(gaps),50);
 if ~isempty(gaps)
   for gapind = 1:length(gaps)+1
@@ -6039,4 +6231,101 @@ for index=1:size(behaveind,1)
   rowfixind(rowfixind == 0) = [];
   behaviortime(:,index) = [rowfixind(1);rowfixind(end)];
 end
+
+
+
 end
+
+function [behaviortime] = BehavioralIndexPlus(blinkInds, vecLength)
+%function turns indexes into times by parsing at breaks in continuity -
+
+behavVec = zeros(vecLength,1);
+behavVec(blinkInds) = deal(1);
+behavMat = {find(behavVec)', find(~behavVec)'};
+behaviortimeArray = cell(length(behavMat),1);
+
+for ii = 1:length(behavMat)
+  behavind = behavMat{ii};
+  %function turns indexes into times by parsing at breaks in continuity
+  %function turns indexes into times by parsing at breaks in continuity -
+  % taken from ClusterFix
+  dind = diff(behavind);
+  gaps =find(dind > 1);
+  behaveind = zeros(length(gaps),50);
+  if ~isempty(gaps)
+    for gapind = 1:length(gaps)+1
+      if gapind == 1
+        temp = behavind(1:gaps(gapind));
+      elseif gapind == length(gaps)+1
+        temp = behavind(gaps(gapind-1)+1:end);
+      else
+        temp = behavind(gaps(gapind-1)+1:gaps(gapind));
+      end
+      behaveind(gapind,1:length(temp)) = temp;
+    end
+  else
+    behaveind =  behavind;
+  end
+  behaviortime = zeros(2,size(behaveind,1));
+  for index=1:size(behaveind,1)
+    rowfixind = behaveind(index,:);
+    rowfixind(rowfixind == 0) = [];
+    behaviortime(:,index) = [rowfixind(1);rowfixind(end)];
+  end
+  
+  behaviortimeArray{ii} = behaviortime;
+  
+end
+
+
+% If intervals are too short, remove them, fuse events.
+IntervalMin = 15;
+nonBlinkTimes = behaviortimeArray{2};
+InterBlinkInterval = diff(nonBlinkTimes,1);
+interval2Remove = InterBlinkInterval < IntervalMin;
+
+if any(interval2Remove)
+  resortInd = [];
+  for ii = 1:length(interval2Remove)
+    if interval2Remove(ii)
+      resortInd = [resortInd, nonBlinkTimes(1,ii):nonBlinkTimes(2,ii)];
+    end
+  end
+  
+  behavMat{1} = sort([behavMat{1}, resortInd]);
+  
+  for ii = 1:length(behavMat)
+    behavind2 = behavMat{ii};
+    % Identify times for both
+    dind = diff(behavind2);
+    gaps =find(dind > 1);
+    behaveind = zeros(length(gaps),50);
+    if ~isempty(gaps)
+      for gapind = 1:length(gaps)+1
+        if gapind == 1
+          temp = behavind2(1:gaps(gapind));
+        elseif gapind == length(gaps)+1
+          temp = behavind2(gaps(gapind-1)+1:end);
+        else
+          temp = behavind2(gaps(gapind-1)+1:gaps(gapind));
+        end
+        behaveind(gapind,1:length(temp)) = temp;
+      end
+    else
+      behaveind =  behavind2;
+    end
+    behaviortime = zeros(2,size(behaveind,1));
+    for index=1:size(behaveind,1)
+      rowfixind = behaveind(index,:);
+      rowfixind(rowfixind == 0) = [];
+      behaviortime(:,index) = [rowfixind(1);rowfixind(end)];
+    end
+    
+    behaviortimeArray{ii} = behaviortime;
+  end  
+end
+
+behaviortime = behaviortimeArray{1};
+
+end
+

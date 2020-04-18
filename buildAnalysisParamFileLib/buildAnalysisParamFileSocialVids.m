@@ -60,7 +60,8 @@ verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
 figPos = [0 0 .6 0.7];      % Normalized units for figure position
 
 %% Plot switches
-plotSwitch.subEventAnalysis = 0;            % plot traces comparing activity surrounding an event (defined in eventData, generated w/ eventDetectionApp), vs null.
+plotSwitch.pupilDilation = 1;               % plots image which illustrates continuous values for pupil dilation. 
+plotSwitch.subEventAnalysis = 1;            % plot traces comparing activity surrounding an event (defined in eventData, generated w/ eventDetectionApp), vs null.
 plotSwitch.imageEyeMap = 0;                 
 plotSwitch.eyeCorralogram = 0;              % Eye Gram
 plotSwitch.eyeStatsAnalysis = 1;            % use ClusterFix to generate a vector characterizing eye movements.
@@ -73,7 +74,7 @@ plotSwitch.imagePsth = 1;
 plotSwitch.categoryPsth = 0;
 plotSwitch.stimCatANOVA = 1;
 plotSwitch.prefImRaster = 0;                % Raster, Not color coded.
-plotSwitch.prefImRasterColorCoded = 3;      % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background, 3 is Saccade Image.
+plotSwitch.prefImRasterColorCoded = 4;      % Raster, uses info from attendedObj switch. 1 is colored spikes, 2 is colored background, 3 is Saccade Image, 4 is pupil img.
 plotSwitch.topStimToPlot = 5;               % Determines number of stimuli for which rasters are plotted.
 plotSwitch.prefImRasterEvokedOverlay = 0;   % Produces images for MUA and Unsorted even if the same. Relies on sometihng in CatPSTH.
 plotSwitch.prefImRasterAverageEvokedOverlay = 1;

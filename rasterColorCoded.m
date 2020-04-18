@@ -1,16 +1,20 @@
-function [ ] = rasterColorCoded(figHandle, spikesByItem, pictureLabels, psthParams, ISI, channel_i, unit_i, attendedObjData, saccadeByStim, colorSwitch)
+function [ ] = rasterColorCoded(figHandle, spikesByItem, pictureLabels, psthParams, ISI, channel_i, unit_i, eyeDataStruct, colorSwitch)
 %RASTER makes a raster plot in the current figure of the specified unit and
 %channel data. Uses information from the attendedObjData structure to color
 %code the spikes based on what object the subject was looking at. 
 %    Note: if no spikes on any trial of an image, that image will not appear in legend
-% colorSwitch (in AnalysisParam): 1 = Spikes, 2 = Shaded Regions, 3 = Shaded region for Saccades
+% colorSwitch (in AnalysisParam): 1 = Spikes, 2 = Shaded Regions, 3 =
+% Shaded region for Saccades, 4 = shaded region for pupil dil, no saccades.
 
 % Color Spikes vs Color Shaded Region
 lineSpikes = 1;   % 1 = spikes as Lines, 0 = spikes as img.
 %Set the figure handle as the current handle
 set(0, 'CurrentFigure', figHandle)
-%Attach resizing function
-%figHandle.ResizeFcn = @reAlignColorLegend;
+
+fieldsUnpack = fields(eyeDataStruct);
+for ii = 1:length(fieldsUnpack)
+  eval(sprintf('%s = eyeDataStruct.%s;', fieldsUnpack{ii}, fieldsUnpack{ii}))
+end
 
 %Unpack Variables
 preAlign = psthParams.psthPre;
@@ -23,20 +27,22 @@ hold on;
 axis ij
 
 %Reshape attendedObjData to be correctly indexed.
-attendObjInd = zeros(length(pictureLabels),1);
-for obj_ind = 1:length(pictureLabels)
-  attendObjInd(obj_ind) = find(strcmp(attendedObjData.eventIDs, pictureLabels{obj_ind}));
+if exist('attendedObjData', 'var')
+  attendObjInd = zeros(length(pictureLabels),1);
+  for obj_ind = 1:length(pictureLabels)
+    attendObjInd(obj_ind) = find(strcmp(attendedObjData.eventIDs, pictureLabels{obj_ind}));
+  end
+  
+  attendedObjData.eventIDs = attendedObjData.eventIDs(attendObjInd);
+  attendedObjData.attendedObjVect = attendedObjData.attendedObjVect(attendObjInd);
+  attendedObjData.frameStartInd = attendedObjData.frameStartInd(attendObjInd);
+  attendedObjData.frameEndInd = attendedObjData.frameEndInd(attendObjInd);
+  attendedObjData.tracePlotData = attendedObjData.tracePlotData(attendObjInd);
+  
+  %attendedObjData.colorCode{end+1} = [0, 0, 0]; %Black for non-stim spikes.
+  uniqueColorTrials = zeros(length(attendedObjData.colorCode),1);
+  uniqueColorInds = zeros(length(attendedObjData.colorCode),3);
 end
-
-attendedObjData.eventIDs = attendedObjData.eventIDs(attendObjInd);
-attendedObjData.attendedObjVect = attendedObjData.attendedObjVect(attendObjInd);
-attendedObjData.frameStartInd = attendedObjData.frameStartInd(attendObjInd);
-attendedObjData.frameEndInd = attendedObjData.frameEndInd(attendObjInd);
-attendedObjData.tracePlotData = attendedObjData.tracePlotData(attendObjInd);
-
-%attendedObjData.colorCode{end+1} = [0, 0, 0]; %Black for non-stim spikes.
-uniqueColorTrials = zeros(length(attendedObjData.colorCode),1);
-uniqueColorInds = zeros(length(attendedObjData.colorCode),3);
 
 if colorSwitch == 1
   %Create the color index for all the spikes
@@ -74,13 +80,21 @@ if colorSwitch == 2
   im.AlphaData = 0.5;
   im.YData = [im.YData(1)-0.5 im.YData(2)-0.5];
   figHandle.UserData.shadedAreaHandle = im;
-elseif colorSwitch == 3
+elseif colorSwitch == 3 ||  colorSwitch == 4
+  if colorSwitch == 3
     saccadeData = vertcat(saccadeByStim{attendObjInd});
     im = imagesc(saccadeData);
-    im.XData = [-preAlign,imDur+postAlign];
-    im.YData = [im.YData(1)-0.5 im.YData(2)-0.5];
-    im.AlphaData = 0.5;
-    figHandle.UserData.shadedAreaHandle = im;
+  else
+    pupilByStim = vertcat(pupilByStim{attendObjInd});
+    im = imagesc(pupilByStim);
+    colorbar('location','westoutside')
+  end
+  im.XData = [-preAlign,imDur+postAlign];
+  im.YData = [im.YData(1)-0.5 im.YData(2)-0.5];
+  im.AlphaData = 0.5;
+  figHandle.UserData.shadedAreaHandle = im; 
+  
+  
 end
 
 %Plot spikes

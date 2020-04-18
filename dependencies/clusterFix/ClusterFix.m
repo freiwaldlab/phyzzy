@@ -312,7 +312,7 @@ end
     function [behaviortime] = BehavioralIndex(behavind)
         %function turns indexes into times by parsing at breaks in continuity
         dind = diff(behavind);
-        gaps =find(dind > 1);
+        gaps = find(dind > 1);
         behaveind = zeros(length(gaps),50);
         if ~isempty(gaps)
             for gapind = 1:length(gaps)+1
@@ -334,6 +334,7 @@ end
             rowfixind(rowfixind == 0) = [];
             behaviortime(:,index) = [rowfixind(1);rowfixind(end)];
         end
+        
     end
 
     function [behaviortime, behaviormean] = BehavioralIndexXY(behavind,x,y)

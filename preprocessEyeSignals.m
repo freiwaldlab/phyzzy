@@ -265,7 +265,7 @@ end
 analogInData(params.eyeXChannelInd,:) = eyeX;
 analogInData(params.eyeYChannelInd,:) = eyeY;
 analogInData(params.eyeDChannelInd,:) = eyeD;
-taskData.eyeCal.blinkVals = [max(eyeX), max(eyeY)];
+taskData.eyeCal.blinkVals = [max(eyeX), max(eyeY), min(eyeD)];
 
 end
 
