@@ -4,7 +4,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '003';
-dateSubject = '20180628Mo';
+dateSubject = '20180710Mo';
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
 [~, machine] = system('hostname');

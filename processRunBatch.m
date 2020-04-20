@@ -185,6 +185,7 @@ if ~replaceAnalysisOut
     end
   end
   
+%% If generating excel...  
 else
   if nargin >= 1
     %If there is only 1 file, it loads the analysisParamFile and composes a
@@ -237,59 +238,76 @@ else
 
 end
 
+%% Compose Excel sheet output
+
+
 %analysisOutFilename is now a cell array of the filepaths to the outputs of
 %runAnalyses. Cycle through them and extract desired information (# of
 %units, significance), which you can add to the output file.
 %[analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorMsg(ii), channel, UnitCount, UnsortSESig, UnitSESig, MUASESig, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, ' ']
 
+% Find the first non-empty Entry to retrieve some general information for
+% the loops below
 firstEntry = find(~cellfun('isempty', analysisOutFilename), 1);
 if ~isempty(firstEntry)
   tmp = load(analysisOutFilename{firstEntry},'sigStruct');
   epochType = tmp.sigStruct.IndInfo{1};
-  groupingType = tmp.sigStruct.IndInfo{2};
   dataType = tmp.sigStruct.IndInfo{3};
 end
 
-titles = {'File_Analyzed', 'Start_Time', 'End_time', 'Error', 'Channel', 'Unit_Count', 'SubEvent Unsorted', 'SubEvent Unit', 'SubEvent MUA', 'Sig Unit count', 'Sig Unsorted', 'Sig MUA', 'Stimuli_count', 'Stimuli','ANOVA','Other Info'};
-sigMUAInd = strcmp(titles,'Sig MUA');
-sigUnsortedInd = strcmp(titles,'Sig Unsorted');
-
-epochCount = size(tmp.sigStruct.data{1},1);
-table = cell(epochCount,1);
-[table{:}] = deal(cell(length(analysisOutFilename), length(titles)));
+% Generate a cell array.
+tableVar = {'File_Analyzed', 'Error', 'Channel', 'Unit_Count', 'SubEvent Unsorted', 'SubEvent Unit', 'SubEvent MUA', ...
+  'Sig Unit count', 'Sig Unsorted', 'Sig MUA', 'Stimuli_count', 'Stimuli','ANOVA','Other Info'};
+epochCount = length(epochType);
+tableA = cell(epochCount,1);
+[tableA{:}] = deal(cell(length(analysisOutFilename), length(tableVar)));
 true_ind = 1;
 
 for ii = 1:length(analysisParamFileName)
   if ~isempty((analysisOutFilename{ii}))
     tmp = load(analysisOutFilename{ii}, 'stimStatsTable','sigStruct','frEpochs', 'subEventSigStruct'); %Relies on genStats function in runAnalyses.
+    
+    if isfield(tmp, 'sigStruct')
+      channelCount = length(tmp.sigStruct.data);
+    else
+      channelCount = 1;
+    end
+    
     true_ind_page = true_ind;
     for epoch_i = 1:epochCount
-      for channel_ind = 1:length(tmp.sigStruct.data)
-        
-        % Null model based significance testing 
-        channel = tmp.sigStruct.channelNames(channel_ind);
-        UnitCount = tmp.sigStruct.unitCount(channel_ind);
-        sigUnsorted = tmp.sigStruct.sigInfo(channel_ind, 1);
-        sigUnits = tmp.sigStruct.sigInfo(channel_ind, 2);
-        sigMUA = tmp.sigStruct.sigInfo(channel_ind, 3);
-        
-        sigStim = vertcat(tmp.sigStruct.data{channel_ind}{epoch_i,:,strcmp(dataType, 'Stimuli')});
-        sigStimLen = length(sigStim);
-        if ~isempty(sigStim)
-          sigStimNames = strjoin(sigStim, ' ');
-        else
-          sigStimNames = ' ';
+      for channel_ind = 1:channelCount
+        [channel, subECell, sigStimNames, ANOVASigString] = deal({' '});
+        [UnitCount, sigUnits, sigUnsorted, sigMUA, sigStimLen] = deal(0);
+
+        % Null model based significance testing
+        if isfield(tmp, 'sigStruct')
+          channel = tmp.sigStruct.channelNames(channel_ind);
+          UnitCount = tmp.sigStruct.unitCount(channel_ind);
+          sigUnsorted = tmp.sigStruct.sigInfo(channel_ind, 1);
+          sigUnits = tmp.sigStruct.sigInfo(channel_ind, 2);
+          sigMUA = tmp.sigStruct.sigInfo(channel_ind, 3);
+          
+          sigStim = vertcat(tmp.sigStruct.data{channel_ind}{epoch_i,:,strcmp(dataType, 'Stimuli')});
+          sigStimLen = length(sigStim);
+          if ~isempty(sigStim)
+            sigStimNames = strjoin(sigStim, ' ');
+          else
+            sigStimNames = ' ';
+          end
         end
         
+        
         % ANOVA based significance
-        unitStructs = tmp.stimStatsTable{channel_ind};
-        ANOVASigString = ' ';
-        for unit_ind = 1:length(unitStructs)
-          anovaSig = 0;
-          if isfield(unitStructs{unit_ind}, 'tTest')
-            anovaSig = unitStructs{unit_ind}.tTest.pVals{epoch_i} < 0.05;
+        if isfield(tmp, 'stimStatsTable')
+          unitStructs = tmp.stimStatsTable{channel_ind};
+          ANOVASigString = ' ';
+          for unit_ind = 1:length(unitStructs)
+            anovaSig = 0;
+            if isfield(unitStructs{unit_ind}, 'tTest')
+              anovaSig = unitStructs{unit_ind}.tTest.pVals{epoch_i} < 0.05;
+            end
+            ANOVASigString = [ANOVASigString ['[' num2str(unitStructs{unit_ind}.taskModulatedP < 0.05) ';' num2str(anovaSig(1)) ']']];
           end
-          ANOVASigString = [ANOVASigString ['[' num2str(unitStructs{unit_ind}.taskModulatedP < 0.05) ';' num2str(anovaSig(1)) ']']];
         end
         
         % Event based analysis significance
@@ -316,29 +334,30 @@ for ii = 1:length(analysisParamFileName)
           end
         else
           subECell = [{' '}, {' '}, {' '}];
-          
         end
         % Package Outputs into structure for table
-        table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorMsg(ii), channel, UnitCount, subECell, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, {' '}];
-        if ii == 1 && epoch_i == 1
-          % table{epoch_i}{true_ind, 11} = sprintf('Comparison: %s Vs %s', strjoin(unitStructs{1}.ANOVA.stats.grpnames{1}), strjoin(unitStructs{1}.ANOVA.stats.grpnames{2}));
-        end
+        tableA{epoch_i}(true_ind, :) = [analysisParamFileName(ii), errorMsg(ii), channel, UnitCount, ...
+                                        subECell, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, {' '}];
         true_ind = true_ind + 1;     
       end
       
-      if epoch_i ~= length(tmp.sigStruct.IndInfo{1}) % More pages to do = let count reset.
+      if epoch_i ~= epochCount % More pages to do = let count reset.
         true_ind = true_ind_page;
       end
       
     end
   else
+    [channel, UnitCount, subECell, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString] = deal([]);
     true_ind_page = true_ind;
     for epoch_i = 1:epochCount
-      table{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorMsg(ii), {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {''}, {' '}];
+      tableA{epoch_i}(true_ind, :) = [analysisParamFileName(ii), startTimes(ii), endTimes(ii), errorMsg(ii), channel, UnitCount, ...
+                                      subECell, sigUnits, sigUnsorted, sigMUA, sigStimLen, sigStimNames, ANOVASigString, {' '}];
       true_ind = true_ind + 1;
+      
       if epoch_i ~= epochCount % More pages to do = let count reset.
         true_ind = true_ind_page;
       end
+      
     end
   end
 end
@@ -347,10 +366,11 @@ if isempty(firstEntry)
   fprintf('Done - No Excel sheet to produce')
 else
   %Save Batch Run Results
-  for table_ind = 1:length(table)
-    table{table_ind}{3,end} = sprintf('%d - %d ms', tmp.frEpochs(table_ind,1), tmp.frEpochs(table_ind,2));
-    T = cell2table(table{table_ind});
-    T.Properties.VariableNames = titles;
+  for table_ind = 1:length(tableA)
+    tableA{table_ind}{3,end} = sprintf('%d - %d ms', tmp.frEpochs(table_ind,1), tmp.frEpochs(table_ind,2));
+    T = cell2table(tableA{table_ind});
+    T.Properties.VariableNames = tableVar;
+    %T.Unit_Count = tableA{1}(:, strcmp(tableVar, 'Unit_Count')); % For some reason the cell2table step overwrite the numbers.
     writetable(T,sprintf('%s/BatchRunResults.xlsx',outputVolume),'Sheet', sprintf('%s Epoch', epochType{table_ind}))
   end
 end

@@ -6196,7 +6196,8 @@ for stim_i = 1:length(analogInByEvent)
 %     hold on
   end
 %   title(eventIDs{stim_i})
-  pupilImg{stim_i} = stimData;
+  % Chop off the buffer and store into the output structure.
+  pupilImg{stim_i} = stimData(:, lfpPaddedBy:end-lfpPaddedBy);
 end
  
 eyeDataStruct.pupilByStim = pupilImg;

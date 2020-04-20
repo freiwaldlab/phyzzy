@@ -155,7 +155,6 @@ if ~usePreprocessed
   [analogInData, taskData] =                              preprocessEyeSignals(analogInData,taskData,eyeCalParams);
   analogInData =                                          preprocessAccelSignals(analogInData, accelParams); 
   
-  
   % determine the duration of ephys data collection, in ms
   if ~isempty(lfpData)
     ephysDuration = size(lfpData,2); 
