@@ -13,6 +13,7 @@ function [analysisOutFilename] = runAnalyses(inputs)
 %     specified in the stim param file
 %% unpack inputs
 %List of inputs to be unpacked
+if 0
 inputFields = fields(inputs);
 %Cycle through and unpack inputs
 for input_ind = 1:length(inputFields)
@@ -295,7 +296,11 @@ if calcSwitch.imagePSTH && calcSwitch.spikeTimes
 elseif calcSwitch.imagePSTH
   [psthByImage, psthErrByImage] = calcStimPSTH(spikesByEventBinned, psthEmptyByEvent, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
   save(analysisOutFilename,'psthByImage','psthErrByImage', '-append');
-end 
+end
+
+% Spike, Task data, Eye Data Analysis
+end
+load('spikePupilCorrPre')
 
 if isfield(plotSwitch, 'subEventAnalysis') && plotSwitch.subEventAnalysis
   ephysParams.spikeTimes = calcSwitch.spikeTimes;
@@ -307,6 +312,7 @@ if isfield(plotSwitch, 'subEventAnalysis') && plotSwitch.subEventAnalysis
   save(analysisOutFilename,'psthBySubEvent','psthBySubEventNull','subEventSigStruct', '-append');
 end
 
+
 if calcSwitch.categoryPSTH && calcSwitch.spikeTimes
   [psthByCategory, psthErrByCategory] = calcStimPSTH(spikesByCategory, psthEmptyByCategory, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
   save(analysisOutFilename,'psthByCategory','psthErrByCategory', '-append');
@@ -314,6 +320,15 @@ elseif calcSwitch.categoryPSTH
   [psthByCategory, psthErrByCategory] = calcStimPSTH(spikesByCategoryBinned, psthEmptyByCategory, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
   save(analysisOutFilename,'psthByCategory','psthErrByCategory', '-append');
 end
+
+if isfield(plotSwitch, 'spikePupilCorr') && plotSwitch.spikePupilCorr
+  if calcSwitch.spikeTimes
+    spikePupilCorrStruct = spikePupilCorr(spikesByEvent, eyeDataStruct, taskData, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
+  else
+    spikePupilCorrStruct = spikePupilCorr(spikesByEventBinned, eyeDataStruct, taskData, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
+  end
+end
+%% Plotting and further analyses
 
 if isfield(plotSwitch,'imagePsth') && plotSwitch.imagePsth
   for channel_i = 1:length(channelNames)
@@ -4796,6 +4811,96 @@ if subEventParams.closeFig
 else
   saveFigure(subEventParams.outDir, plotName, [], subEventParams.saveFig, subEventParams.exportFig, 0)
 end
+
+end
+
+function spikePupilCorrStruct = spikePupilCorr(spikesByEvent, eyeDataStruct, taskData, spikeTimes, psthParams, spikeAlignParams)
+% Plots the correlation between the PSTH and eye dilation.
+
+% Step 1 - turn the spikesByEvent into a similarly structured
+% psthByEventTrial w/ structure {stim}(trial, time)
+
+preAlign = spikeAlignParams.preAlign;
+postAlign = spikeAlignParams.postAlign;
+
+smoothingWidth = psthParams.smoothingWidth;
+movingWin = psthParams.movingWin;
+times = -psthParams.psthPre:(psthParams.psthImDur+psthParams.psthPost);
+psthErrorType = psthParams.errorType;
+psthErrorRangeZ = psthParams.errorRangeZ;
+psthBootstrapSamples = psthParams.bootstrapSamples;
+
+spikesByStim = spikesByEvent;
+spikesByItem = spikesByStim;
+numItems = length(spikesByStim);
+pupilByStim = eyeDataStruct.pupilByStim;
+lfpPaddedBy = psthParams.movingWin(1)/2 + 1;
+
+if ~spikeTimes
+  filterPoints = -3*smoothingWidth:3*smoothingWidth;
+  smoothingFilter = exp(-1*filterPoints.^2/(2*smoothingWidth^2));
+  smoothingFilter = smoothingFilter/sum(smoothingFilter);
+end
+
+[psthByStim, corrByStim, pByStim] = deal(initNestedCellArray(spikesByStim));
+
+
+for stim_i = 1:length(spikesByEvent)
+  for channel_i = 1:length(spikesByEvent{stim_i})
+    for unit_i = 1:length(spikesByEvent{stim_i}{channel_i})
+      emptyPSTHbyTrial = zeros(size(spikesByEvent{stim_i}{channel_i}{unit_i}));
+      for trial_i = 1:size(emptyPSTHbyTrial, 1)
+        if ~spikeTimes
+          %spikes are binned, convolve signal to get PSTH.
+          emptyPSTHbyTrial(trial_i,:) = 1000*conv(spikesByItem{stim_i}{channel_i}{unit_i}(trial_i,:) ,smoothingFilter, 'same');
+        else
+          warning('not implemented w/ spikeTimes');
+        end
+      end
+      psthByStim{stim_i}{channel_i}{unit_i} = emptyPSTHbyTrial;
+    end
+  end
+end
+
+% Step 2 - Calculate the trial by trial correlation between the PSTH and the pupil
+% dilation value
+% 2a - Bins or continous? Ask Dan
+for stim_i = 1:length(psthByStim)
+%   figure()
+%   sgtitle(sprintf('PSTH and pupil dilation correlation - %s', taskData.eventIDs{stim_i}))  unitSum = 1;
+%   unitSum = 1;
+
+  pupilData = pupilByStim{stim_i};
+  for chan_i = 1:length(psthByStim{stim_i})
+    for unit_i = 1:length(psthByStim{stim_i}{chan_i})
+      % Extract spikeData for specific unit, find correlations per trial.
+      spikeData = psthByStim{stim_i}{chan_i}{unit_i}(:, lfpPaddedBy:end-lfpPaddedBy);
+      [corrMat, pMat] = deal(nan(size(spikeData,1),1));
+      for trial_i = 1:size(spikeData,1)
+        [tmpC, tmpP] = corrcoef(spikeData(trial_i,:),pupilData(trial_i,:));
+        corrMat(trial_i) = tmpC(2,1);
+        pMat(trial_i) = tmpP(2,1);
+        fprintf('Correlation - %s, P val = %s \n', num2str(tmpC(2,1)), num2str(tmpP(2,1), 3))
+      end
+      corrByStim{stim_i}{chan_i}{unit_i} = corrMat(2,1);
+      pByStim{stim_i}{chan_i}{unit_i} = pMat(2,1);
+      
+      % Shape the data
+%       subplot(length(psthByStim{stim_i}), length(psthByStim{stim_i}{chan_i}), unitSum)
+%       unitSum = unitSum + 1;
+%       a = histogram(corrMat,100);
+%       levels = min(a.Values):1/length(pMat):sum(max(a.Values));
+%       for ii = 1:length(pMat)
+%         text(corrMat(ii), levels(ii), num2str(pMat(ii), 2))
+%       end
+%       title(sprintf('Ch%d, U%d', chan_i, unit_i))
+    end
+  end
+end
+
+% Step 3 - Visualization this somehow.
+% 3a - if its bins, scatterplot with 2 histograms
+% 3b - if its a time series, maybe a mean per trial? Idk.
 
 end
 

@@ -4,7 +4,7 @@ function [analysisParamFilename] = buildAnalysisParamFileSocialVids( varargin )
 
 % %%%%%%%  USER PARAMETERS, EDIT ROUTINELY %%%%%%%%
 runNum = '003';
-dateSubject = '20180710Mo';
+dateSubject = '20180628Mo';
 assert(~isempty(str2double(runNum)), 'Run number had letters, likely not normal run') %Just for batch runs where unique runs follow unconventional naming scheme.
 
 [~, machine] = system('hostname');
@@ -67,6 +67,7 @@ plotSwitch.eyeCorralogram = 0;              % Eye Gram
 plotSwitch.eyeStatsAnalysis = 1;            % use ClusterFix to generate a vector characterizing eye movements.
 plotSwitch.attendedObject = 1;              % Vectors to distinguish where subject is looking. Required for prefImRasterColorCoded.
 plotSwitch.eyeStimOverlay = 1;              % Visualize eye traces on stimuli.
+plotSwitch.spikePupilCorr = 1;              % see the correlation between single trial PSTHes and pupil size.
 
 plotSwitch.clusterOnEyePaths = 0;           % Resort spikes based on distinct eye paths, make "New events".
 plotSwitch.stimPSTHoverlay = 0;             % grabs stimuli and plots the PSTH underneath.
