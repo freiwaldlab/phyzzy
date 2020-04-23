@@ -299,8 +299,7 @@ elseif calcSwitch.imagePSTH
 end
 
 % Spike, Task data, Eye Data Analysis
-end
-load('spikePupilCorrPre')
+
 
 if isfield(plotSwitch, 'subEventAnalysis') && plotSwitch.subEventAnalysis
   ephysParams.spikeTimes = calcSwitch.spikeTimes;
@@ -320,6 +319,9 @@ elseif calcSwitch.categoryPSTH
   [psthByCategory, psthErrByCategory] = calcStimPSTH(spikesByCategoryBinned, psthEmptyByCategory, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
   save(analysisOutFilename,'psthByCategory','psthErrByCategory', '-append');
 end
+end
+load('spikePupilCorrPre')
+plotSwitch.prefImRasterColorCoded = 3;
 
 if isfield(plotSwitch, 'spikePupilCorr') && plotSwitch.spikePupilCorr
   if calcSwitch.spikeTimes
@@ -4505,6 +4507,8 @@ function [subEventPSTH, subEventNullPSTH, subEventSigStruct] = subEventAnalysis(
 % stimDir - finds where the stimuli are. (Maybe this instead of eventData?)
 % PreAlign, PostAlign, - How long before and after the event Onset to plot.
 
+specSubEvent = 1;     % Analyze individual instances of subEvents in eventData.
+
 % Unpack Variables, some preprocessing
 frameMotionData = taskData.frameMotionData;
 eventIDs = taskData.eventIDs;
@@ -4518,9 +4522,10 @@ for ev_i = 1:length(eventIDs)
 end
 assert(max(taskEventIDInd) == length(eventIDs))
 
+% a list of all subEvents present.
 subEventNames = [];
 
-% Find events which take place in the stimuli presented
+% Event Type 1 - Find events which take place in the stimuli presented
 eventDataFile = dir([subEventParams.stimDir '/**/eventData.mat']);
 
 if ~isempty(eventDataFile)
@@ -4561,15 +4566,17 @@ if ~isempty(eventDataFile)
         end
       end
     end
-    
+    eventStimTable.Properties.VariableNames(1:2) = {'eventName', 'stimName'};
+
     % Generate a vector of spikeTimes in the conventional structure.
     [onsetsByEvent, onsetsByEventNull, stimSourceByEvent] = deal(cell(length(eventsInEventData),1));
+    %[onsetsByEvent, onsetsByEventNull, stimSourceByEvent] = deal([]);
     stimPSTHDur = subEventParams.stimPlotParams.psthPre + subEventParams.stimPlotParams.psthImDur + subEventParams.stimPlotParams.psthPost;
     stimEventMat = initNestedCellArray(length(eventsInEventData), 'zeros', [length(eventIDs) stimPSTHDur]);
     for event_i = 1:length(eventsInEventData)
       % Identify spaces with the events in the presented stimuli.
-      eventData = eventStimTable(strcmp(eventStimTable.Var1, eventsInEventData{event_i}),2:end);
-      stimWithEvent = unique(eventData.Var2);
+      eventData = eventStimTable(strcmp(eventStimTable.eventName, eventsInEventData{event_i}),2:end);
+      stimWithEvent = unique(eventData.stimName);
       
       % Identify stimuli without this event, for null sampling
       stimWOEvent = setdiff(eventIDs, stimWithEvent);
@@ -4589,14 +4596,15 @@ if ~isempty(eventDataFile)
         stimIndSingle = strcmp(eventIDs, stimWithEvent{stim_i});
         allStimInd = allStimInd + stimInd;
         stimMatIndex = strcmp(eventIDs, stimWithEvent{stim_i});
-        stimEventData = eventData(strcmp(eventData.Var2, stimWithEvent{stim_i}), :);
+        stimEventData = eventData(strcmp(eventData.stimName, stimWithEvent{stim_i}), :);
         %stimWithOutEventInd = find(~logical(sum(stimEventMat,2)));
         
         % Cycle through and find event occurance times
         for tab_i = 1:size(stimEventData,1)
           startTime = round(stimEventData.startFrame(tab_i));
           endTime = round(stimEventData.endFrame(tab_i));
-          
+          eventTitle = {[eventsInEventData{event_i}, '_', extractBefore(stimWithEvent{stim_i}, strfind(stimWithEvent{stim_i}, '.')) '_' num2str(startTime) '_' num2str(endTime)]};
+
           %Label the stimEventMat to highlight sampled region.
           startEventInd = (startTime + subEventParams.stimPlotParams.psthPre);
           endEventInd = (startEventInd + subEventParams.psthParams.psthImDur);
@@ -4608,6 +4616,7 @@ if ~isempty(eventDataFile)
           % the larger ones
           eventStartTimes = [eventStartTimes; taskData.taskEventStartTimes(stimInd) + startTime];
           eventEndTimes = [eventEndTimes; taskData.taskEventStartTimes(stimInd) + endTime];
+          eventStimSource = [eventStimSource; repmat(eventTitle, [length(taskData.taskEventStartTimes(stimInd)), 1])];
           
           % Generate a matrix which can be used to determine a null
           % distribution
@@ -4619,14 +4628,30 @@ if ~isempty(eventDataFile)
           eventEndTimesNull = [eventEndTimesNull; nullTimesEnd];
           
         end
-        
-        eventStimSource = [eventStimSource; repmat(stimWithEvent(stim_i), [length(eventStartTimes), 1])];
-        
+        %eventStimSource = [eventStimSource; repmat(stimWithEvent(stim_i), [length(eventStartTimes), 1])];
       end
       onsetsByEvent{event_i} = eventStartTimes;
       onsetsByEventNull{event_i} = eventStartTimesNull;
       stimSourceByEvent{event_i} = eventStimSource;
     end
+    
+    % If we want, we can parse the events into individual instances, incase
+    % there is some effect taking place for 'head turns during idle' vs
+    % something else.
+    if specSubEvent
+      onsetsByEventAll = vertcat(onsetsByEvent{:});
+      stimSourceByEventAll = vertcat(stimSourceByEvent{:});
+      uniqueEvents = unique(stimSourceByEventAll);
+      % Grab times of the individual events.
+      onsetsByEventSpec = cell(length(uniqueEvents),1);
+      for ii = 1:length(uniqueEvents)
+        onsetsByEventSpec{ii} = onsetsByEventAll(strcmp(stimSourceByEventAll, uniqueEvents{ii}));
+      end
+      
+      onsetsByEvent = [onsetsByEvent; onsetsByEventSpec];
+      subEventNames = [subEventNames; uniqueEvents];
+    end
+    
   else
     % If there are no events in the data
     [subEventPSTH, subEventNullPSTH] = deal({});
@@ -4735,6 +4760,26 @@ else
   [psthBySubEventNull, psthErrBySubEventNull] = calcStimPSTH(spikesBySubEventNull, spikesEmptyBySubEventNull, ephysParams.spikeTimes, subEventParams.psthParams, subEventParams);
 end
 
+if specSubEvent
+  % Remove the subEvents which are specific instances, they need to be
+  % processed differently.
+  specSubEventNames = uniqueEvents;
+  [~, B] = intersect(subEventNames, specSubEventNames, 'sorted');
+  
+  tmpInd = false(length(subEventNames),1);
+  tmpInd(B) = true;
+  
+  specSubEventPSTH = psthBySubEvent;
+  for ii = 1:length(specSubEventPSTH)
+    for jj = 1:length(specSubEventPSTH{ii})
+      specSubEventPSTH{ii}{jj} = specSubEventPSTH{ii}{jj}(tmpInd,:);
+      psthBySubEvent{ii}{jj} = psthBySubEvent{ii}{jj}(~tmpInd,:);
+    end
+  end
+  spikesBySubEvent = spikesBySubEvent(~tmpInd);
+  subEventNames = subEventNames(~tmpInd);
+end
+
 % Package output
 subEventPSTH = [psthBySubEvent, psthErrBySubEvent];
 subEventNullPSTH = [psthBySubEventNull, psthErrBySubEventNull];
@@ -4781,8 +4826,20 @@ for chan_i = 1:length(psthBySubEvent)
       plotErr = [psthErrBySubEvent{chan_i}{unit_i}(event_i, :); psthErrBySubEventNull{chan_i}{unit_i}(event_i, :)];
       plotTitle = sprintf('%s (p = %s, %d ms - %d ms, N = %d)', eventsInEventDataPlot{event_i}, num2str(testResults{chan_i}{unit_i}{event_i}), testPeriod(1), testPeriod(2), length(spikeCounts{chan_i}{unit_i}{event_i}.rates));
       [~, ~] = plotPSTH(plotData, plotErr, [], subEventParams.psthParams, 'line', plotTitle , plotLabels);
+      hold on
       if event_i ~= length(subEventNames)
         axesH.XLabel.String = '';
+      end
+      if specSubEvent
+        relevantEventInd = strcmp(eventStimTable.eventName, subEventNames{event_i});
+        relevantEventInd = find(relevantEventInd);
+        newLineNames = uniqueEvents(relevantEventInd);
+        newLines = gobjects(length(relevantEventInd),1);
+        psthRange = -subEventParams.psthParams.psthPre:subEventParams.psthParams.psthImDur + -subEventParams.psthParams.psthPost;
+        for ii = 1:length(relevantEventInd)
+          newLines(ii) = plot(psthRange, specSubEventPSTH{chan_i}{unit_i}(relevantEventInd(ii),:));
+        end
+        %legend(newLines, newLineNames)
       end
     end
     if subEventParams.closeFig
@@ -4816,7 +4873,7 @@ end
 
 function spikePupilCorrStruct = spikePupilCorr(spikesByEvent, eyeDataStruct, taskData, spikeTimes, psthParams, spikeAlignParams)
 % Plots the correlation between the PSTH and eye dilation.
-
+spikePupilCorrStruct = struct();
 % Step 1 - turn the spikesByEvent into a similarly structured
 % psthByEventTrial w/ structure {stim}(trial, time)
 
@@ -4830,9 +4887,6 @@ psthErrorType = psthParams.errorType;
 psthErrorRangeZ = psthParams.errorRangeZ;
 psthBootstrapSamples = psthParams.bootstrapSamples;
 
-spikesByStim = spikesByEvent;
-spikesByItem = spikesByStim;
-numItems = length(spikesByStim);
 pupilByStim = eyeDataStruct.pupilByStim;
 lfpPaddedBy = psthParams.movingWin(1)/2 + 1;
 
@@ -4842,50 +4896,97 @@ if ~spikeTimes
   smoothingFilter = smoothingFilter/sum(smoothingFilter);
 end
 
-[psthByStim, corrByStim, pByStim] = deal(initNestedCellArray(spikesByStim));
+[psthByStim, corrByStim, pByStim] = deal(initNestedCellArray(spikesByEvent));
 
-
+% Method 2 - make histograms of pupil values where spikes happen vs all.
 for stim_i = 1:length(spikesByEvent)
-  for channel_i = 1:length(spikesByEvent{stim_i})
-    for unit_i = 1:length(spikesByEvent{stim_i}{channel_i})
-      emptyPSTHbyTrial = zeros(size(spikesByEvent{stim_i}{channel_i}{unit_i}));
-      for trial_i = 1:size(emptyPSTHbyTrial, 1)
-        if ~spikeTimes
-          %spikes are binned, convolve signal to get PSTH.
-          emptyPSTHbyTrial(trial_i,:) = 1000*conv(spikesByItem{stim_i}{channel_i}{unit_i}(trial_i,:) ,smoothingFilter, 'same');
-        else
-          warning('not implemented w/ spikeTimes');
-        end
+  figure()
+  pupilStimData = pupilByStim{stim_i};
+  %plotInd = 1;
+  
+  % Plot stuff
+  histHandle = histogram(pupilStimData);
+  hold on
+  pupilDataMean = mean(mean(pupilStimData));
+  maxBin = max(histHandle.Values);
+  legendHandles = plot([pupilDataMean pupilDataMean], [0 maxBin*1.05], 'color','k', 'Linewidth', 3);
+  legendLabels = {sprintf('%s = Grand Mean', num2str(pupilDataMean,3))};
+  for chan_i = 1:length(spikesByEvent{stim_i})
+    meanLineHandles = gobjects(length(spikesByEvent{stim_i}{chan_i}),1);
+    meanLabels = cell(length(spikesByEvent{stim_i}{chan_i}),1);
+    for unit_i = 1:length(spikesByEvent{stim_i}{chan_i})
+      pupilStimCopy = pupilStimData;
+      spikeBins = spikesByEvent{stim_i}{chan_i}{unit_i}(:,lfpPaddedBy:end-lfpPaddedBy);
+      pupilSpikeVals = [];
+      for trial_i = 1:size(spikeBins,1)
+        spikeInds = find(spikeBins(trial_i,:));
+        pupilSpikeVals = [pupilSpikeVals, pupilStimData(spikeInds)];
+        pupilStimCopy(trial_i,spikeInds) = deal(NaN);
       end
-      psthByStim{stim_i}{channel_i}{unit_i} = emptyPSTHbyTrial;
+      
+      % Plot Stuff
+      
+      grandMeanSubset = nanmean(pupilStimCopy(:));
+      [~, B] = ttest2(pupilSpikeVals, pupilStimCopy(:));
+      histogram(pupilSpikeVals);
+      meanLineHandles(unit_i) = plot([mean(pupilSpikeVals) mean(pupilSpikeVals)], [0 maxBin], 'Linewidth', 3);
+      meanLabels{unit_i} = sprintf('%s = Ch%dU%d (%s)', num2str(mean(pupilSpikeVals),3), chan_i, unit_i, num2str(B,3));
+      if B < 0.05
+        text(mean(pupilSpikeVals), maxBin*1.01, '*', 'Fontsize', 14)
+      end
     end
+    
+    % Add Legends
+    legendHandles = [legendHandles; meanLineHandles];
+    legendLabels = [legendLabels; meanLabels];
   end
+  
+  % Title, Legends
+  title(sprintf('Pupil Dilations for %s', taskData.eventIDs{stim_i}))
+  legend(legendHandles, legendLabels);
 end
+
+% Method 1 - make PSTHes
+% for stim_i = 1:length(spikesByEvent)
+%   for channel_i = 1:length(spikesByEvent{stim_i})
+%     for unit_i = 1:length(spikesByEvent{stim_i}{channel_i})
+%       emptyPSTHbyTrial = zeros(size(spikesByEvent{stim_i}{channel_i}{unit_i}));
+%       for trial_i = 1:size(emptyPSTHbyTrial, 1)
+%         if ~spikeTimes
+%           %spikes are binned, convolve signal to get PSTH.
+%           emptyPSTHbyTrial(trial_i,:) = 1000*conv(spikesByItem{stim_i}{channel_i}{unit_i}(trial_i,:) ,smoothingFilter, 'same');
+%         else
+%           warning('not implemented w/ spikeTimes');
+%         end
+%       end
+%       psthByStim{stim_i}{channel_i}{unit_i} = emptyPSTHbyTrial;
+%     end
+%   end
+% end
 
 % Step 2 - Calculate the trial by trial correlation between the PSTH and the pupil
 % dilation value
-% 2a - Bins or continous? Ask Dan
-for stim_i = 1:length(psthByStim)
+% for stim_i = 1:length(psthByStim)
 %   figure()
-%   sgtitle(sprintf('PSTH and pupil dilation correlation - %s', taskData.eventIDs{stim_i}))  unitSum = 1;
+%   sgtitle(sprintf('PSTH and pupil dilation correlation - %s', taskData.eventIDs{stim_i})); 
 %   unitSum = 1;
-
-  pupilData = pupilByStim{stim_i};
-  for chan_i = 1:length(psthByStim{stim_i})
-    for unit_i = 1:length(psthByStim{stim_i}{chan_i})
-      % Extract spikeData for specific unit, find correlations per trial.
-      spikeData = psthByStim{stim_i}{chan_i}{unit_i}(:, lfpPaddedBy:end-lfpPaddedBy);
-      [corrMat, pMat] = deal(nan(size(spikeData,1),1));
-      for trial_i = 1:size(spikeData,1)
-        [tmpC, tmpP] = corrcoef(spikeData(trial_i,:),pupilData(trial_i,:));
-        corrMat(trial_i) = tmpC(2,1);
-        pMat(trial_i) = tmpP(2,1);
-        fprintf('Correlation - %s, P val = %s \n', num2str(tmpC(2,1)), num2str(tmpP(2,1), 3))
-      end
-      corrByStim{stim_i}{chan_i}{unit_i} = corrMat(2,1);
-      pByStim{stim_i}{chan_i}{unit_i} = pMat(2,1);
-      
-      % Shape the data
+% 
+%   pupilData = pupilByStim{stim_i};
+%   for chan_i = 1:length(psthByStim{stim_i})
+%     for unit_i = 1:length(psthByStim{stim_i}{chan_i})
+%       % Extract spikeData for specific unit, find correlations per trial.
+%       spikeData = psthByStim{stim_i}{chan_i}{unit_i}(:, lfpPaddedBy:end-lfpPaddedBy);
+%       [corrMat, pMat] = deal(nan(size(spikeData,1),1));
+%       for trial_i = 1:size(spikeData,1)
+%         [tmpC, tmpP] = corrcoef(spikeData(trial_i,:),pupilData(trial_i,:));
+%         corrMat(trial_i) = tmpC(2,1);
+%         pMat(trial_i) = tmpP(2,1);
+%         fprintf('Correlation - %s, P val = %s \n', num2str(tmpC(2,1)), num2str(tmpP(2,1), 3))
+%       end
+%       corrByStim{stim_i}{chan_i}{unit_i} = corrMat(2,1);
+%       pByStim{stim_i}{chan_i}{unit_i} = pMat(2,1);
+%       
+%       % Shape the data
 %       subplot(length(psthByStim{stim_i}), length(psthByStim{stim_i}{chan_i}), unitSum)
 %       unitSum = unitSum + 1;
 %       a = histogram(corrMat,100);
@@ -4894,9 +4995,9 @@ for stim_i = 1:length(psthByStim)
 %         text(corrMat(ii), levels(ii), num2str(pMat(ii), 2))
 %       end
 %       title(sprintf('Ch%d, U%d', chan_i, unit_i))
-    end
-  end
-end
+%     end
+%   end
+% end
 
 % Step 3 - Visualization this somehow.
 % 3a - if its bins, scatterplot with 2 histograms
