@@ -250,6 +250,7 @@ end
 save(analysisOutFilename,'catInds','imInds', '-append');
 
 %% Analyses
+
 % Eye Signal Processing
 eyeStatsParams.eventIDs = eventIDs;
 eyeStatsParams.eventLabels = eventLabels;
@@ -299,8 +300,6 @@ elseif calcSwitch.imagePSTH
 end
 
 % Spike, Task data, Eye Data Analysis
-end
-load('spikePupilCorrPre')
 
 if isfield(plotSwitch, 'subEventAnalysis') && plotSwitch.subEventAnalysis
   ephysParams.spikeTimes = calcSwitch.spikeTimes;
@@ -312,8 +311,6 @@ if isfield(plotSwitch, 'subEventAnalysis') && plotSwitch.subEventAnalysis
   save(analysisOutFilename,'subEventSigStruct', 'specSubEventStruct','-append');
 end
 
-%error('done subEvent')
-
 if calcSwitch.categoryPSTH && calcSwitch.spikeTimes
   [psthByCategory, psthErrByCategory] = calcStimPSTH(spikesByCategory, psthEmptyByCategory, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
   save(analysisOutFilename,'psthByCategory','psthErrByCategory', '-append');
@@ -323,6 +320,9 @@ elseif calcSwitch.categoryPSTH
 end
 
 plotSwitch.prefImRasterColorCoded = 3;
+
+end
+load('spikePupilCorrPre')
 
 if isfield(plotSwitch, 'spikePupilCorr') && plotSwitch.spikePupilCorr
   if calcSwitch.spikeTimes
@@ -4935,8 +4935,12 @@ end
 [psthByStim, corrByStim, pByStim] = deal(initNestedCellArray(spikesByEvent));
 
 % Method 2 - make histograms of pupil values where spikes happen vs all.
+h = figure('Name','Pupil Spike vs No Spike Histogram','NumberTitle','off','units', 'normalized', 'Position', [0 0 1 0.9]);
+objTbGrp = uitabgroup('Parent', h);
+
 for stim_i = 1:length(spikesByEvent)
-  figure()
+  objTab = uitab('Parent', objTbGrp, 'Title', taskData.eventIDs{stim_i});
+  axesH = axes('parent', objTab);
   pupilStimData = pupilByStim{stim_i};
   %plotInd = 1;
   
@@ -4954,14 +4958,16 @@ for stim_i = 1:length(spikesByEvent)
       pupilStimCopy = pupilStimData;
       spikeBins = spikesByEvent{stim_i}{chan_i}{unit_i}(:,lfpPaddedBy:end-lfpPaddedBy);
       pupilSpikeVals = [];
+      
+      % For every trial, pull pupil values where spikes occur, replacing
+      % them with NaNs.
       for trial_i = 1:size(spikeBins,1)
         spikeInds = find(spikeBins(trial_i,:));
-        pupilSpikeVals = [pupilSpikeVals, pupilStimData(spikeInds)];
+        pupilSpikeVals = [pupilSpikeVals, pupilStimData(trial_i, spikeInds)];
         pupilStimCopy(trial_i,spikeInds) = deal(NaN);
       end
       
       % Plot Stuff
-      
       grandMeanSubset = nanmean(pupilStimCopy(:));
       [~, B] = ttest2(pupilSpikeVals, pupilStimCopy(:));
       histogram(pupilSpikeVals);
@@ -4981,6 +4987,8 @@ for stim_i = 1:length(spikesByEvent)
   title(sprintf('Pupil Dilations for %s', taskData.eventIDs{stim_i}))
   legend(legendHandles, legendLabels);
 end
+
+disp('done');
 
 % Method 1 - make PSTHes
 % for stim_i = 1:length(spikesByEvent)
