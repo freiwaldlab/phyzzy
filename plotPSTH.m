@@ -1,4 +1,4 @@
-function [ psthAxes,  colorBarh] = plotPSTH(psthArray, psthError, psthAxes, psthParams, plotType, psthTitle, ylabels)
+function [ psthAxes,  colorBarh, vertLineHands] = plotPSTH(psthArray, psthError, psthAxes, psthParams, plotType, psthTitle, ylabels)
 %UNTITLED10 Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -56,7 +56,8 @@ elseif strcmp(plotType,'line')
   xlim(xrange);
   legend(ylabels, 'location', 'northeastoutside', 'AutoUpdate', 'off');
 end
-title(psthTitle); 
+title(psthTitle);
+
 % Deliniate stimulus presentation period
 hold on
 if (psthPre+psthPost)/psthImDur > 20
@@ -64,9 +65,11 @@ if (psthPre+psthPost)/psthImDur > 20
 else
   stimDurLineWidth = 4;
 end
+
 vertLineColor = [0.5, 0.5, 0.5];
-draw_vert_line(0,'Color',vertLineColor,'LineWidth',stimDurLineWidth);
-draw_vert_line(psthImDur,'Color',vertLineColor,'LineWidth',stimDurLineWidth);
+vertLineHands = gobjects(2,1);
+vertLineHands(1) = draw_vert_line(0,'Color',vertLineColor,'LineWidth',stimDurLineWidth);
+vertLineHands(2) = draw_vert_line(psthImDur,'Color',vertLineColor,'LineWidth',stimDurLineWidth);
 
 xlabel('Time from stimulus onset (ms)', 'FontSize',14);
 hold off
