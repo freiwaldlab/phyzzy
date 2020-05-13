@@ -51,22 +51,24 @@ analysisLabel = 'Basic';
 preprocessedDataFilenameStem = 'preprocessedData.mat';
 analysisParamFilenameStem = 'AnalysisParams.mat'; %change name should be 'leaf'
 
-saveFig = 1;                
-closeFig = 0;               %#ok
-exportFig = 0;              %#ok
-saveFigData = 0;            %#ok
+figStruct = struct();
+figStruct.saveFig = 1;                
+figStruct.closeFig = 0;               %#ok
+figStruct.exportFig = 0;              %#ok
+figStruct.saveFigData = 0;            %#ok
+figStruct.figPos = [0 0 .6 0.7];      % Normalized units for figure position
+
 savePreprocessed = 1;       %#ok
 verbosity = 'INFO';         %other options, 'DEBUG', 'VERBOSE';
-figPos = [0 0 .6 0.7];      % Normalized units for figure position
 
 %% Plot switches
 plotSwitch.pupilDilation = 1;               % plots image which illustrates continuous values for pupil dilation. 
-plotSwitch.subEventAnalysis = 1;            % plot traces comparing activity surrounding an event (defined in eventData, generated w/ eventDetectionApp), vs null.
+plotSwitch.subEventAnalysis = 0;            % plot traces comparing activity surrounding an event (defined in eventData, generated w/ eventDetectionApp), vs null.
 plotSwitch.imageEyeMap = 0;                 
 plotSwitch.eyeCorralogram = 0;              % Eye Gram
 plotSwitch.eyeStatsAnalysis = 1;            % use ClusterFix to generate a vector characterizing eye movements.
 plotSwitch.attendedObject = 1;              % Vectors to distinguish where subject is looking. Required for prefImRasterColorCoded.
-plotSwitch.eyeStimOverlay = 1;              % Visualize eye traces on stimuli.
+plotSwitch.eyeStimOverlay = 0;              % Visualize eye traces on stimuli.
 plotSwitch.spikePupilCorr = 1;              % see the correlation between single trial PSTHes and pupil size.
 
 plotSwitch.clusterOnEyePaths = 0;           % Resort spikes based on distinct eye paths, make "New events".
@@ -189,7 +191,7 @@ clear('tmp1','tmp2')
 ephysParams.filter = butter1Hz200Hz_v1; % if filtering desired, ephysFilter is a digitalFilter
 ephysParams.plotFilterResult = 0; 
 ephysParams.outDir = sprintf('%s/%s/%s/%s/',outputVolume,dateSubject,analysisLabel,runNum);
-ephysParams.saveFig = saveFig;
+ephysParams.saveFig = figStruct.saveFig;
 
 % parameters preprocessAnalogIn, see function for details
 analogInParams.needAnalogIn = 1;

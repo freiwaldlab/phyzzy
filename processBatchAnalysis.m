@@ -90,8 +90,7 @@ else
     spikeDataBank.(sessField).start = -tmp3.psthParams.psthPre;
     spikeDataBank.(sessField).stimDur = tmp3.psthParams.psthImDur;
     spikeDataBank.(sessField).end = tmp3.psthParams.psthImDur + tmp3.psthParams.psthPost;
-    %spikeDataBank.(sessField).groupLabel = target; %Now in
-    %slidingANOVAparams.
+    spikeDataBank.(sessField).groupLabel = target; %Now in slidingANOVAparams.
     spikeDataBank.(sessField).figDir = preprocessedList(ii).folder;
   end
   spikeDataBankPath = saveSpikeDataBank(spikeDataBank, 2, 'save',outputDir);
