@@ -245,13 +245,26 @@ catInds = struct();
 for cat_i = 1:length(categoryList)
   catInds.(categoryList{cat_i}) = cat_i;
 end
+
 imInds = struct();
 for image_i = 1:length(eventLabels)
   imInds.(eventLabels{image_i}) = image_i;
 end
 save(analysisOutFilename,'catInds','imInds', '-append');
 
+catIndStruct = struct();
+catIndMat = zeros(length(eventIDs), length(categoryList));
+for cat_i = 1:length(categoryList)
+  catIndMat(:, cat_i) = cellfun(@(x) any(strcmp(categoryList(cat_i), x)), eventCategories);
+end
+catIndStruct.catIndMat = logical(catIndMat);
+catIndStruct.eventIDs = eventIDs;
+catIndStruct.categoryList = categoryList;
+
 %% Analyses
+save('spikePupilCorrPre')
+end
+load('spikePupilCorrPre')
 
 % Eye Signal Processing
 eyeStatsParams.eventIDs = eventIDs;
@@ -260,7 +273,7 @@ eyeStatsParams.outDir = outDir;
 eyeDataStruct = struct();
 
 if isfield(plotSwitch, 'pupilDilation') && plotSwitch.pupilDilation
-  eyeDataStruct = pupilDilation(analogInByEvent, eyeStatsParams, eyeDataStruct);
+  eyeDataStruct = pupilDilation(analogInByEvent, eyeStatsParams, eyeDataStruct, catIndStruct, figStruct);
 end
 
 if isfield(plotSwitch, 'eyeStatsAnalysis') && plotSwitch.eyeStatsAnalysis
@@ -320,10 +333,6 @@ elseif calcSwitch.categoryPSTH
   [psthByCategory, psthErrByCategory] = calcStimPSTH(spikesByCategoryBinned, psthEmptyByCategory, calcSwitch.spikeTimes, psthParams, spikeAlignParams);
   save(analysisOutFilename,'psthByCategory','psthErrByCategory', '-append');
 end
-
-save('spikePupilCorrPre')
-end
-load('spikePupilCorrPre')
 
 if isfield(plotSwitch, 'spikePupilCorr') && plotSwitch.spikePupilCorr
   if calcSwitch.spikeTimes
@@ -6147,7 +6156,7 @@ end
 
 end
 
-function [eyeDataStruct, eyeBehStatsByStim, eyeInByEventSmooth] = eyeStatsAnalysis(analogInByEvent, eyeStatsParams, taskData, eyeDataStruct)
+function [eyeDataStruct, eyeBehStatsByStim, eyeInByEventSmooth] = eyeStatsAnalysis(analogInByEvent, eyeStatsParams, taskData, eyeDataStruct, figStruct)
 % Function uses ClusterFix to generate a saccade map.
 blinkVals = taskData.eyeCal.blinkVals;
 PixelsPerDegree = taskData.eyeCal.PixelsPerDegree;
@@ -6488,7 +6497,7 @@ for event_i = 1:length(spikesByEventBinned)
 end
 end
 
-function eyeDataStruct = pupilDilation(analogInByEvent, eyeStatsParams, eyeDataStruct)
+function eyeDataStruct = pupilDilation(analogInByEvent, eyeStatsParams, eyeDataStruct, catIndStruct, figStruct)
 
 %blinkVals = taskData.eyeCal.blinkVals;
 lfpPaddedBy = eyeStatsParams.lfpPaddedBy+1;
@@ -6588,7 +6597,107 @@ for stim_i = 1:length(analogInByEvent)
   % Chop off the buffer and store into the output structure.
   pupilImg{stim_i} = stimData(:, lfpPaddedBy:end-lfpPaddedBy);
 end
- 
+
+% Plot distributions Catagory vs non-Catagory
+catagoryPlot = {'socialInteraction', 'chasing'};
+for cat_i = 1:length(catagoryPlot)
+  % see if the stimulus is present
+  stimInd = catIndStruct.catIndMat(:, strcmp(catagoryPlot{cat_i}, catIndStruct.categoryList));
+  
+  if any(stimInd)
+    % Prepare figure
+    figTitle = sprintf('Catagory based Pupil dilations, %s vs Non-%s', catagoryPlot{cat_i}, catagoryPlot{cat_i});
+    h = figure('Name',figTitle,'NumberTitle','off','units','normalized','outerposition',figStruct.figPos);
+    
+    % Split pupil counts;
+    catPupil = pupilImg(stimInd);
+    nonCatPupil = pupilImg(~stimInd);
+    
+    % Compile, take mean, and plot
+    catPupil = vertcat(catPupil{:});
+    catPupil = catPupil(:);
+    nonCatPupil = vertcat(nonCatPupil{:});
+    nonCatPupil = nonCatPupil(:);
+    
+    catPupilMean = nanmean(catPupil);
+    nonCatPupilMean = nanmean(nonCatPupil);
+    
+    hist2Hand = histogram(nonCatPupil);
+    hold on
+    hist1Hand = histogram(catPupil);
+    hist1Mean = plot([catPupilMean catPupilMean], [0 h.Children.YLim(2)], 'lineWidth', 3);
+    hist2Mean = plot([nonCatPupilMean nonCatPupilMean], [0 h.Children.YLim(2)], 'lineWidth', 3, 'color', 'k');
+    maxBin = max([hist1Hand.Values, hist2Hand.Values]);
+    h.Children.YLim(2) = maxBin * 1.05;
+    
+    % Significance test
+    [A, pVal, ~, stats] = ttest2(catPupil, nonCatPupil);
+    if A
+      text(catPupilMean, maxBin*1.01, '*', 'Fontsize', 14)
+    end
+    
+    % Legends, Titles
+    title(sprintf('%s (p = %s)', figTitle, num2str(pVal,3)))
+    h.Children.XLabel.String = 'Raw Pupil values';
+    h.Children.YLabel.String = 'Frequency';
+  end
+end
+
+
+% Plot adaptation curves
+eventLabels = eyeStatsParams.eventLabels;
+stimStart = eyeStatsParams.psthPre;
+stimEnd = eyeStatsParams.psthPre + eyeStatsParams.psthImDur;
+[meanVec, SDVec] = deal(cell(length(eventLabels),1));
+
+h = figure('Name','Pupil adaptation','NumberTitle','off','units','normalized','outerposition',figStruct.figPos);
+objTbGrp = uitabgroup('Parent', h);
+      
+for stim_i = 1:length(pupilImg)
+  objTab = uitab('Parent', objTbGrp, 'Title', eventLabels{stim_i});
+  axesH = axes('parent', objTab);
+  pupilStimData = pupilImg{stim_i};
+  
+  % Plot 1 - all trials and their collective means
+  subplot(2,1,1)
+  hold on
+  plot(1:length(pupilStimData), pupilStimData)
+  plot(1:length(pupilStimData), nanmean(pupilStimData, 1), 'LineWidth', 3, 'color', 'r')
+  xlim([0 length(pupilStimData)])
+  plot([stimStart stimStart], ylim(), 'color', 'k', 'LineWidth', 4);
+  plot([stimEnd stimEnd], ylim(), 'color', 'k', 'LineWidth', 4);
+  
+  title(sprintf('Individual Trials - %s', eventLabels{stim_i}))
+  legendLabels = [arrayfun(@(x) ['Trial ' num2str(x)], 1:size(pupilStimData,1), 'UniformOutput', 0), 'Mean']; 
+  legend(legendLabels, 'location', 'northeastoutside', 'AutoUpdate', 'off');
+  
+  
+  % Plot 2 - Is there a change over trial period?
+  subplot(2,1,2)
+  [meanV, SDV] = deal(zeros(size(pupilStimData,1), 1));
+  for trial_i = 1:size(pupilStimData,1)
+    meanV(trial_i) = nanmean(pupilStimData(trial_i, :));
+    SDV(trial_i) = nanstd(pupilStimData(trial_i, :));
+  end
+  meanVec{stim_i} = meanV;
+  SDVec{stim_i} = SDV;
+  
+  mseb(1:length(meanV), meanV', SDV');
+  title('Pupilary Adaptation - Mean (SD)')
+  
+end
+
+% All Stim adaptation plot
+objTab = uitab('Parent', objTbGrp, 'Title', 'All Stim');
+axesH = axes('parent', objTab);
+trialCounts = cellfun('length', meanVec);
+[allMeanVec, allSDVec] = deal(nan(length(meanVec), max(trialCounts)));
+for stim_i = 1:size(allMeanVec)
+  allMeanVec(stim_i, 1:trialCounts(stim_i)) = meanVec{stim_i};
+  allSDVec(stim_i, 1:trialCounts(stim_i)) = SDVec{stim_i};
+end
+mseb(1:size(allMeanVec,2), nanmean(allMeanVec), nanmean(allSDVec))
+
 eyeDataStruct.pupilByStim = pupilImg;
 
 end
