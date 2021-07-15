@@ -370,14 +370,13 @@ for calc_i = 1:length(calcSwitches)
               unitItemPsthErr(item_i,:) = paddedPsthErr(3*smoothingWidth+1:end-3*smoothingWidth)*psthErrorRangeZ/2; %note: psth returns +/- 2 stderr; thus the factor of 0.5
             else %use spike bins
               paddedPsth = 1000*conv(mean(spikesByItemBinned{item_i}{channel_i}{unit_i},1),smoothingFilter,'same');
-              if psthErrorType == 1 || size(spikesByItemBinned{item_i}{channel_i}{unit_i},1) == 1  % if only one trial, can't use bootstrap  
-                %note: the factor of sqrt(1000) appears because we need to convert to spks/ms to get poisson error, then back to Hz
-                paddedPsthErr = sqrt(paddedPsth)*(sqrt(1000)*psthErrorRangeZ/sqrt(size(spikesByItemBinned{item_i}{channel_i}{unit_i},1)));
+              if psthErrorType == 1 || size(spikesByItemBinned{item_i}{channel_i}{unit_i},1) == 1  % if only one trial, can't use bootstrap                  
+                paddedPsthErr = 1000*conv(sqrt(mean(spikesByItemBinned{item_i}{channel_i}{unit_i},1)),smoothingFilter,'same')*psthErrorRangeZ/sqrt(size(spikesByItemBinned{item_i}{channel_i}{unit_i},1));
               else
                 if psthErrorType == 2
                   paddedPsthErr = std(bootstrp(psthBootstrapSamples,@(x) mean(x,1),convn(spikesByItemBinned{item_i}{channel_i}{unit_i},smoothingFilter,'same')),[],1)*psthErrorRangeZ*1000;
                 else
-                  paddedPsthErr = convn(std(spikesByItemBinned{item_i}{channel_i}{unit_i},[],1),smoothingFilter,'same')*psthErrorRangeZ*1000/sqrt(size(spikesByItemBinned{item_i}{channel_i}{unit_i},1));
+                  paddedPsthErr = std(convn(spikesByItemBinned{item_i}{channel_i}{unit_i},smoothingFilter,'same'),[],1)*psthErrorRangeZ*1000/sqrt(size(spikesByItemBinned{item_i}{channel_i}{unit_i},1));
                 end
               end
               unitItemPsth(item_i,:) = paddedPsth(movingWin(1)/2+1:end-movingWin(1)/2);
@@ -1288,6 +1287,28 @@ if isfield(plotSwitch,'analogInDerivativesByItem') && plotSwitch.analogInDerivat
     end
   end
 end
+
+% CSD
+% for probe_i = 1:length(probeNames) %todo: import probe names
+%   if isfield(plotSwitch,'evokedByCategory') && plotSwitch.evokedByCategory
+%     for group_i = 1:length(analysisGroups.evokedPotentials.groups)
+%       group = analysisGroups.evokedPotentials.groups{group_i};
+%       groupName = analysisGroups.evokedPotentials.names{group_i};
+%       fh = figure();
+%       responses = zeros(length(group),length(times));
+%       responseErrs = zeros(length(group),length(times));
+%       for item_i = 1:length(group)
+%         if isfield(catInds,group{item_i})
+%           responses(item_i,:) = squeeze(mean(lfpByCategory{catInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
+%           responseErrs(item_i,:) = squeeze(std(lfpByCategory{catInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),[],3)/sqrt(size(lfpByCategory{catInds.(group{item_i})},3)))';
+%         else
+%           responses(item_i,:) = squeeze(mean(lfpByEvent{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),3))';
+%           responseErrs(item_i,:) = squeeze(std(lfpByEvent{imInds.(group{item_i})}(:,channel_i,:,lfpPaddedBy+1:end-lfpPaddedBy),[],3)/sqrt(size(lfpByEvent{imInds.(group{item_i})},3)))';
+%         end
+%       end
+%     end
+%   end
+% end
 
 
 % lfp - (color) psth subplot
